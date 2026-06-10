@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import PrivateRoute from "../guards/PrivateRoute";
 
 // LOGIN
@@ -41,30 +41,17 @@ import VerTecnico from "../pages/tecnicos/VerTecnico";
 
 export default function AppRouter() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         {/* LOGIN */}
         <Route path="/login" element={<Login />} />
 
-        {/* REDIRECCIÓN INICIAL → LOGIN */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-
-        {/* DASHBOARD */}
+        {/* RUTAS PRIVADAS */}
         <Route
-          path="/dashboard"
+          path="/"
           element={
             <PrivateRoute>
               <Dashboard />
-            </PrivateRoute>
-          }
-        />
-
-        {/* AJUSTES */}
-        <Route
-          path="/ajustes"
-          element={
-            <PrivateRoute>
-              <Ajustes />
             </PrivateRoute>
           }
         />
@@ -87,7 +74,7 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/clientes/:id/editar"
+          path="/clientes/editar/:id"
           element={
             <PrivateRoute>
               <EditarCliente />
@@ -95,7 +82,7 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/clientes/:id"
+          path="/clientes/ver/:id"
           element={
             <PrivateRoute>
               <VerCliente />
@@ -121,7 +108,7 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/contratos/:id/editar"
+          path="/contratos/editar/:id"
           element={
             <PrivateRoute>
               <EditarContrato />
@@ -129,7 +116,7 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/contratos/:id"
+          path="/contratos/ver/:id"
           element={
             <PrivateRoute>
               <VerContrato />
@@ -147,7 +134,7 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/inspecciones/checklist"
+          path="/inspecciones/checklist/:id"
           element={
             <PrivateRoute>
               <Checklist />
@@ -163,7 +150,7 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/inspecciones/:id/editar"
+          path="/inspecciones/editar/:id"
           element={
             <PrivateRoute>
               <EditarInspeccion />
@@ -171,7 +158,7 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/inspecciones/:id"
+          path="/inspecciones/detalle/:id"
           element={
             <PrivateRoute>
               <DetalleInspeccion />
@@ -179,7 +166,7 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/inspecciones/:id/firma"
+          path="/inspecciones/firma/:id"
           element={
             <PrivateRoute>
               <Firma />
@@ -187,7 +174,7 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/inspecciones/:id/fotos"
+          path="/inspecciones/fotos/:id"
           element={
             <PrivateRoute>
               <FotosInspeccion />
@@ -195,7 +182,7 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/inspecciones/:id/pdf"
+          path="/inspecciones/pdf/:id"
           element={
             <PrivateRoute>
               <VerPDF />
@@ -229,7 +216,7 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/tecnicos/:id/editar"
+          path="/tecnicos/editar/:id"
           element={
             <PrivateRoute>
               <EditarTecnico />
@@ -237,14 +224,17 @@ export default function AppRouter() {
           }
         />
         <Route
-          path="/tecnicos/:id"
+          path="/tecnicos/ver/:id"
           element={
             <PrivateRoute>
               <VerTecnico />
             </PrivateRoute>
           }
         />
+
+        {/* REDIRECCIÓN */}
+        <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
