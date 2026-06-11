@@ -11,4 +11,6 @@ export default function useAuthGuard() {
       navigate("/login");
     }
   }, [user, navigate]);
+
+  return null; // evita que React pinte "0"
 }
