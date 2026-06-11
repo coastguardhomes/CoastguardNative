@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PrivateRoute from "../guards/PrivateRoute";
 
 // LOGIN
@@ -41,7 +41,7 @@ import VerTecnico from "../pages/tecnicos/VerTecnico";
 
 export default function AppRouter() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <Routes>
         {/* LOGIN */}
         <Route path="/login" element={<Login />} />
@@ -235,6 +235,6 @@ export default function AppRouter() {
         {/* REDIRECCIÓN */}
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
