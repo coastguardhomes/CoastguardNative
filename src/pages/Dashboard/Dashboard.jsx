@@ -1,35 +1,17 @@
 import React from "react";
 import useAuthGuard from "../../hooks/useAuthGuard.js";
-import { useAuth } from "../../context/AuthContext.jsx";
+import { useAuth } from "../../context/useAuth";
 
 export default function Dashboard() {
-  useAuthGuard(); // Protege la pantalla
-  const { user, logout } = useAuth();
+  const user = useAuthGuard();
+  const { logout } = useAuth();
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Panel de Control</h1>
+    <div>
+      <h1>Dashboard</h1>
+      <p>Bienvenido, {user?.email}</p>
 
-      {user && (
-        <p>
-          Sesión iniciada como: <strong>{user.email}</strong>
-        </p>
-      )}
-
-      <div style={{ marginTop: 20 }}>
-        <button
-          onClick={logout}
-          style={{
-            padding: "10px 20px",
-            background: "#d9534f",
-            color: "white",
-            border: "none",
-            borderRadius: 6,
-          }}
-        >
-          Cerrar sesión
-        </button>
-      </div>
+      <button onClick={logout}>Cerrar sesión</button>
     </div>
   );
 }
