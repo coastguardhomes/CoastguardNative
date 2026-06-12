@@ -2,12 +2,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import PrivateRoute from "../guards/PrivateRoute";
 import LayoutWithMenu from "../layouts/LayoutWithMenu";
 
-// Páginas
+// Páginas (todas con carpeta y archivo en mayúscula)
 import Dashboard from "../pages/Dashboard/Dashboard.jsx";
-import Clientes from "../pages/Clientes";
-import Tecnicos from "../pages/Tecnicos";
-import Inspecciones from "../pages/Inspecciones";
-import Login from "../pages/Login";
+import Clientes from "../pages/Clientes/Clientes.jsx";
+import Tecnicos from "../pages/Tecnicos/Tecnicos.jsx";
+import Inspecciones from "../pages/Inspecciones/Inspecciones.jsx";
+import Login from "../pages/Login/Login.jsx";
 
 export default function AppRouter() {
   return (
