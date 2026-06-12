@@ -2,5 +2,10 @@
   "appId": "com.coastguard.app",
   "appName": "coastguard-app",
   "webDir": "dist",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
+  }
 }
