@@ -1,15 +1,12 @@
-import { CapacitorConfig } from "@capacitor/cli";
-
-const config: CapacitorConfig = {
+const config = {
   appId: "com.coastguard.app",
   appName: "CoastGuard",
   webDir: "dist",
   bundledWebRuntime: false,
   server: {
     androidScheme: "https",
-    cleartext: true
+    cleartext: true,
   },
-  loggingBehavior: "debug"
 };
 
 export default config;
