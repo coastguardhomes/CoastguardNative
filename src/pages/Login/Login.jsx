@@ -1,37 +1,32 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext.jsx";
+import { useAuth } from "../../context/useAuth";
 
 export default function Login() {
-  const { login } = useAuth();
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setError("");
 
-    try {
-      await login(email, password);
-      navigate("/dashboard");
-    } catch (err) {
-      setError("Credenciales incorrectas");
-    }
+    // Aquí va tu lógica real de login
+    const userData = { email };
+    login(userData);
+
+    navigate("/");
   };
 
   return (
-    <div className="login-container">
-      <h2>Iniciar sesión</h2>
-
-      {error && <p style={{ color: "red" }}>{error}</p>}
+    <div>
+      <h1>Login</h1>
 
       <form onSubmit={handleSubmit}>
         <input
           type="email"
-          placeholder="Correo"
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
