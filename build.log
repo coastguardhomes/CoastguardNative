@@ -1,0 +1,13 @@
+
+> coastguard-app@1.0.0 build
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 107 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.28 kB
+dist/assets/index-Bo4jXtMy.css    0.63 kB │ gzip:   0.40 kB
+dist/assets/index-DKiT00UB.js   410.28 kB │ gzip: 113.89 kB
+✓ built in 2.44s

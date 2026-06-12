@@ -1,51 +1,199 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import LayoutWithMenu from "../../layouts/LayoutWithMenu.jsx";
 import { supabase } from "../../lib/supabase";
 
 export default function FotosInspeccion() {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [fotos, setFotos] = useState([]);
+  const [subiendo, setSubiendo] = useState(false);
+  const [cargando, setCargando] = useState(true);
+
+  // ============================
+  // CARGAR FOTOS
+  // ============================
+  const cargarFotos = async () => {
+    const { data, error } = await supabase
+      .from("fotos_inspeccion")
+      .select("*")
+      .eq("inspeccion_id", id)
+      .order("id", { ascending: false });
+
+    if (!error) setFotos(data || []);
+    setCargando(false);
+  };
 
   useEffect(() => {
-    const cargarFotos = async () => {
-      const { data, error } = await supabase
-        .from("fotos_inspeccion")
-        .select("*")
-        .eq("inspeccion_id", id);
-
-      if (error) {
-        console.error("Error cargando fotos:", error);
-        return;
-      }
-
-      setFotos(data);
-    };
-
     cargarFotos();
   }, [id]);
 
+  // ============================
+  // SUBIR FOTO
+  // ============================
+  const subirFoto = async (e) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+
+    setSubiendo(true);
+
+    const nombreArchivo = `${id}/${Date.now()}-${archivo.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("inspection_photos")
+      .upload(nombreArchivo, archivo);
+
+    if (uploadError) {
+      alert("Error subiendo foto");
+      setSubiendo(false);
+      return;
+    }
+
+    const urlPublica = supabase.storage
+      .from("inspection_photos")
+      .getPublicUrl(nombreArchivo).data.publicUrl;
+
+    const { error: insertError } = await supabase
+      .from("fotos_inspeccion")
+      .insert([
+        {
+          inspeccion_id: id,
+          url: urlPublica,
+        },
+      ]);
+
+    setSubiendo(false);
+
+    if (insertError) {
+      alert("Error guardando foto");
+      return;
+    }
+
+    cargarFotos();
+  };
+
+  // ============================
+  // BORRAR FOTO
+  // ============================
+  const borrarFoto = async (foto) => {
+    const confirmacion = confirm("¿Eliminar esta foto?");
+    if (!confirmacion) return;
+
+    const ruta = foto.url.split("/").slice(-2).join("/");
+
+    await supabase.storage.from("inspection_photos").remove([ruta]);
+
+    await supabase.from("fotos_inspeccion").delete().eq("id", foto.id);
+
+    cargarFotos();
+  };
+
+  if (cargando) {
+    return (
+      <div style={{ padding: 16 }}>
+        <h1>Fotos</h1>
+        <p>Cargando fotos...</p>
+      </div>
+    );
+  }
+
   return (
-    <LayoutWithMenu>
-      <div style={{ padding: 20 }}>
-        <h2>Fotos de la Inspección</h2>
+    <div style={{ padding: 16 }}>
+      <h1 style={{ marginBottom: 16 }}>Fotos de Inspección</h1>
 
-        {fotos.length === 0 && <p>No hay fotos disponibles.</p>}
+      {/* Subir foto */}
+      <label
+        style={{
+          display: "block",
+          padding: "12px 20px",
+          background: "#2563eb",
+          color: "white",
+          borderRadius: 8,
+          textAlign: "center",
+          cursor: "pointer",
+          marginBottom: 20,
+        }}
+      >
+        {subiendo ? "Subiendo..." : "Subir Foto"}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={subirFoto}
+          style={{ display: "none" }}
+        />
+      </label>
 
-        <div style={{ display: "grid", gap: 10 }}>
+      {/* Galería */}
+      {fotos.length === 0 ? (
+        <p style={{ color: "#94a3b8" }}>No hay fotos subidas.</p>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 12,
+          }}
+        >
           {fotos.map((foto) => (
-            <img
+            <div
               key={foto.id}
-              src={foto.url}
-              alt="Foto inspección"
-              style={{ width: "100%", borderRadius: 8 }}
-            />
+              style={{
+                background: "#1e293b",
+                padding: 10,
+                borderRadius: 8,
+                border: "1px solid #334155",
+                position: "relative",
+              }}
+            >
+              <img
+                src={foto.url}
+                alt="Foto inspección"
+                style={{
+                  width: "100%",
+                  height: 140,
+                  objectFit: "cover",
+                  borderRadius: 6,
+                }}
+              />
+
+              <button
+                onClick={() => borrarFoto(foto)}
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  background: "#ef4444",
+                  border: "none",
+                  color: "white",
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                Borrar
+              </button>
+            </div>
           ))}
         </div>
+      )}
 
-        <button onClick={() => navigate(-1)}>Volver</button>
-      </div>
-    </LayoutWithMenu>
+      {/* Volver */}
+      <button
+        onClick={() => navigate(`/inspecciones/${id}`)}
+        style={{
+          width: "100%",
+          padding: "12px 20px",
+          background: "#475569",
+          color: "white",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          marginTop: 20,
+        }}
+      >
+        Volver
+      </button>
+    </div>
   );
 }

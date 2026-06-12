@@ -1,127 +1,183 @@
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import LayoutWithMenu from "../../layouts/LayoutWithMenu.jsx";
 import { supabase } from "../../lib/supabase";
 
 export default function Firma() {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const canvasRef = useRef(null);
+  const [ctx, setCtx] = useState(null);
+  const [dibujando, setDibujando] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
+  // ============================
+  // CONFIGURAR CANVAS
+  // ============================
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    canvas.width = window.innerWidth - 40;
+    canvas.height = 300;
 
-    const ctx = canvas.getContext("2d");
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 3;
+    const context = canvas.getContext("2d");
+    context.strokeStyle = "#ffffff";
+    context.lineWidth = 3;
+    context.lineCap = "round";
 
-    let dibujando = false;
-
-    const getPos = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.touches ? e.touches[0].clientX : e.clientX;
-      const y = e.touches ? e.touches[0].clientY : e.clientY;
-      return { x: x - rect.left, y: y - rect.top };
-    };
-
-    const comenzar = (e) => {
-      dibujando = true;
-      const { x, y } = getPos(e);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-    };
-
-    const dibujar = (e) => {
-      if (!dibujando) return;
-      const { x, y } = getPos(e);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    };
-
-    const terminar = () => {
-      dibujando = false;
-    };
-
-    canvas.addEventListener("mousedown", comenzar);
-    canvas.addEventListener("mousemove", dibujar);
-    canvas.addEventListener("mouseup", terminar);
-
-    canvas.addEventListener("touchstart", comenzar);
-    canvas.addEventListener("touchmove", dibujar);
-    canvas.addEventListener("touchend", terminar);
-
-    return () => {
-      canvas.removeEventListener("mousedown", comenzar);
-      canvas.removeEventListener("mousemove", dibujar);
-      canvas.removeEventListener("mouseup", terminar);
-
-      canvas.removeEventListener("touchstart", comenzar);
-      canvas.removeEventListener("touchmove", dibujar);
-      canvas.removeEventListener("touchend", terminar);
-    };
+    setCtx(context);
   }, []);
 
-  const guardarFirma = async () => {
-    if (!canvasRef.current) return;
+  // ============================
+  // DIBUJAR
+  // ============================
+  const empezar = (e) => {
+    setDibujando(true);
+    ctx.beginPath();
+    ctx.moveTo(
+      e.touches ? e.touches[0].clientX - 20 : e.clientX - 20,
+      e.touches ? e.touches[0].clientY - 140 : e.clientY - 140
+    );
+  };
 
+  const dibujar = (e) => {
+    if (!dibujando) return;
+
+    ctx.lineTo(
+      e.touches ? e.touches[0].clientX - 20 : e.clientX - 20,
+      e.touches ? e.touches[0].clientY - 140 : e.clientY - 140
+    );
+    ctx.stroke();
+  };
+
+  const terminar = () => {
+    setDibujando(false);
+  };
+
+  // ============================
+  // LIMPIAR FIRMA
+  // ============================
+  const limpiar = () => {
+    const canvas = canvasRef.current;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  // ============================
+  // GUARDAR FIRMA
+  // ============================
+  const guardarFirma = async () => {
     setGuardando(true);
 
     const canvas = canvasRef.current;
     const dataUrl = canvas.toDataURL("image/png");
+
     const blob = await (await fetch(dataUrl)).blob();
+    const nombreArchivo = `${id}/firma-${Date.now()}.png`;
 
-    const fileName = `firma_${id}_${Date.now()}.png`;
+    const { error: uploadError } = await supabase.storage
+      .from("inspection_photos")
+      .upload(nombreArchivo, blob);
 
-    const { data, error } = await supabase.storage
-      .from("firmas_inspecciones")
-      .upload(fileName, blob);
-
-    if (!error) {
-      await supabase
-        .from("inspecciones")
-        .update({ firma_url: data.path })
-        .eq("id", id);
-
-      navigate(`/inspecciones/${id}`);
+    if (uploadError) {
+      alert("Error subiendo firma");
+      setGuardando(false);
+      return;
     }
 
+    const urlPublica = supabase.storage
+      .from("inspection_photos")
+      .getPublicUrl(nombreArchivo).data.publicUrl;
+
+    const { error: insertError } = await supabase
+      .from("firmas_inspeccion")
+      .insert([
+        {
+          inspeccion_id: id,
+          url: urlPublica,
+        },
+      ]);
+
     setGuardando(false);
+
+    if (insertError) {
+      alert("Error guardando firma");
+      return;
+    }
+
+    navigate(`/inspecciones/${id}`);
   };
 
   return (
-    <LayoutWithMenu>
-      <div style={{ padding: 16 }}>
-        <h1>Firmar inspección</h1>
+    <div style={{ padding: 16 }}>
+      <h1 style={{ marginBottom: 16 }}>Firma del Cliente</h1>
 
-        <canvas
-          ref={canvasRef}
-          width={350}
-          height={200}
-          style={{
-            background: "#1e293b",
-            borderRadius: 8,
-            width: "100%",
-            touchAction: "none",
-          }}
-        />
+      {/* Canvas */}
+      <canvas
+        ref={canvasRef}
+        onMouseDown={empezar}
+        onMouseMove={dibujar}
+        onMouseUp={terminar}
+        onMouseLeave={terminar}
+        onTouchStart={empezar}
+        onTouchMove={dibujar}
+        onTouchEnd={terminar}
+        style={{
+          background: "#1e293b",
+          borderRadius: 8,
+          border: "1px solid #334155",
+          marginBottom: 20,
+        }}
+      ></canvas>
 
-        <button
-          onClick={guardarFirma}
-          disabled={guardando}
-          style={{
-            marginTop: 20,
-            padding: "12px 20px",
-            background: "#2563eb",
-            color: "white",
-            borderRadius: 8,
-            width: "100%",
-          }}
-        >
-          {guardando ? "Guardando..." : "Guardar firma"}
-        </button>
-      </div>
-    </LayoutWithMenu>
+      {/* Botón limpiar */}
+      <button
+        onClick={limpiar}
+        style={{
+          width: "100%",
+          padding: "12px 20px",
+          background: "#ef4444",
+          color: "white",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          marginBottom: 12,
+        }}
+      >
+        Limpiar
+      </button>
+
+      {/* Botón guardar */}
+      <button
+        onClick={guardarFirma}
+        disabled={guardando}
+        style={{
+          width: "100%",
+          padding: "12px 20px",
+          background: guardando ? "#15803d" : "#22c55e",
+          color: "white",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          marginBottom: 12,
+        }}
+      >
+        {guardando ? "Guardando..." : "Guardar Firma"}
+      </button>
+
+      {/* Volver */}
+      <button
+        onClick={() => navigate(`/inspecciones/${id}`)}
+        style={{
+          width: "100%",
+          padding: "12px 20px",
+          background: "#475569",
+          color: "white",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+        }}
+      >
+        Volver
+      </button>
+    </div>
   );
 }

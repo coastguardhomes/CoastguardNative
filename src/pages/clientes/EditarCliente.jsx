@@ -1,181 +1,189 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import LayoutWithMenu from "../../layouts/LayoutWithMenu.jsx";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 
 export default function EditarCliente() {
-  const { id } = useParams();
   const navigate = useNavigate();
+  const { id } = useParams();
 
-  const [cliente, setCliente] = useState({
-    nombre: "",
-    telefono: "",
-    email: "",
-    direccion: "",
-  });
+  const [nombre, setNombre] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [email, setEmail] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [notas, setNotas] = useState("");
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
 
-  const [loading, setLoading] = useState(true);
+  const cargarCliente = async () => {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-  useEffect(() => {
-    const cargarCliente = async () => {
-      const { data, error } = await supabase
-        .from("clientes")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) {
-        console.error("Error cargando cliente:", error);
-        setLoading(false);
-        return;
-      }
-
-      setCliente(data);
-      setLoading(false);
-    };
-
-    cargarCliente();
-  }, [id]);
-
-  const actualizarCliente = async () => {
-    if (!cliente.nombre.trim()) {
-      alert("El nombre es obligatorio.");
+    if (error) {
+      console.error("Error cargando cliente:", error);
+      alert("Error cargando cliente");
       return;
     }
 
+    setNombre(data.nombre || "");
+    setTelefono(data.telefono || "");
+    setEmail(data.email || "");
+    setDireccion(data.direccion || "");
+    setNotas(data.notas || "");
+    setCargando(false);
+  };
+
+  useEffect(() => {
+    cargarCliente();
+  }, []);
+
+  const guardarCambios = async () => {
+    if (!nombre.trim()) {
+      alert("El nombre es obligatorio");
+      return;
+    }
+
+    setGuardando(true);
+
     const { error } = await supabase
       .from("clientes")
-      .update(cliente)
+      .update({
+        nombre,
+        telefono,
+        email,
+        direccion,
+        notas,
+      })
       .eq("id", id);
+
+    setGuardando(false);
 
     if (error) {
       console.error("Error actualizando cliente:", error);
-      alert("Error al actualizar");
+      alert("Error actualizando cliente");
       return;
     }
 
     navigate(`/clientes/${id}`);
   };
 
-  if (loading) {
+  if (cargando) {
     return (
-      <LayoutWithMenu>
-        <div style={{ padding: 16 }}>
-          <p>Cargando cliente...</p>
-        </div>
-      </LayoutWithMenu>
+      <div style={{ padding: 16 }}>
+        <h1>Editar Cliente</h1>
+        <p>Cargando...</p>
+      </div>
     );
   }
 
   return (
-    <LayoutWithMenu>
-      <div style={{ padding: 16 }}>
-        <h1 style={{ marginBottom: 16 }}>Editar Cliente</h1>
+    <div style={{ padding: 16 }}>
+      <h1 style={{ marginBottom: 16 }}>Editar Cliente</h1>
 
-        <label>Nombre</label>
-        <input
-          type="text"
-          value={cliente.nombre}
-          onChange={(e) =>
-            setCliente({ ...cliente, nombre: e.target.value })
-          }
-          style={{
-            width: "100%",
-            padding: 10,
-            marginBottom: 12,
-            borderRadius: 6,
-            border: "1px solid #334155",
-            background: "#1e293b",
-            color: "white",
-          }}
-        />
+      <input
+        type="text"
+        placeholder="Nombre"
+        value={nombre}
+        onChange={(e) => setNombre(e.target.value)}
+        style={{
+          width: "100%",
+          padding: 12,
+          borderRadius: 8,
+          border: "1px solid #334155",
+          marginBottom: 12,
+        }}
+      />
 
-        <label>Teléfono</label>
-        <input
-          type="text"
-          value={cliente.telefono}
-          onChange={(e) =>
-            setCliente({ ...cliente, telefono: e.target.value })
-          }
-          style={{
-            width: "100%",
-            padding: 10,
-            marginBottom: 12,
-            borderRadius: 6,
-            border: "1px solid #334155",
-            background: "#1e293b",
-            color: "white",
-          }}
-        />
+      <input
+        type="text"
+        placeholder="Teléfono"
+        value={telefono}
+        onChange={(e) => setTelefono(e.target.value)}
+        style={{
+          width: "100%",
+          padding: 12,
+          borderRadius: 8,
+          border: "1px solid #334155",
+          marginBottom: 12,
+        }}
+      />
 
-        <label>Email</label>
-        <input
-          type="email"
-          value={cliente.email}
-          onChange={(e) =>
-            setCliente({ ...cliente, email: e.target.value })
-          }
-          style={{
-            width: "100%",
-            padding: 10,
-            marginBottom: 12,
-            borderRadius: 6,
-            border: "1px solid #334155",
-            background: "#1e293b",
-            color: "white",
-          }}
-        />
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        style={{
+          width: "100%",
+          padding: 12,
+          borderRadius: 8,
+          border: "1px solid #334155",
+          marginBottom: 12,
+        }}
+      />
 
-        <label>Dirección</label>
-        <input
-          type="text"
-          value={cliente.direccion}
-          onChange={(e) =>
-            setCliente({ ...cliente, direccion: e.target.value })
-          }
-          style={{
-            width: "100%",
-            padding: 10,
-            marginBottom: 12,
-            borderRadius: 6,
-            border: "1px solid #334155",
-            background: "#1e293b",
-            color: "white",
-          }}
-        />
+      <input
+        type="text"
+        placeholder="Dirección"
+        value={direccion}
+        onChange={(e) => setDireccion(e.target.value)}
+        style={{
+          width: "100%",
+          padding: 12,
+          borderRadius: 8,
+          border: "1px solid #334155",
+          marginBottom: 12,
+        }}
+      />
 
-        <button
-          onClick={actualizarCliente}
-          style={{
-            marginTop: 20,
-            padding: "12px 20px",
-            background: "#2563eb",
-            color: "white",
-            borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
-            width: "100%",
-          }}
-        >
-          Guardar Cambios
-        </button>
+      <textarea
+        placeholder="Notas"
+        value={notas}
+        onChange={(e) => setNotas(e.target.value)}
+        style={{
+          width: "100%",
+          padding: 12,
+          borderRadius: 8,
+          border: "1px solid #334155",
+          marginBottom: 12,
+          minHeight: 100,
+        }}
+      />
 
-        <button
-          onClick={() => navigate("/clientes")}
-          style={{
-            marginTop: 12,
-            padding: "12px 20px",
-            background: "#475569",
-            color: "white",
-            borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
-            width: "100%",
-          }}
-        >
-          Cancelar
-        </button>
-      </div>
-    </LayoutWithMenu>
+      <button
+        onClick={guardarCambios}
+        disabled={guardando}
+        style={{
+          width: "100%",
+          padding: "12px 20px",
+          background: guardando ? "#15803d" : "#22c55e",
+          color: "white",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          marginTop: 10,
+        }}
+      >
+        {guardando ? "Guardando..." : "Guardar Cambios"}
+      </button>
+
+      <button
+        onClick={() => navigate(`/clientes/${id}`)}
+        style={{
+          width: "100%",
+          padding: "12px 20px",
+          background: "#475569",
+          color: "white",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          marginTop: 10,
+        }}
+      >
+        Cancelar
+      </button>
+    </div>
   );
 }

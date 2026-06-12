@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 
-export default function LayoutWithMenu({ children }) {
+export default function LayoutWithMenu() {
   return (
     <div className="min-h-screen flex">
 
@@ -9,7 +9,7 @@ export default function LayoutWithMenu({ children }) {
         <h2 className="text-xl font-bold mb-4">Menú</h2>
 
         <nav className="space-y-2">
-          <Link to="/Dashboard" className="block hover:text-blue-400">
+          <Link to="/" className="block hover:text-blue-400">
             Dashboard
           </Link>
 
@@ -29,7 +29,7 @@ export default function LayoutWithMenu({ children }) {
 
       {/* CONTENIDO */}
       <main className="flex-1 p-6 bg-gray-100">
-        {children}
+        <Outlet />
       </main>
 
     </div>

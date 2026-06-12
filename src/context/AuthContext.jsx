@@ -1,51 +1,55 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
 
+// Crear contexto
 const AuthContext = createContext();
 
-export function AuthProvider({ children }) {
+// Hook para usar el contexto
+export const useAuth = () => useContext(AuthContext);
+
+// Provider
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // Cargar usuario desde localStorage al iniciar
   useEffect(() => {
-    // Obtener sesión inicial
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data?.session?.user || null);
-    });
-
-    // Listener de cambios de sesión
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user || null);
-      }
-    );
-
-    // IMPORTANTE: la forma correcta de desuscribir
-    return () => {
-      listener?.unsubscribe?.();
-    };
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
 
+  // Login
   const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
-    return data.user;
+    // Simulación de login (luego lo conectamos a backend)
+    if (email === "admin@admin.com" && password === "123456") {
+      const userData = { email, role: "admin" };
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+      return { ok: true };
+    }
+
+    return { ok: false, message: "Credenciales incorrectas" };
   };
 
-  const logout = async () => {
-    await supabase.auth.signOut();
+  // Logout
+  const logout = () => {
     setUser(null);
+    localStorage.removeItem("user");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        isAuthenticated: !!user,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
+};
