@@ -1,12 +1,6 @@
-const config = {
+module.exports = {
   appId: "com.coastguard.app",
-  appName: "CoastGuard",
+  appName: "coastguard-app",
   webDir: "dist",
-  bundledWebRuntime: false,
-  server: {
-    androidScheme: "https",
-    cleartext: true,
-  },
+  bundledWebRuntime: false
 };
-
-export default config;
