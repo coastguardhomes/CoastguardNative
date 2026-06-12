@@ -3,7 +3,7 @@ import PrivateRoute from "../guards/PrivateRoute";
 import LayoutWithMenu from "../layouts/LayoutWithMenu";
 
 // Páginas
-import Dashboard from "../pages/Dashboard";
+import Dashboard from "../pages/Dashboard/Dashboard.jsx";
 import Clientes from "../pages/Clientes";
 import Tecnicos from "../pages/Tecnicos";
 import Inspecciones from "../pages/Inspecciones";
