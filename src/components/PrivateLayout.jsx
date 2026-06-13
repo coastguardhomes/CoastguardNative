@@ -1,10 +1,13 @@
 import Navbar from "./Navbar";
+import { Outlet } from "react-router-dom";
 
-export default function PrivateLayout({ children }) {
+export default function PrivateLayout() {
   return (
     <div>
       <Navbar />
-      <div style={{ padding: 20 }}>{children}</div>
+      <div style={{ padding: 20 }}>
+        <Outlet />
+      </div>
     </div>
   );
 }

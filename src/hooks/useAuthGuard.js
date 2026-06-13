@@ -11,5 +11,5 @@ export default function useAuthGuard() {
     if (user === null) navigate("/login", { replace: true });
   }, [user, navigate]);
 
-  // NO devolver nada
+  return null; // ← ESTO ES LO QUE FALTABA
 }
