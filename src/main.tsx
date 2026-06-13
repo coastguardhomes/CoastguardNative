@@ -1,0 +1,28 @@
+// --- CAPTURA GLOBAL DE ERRORES (BARRA ROJA) ---
+window.onerror = function (msg, url, line, col, error) {
+  const div = document.createElement("div");
+  div.style.position = "fixed";
+  div.style.top = "0";
+  div.style.left = "0";
+  div.style.width = "100%";
+  div.style.background = "red";
+  div.style.color = "white";
+  div.style.padding = "10px";
+  div.style.zIndex = "999999";
+  div.style.fontSize = "14px";
+  div.style.whiteSpace = "pre-wrap";
+  div.innerText = "ERROR: " + msg + "\n" + url + ":" + line;
+  document.body.appendChild(div);
+};
+// --- FIN DEL CAPTURADOR ---
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
