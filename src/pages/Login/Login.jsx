@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/useAuth";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ export default function Login() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Aquí va tu lógica real de login
+    // Lógica de login (temporal)
     const userData = { email };
     login(userData);
 
@@ -20,7 +20,7 @@ export default function Login() {
   };
 
   return (
-    <div>
+    <div style={{ padding: 20 }}>
       <h1>Login</h1>
 
       <form onSubmit={handleSubmit}>
