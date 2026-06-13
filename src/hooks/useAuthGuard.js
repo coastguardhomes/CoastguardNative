@@ -7,14 +7,9 @@ export default function useAuthGuard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 1. Si está cargando (undefined), no hacer nada
-    if (user === undefined) return;
-
-    // 2. Si NO está logueado (null), redirigir
-    if (user === null) {
-      navigate("/login", { replace: true });
-    }
+    if (user === undefined) return; // cargando
+    if (user === null) navigate("/login", { replace: true });
   }, [user, navigate]);
 
-  return { user };
+  // NO devolver nada
 }
