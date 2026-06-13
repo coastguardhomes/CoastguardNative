@@ -1,1 +1,0 @@
-{"android":{"buildCommand":"cd android && ./gradlew assembleDebug"}}
