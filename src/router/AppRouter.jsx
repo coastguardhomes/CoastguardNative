@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import PrivateRoute from "../guards/PrivateRoute";
 import PrivateLayout from "../components/PrivateLayout";
 
@@ -50,62 +50,64 @@ import UpdatePassword from "../pages/auth/UpdatePassword";
 
 export default function AppRouter() {
   return (
-    <Routes>
+    <HashRouter>
+      <Routes>
 
-      {/* Login */}
-      <Route path="/login" element={<Login />} />
+        {/* Login */}
+        <Route path="/login" element={<Login />} />
 
-      {/* Reset / Update password */}
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/update-password" element={<UpdatePassword />} />
+        {/* Reset / Update password */}
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/update-password" element={<UpdatePassword />} />
 
-      {/* Rutas privadas */}
-      <Route element={<PrivateRoute><PrivateLayout /></PrivateRoute>}>
+        {/* Rutas privadas */}
+        <Route element={<PrivateRoute><PrivateLayout /></PrivateRoute>}>
 
-        {/* Dashboard */}
-        <Route path="/" element={<Dashboard />} />
+          {/* Dashboard */}
+          <Route path="/" element={<Dashboard />} />
 
-        {/* Ajustes */}
-        <Route path="/ajustes" element={<Ajustes />} />
+          {/* Ajustes */}
+          <Route path="/ajustes" element={<Ajustes />} />
 
-        {/* Clientes */}
-        <Route path="/clientes" element={<ClientesHome />} />
-        <Route path="/clientes/lista" element={<Clientes />} />
-        <Route path="/clientes/nuevo" element={<NuevoCliente />} />
-        <Route path="/clientes/editar/:id" element={<EditarCliente />} />
-        <Route path="/clientes/ver/:id" element={<VerCliente />} />
+          {/* Clientes */}
+          <Route path="/clientes" element={<ClientesHome />} />
+          <Route path="/clientes/lista" element={<Clientes />} />
+          <Route path="/clientes/nuevo" element={<NuevoCliente />} />
+          <Route path="/clientes/editar/:id" element={<EditarCliente />} />
+          <Route path="/clientes/ver/:id" element={<VerCliente />} />
 
-        {/* Técnicos */}
-        <Route path="/tecnicos" element={<TecnicosHome />} />
-        <Route path="/tecnicos/lista" element={<TecnicosList />} />
-        <Route path="/tecnicos/nuevo" element={<NuevoTecnico />} />
-        <Route path="/tecnicos/editar/:id" element={<EditarTecnico />} />
-        <Route path="/tecnicos/ver/:id" element={<VerTecnico />} />
+          {/* Técnicos */}
+          <Route path="/tecnicos" element={<TecnicosHome />} />
+          <Route path="/tecnicos/lista" element={<TecnicosList />} />
+          <Route path="/tecnicos/nuevo" element={<NuevoTecnico />} />
+          <Route path="/tecnicos/editar/:id" element={<EditarTecnico />} />
+          <Route path="/tecnicos/ver/:id" element={<VerTecnico />} />
 
-        {/* Inspecciones */}
-        <Route path="/inspecciones" element={<Inspecciones />} />
-        <Route path="/inspecciones/nueva" element={<NuevaInspeccion />} />
-        <Route path="/inspecciones/editar/:id" element={<EditarInspeccion />} />
-        <Route path="/inspecciones/ver/:id" element={<DetalleInspeccion />} />
-        <Route path="/inspecciones/fotos/:id" element={<FotosInspeccion />} />
-        <Route path="/inspecciones/firma/:id" element={<Firma />} />
-        <Route path="/inspecciones/checklist/:id" element={<Checklist />} />
-        <Route path="/inspecciones/pdf/:id" element={<VerPDFInspeccion />} />
+          {/* Inspecciones */}
+          <Route path="/inspecciones" element={<Inspecciones />} />
+          <Route path="/inspecciones/nueva" element={<NuevaInspeccion />} />
+          <Route path="/inspecciones/editar/:id" element={<EditarInspeccion />} />
+          <Route path="/inspecciones/ver/:id" element={<DetalleInspeccion />} />
+          <Route path="/inspecciones/fotos/:id" element={<FotosInspeccion />} />
+          <Route path="/inspecciones/firma/:id" element={<Firma />} />
+          <Route path="/inspecciones/checklist/:id" element={<Checklist />} />
+          <Route path="/inspecciones/pdf/:id" element={<VerPDFInspeccion />} />
 
-        {/* Contratos */}
-        <Route path="/contratos" element={<ContratosHome />} />
-        <Route path="/contratos/nuevo" element={<CrearContrato />} />
-        <Route path="/contratos/editar/:id" element={<EditarContrato />} />
-        <Route path="/contratos/ver/:id" element={<VerContrato />} />
+          {/* Contratos */}
+          <Route path="/contratos" element={<ContratosHome />} />
+          <Route path="/contratos/nuevo" element={<CrearContrato />} />
+          <Route path="/contratos/editar/:id" element={<EditarContrato />} />
+          <Route path="/contratos/ver/:id" element={<VerContrato />} />
 
-        {/* PDF general */}
-        <Route path="/pdf/:id" element={<VerPDF />} />
+          {/* PDF general */}
+          <Route path="/pdf/:id" element={<VerPDF />} />
 
-      </Route>
+        </Route>
 
-      {/* Cualquier ruta desconocida */}
-      <Route path="*" element={<Navigate to="/" />} />
+        {/* Cualquier ruta desconocida */}
+        <Route path="*" element={<Navigate to="/" />} />
 
-    </Routes>
+      </Routes>
+    </HashRouter>
   );
 }
