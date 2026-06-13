@@ -1,10 +1,10 @@
 import React from "react";
 import useAuthGuard from "../../hooks/useAuthGuard.js";
-import { useAuth } from "../../context/useAuth";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function Dashboard() {
-  const user = useAuthGuard();
-  const { logout } = useAuth();
+  useAuthGuard(); // Solo protege la ruta, no devuelve nada
+  const { user, logout } = useAuth();
 
   return (
     <div>
