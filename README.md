@@ -11,3 +11,4 @@ Aplicación web creada con **React + Vite**, diseñada para gestionar operacione
 - JavaScript (sin TypeScript)
 
 ## 📂 Estructura del proyecto
+build fix
