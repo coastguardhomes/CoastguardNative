@@ -30,6 +30,11 @@ jobs:
       - name: Build web assets
         run: npm run build
 
+      - name: Fix Gradle deprecated flags
+        run: |
+          sed -i '/android.enableAapt2/d' android/gradle.properties || true
+          sed -i '/android.enableAapt2/d' android/app/build.gradle || true
+
       - name: Build Android APK
         run: |
           npx cap sync android
