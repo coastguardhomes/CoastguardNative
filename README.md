@@ -1,14 +1,21 @@
-# CoastGuard App
+# Coastguard App
 
-Aplicación web creada con **React + Vite**, diseñada para gestionar operaciones, clientes y recursos de forma rápida y eficiente.
+Aplicación móvil y web desarrollada con **React + Vite + Capacitor**, diseñada para gestionar propiedades, clientes y operaciones internas de Coastguard Homes.
 
-## 🚀 Tecnologías
+---
+
+## 🚀 Tecnologías principales
 
 - React 18
-- React Router DOM
 - Vite 5
-- Supabase
-- JavaScript (sin TypeScript)
+- Capacitor 6
+- Android SDK
+- Java 17
+- GitHub Actions (CI/CD)
 
-## 📂 Estructura del proyecto
-build fix
+---
+
+## 📦 Instalación del proyecto
+
+Clonar el repositorio:
+force build
