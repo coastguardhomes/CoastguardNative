@@ -1,4 +1,4 @@
-name: Android Build
+name: Android Signed Build
 
 on:
   push:
@@ -30,19 +30,25 @@ jobs:
       - name: Build web assets
         run: npm run build
 
-      - name: Fix Gradle deprecated flags
-        run: |
-          sed -i '/android.enableAapt2/d' android/gradle.properties || true
-          sed -i '/android.enableAapt2/d' android/app/build.gradle || true
+      - name: Sync Capacitor
+        run: npx cap sync android
 
-      - name: Build Android APK
+      - name: Decode keystore
+        run: echo "$KEYSTORE_BASE64" | base64 --decode > android/app/coastguard.keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      - name: Build signed APK
         run: |
-          npx cap sync android
           cd android
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=app/coastguard.keystore \
+            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload APK
+      - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: CoastGuard-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: CoastGuard-SIGNED-APK
+          path: android/app/build/outputs/apk/release/app-release.apk
