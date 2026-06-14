@@ -4,43 +4,22 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
-      - name: Clean workspace completely
-        run: |
-          git clean -fdx || true
-          rm -rf android/Coastguard || true
-
       - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build web assets
-        run: npm run build
-
-      - name: Sync Capacitor
-        run: npx cap sync android
-
-      - name: Set up JDK
-        uses: actions/setup-java@v3
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -52,7 +31,8 @@ jobs:
         run: |
           cd android
           ./gradlew assembleDebug
-- name: Upload APK
+
+      - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
           name: app-debug
