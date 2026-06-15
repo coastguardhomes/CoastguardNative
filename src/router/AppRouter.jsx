@@ -11,7 +11,7 @@ import Dashboard from "../pages/Dashboard/Dashboard";
 // Ajustes
 import Ajustes from "../pages/Ajustes/Ajustes";
 
-// Clientes
+// Clientes (ADMIN)
 import Clientes from "../pages/clientes/Clientes";
 import ClientesHome from "../pages/clientes/ClientesHome";
 import NuevoCliente from "../pages/clientes/NuevoCliente";
@@ -35,11 +35,19 @@ import Firma from "../pages/inspecciones/Firma";
 import Checklist from "../pages/inspecciones/Checklist";
 import VerPDFInspeccion from "../pages/inspecciones/VerPDF";
 
-// Contratos
+// Contratos (ADMIN)
 import ContratosHome from "../pages/contratos/ContratosHome";
 import CrearContrato from "../pages/contratos/CrearContrato";
 import EditarContrato from "../pages/contratos/EditarContrato";
 import VerContrato from "../pages/contratos/VerContrato";
+
+// Cliente (NUEVO)
+import ClienteContratoVer from "../pages/cliente/ClienteContratoVer";
+import ClienteContratosLista from "../pages/cliente/ClienteContratosLista";
+import ClienteDashboard from "../pages/cliente/ClienteDashboard";
+import ClienteFirmaDibujar from "../pages/cliente/ClienteFirmaDibujar";
+import GenerarPDFContrato from "../pages/cliente/GenerarPDFContrato";
+import VerPDFContrato from "../pages/cliente/VerPDFContrato";
 
 // PDF general
 import VerPDF from "../pages/pdf/VerPDF";
@@ -93,11 +101,21 @@ export default function AppRouter() {
           <Route path="/inspecciones/checklist/:id" element={<Checklist />} />
           <Route path="/inspecciones/pdf/:id" element={<VerPDFInspeccion />} />
 
-          {/* Contratos */}
+          {/* Contratos ADMIN */}
           <Route path="/contratos" element={<ContratosHome />} />
           <Route path="/contratos/nuevo" element={<CrearContrato />} />
           <Route path="/contratos/editar/:id" element={<EditarContrato />} />
           <Route path="/contratos/ver/:id" element={<VerContrato />} />
+
+          {/* Cliente - contratos */}
+          <Route path="/cliente/dashboard" element={<ClienteDashboard />} />
+          <Route path="/cliente/:id/contratos" element={<ClienteContratosLista />} />
+          <Route path="/cliente/contrato/:id" element={<ClienteContratoVer />} />
+          <Route path="/cliente/contrato/generar-pdf/:id" element={<GenerarPDFContrato />} />
+          <Route path="/cliente/contrato/pdf/:id" element={<VerPDFContrato />} />
+
+          {/* Firma del cliente */}
+          <Route path="/contratos/firma/:id" element={<ClienteFirmaDibujar />} />
 
           {/* PDF general */}
           <Route path="/pdf/:id" element={<VerPDF />} />
