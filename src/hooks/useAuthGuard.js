@@ -8,8 +8,11 @@ export default function useAuthGuard() {
 
   useEffect(() => {
     if (user === undefined) return; // cargando
-    if (user === null) navigate("/login", { replace: true });
+    if (user === null) {
+      navigate("/login", { replace: true });
+    }
   }, [user, navigate]);
 
-  return null; // ← ESTO ES LO QUE FALTABA
+  // El hook debe devolver el user para evitar renders corruptos
+  return user;
 }

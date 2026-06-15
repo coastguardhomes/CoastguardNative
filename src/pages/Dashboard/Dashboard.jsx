@@ -3,8 +3,8 @@ import useAuthGuard from "../../hooks/useAuthGuard.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function Dashboard() {
-  useAuthGuard(); // solo protege
-  const { user, logout } = useAuth();
+  const user = useAuthGuard(); // ahora devuelve el usuario
+  const { logout } = useAuth();
 
   return (
     <div>
