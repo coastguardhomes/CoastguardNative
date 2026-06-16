@@ -1,115 +1,81 @@
-import React, { useRef, useState, useEffect } from "react";
+import { useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SignaturePad from "react-signature-canvas";
-import supabase from "../../supabaseClient";
+import { supabase } from "../../supabaseClient";
 
 export default function ClienteFirmaDibujar() {
-  const { contratoId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const sigRef = useRef<any>(null);
-  const [isEmpty, setIsEmpty] = useState(true);
+  const sigCanvas = useRef<any>(null);
 
-  useEffect(() => {
-    if (sigRef.current) {
-      sigRef.current.clear();
-    }
-  }, []);
+  const guardarFirma = async () => {
+    const dataURL = sigCanvas.current
+      ?.getTrimmedCanvas()
+      .toDataURL("image/png");
 
-  const handleClear = () => {
-    sigRef.current.clear();
-    setIsEmpty(true);
-  };
-
-  const handleEnd = () => {
-    if (!sigRef.current.isEmpty()) {
-      setIsEmpty(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (sigRef.current.isEmpty()) {
-      alert("Debes dibujar la firma antes de continuar");
-      return;
-    }
-
-    const dataURL = sigRef.current.getTrimmedCanvas().toDataURL("image/png");
-
-    const fileName = `firma_${contratoId}_${Date.now()}.png`;
-    const file = await fetch(dataURL).then(res => res.blob());
-
-    const { data, error } = await supabase.storage
-      .from("firmas")
-      .upload(fileName, file, {
-        contentType: "image/png",
-      });
+    const { error } = await supabase
+      .from("clientes")
+      .update({ firma: dataURL })
+      .eq("id", id);
 
     if (error) {
-      console.error(error);
-      alert("Error guardando la firma");
+      console.error("Error guardando firma:", error);
       return;
     }
 
-    const urlPublica = supabase.storage
-      .from("firmas")
-      .getPublicUrl(fileName).data.publicUrl;
+    navigate(`/cliente/${id}/contrato`);
+  };
 
-    await supabase
-      .from("contratos")
-      .update({
-        firma_cliente: urlPublica,
-        estado: "firmado",
-      })
-      .eq("id", contratoId);
-
-    navigate(`/cliente/contrato/${contratoId}`);
+  const limpiar = () => {
+    sigCanvas.current?.clear();
   };
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>Firmar Contrato</h2>
+      <h2>Firma del Cliente</h2>
 
-      <div
-        style={{
-          border: "2px solid #ccc",
-          borderRadius: 10,
-          marginTop: 20,
-          marginBottom: 20,
+      <SignaturePad
+        ref={sigCanvas}
+        penColor="black"
+        canvasProps={{
+          width: 300,
+          height: 200,
+          className: "sigCanvas",
+          style: {
+            border: "1px solid #ccc",
+            borderRadius: 6,
+            marginBottom: 10,
+          },
         }}
-      >
-        <SignaturePad
-          ref={sigRef}
-          canvasProps={{
-            width: window.innerWidth - 60,
-            height: 300,
-            className: "signatureCanvas",
-          }}
-          onEnd={handleEnd}
-        />
-      </div>
+      />
 
       <button
-        onClick={handleClear}
+        onClick={guardarFirma}
         style={{
-          background: "#999",
-          color: "white",
-          padding: "10px 20px",
-          borderRadius: 8,
+          padding: "10px 16px",
+          backgroundColor: "#28a745",
+          color: "#fff",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
           marginRight: 10,
         }}
       >
-        Borrar
+        Guardar firma
       </button>
 
       <button
-        onClick={handleSave}
+        onClick={limpiar}
         style={{
-          background: "#007bff",
-          color: "white",
-          padding: "10px 20px",
-          borderRadius: 8,
+          padding: "10px 16px",
+          backgroundColor: "#dc3545",
+          color: "#fff",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
         }}
       >
-        Guardar Firma
+        Limpiar
       </button>
     </div>
   );

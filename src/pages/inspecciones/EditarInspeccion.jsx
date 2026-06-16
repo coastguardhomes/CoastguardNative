@@ -1,37 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import supabase from "../../supabaseClient";
+import { supabase } from "../../supabaseClient";
 
 export default function EditarInspeccion() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [inspeccion, setInspeccion] = useState({
-    cliente_id: "",
-    fecha: "",
-    estado: "",
-    notas: "",
-  });
+  const [cliente, setCliente] = useState("");
+  const [fecha, setFecha] = useState("");
+  const [estado, setEstado] = useState("pendiente");
 
-  const [clientes, setClientes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [guardando, setGuardando] = useState(false);
-
-  // ============================
-  // CARGAR CLIENTES
-  // ============================
-  const cargarClientes = async () => {
-    const { data, error } = await supabase
-      .from("clientes")
-      .select("id, nombre")
-      .order("nombre", { ascending: true });
-
-    if (!error) setClientes(data || []);
-  };
-
-  // ============================
-  // CARGAR INSPECCIÓN
-  // ============================
   const cargarInspeccion = async () => {
     const { data, error } = await supabase
       .from("inspecciones")
@@ -41,188 +19,78 @@ export default function EditarInspeccion() {
 
     if (error) {
       console.error("Error cargando inspección:", error);
-      alert("Error cargando inspección");
-      navigate("/inspecciones");
       return;
     }
 
-    setInspeccion(data);
-    setLoading(false);
+    setCliente(data.cliente);
+    setFecha(data.fecha);
+    setEstado(data.estado);
   };
 
-  useEffect(() => {
-    cargarClientes();
-    cargarInspeccion();
-  }, [id]);
-
-  // ============================
-  // GUARDAR CAMBIOS
-  // ============================
   const guardarCambios = async () => {
-    if (!inspeccion.cliente_id) {
-      alert("Selecciona un cliente.");
-      return;
-    }
-
-    if (!inspeccion.fecha) {
-      alert("Selecciona una fecha.");
-      return;
-    }
-
-    if (!inspeccion.estado) {
-      alert("Selecciona un estado.");
-      return;
-    }
-
-    setGuardando(true);
-
     const { error } = await supabase
       .from("inspecciones")
-      .update(inspeccion)
+      .update({
+        cliente,
+        fecha,
+        estado,
+      })
       .eq("id", id);
-
-    setGuardando(false);
 
     if (error) {
       console.error("Error actualizando inspección:", error);
-      alert("Error actualizando inspección");
       return;
     }
 
-    navigate(`/inspecciones/${id}`);
+    navigate("/inspecciones");
   };
 
-  if (loading) {
-    return (
-      <div style={{ padding: 16 }}>
-        <h1>Editar Inspección</h1>
-        <p>Cargando datos...</p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    cargarInspeccion();
+  }, []);
 
   return (
-    <div style={{ padding: 16 }}>
-      <h1 style={{ marginBottom: 16 }}>Editar Inspección</h1>
+    <div style={{ padding: 20 }}>
+      <h2>Editar Inspección</h2>
 
-      {/* Cliente */}
       <label>Cliente</label>
-      <select
-        value={inspeccion.cliente_id}
-        onChange={(e) =>
-          setInspeccion({ ...inspeccion, cliente_id: e.target.value })
-        }
-        style={{
-          width: "100%",
-          padding: 12,
-          marginBottom: 12,
-          borderRadius: 8,
-          border: "1px solid #334155",
-          background: "#1e293b",
-          color: "white",
-        }}
-      >
-        <option value="">Seleccionar cliente...</option>
-        {clientes.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.nombre}
-          </option>
-        ))}
-      </select>
+      <input
+        type="text"
+        value={cliente}
+        onChange={(e) => setCliente(e.target.value)}
+        style={{ display: "block", marginBottom: 10 }}
+      />
 
-      {/* Fecha */}
       <label>Fecha</label>
       <input
         type="date"
-        value={inspeccion.fecha}
-        onChange={(e) =>
-          setInspeccion({ ...inspeccion, fecha: e.target.value })
-        }
-        style={{
-          width: "100%",
-          padding: 12,
-          marginBottom: 12,
-          borderRadius: 8,
-          border: "1px solid #334155",
-          background: "#1e293b",
-          color: "white",
-        }}
+        value={fecha}
+        onChange={(e) => setFecha(e.target.value)}
+        style={{ display: "block", marginBottom: 10 }}
       />
 
-      {/* Estado */}
       <label>Estado</label>
       <select
-        value={inspeccion.estado}
-        onChange={(e) =>
-          setInspeccion({ ...inspeccion, estado: e.target.value })
-        }
-        style={{
-          width: "100%",
-          padding: 12,
-          marginBottom: 12,
-          borderRadius: 8,
-          border: "1px solid #334155",
-          background: "#1e293b",
-          color: "white",
-        }}
+        value={estado}
+        onChange={(e) => setEstado(e.target.value)}
+        style={{ display: "block", marginBottom: 10 }}
       >
         <option value="pendiente">Pendiente</option>
-        <option value="en_proceso">En proceso</option>
         <option value="completada">Completada</option>
       </select>
 
-      {/* Notas */}
-      <label>Notas</label>
-      <textarea
-        value={inspeccion.notas}
-        onChange={(e) =>
-          setInspeccion({ ...inspeccion, notas: e.target.value })
-        }
-        style={{
-          width: "100%",
-          padding: 12,
-          height: 120,
-          marginBottom: 12,
-          borderRadius: 8,
-          border: "1px solid #334155",
-          background: "#1e293b",
-          color: "white",
-        }}
-      />
-
-      {/* Botón Guardar */}
       <button
         onClick={guardarCambios}
-        disabled={guardando}
         style={{
-          width: "100%",
-          padding: "12px 20px",
-          background: guardando ? "#15803d" : "#22c55e",
-          color: "white",
-          borderRadius: 8,
+          padding: "10px 16px",
+          backgroundColor: "#28a745",
+          color: "#fff",
           border: "none",
+          borderRadius: "4px",
           cursor: "pointer",
-          marginTop: 20,
         }}
       >
-        {guardando ? "Guardando..." : "Guardar Cambios"}
-      </button>
-
-      {/* Botón Cancelar */}
-      <button
-        onClick={() => navigate(`/inspecciones/${id}`)}
-        style={{
-          width: "100%",
-          padding: "12px 20px",
-          background: "#475569",
-          color: "white",
-          borderRadius: 8,
-          border: "none",
-          cursor: "pointer",
-          marginTop: 12,
-        }}
-      >
-        Cancelar
+        Guardar cambios
       </button>
     </div>
   );

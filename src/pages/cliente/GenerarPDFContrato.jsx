@@ -1,126 +1,54 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import supabase from "../../supabaseClient";
+import React from "react";
 import { jsPDF } from "jspdf";
-import { PRICES } from "../../constants/prices";
 
-export default function GenerarPDFContrato() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [contrato, setContrato] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const cargar = async () => {
-      const { data, error } = await supabase
-        .from("contratos")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
-      setContrato(data);
-      setLoading(false);
-    };
-
-    cargar();
-  }, [id]);
-
-  const generarPDF = async () => {
+const GenerarPDFContrato = ({ cliente }) => {
+  const generarPDF = () => {
     const doc = new jsPDF();
 
+    // Encabezado
     doc.setFontSize(18);
-    doc.text("Contrato de Servicio", 20, 20);
+    doc.text("Contrato de Servicio CoastGuard", 20, 20);
 
     doc.setFontSize(12);
-    doc.text(`Contrato ID: ${contrato.id}`, 20, 40);
-    doc.text(`Cliente: ${contrato.nombre_cliente}`, 20, 50);
-    doc.text(`Dirección: ${contrato.direccion}`, 20, 60);
-    doc.text(`Estado: ${contrato.estado}`, 20, 70);
+    doc.text(`Nombre del cliente: ${cliente?.nombre || ""}`, 20, 40);
+    doc.text(`Dirección: ${cliente?.direccion || ""}`, 20, 50);
+    doc.text(`Teléfono: ${cliente?.telefono || ""}`, 20, 60);
 
-    // -------------------------------
-    // PRECIOS OFICIALES DEL CONTRATO
-    // -------------------------------
-    doc.setFontSize(14);
-    doc.text("Servicios Extra (Precios Oficiales)", 20, 90);
+    doc.text("Detalles del servicio:", 20, 80);
+    doc.text(`Tipo de servicio: ${cliente?.tipoServicio || ""}`, 20, 90);
+    doc.text(`Fecha de inicio: ${cliente?.fechaInicio || ""}`, 20, 100);
+    doc.text(`Precio mensual: ${cliente?.precioMensual || ""} €`, 20, 110);
 
-    doc.setFontSize(12);
-    doc.text(`Urgencia / Emergencia: ${PRICES.emergencia} €`, 20, 105);
-    doc.text(`Apertura de vivienda: ${PRICES.apertura} €`, 20, 115);
-    doc.text(`Cierre de vivienda: ${PRICES.cierre} €`, 20, 125);
-    doc.text(`Supervisión (por hora): ${PRICES.supervision} €`, 20, 135);
-    doc.text(`Gestión del técnico: ${PRICES.gestionTecnico} €`, 20, 145);
-    doc.text(`Visita rápida: ${PRICES.visitaRapida} €`, 20, 155);
-    doc.text(`Inspección post tormenta: ${PRICES.postTormenta} €`, 20, 165);
+    doc.text("Condiciones generales:", 20, 130);
+    doc.text(
+      "El cliente acepta las condiciones del servicio CoastGuard según lo acordado.",
+      20,
+      140,
+      { maxWidth: 170 }
+    );
 
-    // -------------------------------
-    // FIRMA DEL CLIENTE
-    // -------------------------------
-    doc.text("Firma del cliente:", 20, 185);
+    doc.text("Firma del cliente: ____________________", 20, 170);
+    doc.text("Firma CoastGuard: ____________________", 20, 180);
 
-    if (contrato.firma_url) {
-      const firmaImg = await fetch(contrato.firma_url)
-        .then((r) => r.blob())
-        .then((b) => {
-          return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.readAsDataURL(b);
-          });
-        });
-
-      doc.addImage(firmaImg, "PNG", 20, 195, 80, 40);
-    }
-
-    const pdfBlob = doc.output("blob");
-    const fileName = `contrato_${id}.pdf`;
-
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("pdfs")
-      .upload(fileName, pdfBlob, {
-        contentType: "application/pdf",
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error(uploadError);
-      return;
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("pdfs")
-      .getPublicUrl(fileName);
-
-    await supabase
-      .from("contratos")
-      .update({ pdf_url: urlData.publicUrl })
-      .eq("id", id);
-
-    navigate(`/cliente/contrato/pdf/${id}`);
+    doc.save("Contrato_CoastGuard.pdf");
   };
 
-  if (loading) return <p style={{ padding: 20 }}>Cargando...</p>;
-
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Generar PDF del contrato</h2>
-
-      <button
-        onClick={generarPDF}
-        style={{
-          background: "#28a745",
-          color: "white",
-          padding: "10px 20px",
-          borderRadius: 8,
-          marginTop: 20,
-        }}
-      >
-        Generar PDF
-      </button>
-    </div>
+    <button
+      onClick={generarPDF}
+      style={{
+        padding: "10px 16px",
+        backgroundColor: "#007bff",
+        color: "#fff",
+        border: "none",
+        borderRadius: "4px",
+        cursor: "pointer",
+        marginTop: "12px",
+      }}
+    >
+      Generar PDF del contrato
+    </button>
   );
-}
+};
+
+export default GenerarPDFContrato;

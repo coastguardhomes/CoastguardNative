@@ -1,58 +1,50 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import supabase from "../../supabaseClient";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../../supabaseClient";
 
 export default function ClienteContratosLista() {
-  const { id } = useParams();
   const navigate = useNavigate();
   const [contratos, setContratos] = useState([]);
 
+  const cargarContratos = async () => {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("*")
+      .order("nombre", { ascending: true });
+
+    if (error) {
+      console.error("Error cargando contratos:", error);
+      return;
+    }
+
+    setContratos(data || []);
+  };
+
   useEffect(() => {
-    const cargar = async () => {
-      const { data, error } = await supabase
-        .from("contratos")
-        .select("*")
-        .eq("cliente_id", id);
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
-      setContratos(data);
-    };
-
-    cargar();
-  }, [id]);
+    cargarContratos();
+  }, []);
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>Contratos del cliente</h2>
+      <h2>Contratos de Clientes</h2>
 
-      {contratos.map((c) => (
+      {contratos.length === 0 && <p>No hay contratos registrados.</p>}
+
+      {contratos.map((cliente) => (
         <div
-          key={c.id}
+          key={cliente.id}
           style={{
-            padding: 15,
-            border: "1px solid #ccc",
-            borderRadius: 8,
+            padding: 12,
             marginBottom: 10,
+            border: "1px solid #ccc",
+            borderRadius: 6,
+            cursor: "pointer",
           }}
+          onClick={() => navigate(`/cliente/${cliente.id}/contrato`)}
         >
-          <p><strong>ID:</strong> {c.id}</p>
-          <p><strong>Estado:</strong> {c.estado}</p>
-
-          <button
-            onClick={() => navigate(`/cliente/contrato/${c.id}`)}
-            style={{
-              background: "#007bff",
-              color: "white",
-              padding: "8px 15px",
-              borderRadius: 8,
-            }}
-          >
-            Ver contrato
-          </button>
+          <p><strong>Cliente:</strong> {cliente.nombre}</p>
+          <p><strong>Dirección:</strong> {cliente.direccion}</p>
+          <p><strong>Servicio:</strong> {cliente.tipoServicio}</p>
         </div>
       ))}
     </div>

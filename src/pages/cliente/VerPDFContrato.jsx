@@ -1,70 +1,63 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import supabase from "../../supabaseClient";
+import { supabase } from "../../supabaseClient";
 
 export default function VerPDFContrato() {
   const { id } = useParams();
-  const [pdfUrl, setPdfUrl] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [pdfURL, setPdfURL] = useState("");
+
+  const cargarPDF = async () => {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("pdf_url")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      console.error("Error cargando PDF del contrato:", error);
+      return;
+    }
+
+    setPdfURL(data.pdf_url);
+  };
 
   useEffect(() => {
-    const cargarPDF = async () => {
-      const { data, error } = await supabase
-        .from("contratos")
-        .select("pdf_url")
-        .eq("id", id)
-        .single();
-
-      if (error) {
-        console.error(error);
-        setLoading(false);
-        return;
-      }
-
-      setPdfUrl(data?.pdf_url || null);
-      setLoading(false);
-    };
-
     cargarPDF();
-  }, [id]);
+  }, []);
 
-  if (loading) return <p style={{ padding: 20 }}>Cargando PDF...</p>;
-
-  if (!pdfUrl)
-    return (
-      <p style={{ padding: 20 }}>
-        Este contrato aún no tiene PDF generado.
-      </p>
-    );
+  if (!pdfURL) {
+    return <p style={{ padding: 20 }}>Cargando PDF...</p>;
+  }
 
   return (
-    <div style={{ padding: 10 }}>
-      <h2>Contrato PDF #{id}</h2>
-
-      {/* Botón Volver */}
-      <button
-        onClick={() => window.history.back()}
-        style={{
-          background: "#444",
-          color: "white",
-          padding: "8px 16px",
-          borderRadius: 6,
-          marginBottom: 15,
-        }}
-      >
-        Volver
-      </button>
+    <div style={{ padding: 20 }}>
+      <h2>Contrato PDF</h2>
 
       <iframe
-        src={pdfUrl}
-        title="PDF del contrato"
+        src={pdfURL}
+        title="PDF Contrato"
         style={{
           width: "100%",
-          height: "90vh",
-          border: "none",
-          marginTop: 10,
+          height: "80vh",
+          border: "1px solid #ccc",
+          borderRadius: 6,
         }}
       />
+
+      <button
+        onClick={() => window.open(pdfURL, "_blank")}
+        style={{
+          padding: "10px 16px",
+          backgroundColor: "#28a745",
+          color: "#fff",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+          marginTop: 12,
+        }}
+      >
+        Abrir en nueva pestaña
+      </button>
     </div>
   );
 }

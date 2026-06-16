@@ -1,125 +1,84 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import supabase from "../../supabaseClient";
+import { supabase } from "../../supabaseClient";
 
 export default function Checklist() {
-  const { id } = useParams(); // ID de la inspección
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  // Cargar checklist desde Supabase
+  const [items, setItems] = useState([]);
+
   const cargarChecklist = async () => {
     const { data, error } = await supabase
-      .from("checklist")
+      .from("checklist_inspeccion")
       .select("*")
-      .eq("inspeccion_id", id)
-      .order("id", { ascending: true });
+      .eq("inspeccion_id", id);
 
     if (error) {
       console.error("Error cargando checklist:", error);
-      alert("Error cargando checklist");
       return;
     }
 
     setItems(data || []);
-    setLoading(false);
   };
 
-  // Cambiar estado OK/Fallo
-  const toggleEstado = async (item) => {
-    const nuevoEstado = !item.estado;
-
+  const actualizarItem = async (itemId, nuevoEstado) => {
     const { error } = await supabase
-      .from("checklist")
-      .update({ estado: nuevoEstado })
-      .eq("id", item.id);
+      .from("checklist_inspeccion")
+      .update({ completado: nuevoEstado })
+      .eq("id", itemId);
 
     if (error) {
-      console.error("Error actualizando checklist:", error);
-      alert("Error actualizando elemento");
+      console.error("Error actualizando item:", error);
       return;
     }
 
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === item.id ? { ...i, estado: nuevoEstado } : i
-      )
-    );
+    cargarChecklist();
   };
 
   useEffect(() => {
     cargarChecklist();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div style={{ padding: 16 }}>
-        <h1>Checklist</h1>
-        <p>Cargando checklist...</p>
-      </div>
-    );
-  }
+  }, []);
 
   return (
-    <div style={{ padding: 16 }}>
-      <h1 style={{ marginBottom: 16 }}>Checklist</h1>
+    <div style={{ padding: 20 }}>
+      <h2>Checklist de Inspección</h2>
 
-      {items.length === 0 && (
-        <p style={{ color: "#94a3b8" }}>
-          No hay elementos en el checklist.
-        </p>
-      )}
+      {items.length === 0 && <p>No hay elementos en el checklist.</p>}
 
-      <div style={{ marginTop: 10 }}>
-        {items.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              background: "#1e293b",
-              padding: 14,
-              borderRadius: 8,
-              border: "1px solid #334155",
-              marginBottom: 12,
-              color: "white",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <span>{item.nombre}</span>
+      {items.map((item) => (
+        <div
+          key={item.id}
+          style={{
+            padding: 12,
+            marginBottom: 10,
+            border: "1px solid #ccc",
+            borderRadius: 6,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span>{item.descripcion}</span>
 
-            <button
-              onClick={() => toggleEstado(item)}
-              style={{
-                padding: "6px 12px",
-                borderRadius: 6,
-                border: "none",
-                cursor: "pointer",
-                background: item.estado ? "#22c55e" : "#ef4444",
-                color: "white",
-                fontWeight: "bold",
-              }}
-            >
-              {item.estado ? "OK" : "Fallo"}
-            </button>
-          </div>
-        ))}
-      </div>
+          <input
+            type="checkbox"
+            checked={item.completado}
+            onChange={(e) => actualizarItem(item.id, e.target.checked)}
+          />
+        </div>
+      ))}
 
       <button
-        onClick={() => navigate(`/inspecciones/${id}`)}
+        onClick={() => navigate(`/inspecciones/detalle/${id}`)}
         style={{
-          display: "block",
-          marginTop: 20,
-          padding: "12px 20px",
-          background: "#2563eb",
-          color: "white",
-          borderRadius: 8,
+          padding: "10px 16px",
+          backgroundColor: "#007bff",
+          color: "#fff",
           border: "none",
-          textAlign: "center",
-          width: "100%",
+          borderRadius: "4px",
           cursor: "pointer",
+          marginTop: "12px",
         }}
       >
         Volver

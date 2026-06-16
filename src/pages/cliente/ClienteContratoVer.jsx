@@ -1,104 +1,67 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import supabase from "../../supabaseClient";
+import { supabase } from "../../supabaseClient";
 import { PRICES } from "../../constants/prices";
 
 export default function ClienteContratoVer() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [contrato, setContrato] = useState(null);
+
+  const [cliente, setCliente] = useState(null);
+
+  const cargarCliente = async () => {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      console.error("Error cargando cliente:", error);
+      return;
+    }
+
+    setCliente(data);
+  };
 
   useEffect(() => {
-    const cargar = async () => {
-      const { data, error } = await supabase
-        .from("contratos")
-        .select("*")
-        .eq("id", id)
-        .single();
+    cargarCliente();
+  }, []);
 
-      if (error) {
-        console.error(error);
-        return;
-      }
+  if (!cliente) {
+    return <p style={{ padding: 20 }}>Cargando contrato...</p>;
+  }
 
-      setContrato(data);
-    };
-
-    cargar();
-  }, [id]);
-
-  if (!contrato) return <p style={{ padding: 20 }}>Cargando contrato...</p>;
+  const precioServicio =
+    PRICES[cliente.tipoServicio] || "Precio no disponible";
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>Contrato #{contrato.id}</h2>
+      <h2>Contrato del Cliente</h2>
 
-      <p><strong>Cliente:</strong> {contrato.nombre_cliente}</p>
-      <p><strong>Dirección:</strong> {contrato.direccion}</p>
-      <p><strong>Estado:</strong> {contrato.estado}</p>
+      <p><strong>Nombre:</strong> {cliente.nombre}</p>
+      <p><strong>Dirección:</strong> {cliente.direccion}</p>
+      <p><strong>Teléfono:</strong> {cliente.telefono}</p>
 
-      {/* PRECIOS OFICIALES */}
-      <div style={{ marginTop: 20, padding: 15, background: "#f5f5f5", borderRadius: 8 }}>
-        <h3>Servicios Extra (Precios Oficiales)</h3>
-        <ul>
-          <li>Urgencia / Emergencia: {PRICES.emergencia} €</li>
-          <li>Apertura de vivienda: {PRICES.apertura} €</li>
-          <li>Cierre de vivienda: {PRICES.cierre} €</li>
-          <li>Supervisión (por hora): {PRICES.supervision} €</li>
-          <li>Gestión del técnico: {PRICES.gestionTecnico} €</li>
-          <li>Visita rápida: {PRICES.visitaRapida} €</li>
-          <li>Inspección post tormenta: {PRICES.postTormenta} €</li>
-        </ul>
-      </div>
+      <h3>Detalles del Servicio</h3>
+      <p><strong>Tipo:</strong> {cliente.tipoServicio}</p>
+      <p><strong>Precio mensual:</strong> {precioServicio} €</p>
+      <p><strong>Fecha inicio:</strong> {cliente.fechaInicio}</p>
 
-      {/* Botón para firmar */}
       <button
-        onClick={() => navigate(`/contratos/firma/${id}`)}
+        onClick={() => navigate(`/cliente/${id}/editar`)}
         style={{
-          marginTop: 20,
-          background: "#007bff",
-          color: "white",
-          padding: "10px 20px",
-          borderRadius: 8,
-          display: "block",
+          padding: "10px 16px",
+          backgroundColor: "#007bff",
+          color: "#fff",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+          marginTop: 12,
         }}
       >
-        Firmar contrato
+        Editar contrato
       </button>
-
-      {/* Botón para generar PDF si no existe */}
-      {!contrato.pdf_url && (
-        <button
-          onClick={() => navigate(`/cliente/contrato/generar-pdf/${id}`)}
-          style={{
-            marginTop: 20,
-            background: "#28a745",
-            color: "white",
-            padding: "10px 20px",
-            borderRadius: 8,
-            display: "block",
-          }}
-        >
-          Generar PDF
-        </button>
-      )}
-
-      {/* Botón para ver PDF si ya existe */}
-      {contrato.pdf_url && (
-        <button
-          onClick={() => navigate(`/cliente/contrato/pdf/${id}`)}
-          style={{
-            marginTop: 20,
-            background: "#6c63ff",
-            color: "white",
-            padding: "10px 20px",
-            borderRadius: 8,
-            display: "block",
-          }}
-        >
-          Ver PDF
-        </button>
-      )}
     </div>
   );
 }
