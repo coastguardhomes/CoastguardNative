@@ -1,4 +1,4 @@
-name: Android Build
+name: Android Release Build
 
 on:
   push:
@@ -33,13 +33,23 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Build Android APK
+      - name: Decode Keystore
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
+
+      - name: Build Android Release
         run: |
           cd android
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
 
-      - name: Upload APK
+      - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: CoastGuard-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: CoastGuard-Release-APK
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: CoastGuard-AAB
+          path: android/app/build/outputs/bundle/release/app-release.aab
