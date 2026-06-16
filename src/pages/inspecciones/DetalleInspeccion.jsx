@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import supabase from "../../supabaseClient";
 
 export default function DetalleInspeccion() {
   const { id } = useParams();
@@ -69,7 +69,7 @@ export default function DetalleInspeccion() {
     <div style={{ padding: 16 }}>
       <h1 style={{ marginBottom: 16 }}>Detalle de Inspección</h1>
 
-      {/* Tarjeta Premium */}
+      {/* Tarjeta */}
       <div
         style={{
           padding: 16,
@@ -80,16 +80,9 @@ export default function DetalleInspeccion() {
           marginBottom: 20,
         }}
       >
-        <p>
-          <strong>ID:</strong> {inspeccion.id}
-        </p>
-        <p>
-          <strong>Cliente:</strong>{" "}
-          {inspeccion.clientes?.nombre || "Sin cliente"}
-        </p>
-        <p>
-          <strong>Fecha:</strong> {inspeccion.fecha}
-        </p>
+        <p><strong>ID:</strong> {inspeccion.id}</p>
+        <p><strong>Cliente:</strong> {inspeccion.clientes?.nombre || "Sin cliente"}</p>
+        <p><strong>Fecha:</strong> {inspeccion.fecha}</p>
         <p>
           <strong>Estado:</strong>{" "}
           <span
@@ -108,7 +101,7 @@ export default function DetalleInspeccion() {
         </p>
       </div>
 
-      {/* Botones Premium */}
+      {/* Botones */}
       <button
         onClick={() => navigate(`/inspecciones/editar/${id}`)}
         style={{

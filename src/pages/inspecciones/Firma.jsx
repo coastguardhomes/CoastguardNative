@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import supabase from "../../supabaseClient";
 
 export default function Firma() {
   const { id } = useParams();
@@ -27,25 +27,28 @@ export default function Firma() {
     setCtx(context);
   }, []);
 
+  // Obtener coordenadas reales
+  const getCoords = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return { x, y };
+  };
+
   // ============================
   // DIBUJAR
   // ============================
   const empezar = (e) => {
     setDibujando(true);
+    const { x, y } = getCoords(e);
     ctx.beginPath();
-    ctx.moveTo(
-      e.touches ? e.touches[0].clientX - 20 : e.clientX - 20,
-      e.touches ? e.touches[0].clientY - 140 : e.clientY - 140
-    );
+    ctx.moveTo(x, y);
   };
 
   const dibujar = (e) => {
     if (!dibujando) return;
-
-    ctx.lineTo(
-      e.touches ? e.touches[0].clientX - 20 : e.clientX - 20,
-      e.touches ? e.touches[0].clientY - 140 : e.clientY - 140
-    );
+    const { x, y } = getCoords(e);
+    ctx.lineTo(x, y);
     ctx.stroke();
   };
 
@@ -65,11 +68,19 @@ export default function Firma() {
   // GUARDAR FIRMA
   // ============================
   const guardarFirma = async () => {
+    const canvas = canvasRef.current;
+
+    // Validar firma vacía
+    const pixelData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const hayTrazo = pixelData.some((v) => v !== 0);
+    if (!hayTrazo) {
+      alert("La firma está vacía.");
+      return;
+    }
+
     setGuardando(true);
 
-    const canvas = canvasRef.current;
     const dataUrl = canvas.toDataURL("image/png");
-
     const blob = await (await fetch(dataUrl)).blob();
     const nombreArchivo = `${id}/firma-${Date.now()}.png`;
 
@@ -89,12 +100,7 @@ export default function Firma() {
 
     const { error: insertError } = await supabase
       .from("firmas_inspeccion")
-      .insert([
-        {
-          inspeccion_id: id,
-          url: urlPublica,
-        },
-      ]);
+      .insert([{ inspeccion_id: id, url: urlPublica }]);
 
     setGuardando(false);
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import supabase from "../../supabaseClient";
 
 export default function Inspecciones() {
   const navigate = useNavigate();
@@ -45,7 +45,7 @@ export default function Inspecciones() {
   });
 
   // ============================
-  // COLORES DE ESTADO PREMIUM
+  // COLORES DE ESTADO
   // ============================
   const colorEstado = (estado) => {
     switch (estado) {
@@ -73,7 +73,7 @@ export default function Inspecciones() {
     <div style={{ padding: 16 }}>
       <h1 style={{ marginBottom: 16 }}>Inspecciones</h1>
 
-      {/* Buscador Premium */}
+      {/* Buscador */}
       <input
         type="text"
         placeholder="Buscar inspección..."
@@ -107,7 +107,7 @@ export default function Inspecciones() {
         + Nueva Inspección
       </button>
 
-      {/* Lista Premium */}
+      {/* Lista */}
       {filtradas.length === 0 ? (
         <p style={{ color: "#94a3b8" }}>No hay inspecciones que coincidan.</p>
       ) : (

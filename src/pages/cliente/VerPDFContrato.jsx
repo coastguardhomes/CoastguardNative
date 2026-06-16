@@ -41,6 +41,20 @@ export default function VerPDFContrato() {
     <div style={{ padding: 10 }}>
       <h2>Contrato PDF #{id}</h2>
 
+      {/* Botón Volver */}
+      <button
+        onClick={() => window.history.back()}
+        style={{
+          background: "#444",
+          color: "white",
+          padding: "8px 16px",
+          borderRadius: 6,
+          marginBottom: 15,
+        }}
+      >
+        Volver
+      </button>
+
       <iframe
         src={pdfUrl}
         title="PDF del contrato"

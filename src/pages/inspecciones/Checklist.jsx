@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import supabase from "../../supabaseClient";
 
 export default function Checklist() {
-  const { id } = useParams();
+  const { id } = useParams(); // ID de la inspección
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Cargar checklist desde Supabase
   const cargarChecklist = async () => {
     const { data, error } = await supabase
       .from("checklist")
@@ -25,6 +26,7 @@ export default function Checklist() {
     setLoading(false);
   };
 
+  // Cambiar estado OK/Fallo
   const toggleEstado = async (item) => {
     const nuevoEstado = !item.estado;
 
@@ -86,6 +88,7 @@ export default function Checklist() {
             }}
           >
             <span>{item.nombre}</span>
+
             <button
               onClick={() => toggleEstado(item)}
               style={{

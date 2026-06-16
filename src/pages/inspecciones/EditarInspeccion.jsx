@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import supabase from "../../supabaseClient";
 
 export default function EditarInspeccion() {
   const { id } = useParams();
@@ -61,6 +61,16 @@ export default function EditarInspeccion() {
   const guardarCambios = async () => {
     if (!inspeccion.cliente_id) {
       alert("Selecciona un cliente.");
+      return;
+    }
+
+    if (!inspeccion.fecha) {
+      alert("Selecciona una fecha.");
+      return;
+    }
+
+    if (!inspeccion.estado) {
+      alert("Selecciona un estado.");
       return;
     }
 

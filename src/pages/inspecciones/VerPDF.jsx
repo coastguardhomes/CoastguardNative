@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import supabase from "../../supabaseClient";
 
 export default function VerPDF() {
   const { id } = useParams();
@@ -53,7 +53,7 @@ export default function VerPDF() {
     <div style={{ padding: 16 }}>
       <h1 style={{ marginBottom: 16 }}>Informe PDF</h1>
 
-      {/* Visor PDF PRO */}
+      {/* Visor PDF */}
       <iframe
         src={urlPDF}
         title="PDF"
@@ -66,7 +66,24 @@ export default function VerPDF() {
         }}
       ></iframe>
 
-      {/* Botón volver */}
+      {/* Abrir en nueva pestaña */}
+      <button
+        onClick={() => window.open(urlPDF, "_blank")}
+        style={{
+          width: "100%",
+          padding: "12px 20px",
+          background: "#2563eb",
+          color: "white",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          marginTop: 20,
+        }}
+      >
+        Abrir en nueva pestaña
+      </button>
+
+      {/* Volver */}
       <button
         onClick={() => navigate(`/inspecciones/${id}`)}
         style={{
@@ -77,7 +94,7 @@ export default function VerPDF() {
           borderRadius: 8,
           border: "none",
           cursor: "pointer",
-          marginTop: 20,
+          marginTop: 12,
         }}
       >
         Volver

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import supabase from "../../supabaseClient";
 
 export default function FotosInspeccion() {
   const { id } = useParams();
@@ -34,6 +34,11 @@ export default function FotosInspeccion() {
   const subirFoto = async (e) => {
     const archivo = e.target.files[0];
     if (!archivo) return;
+
+    if (!archivo.type.startsWith("image/")) {
+      alert("Solo se permiten imágenes.");
+      return;
+    }
 
     setSubiendo(true);
 
@@ -79,10 +84,9 @@ export default function FotosInspeccion() {
     const confirmacion = confirm("¿Eliminar esta foto?");
     if (!confirmacion) return;
 
-    const ruta = foto.url.split("/").slice(-2).join("/");
+    const ruta = foto.url.split("/inspection_photos/")[1];
 
     await supabase.storage.from("inspection_photos").remove([ruta]);
-
     await supabase.from("fotos_inspeccion").delete().eq("id", foto.id);
 
     cargarFotos();
@@ -155,7 +159,6 @@ export default function FotosInspeccion() {
                   borderRadius: 6,
                 }}
               />
-
               <button
                 onClick={() => borrarFoto(foto)}
                 style={{

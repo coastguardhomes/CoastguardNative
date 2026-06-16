@@ -93,12 +93,4 @@ export default function ClienteContratoVer() {
             color: "white",
             padding: "10px 20px",
             borderRadius: 8,
-            display: "block",
-          }}
-        >
-          Ver PDF
-        </button>
-      )}
-    </div>
-  );
-}
+            display—
