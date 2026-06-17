@@ -1,11 +1,11 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.coastguard"
+    namespace "com.coastguard.app"
     compileSdkVersion 34
 
     defaultConfig {
-        applicationId "com.coastguard"
+        applicationId "com.coastguard.app"
         minSdkVersion 23
         targetSdkVersion 34
         versionCode 1
@@ -34,6 +34,5 @@ dependencies {
     implementation project(':capacitor-android')
     implementation project(':capacitor-cordova-android-plugins')
 
-    // ESTA LÍNEA ES LA QUE TE FALTABA
     implementation 'androidx.appcompat:appcompat:1.6.1'
 }
