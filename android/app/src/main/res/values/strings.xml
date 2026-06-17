@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">coastguard-app</string>
-    <string name="title_activity_main">coastguard-app</string>
-    <string name="package_name">com.coastguard.app</string>
-    <string name="custom_url_scheme">com.coastguard.app</string>
+    <string name="app_name">CoastGuard</string>
+    <string name="title_activity_main">CoastGuard</string>
+    <string name="package_name">com.coastguard.mobile</string>
+    <string name="custom_url_scheme">com.coastguard.mobile</string>
 </resources>

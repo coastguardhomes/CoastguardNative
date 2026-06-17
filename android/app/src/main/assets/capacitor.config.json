@@ -1,14 +1,6 @@
 {
-	"appId": "com.coastguard.app",
-	"appName": "coastguard-app",
+	"appId": "com.coastguard.mobile",
+	"appName": "CoastGuard",
 	"webDir": "dist",
-	"bundledWebRuntime": false,
-	"server": {
-		"androidScheme": "https"
-	},
-	"plugins": {
-		"SplashScreen": {
-			"launchShowDuration": 0
-		}
-	}
+	"bundledWebRuntime": false
 }
