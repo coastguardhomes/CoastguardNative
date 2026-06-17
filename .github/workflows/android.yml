@@ -19,7 +19,9 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install @vitejs/plugin-react@4.2.1 --save-dev
 
       - name: Build Vite project
         run: npm run build
