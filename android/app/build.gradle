@@ -1,15 +1,16 @@
-apply plugin: 'com.android.application'
-apply plugin: 'com.google.gms.google-services'
-apply plugin: 'kotlin-android'
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android' version '1.9.22'
+}
 
 android {
     namespace "com.coastguard.app"
-    compileSdkVersion 34
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.coastguard.app"
-        minSdkVersion 23
-        targetSdkVersion 34
+        minSdk 23
+        targetSdk 34
         versionCode 1
         versionName "1.0"
     }
@@ -40,5 +41,5 @@ dependencies {
     implementation project(':capacitor-preferences')
     implementation project(':capacitor-splash-screen')
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
 }
