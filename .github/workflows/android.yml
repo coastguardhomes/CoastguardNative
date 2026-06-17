@@ -22,6 +22,8 @@ jobs:
         run: |
           npm install
           npm install @vitejs/plugin-react@4.2.1 --save-dev
+          npm install semver --save-dev
+          npm install @capacitor/cli@5 @capacitor/core@5 @capacitor/android@5 --save
 
       - name: Build Vite project
         run: npm run build
