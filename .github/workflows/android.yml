@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: development
 
     steps:
       - name: Checkout repo
@@ -18,8 +20,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies (with scripts enabled)
-        run: npm install --ignore-scripts=false
+      - name: Install ALL dependencies (including devDependencies)
+        run: npm install --include=dev
 
       - name: Build Vite project
         run: npm run build
