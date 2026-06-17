@@ -1,5 +1,27 @@
-include ':app'
-include ':capacitor-cordova-android-plugins'
-project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
 
-apply from: 'capacitor.settings.gradle'
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "Coastguard"
+
+include ':app'
+include ':capacitor-android'
+include ':capacitor-app'
+include ':capacitor-device'
+include ':capacitor-haptics'
+include ':capacitor-network'
+include ':capacitor-preferences'
+include ':capacitor-splash-screen'
+include ':capacitor-cordova-android-plugins'
