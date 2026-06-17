@@ -8,8 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      NODE_ENV: development
 
     steps:
       - name: Checkout repo
