@@ -1,7 +1,13 @@
 <resources>
 
-    <!-- Tema principal de la app -->
+    <!-- Tema principal -->
     <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Tema usado por el launcher -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
 
