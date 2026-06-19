@@ -1,27 +1,15 @@
-plugins {
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
-}
+apply plugin: 'com.android.application'
 
 android {
-    namespace "com.coastguard.app"
-    compileSdk 34
+    namespace "com.coastguard.mobile"
+    compileSdkVersion 35
 
     defaultConfig {
-        applicationId "com.coastguard.app"
-        minSdk 23
-        targetSdk 34
+        applicationId "com.coastguard.mobile"
+        minSdkVersion 22
+        targetSdkVersion 35
         versionCode 1
         versionName "1.0"
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
 
     buildTypes {
@@ -32,22 +20,7 @@ android {
     }
 }
 
-configurations.all {
-    resolutionStrategy {
-        force 'androidx.core:core-ktx:1.12.0'
-        force 'androidx.core:core:1.12.0'
-        force 'androidx.appcompat:appcompat:1.6.1'
-        force 'androidx.activity:activity:1.7.2'
-        force 'androidx.fragment:fragment:1.6.2'
-    }
-}
-
 dependencies {
     implementation project(':capacitor-android')
-    implementation project(':capacitor-app')
-    implementation project(':capacitor-device')
-    implementation project(':capacitor-haptics')
-    implementation project(':capacitor-network')
-    implementation project(':capacitor-preferences')
-    implementation project(':capacitor-splash-screen')
+    implementation 'androidx.appcompat:appcompat:1.6.1'
 }
