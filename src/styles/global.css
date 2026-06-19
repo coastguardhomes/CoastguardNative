@@ -1,56 +1,130 @@
-/* RESET BÁSICO */
+/* ============================
+   GLOBAL COASTGUARD PRO STYLE
+   ============================ */
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  font-family: Inter, sans-serif;
 }
 
-/* TIPOGRAFÍA GLOBAL */
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-  background-color: #0d1117; /* Fondo PRO oscuro */
-  color: #ffffff;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+html, body {
+  width: 100%;
+  height: 100%;
+  background: #0a0f1a;
+  color: #fff;
+  overflow-x: hidden;
 }
 
-/* SCROLLBAR PRO */
+/* Scrollbar premium */
 ::-webkit-scrollbar {
   width: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #1a1f24;
+  background: rgba(255,255,255,0.05);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #3b82f6;
+  background: #4db8ff;
   border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #60a5fa;
+  background: #1aa3ff;
 }
 
-/* CONTENEDORES */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem;
+/* Links */
+a {
+  color: #4db8ff;
+  text-decoration: none;
+}
+a:hover {
+  opacity: 0.8;
 }
 
-/* TITULOS PRO */
-h1, h2, h3 {
-  font-weight: 600;
+/* Inputs */
+input, select, textarea {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 10px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  width: 100%;
 }
 
-/* BOTONES PRO */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: #4db8ff;
+  box-shadow: 0 0 8px rgba(0,153,255,0.4);
+}
+
+/* Botones */
 button {
+  background: #4db8ff;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  color: #000;
+  font-weight: 700;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: 0.2s;
 }
 
-button:active {
-  transform: scale(0.97);
+button:hover {
+  background: #1aa3ff;
+  box-shadow: 0 0 10px rgba(0,153,255,0.4);
+}
+
+/* Contenedores premium */
+.cg-card {
+  background: rgba(255,255,255,0.05);
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 0 14px rgba(0,153,255,0.2);
+  margin-bottom: 20px;
+}
+
+/* Títulos */
+h1, h2, h3 {
+  color: #4db8ff;
+  text-shadow: 0 0 10px rgba(0,153,255,0.6);
+  margin-bottom: 15px;
+}
+
+/* Tablas */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+th, td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+th {
+  background: rgba(255,255,255,0.08);
+  color: #4db8ff;
+  font-weight: 700;
+}
+
+tr:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+/* Formularios */
+.form-group {
+  margin-bottom: 18px;
+}
+
+/* Animaciones suaves */
+.fade-in {
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }

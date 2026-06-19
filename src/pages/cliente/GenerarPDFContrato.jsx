@@ -1,8 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import { jsPDF } from "jspdf";
+import { supabase } from "../../supabaseClient";
+import { PRICES } from "../../constants/prices";
 
-const GenerarPDFContrato = ({ cliente }) => {
-  const generarPDF = () => {
+export default function GenerarPDFContrato({ contrato, cliente }) {
+  const [loading, setLoading] = useState(false);
+
+  const generarPDF = async () => {
+    setLoading(true);
+
     const doc = new jsPDF();
 
     // Encabezado
@@ -15,9 +21,13 @@ const GenerarPDFContrato = ({ cliente }) => {
     doc.text(`Teléfono: ${cliente?.telefono || ""}`, 20, 60);
 
     doc.text("Detalles del servicio:", 20, 80);
-    doc.text(`Tipo de servicio: ${cliente?.tipoServicio || ""}`, 20, 90);
-    doc.text(`Fecha de inicio: ${cliente?.fechaInicio || ""}`, 20, 100);
-    doc.text(`Precio mensual: ${cliente?.precioMensual || ""} €`, 20, 110);
+    doc.text(`Tipo de servicio: ${contrato?.tipoServicio || ""}`, 20, 90);
+    doc.text(`Fecha de inicio: ${contrato?.fechaInicio || ""}`, 20, 100);
+    doc.text(
+      \`Precio mensual: \${PRICES[contrato?.tipoServicio] || "N/D"} €\`,
+      20,
+      110
+    );
 
     doc.text("Condiciones generales:", 20, 130);
     doc.text(
@@ -27,15 +37,59 @@ const GenerarPDFContrato = ({ cliente }) => {
       { maxWidth: 170 }
     );
 
-    doc.text("Firma del cliente: ____________________", 20, 170);
-    doc.text("Firma CoastGuard: ____________________", 20, 180);
+    // Firma del cliente si existe
+    if (contrato?.firma) {
+      const { data } = supabase.storage
+        .from("firmas")
+        .getPublicUrl(contrato.firma);
 
-    doc.save("Contrato_CoastGuard.pdf");
+      const firmaImg = await fetch(data.publicUrl)
+        .then((r) => r.blob())
+        .then(
+          (b) =>
+            new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.readAsDataURL(b);
+            })
+        );
+
+      doc.addImage(firmaImg, "PNG", 20, 160, 60, 30);
+    } else {
+      doc.text("Firma del cliente: ____________________", 20, 170);
+    }
+
+    // Guardar PDF en Supabase Storage
+    const pdfBlob = doc.output("blob");
+    const filePath = \`contratos/contrato_\${contrato.id}.pdf\`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("contratos")
+      .upload(filePath, pdfBlob, {
+        upsert: true,
+        contentType: "application/pdf",
+      });
+
+    if (uploadError) {
+      console.error("Error subiendo PDF:", uploadError);
+      setLoading(false);
+      return;
+    }
+
+    // Guardar URL en la tabla contratos
+    await supabase
+      .from("contratos")
+      .update({ pdf_url: filePath })
+      .eq("id", contrato.id);
+
+    setLoading(false);
+    alert("PDF generado y guardado correctamente.");
   };
 
   return (
     <button
       onClick={generarPDF}
+      disabled={loading}
       style={{
         padding: "10px 16px",
         backgroundColor: "#007bff",
@@ -44,11 +98,10 @@ const GenerarPDFContrato = ({ cliente }) => {
         borderRadius: "4px",
         cursor: "pointer",
         marginTop: "12px",
+        opacity: loading ? 0.6 : 1,
       }}
     >
-      Generar PDF del contrato
+      {loading ? "Generando PDF..." : "Generar PDF del contrato"}
     </button>
   );
-};
-
-export default GenerarPDFContrato;
+}

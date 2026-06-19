@@ -1,121 +1,54 @@
-import { useState } from "react";
+import React from "react";
+import Menu from "../../layouts/Menu";
 
 export default function CrearContrato() {
-  const [lang, setLang] = useState("es");
-
-  const t = (es, en) => (lang === "es" ? es : en);
-
-  const [form, setForm] = useState({
-    cliente: "",
-    tipo: "",
-    fecha: "",
-    descripcion: "",
-  });
-
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    // Aquí luego conectamos a Supabase
-    console.log("Contrato creado:", form);
-
-    alert(t("Contrato creado correctamente", "Contract created successfully"));
-  };
-
   return (
-    <div className="crear-contrato-pro">
+    <Menu>
+      <div
+        style={{
+          padding: "20px",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "28px",
+            fontWeight: "700",
+            marginBottom: "20px",
+            color: "#4db8ff",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+          }}
+        >
+          Crear Contrato
+        </h1>
 
-      {/* TÍTULO */}
-      <h2 className="cg-header-title">
-        {t("Crear Contrato", "Create Contract")}
-      </h2>
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "12px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          }}
+        >
+          <p style={{ fontSize: "16px", opacity: 0.8 }}>
+            Aquí podrás crear un nuevo contrato para un cliente.
+          </p>
 
-      {/* FORMULARIO */}
-      <form className="cg-card" onSubmit={handleSubmit}>
+          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
+            <li>Seleccionar cliente</li>
+            <li>Seleccionar vivienda</li>
+            <li>Elegir tipo de contrato</li>
+            <li>Configurar precios</li>
+            <li>Guardar contrato</li>
+          </ul>
 
-        {/* CLIENTE */}
-        <div className="cg-form-group">
-          <label className="cg-label">{t("Cliente", "Client")}</label>
-          <input
-            type="text"
-            name="cliente"
-            className="cg-input"
-            placeholder={t("Nombre del cliente", "Client name")}
-            value={form.cliente}
-            onChange={handleChange}
-            required
-          />
+          <p style={{ marginTop: "20px", opacity: 0.7 }}>
+            Próximamente añadiremos formulario real, validaciones y guardado en Supabase.
+          </p>
         </div>
-
-        {/* TIPO */}
-        <div className="cg-form-group">
-          <label className="cg-label">{t("Tipo de Contrato", "Contract Type")}</label>
-          <select
-            name="tipo"
-            className="cg-input"
-            value={form.tipo}
-            onChange={handleChange}
-            required
-          >
-            <option value="">{t("Seleccionar...", "Select...")}</option>
-            <option value="mantenimiento">
-              {t("Mantenimiento General", "General Maintenance")}
-            </option>
-            <option value="seguridad">
-              {t("Inspección de Seguridad", "Security Inspection")}
-            </option>
-            <option value="anual">
-              {t("Contrato Anual", "Annual Contract")}
-            </option>
-          </select>
-        </div>
-
-        {/* FECHA */}
-        <div className="cg-form-group">
-          <label className="cg-label">{t("Fecha", "Date")}</label>
-          <input
-            type="date"
-            name="fecha"
-            className="cg-input"
-            value={form.fecha}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        {/* DESCRIPCIÓN */}
-        <div className="cg-form-group">
-          <label className="cg-label">{t("Descripción", "Description")}</label>
-          <textarea
-            name="descripcion"
-            className="cg-input"
-            rows="4"
-            placeholder={t("Detalles del contrato", "Contract details")}
-            value={form.descripcion}
-            onChange={handleChange}
-            required
-          ></textarea>
-        </div>
-
-        {/* BOTONES */}
-        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-          <button type="submit" className="cg-btn cg-btn-accent">
-            {t("Crear Contrato", "Create Contract")}
-          </button>
-
-          <button
-            type="button"
-            className="cg-btn cg-btn-ghost"
-            onClick={() => window.history.back()}
-          >
-            {t("Cancelar", "Cancel")}
-          </button>
-        </div>
-
-      </form>
-    </div>
+      </div>
+    </Menu>
   );
 }

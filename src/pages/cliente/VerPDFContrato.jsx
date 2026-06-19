@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 
 export default function VerPDFContrato() {
-  const { id } = useParams();
+  const { id } = useParams(); // ID del contrato
+  const navigate = useNavigate();
   const [pdfURL, setPdfURL] = useState("");
 
   const cargarPDF = async () => {
+    // 1. Cargar contrato
     const { data, error } = await supabase
-      .from("clientes")
+      .from("contratos")
       .select("pdf_url")
       .eq("id", id)
       .single();
@@ -18,7 +20,17 @@ export default function VerPDFContrato() {
       return;
     }
 
-    setPdfURL(data.pdf_url);
+    if (!data?.pdf_url) {
+      console.warn("El contrato no tiene PDF generado.");
+      return;
+    }
+
+    // 2. Obtener URL pública del PDF
+    const { data: publicData } = supabase.storage
+      .from("contratos")
+      .getPublicUrl(data.pdf_url);
+
+    setPdfURL(publicData.publicUrl);
   };
 
   useEffect(() => {
@@ -31,7 +43,22 @@ export default function VerPDFContrato() {
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>Contrato PDF</h2>
+      <h2>Contrato PDF #{id}</h2>
+
+      <button
+        onClick={() => navigate(-1)}
+        style={{
+          padding: "8px 14px",
+          backgroundColor: "#6c757d",
+          color: "#fff",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+          marginBottom: 12,
+        }}
+      >
+        Volver
+      </button>
 
       <iframe
         src={pdfURL}

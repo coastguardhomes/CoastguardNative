@@ -4,52 +4,69 @@ import { supabase } from "../../supabaseClient";
 import { PRICES } from "../../constants/prices";
 
 export default function ClienteContratoVer() {
-  const { id } = useParams();
+  const { id } = useParams(); // ID del contrato
   const navigate = useNavigate();
 
+  const [contrato, setContrato] = useState(null);
   const [cliente, setCliente] = useState(null);
 
-  const cargarCliente = async () => {
-    const { data, error } = await supabase
-      .from("clientes")
+  const cargarContrato = async () => {
+    // 1. Cargar contrato
+    const { data: contratoData, error: contratoError } = await supabase
+      .from("contratos")
       .select("*")
       .eq("id", id)
       .single();
 
-    if (error) {
-      console.error("Error cargando cliente:", error);
+    if (contratoError) {
+      console.error("Error cargando contrato:", contratoError);
       return;
     }
 
-    setCliente(data);
+    setContrato(contratoData);
+
+    // 2. Cargar cliente asociado
+    const { data: clienteData, error: clienteError } = await supabase
+      .from("clientes")
+      .select("*")
+      .eq("id", contratoData.cliente_id)
+      .single();
+
+    if (clienteError) {
+      console.error("Error cargando cliente:", clienteError);
+      return;
+    }
+
+    setCliente(clienteData);
   };
 
   useEffect(() => {
-    cargarCliente();
+    cargarContrato();
   }, []);
 
-  if (!cliente) {
+  if (!contrato || !cliente) {
     return <p style={{ padding: 20 }}>Cargando contrato...</p>;
   }
 
   const precioServicio =
-    PRICES[cliente.tipoServicio] || "Precio no disponible";
+    PRICES[contrato.tipoServicio] || "Precio no disponible";
 
   return (
     <div style={{ padding: 20 }}>
       <h2>Contrato del Cliente</h2>
 
+      <h3>Datos del Cliente</h3>
       <p><strong>Nombre:</strong> {cliente.nombre}</p>
       <p><strong>Dirección:</strong> {cliente.direccion}</p>
       <p><strong>Teléfono:</strong> {cliente.telefono}</p>
 
-      <h3>Detalles del Servicio</h3>
-      <p><strong>Tipo:</strong> {cliente.tipoServicio}</p>
+      <h3>Detalles del Contrato</h3>
+      <p><strong>Tipo de servicio:</strong> {contrato.tipoServicio}</p>
       <p><strong>Precio mensual:</strong> {precioServicio} €</p>
-      <p><strong>Fecha inicio:</strong> {cliente.fechaInicio}</p>
+      <p><strong>Fecha inicio:</strong> {contrato.fechaInicio}</p>
 
       <button
-        onClick={() => navigate(`/cliente/${id}/editar`)}
+        onClick={() => navigate(`/contratos/${id}/editar`)}
         style={{
           padding: "10px 16px",
           backgroundColor: "#007bff",

@@ -1,77 +1,54 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
-import LayoutWithMenu from "../../layouts/LayoutWithMenu";
+import React from "react";
+import Menu from "../../layouts/Menu";
 
 export default function EditarTecnico() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-
-  const [nombre, setNombre] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [email, setEmail] = useState("");
-
-  useEffect(() => {
-    async function cargar() {
-      const { data } = await supabase
-        .from("tecnicos")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (data) {
-        setNombre(data.nombre);
-        setTelefono(data.telefono);
-        setEmail(data.email);
-      }
-    }
-
-    cargar();
-  }, [id]);
-
-  async function guardar(e) {
-    e.preventDefault();
-
-    await supabase
-      .from("tecnicos")
-      .update({ nombre, telefono, email })
-      .eq("id", id);
-
-    navigate(`/tecnicos/${id}`);
-  }
-
   return (
-    <LayoutWithMenu>
-      <div className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Editar Técnico</h1>
+    <Menu>
+      <div
+        style={{
+          padding: "20px",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "28px",
+            fontWeight: "700",
+            marginBottom: "20px",
+            color: "#4db8ff",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+          }}
+        >
+          Editar Técnico
+        </h1>
 
-        <form onSubmit={guardar} className="space-y-4">
-          <input
-            className="w-full p-2 border rounded"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            placeholder="Nombre"
-          />
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "12px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          }}
+        >
+          <p style={{ fontSize: "16px", opacity: 0.8 }}>
+            Aquí podrás modificar los datos de un técnico existente.
+          </p>
 
-          <input
-            className="w-full p-2 border rounded"
-            value={telefono}
-            onChange={(e) => setTelefono(e.target.value)}
-            placeholder="Teléfono"
-          />
+          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
+            <li>Actualizar nombre</li>
+            <li>Actualizar teléfono</li>
+            <li>Actualizar email</li>
+            <li>Actualizar especialidad</li>
+            <li>Guardar cambios</li>
+          </ul>
 
-          <input
-            className="w-full p-2 border rounded"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-          />
-
-          <button className="bg-blue-600 text-white p-2 rounded w-full">
-            Guardar cambios
-          </button>
-        </form>
+          <p style={{ marginTop: "20px", opacity: 0.7 }}>
+            Próximamente añadiremos formulario real, validaciones y guardado en Supabase.
+          </p>
+        </div>
       </div>
-    </LayoutWithMenu>
+    </Menu>
   );
 }

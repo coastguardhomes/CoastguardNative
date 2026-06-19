@@ -1,7 +1,7 @@
 import React from "react";
 import Menu from "../../layouts/Menu";
 
-export default function VerTecnico() {
+export default function Viviendas() {
   return (
     <Menu>
       <div
@@ -20,7 +20,7 @@ export default function VerTecnico() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          Ver Técnico
+          Viviendas
         </h1>
 
         <div
@@ -33,20 +33,20 @@ export default function VerTecnico() {
           }}
         >
           <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Aquí podrás ver todos los detalles del técnico seleccionado.
+            Aquí podrás gestionar todas las viviendas asociadas a tus clientes.
           </p>
 
           <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Datos personales</li>
-            <li>Especialidad</li>
-            <li>Teléfono y contacto</li>
-            <li>Inspecciones asignadas</li>
-            <li>Acceso a edición</li>
+            <li>Listado de viviendas</li>
+            <li>Datos de cada vivienda</li>
+            <li>Asociación con clientes</li>
+            <li>Asociación con contratos</li>
+            <li>Asociación con inspecciones</li>
           </ul>
 
           <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos datos reales desde Supabase, historial de
-            inspecciones y acciones rápidas.
+            Próximamente añadiremos funciones premium como fotos, llaves,
+            accesos y más.
           </p>
         </div>
       </div>

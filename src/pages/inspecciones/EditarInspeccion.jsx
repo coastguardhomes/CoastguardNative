@@ -1,97 +1,56 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../supabaseClient";
+import React from "react";
+import Menu from "../../layouts/Menu";
 
 export default function EditarInspeccion() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-
-  const [cliente, setCliente] = useState("");
-  const [fecha, setFecha] = useState("");
-  const [estado, setEstado] = useState("pendiente");
-
-  const cargarInspeccion = async () => {
-    const { data, error } = await supabase
-      .from("inspecciones")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) {
-      console.error("Error cargando inspección:", error);
-      return;
-    }
-
-    setCliente(data.cliente);
-    setFecha(data.fecha);
-    setEstado(data.estado);
-  };
-
-  const guardarCambios = async () => {
-    const { error } = await supabase
-      .from("inspecciones")
-      .update({
-        cliente,
-        fecha,
-        estado,
-      })
-      .eq("id", id);
-
-    if (error) {
-      console.error("Error actualizando inspección:", error);
-      return;
-    }
-
-    navigate("/inspecciones");
-  };
-
-  useEffect(() => {
-    cargarInspeccion();
-  }, []);
-
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Editar Inspección</h2>
-
-      <label>Cliente</label>
-      <input
-        type="text"
-        value={cliente}
-        onChange={(e) => setCliente(e.target.value)}
-        style={{ display: "block", marginBottom: 10 }}
-      />
-
-      <label>Fecha</label>
-      <input
-        type="date"
-        value={fecha}
-        onChange={(e) => setFecha(e.target.value)}
-        style={{ display: "block", marginBottom: 10 }}
-      />
-
-      <label>Estado</label>
-      <select
-        value={estado}
-        onChange={(e) => setEstado(e.target.value)}
-        style={{ display: "block", marginBottom: 10 }}
-      >
-        <option value="pendiente">Pendiente</option>
-        <option value="completada">Completada</option>
-      </select>
-
-      <button
-        onClick={guardarCambios}
+    <Menu>
+      <div
         style={{
-          padding: "10px 16px",
-          backgroundColor: "#28a745",
+          padding: "20px",
           color: "#fff",
-          border: "none",
-          borderRadius: "4px",
-          cursor: "pointer",
+          fontFamily: "Inter, sans-serif",
         }}
       >
-        Guardar cambios
-      </button>
-    </div>
+        <h1
+          style={{
+            fontSize: "28px",
+            fontWeight: "700",
+            marginBottom: "20px",
+            color: "#4db8ff",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+          }}
+        >
+          Editar Inspección
+        </h1>
+
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "12px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          }}
+        >
+          <p style={{ fontSize: "16px", opacity: 0.8 }}>
+            Modifica los datos de una inspección existente.
+          </p>
+
+          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
+            <li>Actualizar cliente</li>
+            <li>Actualizar vivienda</li>
+            <li>Actualizar técnico</li>
+            <li>Modificar fecha</li>
+            <li>Editar notas</li>
+            <li>Guardar cambios</li>
+          </ul>
+
+          <p style={{ marginTop: "20px", opacity: 0.7 }}>
+            Próximamente añadiremos formulario real, validaciones, guardado en
+            Supabase y sincronización con checklist y fotos.
+          </p>
+        </div>
+      </div>
+    </Menu>
   );
 }

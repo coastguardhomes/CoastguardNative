@@ -1,145 +1,54 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import LayoutWithMenu from "../../layouts/LayoutWithMenu.jsx";
-import { supabase } from "../../lib/supabase";
+import React from "react";
+import Menu from "../../layouts/Menu";
 
 export default function EditarContrato() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-
-  const [contrato, setContrato] = useState({
-    fecha: "",
-    notas: "",
-  });
-
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const cargarContrato = async () => {
-      const { data, error } = await supabase
-        .from("contratos")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) {
-        console.error("Error cargando contrato:", error);
-        setLoading(false);
-        return;
-      }
-
-      setContrato({
-        fecha: data.fecha || "",
-        notas: data.notas || "",
-      });
-
-      setLoading(false);
-    };
-
-    cargarContrato();
-  }, [id]);
-
-  const actualizarContrato = async () => {
-    const { error } = await supabase
-      .from("contratos")
-      .update({
-        fecha: contrato.fecha,
-        notas: contrato.notas,
-      })
-      .eq("id", id);
-
-    if (error) {
-      console.error("Error actualizando contrato:", error);
-      alert("Error al actualizar el contrato");
-      return;
-    }
-
-    navigate(`/contratos/${id}`);
-  };
-
-  if (loading) {
-    return (
-      <LayoutWithMenu>
-        <div style={{ padding: 16 }}>
-          <p>Cargando contrato...</p>
-        </div>
-      </LayoutWithMenu>
-    );
-  }
-
   return (
-    <LayoutWithMenu>
-      <div style={{ padding: 16 }}>
-        <h1 style={{ marginBottom: 16 }}>Editar Contrato</h1>
-
-        <label>Fecha</label>
-        <input
-          type="date"
-          value={contrato.fecha}
-          onChange={(e) =>
-            setContrato({ ...contrato, fecha: e.target.value })
-          }
+    <Menu>
+      <div
+        style={{
+          padding: "20px",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        <h1
           style={{
-            width: "100%",
-            padding: 10,
-            marginBottom: 12,
-            borderRadius: 6,
-            border: "1px solid #334155",
-            background: "#1e293b",
-            color: "white",
-          }}
-        />
-
-        <label>Notas</label>
-        <textarea
-          value={contrato.notas}
-          onChange={(e) =>
-            setContrato({ ...contrato, notas: e.target.value })
-          }
-          rows={4}
-          style={{
-            width: "100%",
-            padding: 10,
-            marginBottom: 12,
-            borderRadius: 6,
-            border: "1px solid #334155",
-            background: "#1e293b",
-            color: "white",
-          }}
-        />
-
-        <button
-          onClick={actualizarContrato}
-          style={{
-            marginTop: 20,
-            padding: "12px 20px",
-            background: "#2563eb",
-            color: "white",
-            borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
-            width: "100%",
+            fontSize: "28px",
+            fontWeight: "700",
+            marginBottom: "20px",
+            color: "#4db8ff",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          Guardar Cambios
-        </button>
+          Editar Contrato
+        </h1>
 
-        <button
-          onClick={() => navigate(`/contratos/${id}`)}
+        <div
           style={{
-            marginTop: 12,
-            padding: "12px 20px",
-            background: "#475569",
-            color: "white",
-            borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
-            width: "100%",
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "12px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          Cancelar
-        </button>
+          <p style={{ fontSize: "16px", opacity: 0.8 }}>
+            Aquí podrás editar los datos de un contrato existente.
+          </p>
+
+          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
+            <li>Modificar fecha del contrato</li>
+            <li>Actualizar notas</li>
+            <li>Cambiar cliente o vivienda</li>
+            <li>Actualizar precios</li>
+            <li>Guardar cambios</li>
+          </ul>
+
+          <p style={{ marginTop: "20px", opacity: 0.7 }}>
+            Próximamente añadiremos formulario real, validaciones y guardado en Supabase.
+          </p>
+        </div>
       </div>
-    </LayoutWithMenu>
+    </Menu>
   );
 }

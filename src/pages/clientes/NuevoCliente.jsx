@@ -1,154 +1,54 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import React from "react";
+import Menu from "../../layouts/Menu";
 
 export default function NuevoCliente() {
-  const navigate = useNavigate();
-
-  const [cliente, setCliente] = useState({
-    nombre: "",
-    telefono: "",
-    email: "",
-    direccion: "",
-  });
-
-  const [guardando, setGuardando] = useState(false);
-
-  // ============================
-  // GUARDAR CLIENTE
-  // ============================
-  const guardarCliente = async () => {
-    if (!cliente.nombre.trim()) {
-      alert("El nombre es obligatorio.");
-      return;
-    }
-
-    setGuardando(true);
-
-    const { error } = await supabase
-      .from("clientes")
-      .insert([cliente])
-      .select();
-
-    setGuardando(false);
-
-    if (error) {
-      console.error("Error creando cliente:", error);
-      alert("Error creando cliente");
-      return;
-    }
-
-    navigate("/clientes");
-  };
-
   return (
-    <div style={{ padding: 16 }}>
-      <h1 style={{ marginBottom: 16 }}>Nuevo Cliente</h1>
-
-      {/* Nombre */}
-      <label>Nombre</label>
-      <input
-        type="text"
-        value={cliente.nombre}
-        onChange={(e) => setCliente({ ...cliente, nombre: e.target.value })}
+    <Menu>
+      <div
         style={{
-          width: "100%",
-          padding: 12,
-          marginBottom: 12,
-          borderRadius: 8,
-          border: "1px solid #334155",
-          background: "#1e293b",
-          color: "white",
-        }}
-      />
-
-      {/* Teléfono */}
-      <label>Teléfono</label>
-      <input
-        type="text"
-        value={cliente.telefono}
-        onChange={(e) => setCliente({ ...cliente, telefono: e.target.value })}
-        style={{
-          width: "100%",
-          padding: 12,
-          marginBottom: 12,
-          borderRadius: 8,
-          border: "1px solid #334155",
-          background: "#1e293b",
-          color: "white",
-        }}
-      />
-
-      {/* Email */}
-      <label>Email</label>
-      <input
-        type="email"
-        value={cliente.email}
-        onChange={(e) => setCliente({ ...cliente, email: e.target.value })}
-        style={{
-          width: "100%",
-          padding: 12,
-          marginBottom: 12,
-          borderRadius: 8,
-          border: "1px solid #334155",
-          background: "#1e293b",
-          color: "white",
-        }}
-      />
-
-      {/* Dirección */}
-      <label>Dirección</label>
-      <input
-        type="text"
-        value={cliente.direccion}
-        onChange={(e) =>
-          setCliente({ ...cliente, direccion: e.target.value })
-        }
-        style={{
-          width: "100%",
-          padding: 12,
-          marginBottom: 12,
-          borderRadius: 8,
-          border: "1px solid #334155",
-          background: "#1e293b",
-          color: "white",
-        }}
-      />
-
-      {/* Botón Guardar */}
-      <button
-        onClick={guardarCliente}
-        disabled={guardando}
-        style={{
-          width: "100%",
-          padding: "12px 20px",
-          background: guardando ? "#15803d" : "#22c55e",
-          color: "white",
-          borderRadius: 8,
-          border: "none",
-          cursor: "pointer",
-          marginTop: 20,
+          padding: "20px",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
         }}
       >
-        {guardando ? "Guardando..." : "Crear Cliente"}
-      </button>
+        <h1
+          style={{
+            fontSize: "28px",
+            fontWeight: "700",
+            marginBottom: "20px",
+            color: "#4db8ff",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+          }}
+        >
+          Nuevo Cliente
+        </h1>
 
-      {/* Botón Cancelar */}
-      <button
-        onClick={() => navigate("/clientes")}
-        style={{
-          width: "100%",
-          padding: "12px 20px",
-          background: "#475569",
-          color: "white",
-          borderRadius: 8,
-          border: "none",
-          cursor: "pointer",
-          marginTop: 12,
-        }}
-      >
-        Cancelar
-      </button>
-    </div>
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "12px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          }}
+        >
+          <p style={{ fontSize: "16px", opacity: 0.8 }}>
+            Aquí podrás registrar un nuevo cliente en CoastGuard.
+          </p>
+
+          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
+            <li>Nombre del cliente</li>
+            <li>Teléfono</li>
+            <li>Email</li>
+            <li>Dirección</li>
+            <li>Guardar cliente</li>
+          </ul>
+
+          <p style={{ marginTop: "20px", opacity: 0.7 }}>
+            Próximamente añadiremos formulario real, validaciones y guardado en Supabase.
+          </p>
+        </div>
+      </div>
+    </Menu>
   );
 }

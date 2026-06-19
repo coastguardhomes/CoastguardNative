@@ -1,95 +1,54 @@
-import { useState } from "react";
-import { supabase } from "../../lib/supabase";
+import React from "react";
+import Menu from "../../layouts/Menu";
 
 export default function NuevoTecnico() {
-  const [nombre, setNombre] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [email, setEmail] = useState("");
-  const [especialidad, setEspecialidad] = useState("");
-  const [mensaje, setMensaje] = useState("");
-
-  const guardar = async () => {
-    if (!nombre) {
-      setMensaje("El nombre es obligatorio");
-      return;
-    }
-
-    const { error } = await supabase.from("tecnicos").insert([
-      {
-        nombre,
-        telefono,
-        email,
-        especialidad,
-        activo: true,
-      },
-    ]);
-
-    if (error) setMensaje("Error al guardar el técnico");
-    else window.location.href = "/tecnicos";
-  };
-
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Nuevo Técnico</h1>
-
-      {mensaje && <p style={{ color: "red" }}>{mensaje}</p>}
-
-      <input
-        placeholder="Nombre"
-        value={nombre}
-        onChange={(e) => setNombre(e.target.value)}
-        style={{ width: "100%", padding: 10, marginBottom: 10 }}
-      />
-
-      <input
-        placeholder="Teléfono"
-        value={telefono}
-        onChange={(e) => setTelefono(e.target.value)}
-        style={{ width: "100%", padding: 10, marginBottom: 10 }}
-      />
-
-      <input
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        style={{ width: "100%", padding: 10, marginBottom: 10 }}
-      />
-
-      <input
-        placeholder="Especialidad"
-        value={especialidad}
-        onChange={(e) => setEspecialidad(e.target.value)}
-        style={{ width: "100%", padding: 10, marginBottom: 20 }}
-      />
-
-      <button
-        onClick={guardar}
+    <Menu>
+      <div
         style={{
-          padding: "10px 15px",
-          background: "#34C759",
-          color: "white",
-          border: "none",
-          borderRadius: 8,
-          cursor: "pointer",
-          marginRight: 10,
+          padding: "20px",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
         }}
       >
-        Guardar
-      </button>
+        <h1
+          style={{
+            fontSize: "28px",
+            fontWeight: "700",
+            marginBottom: "20px",
+            color: "#4db8ff",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+          }}
+        >
+          Nuevo Técnico
+        </h1>
 
-      <button
-        onClick={() => (window.location.href = "/tecnicos")}
-        style={{
-          padding: "10px 15px",
-          background: "#333",
-          color: "white",
-          border: "none",
-          borderRadius: 8,
-          cursor: "pointer",
-        }}
-      >
-        Volver
-      </button>
-    </div>
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "12px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          }}
+        >
+          <p style={{ fontSize: "16px", opacity: 0.8 }}>
+            Aquí podrás registrar un nuevo técnico para CoastGuard.
+          </p>
+
+          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
+            <li>Nombre del técnico</li>
+            <li>Teléfono</li>
+            <li>Email</li>
+            <li>Especialidad</li>
+            <li>Guardar técnico</li>
+          </ul>
+
+          <p style={{ marginTop: "20px", opacity: 0.7 }}>
+            Próximamente añadiremos formulario real, validaciones y guardado en Supabase.
+          </p>
+        </div>
+      </div>
+    </Menu>
   );
 }

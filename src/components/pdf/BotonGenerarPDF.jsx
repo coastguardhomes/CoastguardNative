@@ -1,20 +1,29 @@
-export default function BotonGenerarPDF({ generarPDF }) {
+import { useState } from "react";
+import { generarPDFInspeccion } from "../../pdf/generarPDFInspeccion";
+
+export default function BotonGenerarPDF({ id, elemento }) {
+  const [loading, setLoading] = useState(false);
+
+  const handlePDF = async () => {
+    if (!elemento) {
+      alert("Error: no se encontró el contenido del PDF.");
+      return;
+    }
+
+    setLoading(true);
+    await generarPDFInspeccion(id, elemento);
+    setLoading(false);
+
+    alert("PDF generado correctamente");
+  };
+
   return (
     <button
-      onClick={generarPDF}
-      style={{
-        padding: "12px 18px",
-        background: "#0A84FF",
-        color: "white",
-        border: "none",
-        borderRadius: 8,
-        cursor: "pointer",
-        marginBottom: 20,
-        width: "100%",
-        fontSize: 16,
-      }}
+      className="cg-btn cg-btn-accent w-full mt-4"
+      disabled={loading}
+      onClick={handlePDF}
     >
-      📄 Generar PDF
+      {loading ? "Generando PDF..." : "Generar PDF"}
     </button>
   );
 }

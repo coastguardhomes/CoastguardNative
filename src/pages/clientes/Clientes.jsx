@@ -1,102 +1,56 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import React from "react";
+import Menu from "../../layouts/Menu";
 
 export default function Clientes() {
-  const navigate = useNavigate();
-  const [clientes, setClientes] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [busqueda, setBusqueda] = useState("");
-
-  const cargarClientes = async () => {
-    const { data, error } = await supabase
-      .from("clientes")
-      .select("*")
-      .order("nombre", { ascending: true });
-
-    if (error) {
-      console.error("Error cargando clientes:", error);
-      alert("Error cargando clientes");
-      return;
-    }
-
-    setClientes(data);
-    setCargando(false);
-  };
-
-  useEffect(() => {
-    cargarClientes();
-  }, []);
-
-  const clientesFiltrados = clientes.filter((c) =>
-    c.nombre?.toLowerCase().includes(busqueda.toLowerCase())
-  );
-
-  if (cargando) {
-    return (
-      <div style={{ padding: 16 }}>
-        <h1>Clientes</h1>
-        <p>Cargando...</p>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ padding: 16 }}>
-      <h1 style={{ marginBottom: 16 }}>Clientes</h1>
-
-      <input
-        type="text"
-        placeholder="Buscar cliente..."
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
+    <Menu>
+      <div
         style={{
-          width: "100%",
-          padding: 12,
-          borderRadius: 8,
-          border: "1px solid #334155",
-          marginBottom: 20,
-        }}
-      />
-
-      {clientesFiltrados.length === 0 ? (
-        <p>No hay clientes.</p>
-      ) : (
-        clientesFiltrados.map((cliente) => (
-          <div
-            key={cliente.id}
-            onClick={() => navigate(`/clientes/${cliente.id}`)}
-            style={{
-              background: "#1e293b",
-              padding: 16,
-              borderRadius: 8,
-              marginBottom: 12,
-              color: "white",
-              cursor: "pointer",
-              border: "1px solid #334155",
-            }}
-          >
-            <h3 style={{ margin: 0 }}>{cliente.nombre}</h3>
-            <p style={{ margin: 0, opacity: 0.7 }}>{cliente.telefono}</p>
-          </div>
-        ))
-      )}
-
-      <button
-        onClick={() => navigate("/clientes/nuevo")}
-        style={{
-          width: "100%",
-          padding: "12px 20px",
-          background: "#22c55e",
-          color: "white",
-          borderRadius: 8,
-          border: "none",
-          cursor: "pointer",
-          marginTop: 20,
+          padding: "20px",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
         }}
       >
-        Nuevo Cliente
-      </button>
-    </div>
+        <h1
+          style={{
+            fontSize: "28px",
+            fontWeight: "700",
+            marginBottom: "20px",
+            color: "#4db8ff",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+          }}
+        >
+          Clientes
+        </h1>
+
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "12px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          }}
+        >
+          <p style={{ fontSize: "16px", opacity: 0.8 }}>
+            Gestión completa de clientes CoastGuard.
+          </p>
+
+          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
+            <li>Listado de clientes</li>
+            <li>Crear cliente</li>
+            <li>Editar cliente</li>
+            <li>Ver cliente</li>
+            <li>Viviendas asociadas</li>
+            <li>Contratos asociados</li>
+          </ul>
+
+          <p style={{ marginTop: "20px", opacity: 0.7 }}>
+            Próximamente añadiremos listado real desde Supabase, búsqueda,
+            filtros y acciones rápidas.
+          </p>
+        </div>
+      </div>
+    </Menu>
   );
 }

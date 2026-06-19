@@ -4,26 +4,44 @@ import SignaturePad from "react-signature-canvas";
 import { supabase } from "../../supabaseClient";
 
 export default function ClienteFirmaDibujar() {
-  const { id } = useParams();
+  const { id } = useParams(); // ID del contrato
   const navigate = useNavigate();
-  const sigCanvas = useRef<any>(null);
+  const sigCanvas = useRef(null);
 
   const guardarFirma = async () => {
-    const dataURL = sigCanvas.current
-      ?.getTrimmedCanvas()
-      .toDataURL("image/png");
+    const canvas = sigCanvas.current;
+    if (!canvas) return;
 
-    const { error } = await supabase
-      .from("clientes")
-      .update({ firma: dataURL })
-      .eq("id", id);
+    const dataURL = canvas.getTrimmedCanvas().toDataURL("image/png");
+    const blob = await (await fetch(dataURL)).blob();
 
-    if (error) {
-      console.error("Error guardando firma:", error);
+    const filePath = `firmas/contrato_${id}.png`;
+
+    // 1. Subir firma a Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from("firmas")
+      .upload(filePath, blob, {
+        upsert: true,
+        contentType: "image/png",
+      });
+
+    if (uploadError) {
+      console.error("Error subiendo firma:", uploadError);
       return;
     }
 
-    navigate(`/cliente/${id}/contrato`);
+    // 2. Guardar ruta en la tabla contratos
+    const { error: updateError } = await supabase
+      .from("contratos")
+      .update({ firma: filePath })
+      .eq("id", id);
+
+    if (updateError) {
+      console.error("Error guardando firma en contrato:", updateError);
+      return;
+    }
+
+    navigate(`/cliente/contrato/${id}`);
   };
 
   const limpiar = () => {
@@ -40,7 +58,6 @@ export default function ClienteFirmaDibujar() {
         canvasProps={{
           width: 300,
           height: 200,
-          className: "sigCanvas",
           style: {
             border: "1px solid #ccc",
             borderRadius: 6,

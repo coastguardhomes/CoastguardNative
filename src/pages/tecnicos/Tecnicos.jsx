@@ -1,7 +1,7 @@
 import React from "react";
 import Menu from "../../layouts/Menu";
 
-export default function VerTecnico() {
+export default function Tecnicos() {
   return (
     <Menu>
       <div
@@ -20,7 +20,7 @@ export default function VerTecnico() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          Ver Técnico
+          Técnicos
         </h1>
 
         <div
@@ -33,20 +33,20 @@ export default function VerTecnico() {
           }}
         >
           <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Aquí podrás ver todos los detalles del técnico seleccionado.
+            Gestión completa de técnicos CoastGuard.
           </p>
 
           <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Datos personales</li>
-            <li>Especialidad</li>
-            <li>Teléfono y contacto</li>
-            <li>Inspecciones asignadas</li>
-            <li>Acceso a edición</li>
+            <li>Listado de técnicos</li>
+            <li>Registrar técnico</li>
+            <li>Editar técnico</li>
+            <li>Ver técnico</li>
+            <li>Especialidades y contacto</li>
           </ul>
 
           <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos datos reales desde Supabase, historial de
-            inspecciones y acciones rápidas.
+            Próximamente añadiremos listado real desde Supabase, búsqueda,
+            filtros y asignación a inspecciones.
           </p>
         </div>
       </div>

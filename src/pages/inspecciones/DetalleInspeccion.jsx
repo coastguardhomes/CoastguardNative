@@ -1,58 +1,76 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useRef } from "react";
+import { useParams } from "react-router-dom";
+import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
+import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
+import { generarPDFInspeccion } from "../../pdf/generarPDFInspeccion";
 
 export default function DetalleInspeccion() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const pdfRef = useRef(null);
 
   const [inspeccion, setInspeccion] = useState(null);
-
-  const cargarInspeccion = async () => {
-    const { data, error } = await supabase
-      .from("inspecciones")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) {
-      console.error("Error cargando inspección:", error);
-      return;
-    }
-
-    setInspeccion(data);
-  };
+  const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    cargarInspeccion();
-  }, []);
+    async function cargar() {
+      const { data, error } = await supabase
+        .from("inspecciones")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-  if (!inspeccion) {
-    return <p style={{ padding: 20 }}>Cargando inspección...</p>;
+      if (!error) {
+        const fotos = await cargarFotosInspeccion(id);
+        data.fotos = fotos;
+        setInspeccion(data);
+      }
+
+      setCargando(false);
+    }
+
+    cargar();
+  }, [id]);
+
+  if (cargando) {
+    return (
+      <Menu>
+        <p style={{ color: "#fff", padding: 20 }}>Cargando inspección...</p>
+      </Menu>
+    );
   }
 
+  const generarPDF = () => {
+    if (inspeccion && pdfRef.current) {
+      generarPDFInspeccion(inspeccion.id, pdfRef.current);
+    }
+  };
+
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Detalle de Inspección</h2>
+    <Menu>
+      <div style={{ padding: 20, color: "#fff" }}>
+        <h2>Inspección #{inspeccion.id}</h2>
 
-      <p><strong>Cliente:</strong> {inspeccion.cliente}</p>
-      <p><strong>Fecha:</strong> {inspeccion.fecha}</p>
-      <p><strong>Estado:</strong> {inspeccion.estado}</p>
+        <button
+          onClick={generarPDF}
+          style={{
+            padding: 10,
+            marginTop: 20,
+            background: "#007bff",
+            color: "#fff",
+            border: "none",
+            borderRadius: 5,
+          }}
+        >
+          Generar PDF
+        </button>
 
-      <button
-        onClick={() => navigate(`/inspecciones/editar/${id}`)}
-        style={{
-          padding: "10px 16px",
-          backgroundColor: "#007bff",
-          color: "#fff",
-          border: "none",
-          borderRadius: "4px",
-          cursor: "pointer",
-          marginTop: "12px",
-        }}
-      >
-        Editar inspección
-      </button>
-    </div>
+        <div ref={pdfRef} style={{ marginTop: 20 }}>
+          <pre style={{ whiteSpace: "pre-wrap" }}>
+            {JSON.stringify(inspeccion, null, 2)}
+          </pre>
+        </div>
+      </div>
+    </Menu>
   );
 }
