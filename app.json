@@ -1,5 +1,23 @@
 {
   "expo": {
+    "name": "CoastGuard",
+    "slug": "coastguard-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.coastguard.app",
+      "versionCode": 1
+    },
     "extra": {
       "eas": {
         "projectId": "b10ae547-ff01-4d3b-bd78-412a4732d618"
