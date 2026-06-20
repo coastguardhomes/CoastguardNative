@@ -17,4 +17,13 @@ dependencyResolutionManagement {
 apply from: "capacitor.settings.gradle"
 
 rootProject.name = "CoastguardNative"
+
 include(":app")
+include(":capacitor-android")
+include(":capacitor-app")
+include(":capacitor-haptics")
+include(":capacitor-device")
+include(":capacitor-network")
+include(":capacitor-preferences")
+include(":capacitor-splash-screen")
+include(":capacitor-cordova-android-plugins")
