@@ -1,21 +1,13 @@
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.2'
-        classpath 'com.google.gms:google-services:4.4.1'
-    }
-}
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android.compileOptions.sourceCompatibility = JavaVersion.VERSION_17
+            project.android.compileOptions.targetCompatibility = JavaVersion.VERSION_17
+            project.android.compileOptions.coreLibraryDesugaringEnabled = true
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
+            if (project.android.hasProperty("kotlinOptions")) {
+                project.android.kotlinOptions.jvmTarget = "17"
+            }
+        }
     }
-}
-
-task clean(type: Delete) {
-    delete rootProject.buildDir
 }

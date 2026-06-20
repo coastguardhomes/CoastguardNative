@@ -10,11 +10,12 @@
         android:theme="@style/AppTheme">
 
         <activity
-            android:name="com.getcapacitor.BridgeActivity"
-            android:exported="true"
-            android:launchMode="singleTask"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation">
+            android:launchMode="singleTask"
+            android:exported="true">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -30,11 +31,11 @@
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
+                android:resource="@xml/file_paths"></meta-data>
         </provider>
-
     </application>
 
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Permissions -->
 
+    <uses-permission android:name="android.permission.INTERNET" />
 </manifest>
