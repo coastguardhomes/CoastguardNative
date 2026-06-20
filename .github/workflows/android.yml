@@ -13,8 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-          path: CoastguardNative
+          path: ""
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -22,19 +21,13 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: |
-          cd CoastguardNative
-          npm ci
+        run: npm ci
 
       - name: Build web assets
-        run: |
-          cd CoastguardNative
-          npm run build
+        run: npm run build
 
       - name: Sync Capacitor
-        run: |
-          cd CoastguardNative
-          npx cap sync android
+        run: npx cap sync android
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -44,11 +37,11 @@ jobs:
 
       - name: Build APK
         run: |
-          cd CoastguardNative/android
+          cd android
           ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Coastguard-APK
-          path: CoastguardNative/android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
