@@ -11,7 +11,6 @@ const Menu = ({ children }) => {
         fontFamily: "Inter, sans-serif",
       }}
     >
-      {/* MENÚ SUPERIOR PREMIUM */}
       <header
         style={{
           width: "100%",
@@ -28,7 +27,6 @@ const Menu = ({ children }) => {
           zIndex: 100,
         }}
       >
-        {/* LOGO */}
         <div
           style={{
             fontSize: "22px",
@@ -41,7 +39,6 @@ const Menu = ({ children }) => {
           CoastGuard PRO
         </div>
 
-        {/* BOTONES DEL MENÚ */}
         <nav style={{ display: "flex", gap: "24px" }}>
           <MenuButton to="/">Inicio</MenuButton>
           <MenuButton to="/contratos">Contratos</MenuButton>
@@ -49,10 +46,13 @@ const Menu = ({ children }) => {
           <MenuButton to="/tecnicos">Técnicos</MenuButton>
           <MenuButton to="/clientes">Clientes</MenuButton>
           <MenuButton to="/viviendas">Viviendas</MenuButton>
+
+          {/* NUEVO BOTÓN */}
+          <MenuButton to="/galeria">Galería</MenuButton>
+
           <MenuButton to="/ajustes">Ajustes</MenuButton>
         </nav>
 
-        {/* ICONOS DERECHA */}
         <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
           <div
             style={{
@@ -97,13 +97,11 @@ const Menu = ({ children }) => {
         </div>
       </header>
 
-      {/* CONTENIDO DE LAS PÁGINAS */}
       <main style={{ padding: "32px" }}>{children}</main>
     </div>
   );
 };
 
-/* COMPONENTE BOTÓN PREMIUM */
 const MenuButton = ({ to, children }) => {
   return (
     <Link
@@ -134,5 +132,3 @@ const MenuButton = ({ to, children }) => {
 };
 
 export default Menu;
-O
-

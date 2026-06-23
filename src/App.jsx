@@ -35,6 +35,9 @@ import EditarInspeccion from "./pages/inspecciones/EditarInspeccion";
 import DetalleInspeccion from "./pages/inspecciones/DetalleInspeccion";
 import VerPDFInspeccion from "./pages/inspecciones/VerPDFInspeccion";
 
+// GALERÍA
+import GaleriaInspeccion from "./pages/inspecciones/GaleriaInspeccion";
+
 // AJUSTES
 import Ajustes from "./pages/Ajustes/Ajustes";
 
@@ -76,6 +79,9 @@ export default function App() {
         <Route path="/inspecciones/editar/:id" element={<Menu><EditarInspeccion /></Menu>} />
         <Route path="/inspecciones/ver/:id" element={<Menu><DetalleInspeccion /></Menu>} />
         <Route path="/inspecciones/pdf/:id" element={<Menu><VerPDFInspeccion /></Menu>} />
+
+        {/* GALERÍA */}
+        <Route path="/galeria" element={<Menu><GaleriaInspeccion /></Menu>} />
 
         {/* AJUSTES */}
         <Route path="/ajustes" element={<Menu><Ajustes /></Menu>} />
