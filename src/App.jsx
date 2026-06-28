@@ -4,8 +4,8 @@ import Menu from "./layouts/Menu";
 // LOGIN
 import Login from "./pages/Login/Login";
 
-// INICIO
-import Inicio from "./pages/inicio/Inicio";
+// INICIO  🟩 CORREGIDO (antes estaba mal)
+import Inicio from "./pages/Inicio/Inicio";
 
 // CONTRATOS
 import Contratos from "./pages/contratos/Contratos";
@@ -41,7 +41,7 @@ import GaleriaInspeccion from "./pages/inspecciones/GaleriaInspeccion";
 // AJUSTES
 import Ajustes from "./pages/Ajustes/Ajustes";
 
-// 🟩 FACTURAS — TODO COMPLETO
+// FACTURAS
 import FacturasLista from "./pages/facturas/FacturasLista";
 import VerFactura from "./pages/facturas/VerFactura";
 import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas";
@@ -92,7 +92,7 @@ export default function App() {
         {/* AJUSTES */}
         <Route path="/ajustes" element={<Menu><Ajustes /></Menu>} />
 
-        {/* 🟩 FACTURAS — TODO COMPLETO */}
+        {/* FACTURAS */}
         <Route path="/facturas" element={<Menu><FacturasLista /></Menu>} />
         <Route path="/facturas/ver/:id" element={<Menu><VerFactura /></Menu>} />
         <Route path="/facturas/filtros" element={<Menu><FiltrosFacturas /></Menu>} />
