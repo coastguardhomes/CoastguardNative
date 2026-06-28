@@ -4,8 +4,8 @@ import Menu from "./layouts/Menu";
 // LOGIN
 import Login from "./pages/Login/Login";
 
-// INICIO  🟩 CORREGIDO (antes estaba mal)
-import Inicio from "./pages/Inicio/Inicio";
+// INICIO (CORRECTO)
+import Inicio from "./pages/inicio/Inicio";
 
 // CONTRATOS
 import Contratos from "./pages/contratos/Contratos";
