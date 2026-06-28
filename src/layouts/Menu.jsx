@@ -46,9 +46,12 @@ const Menu = ({ children }) => {
           <MenuButton to="/tecnicos">Técnicos</MenuButton>
           <MenuButton to="/clientes">Clientes</MenuButton>
           <MenuButton to="/viviendas">Viviendas</MenuButton>
-
-          {/* NUEVO BOTÓN */}
           <MenuButton to="/galeria">Galería</MenuButton>
+
+          {/* 🟩 FACTURAS — TODO COMPLETO */}
+          <MenuButton to="/facturas">Facturas</MenuButton>
+          <MenuButton to="/facturas/filtros">Filtros</MenuButton>
+          <MenuButton to="/facturas/estadisticas">Estadísticas</MenuButton>
 
           <MenuButton to="/ajustes">Ajustes</MenuButton>
         </nav>

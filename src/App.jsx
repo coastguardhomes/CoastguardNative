@@ -41,6 +41,12 @@ import GaleriaInspeccion from "./pages/inspecciones/GaleriaInspeccion";
 // AJUSTES
 import Ajustes from "./pages/Ajustes/Ajustes";
 
+// 🟩 FACTURAS — TODO COMPLETO
+import FacturasLista from "./pages/facturas/FacturasLista";
+import VerFactura from "./pages/facturas/VerFactura";
+import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas";
+import FiltrosFacturas from "./pages/facturas/FiltrosFacturas";
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -85,6 +91,12 @@ export default function App() {
 
         {/* AJUSTES */}
         <Route path="/ajustes" element={<Menu><Ajustes /></Menu>} />
+
+        {/* 🟩 FACTURAS — TODO COMPLETO */}
+        <Route path="/facturas" element={<Menu><FacturasLista /></Menu>} />
+        <Route path="/facturas/ver/:id" element={<Menu><VerFactura /></Menu>} />
+        <Route path="/facturas/filtros" element={<Menu><FiltrosFacturas /></Menu>} />
+        <Route path="/facturas/estadisticas" element={<Menu><EstadisticasFacturas /></Menu>} />
 
       </Routes>
     </BrowserRouter>
