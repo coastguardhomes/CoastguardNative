@@ -48,10 +48,13 @@ const Menu = ({ children }) => {
           <MenuButton to="/viviendas">Viviendas</MenuButton>
           <MenuButton to="/galeria">Galería</MenuButton>
 
-          {/* 🟩 FACTURAS — TODO COMPLETO */}
+          {/* 🟩 FACTURAS */}
           <MenuButton to="/facturas">Facturas</MenuButton>
           <MenuButton to="/facturas/filtros">Filtros</MenuButton>
           <MenuButton to="/facturas/estadisticas">Estadísticas</MenuButton>
+
+          {/* 🟩 AÑADIDO AHORA MISMO */}
+          <MenuButton to="/extras">Extras</MenuButton>
 
           <MenuButton to="/ajustes">Ajustes</MenuButton>
         </nav>
