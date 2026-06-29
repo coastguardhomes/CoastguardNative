@@ -5,9 +5,11 @@ serve({
   "/": async (req) => {
     const { facturaId } = await req.json();
 
+    // SECRETOS CORRECTOS
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseKey = Deno.env.get("SERVICE_ROLE_KEY"); // ← CORREGIDO
 
+    // OBTENER FACTURA
     const facturaRes = await fetch(
       `${supabaseUrl}/rest/v1/facturas?id=eq.${facturaId}`,
       {
@@ -20,6 +22,7 @@ serve({
 
     const factura = (await facturaRes.json())[0];
 
+    // OBTENER CLIENTE
     const clienteRes = await fetch(
       `${supabaseUrl}/rest/v1/clientes?id=eq.${factura.cliente_id}`,
       {
@@ -32,6 +35,7 @@ serve({
 
     const cliente = (await clienteRes.json())[0];
 
+    // HTML DEL PDF
     const html = `
       <html>
       <head>
@@ -50,8 +54,6 @@ serve({
         </style>
       </head>
       <body>
-
-        <!-- HEADER -->
         <div class="header">
           <img src="https://YOUR-LOGO-URL/logo.png" class="logo" />
           <div class="title">
@@ -61,7 +63,6 @@ serve({
           </div>
         </div>
 
-        <!-- CLIENTE -->
         <div class="section-title">ES - Datos del cliente</div>
         <p>Nombre: ${cliente.nombre || ""}</p>
         <p>Email: ${cliente.email || ""}</p>
@@ -70,7 +71,6 @@ serve({
         <p>Name: ${cliente.nombre || ""}</p>
         <p>Email: ${cliente.email || ""}</p>
 
-        <!-- TABLA -->
         <div class="section-title">ES - Detalle de la factura</div>
         <table>
           <thead>
@@ -86,44 +86,39 @@ serve({
           </tbody>
         </table>
 
-        <!-- TOTAL -->
         <div class="total">
           ES - Total: ${factura.total} €<br/>
           EN - Total: ${factura.total} €
         </div>
 
-        <!-- ESTADO -->
         <div class="section-title">ES - Estado</div>
         <p>${factura.estado}</p>
 
         <div class="section-title">EN - Status</div>
         <p>${factura.estado}</p>
 
-        <!-- FIRMA PREMIUM -->
         <div class="firma">
           <strong>CoastGuard · Home Supervision Services</strong><br/><br/>
-
           ES: Supervisión profesional de viviendas en la Costa Blanca.<br/>
           EN: Professional home supervision services in Costa Blanca.<br/><br/>
-
           📞 +34 600 000 000<br/>
           ✉️ info@coastguard.es<br/>
           🌐 www.coastguard.es<br/><br/>
-
           ES: Gracias por confiar en CoastGuard.<br/>
           EN: Thank you for trusting CoastGuard.
         </div>
-
       </body>
       </html>
     `;
 
+    // GENERAR PDF
     const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
     const pdf = await page.pdf({ format: "A4" });
     await browser.close();
 
+    // SUBIR PDF
     await fetch(
       `${supabaseUrl}/storage/v1/object/facturas-pdf/factura_${facturaId}.pdf`,
       {
