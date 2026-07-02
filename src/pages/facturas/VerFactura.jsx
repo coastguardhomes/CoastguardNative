@@ -3,11 +3,15 @@ import { useParams } from "react-router-dom";
 import { obtenerFactura } from "../../services/facturas";
 import { enviarFactura } from "../../services/facturaEnviar";
 import { marcarPagada } from "../../services/facturaEstado";
+import { supabase } from "../../supabaseClient";
 
 export default function VerFactura() {
   const { id } = useParams();
+
   const [factura, setFactura] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [config, setConfig] = useState(null);
 
   async function cargar() {
     const f = await obtenerFactura(id);
@@ -15,8 +19,20 @@ export default function VerFactura() {
     setLoading(false);
   }
 
+  async function cargarConfig() {
+    const { data, error } = await supabase
+      .from("configuracion")
+      .select("*")
+      .single();
+
+    if (!error) {
+      setConfig(data);
+    }
+  }
+
   useEffect(() => {
     cargar();
+    cargarConfig();
   }, []);
 
   async function handleEnviar() {
@@ -41,6 +57,17 @@ export default function VerFactura() {
       <p><strong>Fecha:</strong> {factura.fecha}</p>
       <p><strong>Total:</strong> €{factura.total}</p>
       <p><strong>Estado:</strong> {factura.estado}</p>
+
+      {config && (
+        <div style={{ marginTop: 20 }}>
+          <h3>Datos de la empresa</h3>
+          <p><strong>Empresa:</strong> {config.nombre_empresa}</p>
+          <p><strong>Dirección:</strong> {config.direccion_empresa}</p>
+          <p><strong>Teléfono:</strong> {config.telefono_empresa}</p>
+          <p><strong>Email:</strong> {config.email_empresa}</p>
+          <p><strong>Cuenta bancaria:</strong> {config.cuenta_bancaria}</p>
+        </div>
+      )}
 
       <button onClick={handleEnviar}>Reenviar factura</button>
       <button onClick={handlePagada}>Marcar como pagada</button>
