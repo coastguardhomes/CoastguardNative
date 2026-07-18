@@ -5,7 +5,7 @@ import { supabase } from "./supabaseClient";
 // LOGIN
 import Login from "./pages/Login/Login.jsx";
 
-// CLIENTES (tu carpeta real)
+// CLIENTES
 import Clientes from "./pages/clientes/Clientes.jsx";
 import NuevoCliente from "./pages/clientes/NuevoCliente.jsx";
 import EditarCliente from "./pages/clientes/EditarCliente.jsx";
@@ -17,9 +17,9 @@ import CrearVivienda from "./pages/viviendas/CrearVivienda";
 import EditarVivienda from "./pages/viviendas/EditarVivienda";
 import VerVivienda from "./pages/viviendas/VerVivienda";
 
-// TÉCNICOS
+// TÉCNICOS (CORREGIDO — SOLO LOS 4 QUE EXISTEN)
 import Tecnicos from "./pages/tecnicos/Tecnicos";
-import CrearTecnico from "./pages/tecnicos/CrearTecnico";
+import NuevoTecnico from "./pages/tecnicos/NuevoTecnico";
 import EditarTecnico from "./pages/tecnicos/EditarTecnico";
 import VerTecnico from "./pages/tecnicos/VerTecnico";
 
@@ -72,7 +72,7 @@ export default function App() {
         {/* LOGIN */}
         <Route path="/login" element={<Login />} />
 
-        {/* CLIENTES (tu estructura real) */}
+        {/* CLIENTES */}
         <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
         <Route path="/clientes/nuevo" element={<ProtectedRoute><NuevoCliente /></ProtectedRoute>} />
         <Route path="/clientes/editar/:id" element={<ProtectedRoute><EditarCliente /></ProtectedRoute>} />
@@ -84,9 +84,9 @@ export default function App() {
         <Route path="/viviendas/editar/:id" element={<ProtectedRoute><EditarVivienda /></ProtectedRoute>} />
         <Route path="/viviendas/ver/:id" element={<ProtectedRoute><VerVivienda /></ProtectedRoute>} />
 
-        {/* TÉCNICOS */}
+        {/* TÉCNICOS — CORREGIDO */}
         <Route path="/tecnicos" element={<ProtectedRoute><Tecnicos /></ProtectedRoute>} />
-        <Route path="/tecnicos/crear" element={<ProtectedRoute><CrearTecnico /></ProtectedRoute>} />
+        <Route path="/tecnicos/nuevo" element={<ProtectedRoute><NuevoTecnico /></ProtectedRoute>} />
         <Route path="/tecnicos/editar/:id" element={<ProtectedRoute><EditarTecnico /></ProtectedRoute>} />
         <Route path="/tecnicos/ver/:id" element={<ProtectedRoute><VerTecnico /></ProtectedRoute>} />
 
