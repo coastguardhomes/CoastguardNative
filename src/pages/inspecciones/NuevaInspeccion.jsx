@@ -1,55 +1,64 @@
-import React from "react";
+import React, { useState } from "react";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../supabaseClient";
+import { useNavigate } from "react-router-dom";
 
 export default function NuevaInspeccion() {
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({
+    vivienda_id: "",
+    tecnico_id: "",
+    fecha: "",
+    estado: "pendiente",
+    notas: "",
+  });
+
+  async function crear() {
+    const { error } = await supabase.from("inspecciones").insert([form]);
+
+    if (error) {
+      alert("Error creando inspección");
+      return;
+    }
+
+    alert("Inspección creada correctamente");
+    navigate("/inspecciones");
+  }
+
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "28px",
-            fontWeight: "700",
-            marginBottom: "20px",
-            color: "#4db8ff",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
-          Nueva Inspección
-        </h1>
+      <div style={{ padding: 20, color: "#fff" }}>
+        <h1 style={{ color: "#4db8ff" }}>Nueva Inspección</h1>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Crea una nueva inspección para una vivienda asociada a un cliente.
-          </p>
+        <label>ID Vivienda</label>
+        <input
+          value={form.vivienda_id}
+          onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
+        />
 
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Seleccionar cliente</li>
-            <li>Seleccionar vivienda</li>
-            <li>Seleccionar técnico</li>
-            <li>Fecha de inspección</li>
-            <li>Notas iniciales</li>
-            <li>Crear inspección</li>
-          </ul>
+        <label>ID Técnico</label>
+        <input
+          value={form.tecnico_id}
+          onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+        />
 
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos formulario real, validaciones, guardado en
-            Supabase y creación automática del checklist.
-          </p>
-        </div>
+        <label>Fecha</label>
+        <input
+          type="date"
+          value={form.fecha}
+          onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+        />
+
+        <label>Notas</label>
+        <textarea
+          value={form.notas}
+          onChange={(e) => setForm({ ...form, notas: e.target.value })}
+        />
+
+        <button onClick={crear} style={{ marginTop: 20 }}>
+          Crear inspección
+        </button>
       </div>
     </Menu>
   );
