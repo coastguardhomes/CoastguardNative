@@ -1,55 +1,93 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../supabaseClient";
+import { useParams, useNavigate } from "react-router-dom";
 
 export default function EditarInspeccion() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({
+    vivienda_id: "",
+    tecnico_id: "",
+    fecha: "",
+    estado: "",
+    notas: "",
+  });
+
+  useEffect(() => {
+    async function cargarInspeccion() {
+      const { data, error } = await supabase
+        .from("inspecciones")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        alert("Error cargando inspección");
+        return;
+      }
+
+      setForm(data);
+    }
+
+    cargarInspeccion();
+  }, [id]);
+
+  async function guardarCambios() {
+    const { error } = await supabase
+      .from("inspecciones")
+      .update(form)
+      .eq("id", id);
+
+    if (error) {
+      alert("Error guardando cambios");
+      return;
+    }
+
+    alert("Inspección actualizada correctamente");
+    navigate("/inspecciones");
+  }
+
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "28px",
-            fontWeight: "700",
-            marginBottom: "20px",
-            color: "#4db8ff",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
-          Editar Inspección
-        </h1>
+      <div style={{ padding: "20px", color: "#fff" }}>
+        <h1 style={{ color: "#4db8ff" }}>Editar Inspección</h1>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Modifica los datos de una inspección existente.
-          </p>
+        <label>ID Vivienda</label>
+        <input
+          value={form.vivienda_id}
+          onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
+        />
 
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Actualizar cliente</li>
-            <li>Actualizar vivienda</li>
-            <li>Actualizar técnico</li>
-            <li>Modificar fecha</li>
-            <li>Editar notas</li>
-            <li>Guardar cambios</li>
-          </ul>
+        <label>ID Técnico</label>
+        <input
+          value={form.tecnico_id}
+          onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+        />
 
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos formulario real, validaciones, guardado en
-            Supabase y sincronización con checklist y fotos.
-          </p>
-        </div>
+        <label>Fecha</label>
+        <input
+          type="date"
+          value={form.fecha}
+          onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+        />
+
+        <label>Estado</label>
+        <input
+          value={form.estado}
+          onChange={(e) => setForm({ ...form, estado: e.target.value })}
+        />
+
+        <label>Notas</label>
+        <textarea
+          value={form.notas}
+          onChange={(e) => setForm({ ...form, notas: e.target.value })}
+        />
+
+        <button onClick={guardarCambios} style={{ marginTop: "20px" }}>
+          Guardar cambios
+        </button>
       </div>
     </Menu>
   );
