@@ -2,10 +2,8 @@ import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 
-// AUTH (RUTAS REALES)
+// AUTH (solo existe Login.jsx)
 import Login from "./pages/Login/Login.jsx";
-import ResetPassword from "./pages/Login/ResetPassword.jsx";
-import UpdatePassword from "./pages/Login/UpdatePassword.jsx";
 
 // CLIENTES
 import Clientes from "./pages/clientes/Clientes";
@@ -73,8 +71,6 @@ export default function App() {
 
         {/* AUTH */}
         <Route path="/login" element={<Login />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/update-password" element={<UpdatePassword />} />
 
         {/* CLIENTES */}
         <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
