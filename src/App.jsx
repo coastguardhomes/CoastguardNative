@@ -5,16 +5,11 @@ import { supabase } from "./supabaseClient";
 // LOGIN
 import Login from "./pages/Login/Login.jsx";
 
-// CLIENTE (carpeta correcta)
-import ClienteLista from "./pages/cliente/ClienteLista.jsx";
-import ClienteCrear from "./pages/cliente/ClienteCrear.jsx";
-import ClienteEditar from "./pages/cliente/ClienteEditar.jsx";
-import ClienteContratoVer from "./pages/cliente/ClienteContratoVer.jsx";
-import ClienteContratosLista from "./pages/cliente/ClienteContratosLista.jsx";
-import ClienteDashboard from "./pages/cliente/ClienteDashboard.jsx";
-import ClienteFirmaDibujar from "./pages/cliente/ClienteFirmaDibujar.jsx";
-import GenerarPDFContrato from "./pages/cliente/GenerarPDFContrato.jsx";
-import VerPDFContrato from "./pages/cliente/VerPDFContrato.jsx";
+// CLIENTES (tu carpeta real)
+import Clientes from "./pages/clientes/Clientes.jsx";
+import NuevoCliente from "./pages/clientes/NuevoCliente.jsx";
+import EditarCliente from "./pages/clientes/EditarCliente.jsx";
+import VerCliente from "./pages/clientes/VerCliente.jsx";
 
 // VIVIENDAS
 import Viviendas from "./pages/viviendas/Viviendas";
@@ -77,17 +72,11 @@ export default function App() {
         {/* LOGIN */}
         <Route path="/login" element={<Login />} />
 
-        {/* CLIENTE */}
-        <Route path="/clientes" element={<ProtectedRoute><ClienteLista /></ProtectedRoute>} />
-        <Route path="/clientes/crear" element={<ProtectedRoute><ClienteCrear /></ProtectedRoute>} />
-        <Route path="/clientes/editar/:id" element={<ProtectedRoute><ClienteEditar /></ProtectedRoute>} />
-        <Route path="/clientes/ver/:id" element={<ProtectedRoute><ClienteContratoVer /></ProtectedRoute>} />
-
-        <Route path="/clientes/contratos/:id" element={<ProtectedRoute><ClienteContratosLista /></ProtectedRoute>} />
-        <Route path="/clientes/dashboard/:id" element={<ProtectedRoute><ClienteDashboard /></ProtectedRoute>} />
-        <Route path="/clientes/firma/:id" element={<ProtectedRoute><ClienteFirmaDibujar /></ProtectedRoute>} />
-        <Route path="/clientes/contrato/pdf/:id" element={<ProtectedRoute><GenerarPDFContrato /></ProtectedRoute>} />
-        <Route path="/clientes/contrato/pdf/ver/:id" element={<ProtectedRoute><VerPDFContrato /></ProtectedRoute>} />
+        {/* CLIENTES (tu estructura real) */}
+        <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+        <Route path="/clientes/nuevo" element={<ProtectedRoute><NuevoCliente /></ProtectedRoute>} />
+        <Route path="/clientes/editar/:id" element={<ProtectedRoute><EditarCliente /></ProtectedRoute>} />
+        <Route path="/clientes/ver/:id" element={<ProtectedRoute><VerCliente /></ProtectedRoute>} />
 
         {/* VIVIENDAS */}
         <Route path="/viviendas" element={<ProtectedRoute><Viviendas /></ProtectedRoute>} />
@@ -105,7 +94,6 @@ export default function App() {
         <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
         <Route path="/contratos/crear" element={<ProtectedRoute><CrearContrato /></ProtectedRoute>} />
         <Route path="/contratos/editar/:id" element={<ProtectedRoute><EditarContrato /></ProtectedRoute>} />
-        <Route path="/contratos/ver/:id" element={<ProtectedRoute><VerContrato /></ProtectedRoute>} />
         <Route path="/contratos/ver/:id" element={<ProtectedRoute><VerContrato /></ProtectedRoute>} />
 
         {/* INSPECCIONES */}
