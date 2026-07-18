@@ -1,7 +1,74 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../supabaseClient";
+import { useParams } from "react-router-dom";
 
 export default function Firma() {
+  const { id } = useParams(); // ID de la inspección
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  function startDrawing(e) {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#4db8ff";
+
+    ctx.beginPath();
+    ctx.moveTo(
+      e.nativeEvent.offsetX,
+      e.nativeEvent.offsetY
+    );
+
+    setIsDrawing(true);
+  }
+
+  function draw(e) {
+    if (!isDrawing) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    ctx.lineTo(
+      e.nativeEvent.offsetX,
+      e.nativeEvent.offsetY
+    );
+    ctx.stroke();
+  }
+
+  function stopDrawing() {
+    setIsDrawing(false);
+  }
+
+  function limpiar() {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  async function guardarFirma() {
+    const canvas = canvasRef.current;
+    const firmaBase64 = canvas.toDataURL("image/png");
+
+    const { error } = await supabase
+      .from("firmas")
+      .insert([
+        {
+          inspeccion_id: id,
+          firma: firmaBase64,
+        },
+      ]);
+
+    if (error) {
+      alert("Error guardando firma");
+      return;
+    }
+
+    alert("Firma guardada correctamente");
+  }
+
   return (
     <Menu>
       <div
@@ -23,32 +90,53 @@ export default function Firma() {
           Firma del Cliente
         </h1>
 
-        <div
+        <p style={{ opacity: 0.8, marginBottom: "20px" }}>
+          El cliente debe firmar la inspección realizada.
+        </p>
+
+        <canvas
+          ref={canvasRef}
+          width={350}
+          height={250}
           style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            background: "#fff",
+            borderRadius: "10px",
+            border: "2px solid #4db8ff",
+            display: "block",
+            marginBottom: "20px",
+          }}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+        />
+
+        <button
+          onClick={limpiar}
+          style={{
+            marginRight: "10px",
+            padding: "10px 15px",
+            background: "#333",
+            color: "#fff",
+            borderRadius: "6px",
+            border: "none",
           }}
         >
-          <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Aquí el cliente podrá firmar la inspección realizada.
-          </p>
+          Limpiar firma
+        </button>
 
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Canvas para firma</li>
-            <li>Botón para limpiar firma</li>
-            <li>Botón para guardar firma</li>
-            <li>Sincronización con Supabase</li>
-            <li>Asociación automática a la inspección</li>
-          </ul>
-
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos el canvas real, guardado en Supabase,
-            validación de firma vacía y navegación automática al PDF.
-          </p>
-        </div>
+        <button
+          onClick={guardarFirma}
+          style={{
+            padding: "10px 15px",
+            background: "#4db8ff",
+            color: "#fff",
+            borderRadius: "6px",
+            border: "none",
+          }}
+        >
+          Guardar firma
+        </button>
       </div>
     </Menu>
   );
