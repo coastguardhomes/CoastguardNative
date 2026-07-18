@@ -1,54 +1,84 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../supabaseClient";
+import { useParams, useNavigate, Link } from "react-router-dom";
 
 export default function VerCliente() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [cliente, setCliente] = useState(null);
+
+  useEffect(() => {
+    async function cargarCliente() {
+      const { data, error } = await supabase
+        .from("clientes")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        alert("Error cargando cliente");
+        return;
+      }
+
+      setCliente(data);
+    }
+
+    cargarCliente();
+  }, [id]);
+
+  async function eliminarCliente() {
+    const { error } = await supabase
+      .from("clientes")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert("Error eliminando cliente");
+      return;
+    }
+
+    alert("Cliente eliminado correctamente");
+    navigate("/clientes");
+  }
+
+  if (!cliente) {
+    return (
+      <Menu>
+        <div style={{ padding: "20px", color: "#fff" }}>
+          <p>Cargando cliente...</p>
+        </div>
+      </Menu>
+    );
+  }
+
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <h1
+      <div style={{ padding: "20px", color: "#fff" }}>
+        <h1 style={{ color: "#4db8ff" }}>{cliente.nombre}</h1>
+
+        <p><strong>Teléfono:</strong> {cliente.telefono}</p>
+        <p><strong>Email:</strong> {cliente.email}</p>
+        <p><strong>Dirección:</strong> {cliente.direccion}</p>
+
+        <Link to={`/clientes/editar/${id}`}>
+          <button style={{ marginTop: "15px" }}>Editar cliente</button>
+        </Link>
+
+        <button
+          onClick={eliminarCliente}
           style={{
-            fontSize: "28px",
-            fontWeight: "700",
-            marginBottom: "20px",
-            color: "#4db8ff",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            marginTop: "15px",
+            background: "red",
+            color: "#fff",
+            padding: "10px",
+            borderRadius: "6px",
+            border: "none",
           }}
         >
-          Ver Cliente
-        </h1>
-
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Aquí podrás ver todos los detalles del cliente seleccionado.
-          </p>
-
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Datos personales</li>
-            <li>Viviendas asociadas</li>
-            <li>Contratos asociados</li>
-            <li>Inspecciones relacionadas</li>
-            <li>Acceso a edición</li>
-          </ul>
-
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos datos reales desde Supabase, acciones rápidas
-            y navegación directa a viviendas y contratos.
-          </p>
-        </div>
+          Eliminar cliente
+        </button>
       </div>
     </Menu>
   );
