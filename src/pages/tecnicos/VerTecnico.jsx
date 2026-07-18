@@ -1,54 +1,62 @@
-import React from "react";
+import React, { useState } from "react";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../supabaseClient";
+import { useNavigate } from "react-router-dom";
 
-export default function VerTecnico() {
+export default function NuevoTecnico() {
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({
+    nombre: "",
+    telefono: "",
+    email: "",
+    especialidad: "",
+  });
+
+  async function crearTecnico() {
+    const { error } = await supabase.from("tecnicos").insert([form]);
+
+    if (error) {
+      alert("Error creando técnico");
+      return;
+    }
+
+    alert("Técnico creado correctamente");
+    navigate("/tecnicos");
+  }
+
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "28px",
-            fontWeight: "700",
-            marginBottom: "20px",
-            color: "#4db8ff",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
-          Ver Técnico
-        </h1>
+      <div style={{ padding: "20px", color: "#fff" }}>
+        <h1 style={{ color: "#4db8ff" }}>Nuevo Técnico</h1>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Aquí podrás ver todos los detalles del técnico seleccionado.
-          </p>
+        <label>Nombre</label>
+        <input
+          value={form.nombre}
+          onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+        />
 
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Datos personales</li>
-            <li>Especialidad</li>
-            <li>Teléfono y contacto</li>
-            <li>Inspecciones asignadas</li>
-            <li>Acceso a edición</li>
-          </ul>
+        <label>Teléfono</label>
+        <input
+          value={form.telefono}
+          onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+        />
 
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos datos reales desde Supabase, historial de
-            inspecciones y acciones rápidas.
-          </p>
-        </div>
+        <label>Email</label>
+        <input
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+        />
+
+        <label>Especialidad</label>
+        <input
+          value={form.especialidad}
+          onChange={(e) => setForm({ ...form, especialidad: e.target.value })}
+        />
+
+        <button onClick={crearTecnico} style={{ marginTop: "20px" }}>
+          Guardar técnico
+        </button>
       </div>
     </Menu>
   );
