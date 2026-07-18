@@ -1,53 +1,74 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../supabaseClient";
+import { useParams, useNavigate } from "react-router-dom";
 
 export default function EditarContrato() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({
+    cliente_id: "",
+    vivienda_id: "",
+    fecha: "",
+    precio: "",
+    notas: "",
+  });
+
+  useEffect(() => {
+    async function cargarContrato() {
+      const { data } = await supabase
+        .from("contratos")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (data) setForm(data);
+    }
+
+    cargarContrato();
+  }, [id]);
+
+  async function guardarCambios() {
+    const { error } = await supabase
+      .from("contratos")
+      .update(form)
+      .eq("id", id);
+
+    if (error) {
+      alert("Error guardando cambios");
+    } else {
+      alert("Contrato actualizado");
+      navigate("/contratos");
+    }
+  }
+
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "28px",
-            fontWeight: "700",
-            marginBottom: "20px",
-            color: "#4db8ff",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
-          Editar Contrato
-        </h1>
+      <div style={{ padding: "20px", color: "#fff" }}>
+        <h1>Editar Contrato #{id}</h1>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Aquí podrás editar los datos de un contrato existente.
-          </p>
+        <label>Fecha:</label>
+        <input
+          type="date"
+          value={form.fecha}
+          onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+        />
 
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Modificar fecha del contrato</li>
-            <li>Actualizar notas</li>
-            <li>Cambiar cliente o vivienda</li>
-            <li>Actualizar precios</li>
-            <li>Guardar cambios</li>
-          </ul>
+        <label>Precio (€):</label>
+        <input
+          type="number"
+          value={form.precio}
+          onChange={(e) => setForm({ ...form, precio: e.target.value })}
+        />
 
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos formulario real, validaciones y guardado en Supabase.
-          </p>
-        </div>
+        <label>Notas:</label>
+        <textarea
+          value={form.notas}
+          onChange={(e) => setForm({ ...form, notas: e.target.value })}
+        />
+
+        <button onClick={guardarCambios}>Guardar cambios</button>
       </div>
     </Menu>
   );
