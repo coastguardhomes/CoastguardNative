@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 
-// AUTH (RUTAS REALES DE TU PROYECTO)
-import Login from "./pages/Login";
-import ResetPassword from "./pages/ResetPassword";
-import UpdatePassword from "./pages/UpdatePassword";
+// AUTH (RUTAS REALES)
+import Login from "./pages/Login/Login.jsx";
+import ResetPassword from "./pages/Login/ResetPassword.jsx";
+import UpdatePassword from "./pages/Login/UpdatePassword.jsx";
 
 // CLIENTES
 import Clientes from "./pages/clientes/Clientes";
