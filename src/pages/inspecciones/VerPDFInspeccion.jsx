@@ -1,7 +1,33 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../supabaseClient";
+import { useParams } from "react-router-dom";
 
 export default function VerPDFInspeccion() {
+  const { id } = useParams(); // id de inspección
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function cargarPDF() {
+      const { data, error } = await supabase
+        .from("pdf_inspecciones")
+        .select("*")
+        .eq("inspeccion_id", id)
+        .single();
+
+      if (error) {
+        setLoading(false);
+        return;
+      }
+
+      setPdfUrl(data.url);
+      setLoading(false);
+    }
+
+    cargarPDF();
+  }, [id]);
+
   return (
     <Menu>
       <div
@@ -20,35 +46,55 @@ export default function VerPDFInspeccion() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          PDF de la Inspección
+          PDF de la Inspección #{id}
         </h1>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Aquí podrás visualizar el PDF generado de la inspección.
+        {loading ? (
+          <p style={{ opacity: 0.8 }}>Cargando PDF...</p>
+        ) : !pdfUrl ? (
+          <p style={{ opacity: 0.8 }}>
+            No hay PDF generado todavía para esta inspección.
           </p>
+        ) : (
+          <div
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              padding: "20px",
+              borderRadius: "12px",
+              border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            }}
+          >
+            <iframe
+              src={pdfUrl}
+              title={`PDF inspección ${id}`}
+              style={{
+                width: "100%",
+                height: "500px",
+                border: "1px solid #4db8ff",
+                borderRadius: "8px",
+              }}
+            />
 
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Visor de PDF integrado</li>
-            <li>Zoom y navegación</li>
-            <li>Descarga del PDF</li>
-            <li>Recarga automática</li>
-            <li>Sincronización con Supabase</li>
-          </ul>
-
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos visor real, carga desde Supabase,
-            manejo de errores, loader premium y descarga directa.
-          </p>
-        </div>
+            <a
+              href={pdfUrl}
+              download
+              style={{ display: "inline-block", marginTop: "15px" }}
+            >
+              <button
+                style={{
+                  padding: "10px 15px",
+                  background: "#4db8ff",
+                  color: "#fff",
+                  borderRadius: "6px",
+                  border: "none",
+                }}
+              >
+                Descargar PDF
+              </button>
+            </a>
+          </div>
+        )}
       </div>
     </Menu>
   );
