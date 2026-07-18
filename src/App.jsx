@@ -1,103 +1,131 @@
-import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { supabase } from "./supabaseClient";
 
-import Login from "./pages/Login";
-import Inicio from "./pages/inicio/Inicio";
+// Layout
+import Menu from "./layouts/Menu";
 
-// CONTRATOS
-import Contratos from "./pages/contratos/Contratos";
-import CrearContrato from "./pages/contratos/CrearContrato";
-import EditarContrato from "./pages/contratos/EditarContrato";
-import VerContrato from "./pages/contratos/VerContrato";
+// Auth
+import Login from "./pages/auth/Login";
+import ResetPassword from "./pages/auth/ResetPassword";
+import UpdatePassword from "./pages/auth/UpdatePassword";
 
-// CLIENTES
+// Clientes
 import Clientes from "./pages/clientes/Clientes";
 import CrearCliente from "./pages/clientes/CrearCliente";
 import EditarCliente from "./pages/clientes/EditarCliente";
 import VerCliente from "./pages/clientes/VerCliente";
 
-// VIVIENDAS
+// Viviendas
 import Viviendas from "./pages/viviendas/Viviendas";
 import CrearVivienda from "./pages/viviendas/CrearVivienda";
 import EditarVivienda from "./pages/viviendas/EditarVivienda";
 import VerVivienda from "./pages/viviendas/VerVivienda";
 
-// TECNICOS
+// Técnicos
 import Tecnicos from "./pages/tecnicos/Tecnicos";
 import CrearTecnico from "./pages/tecnicos/CrearTecnico";
 import EditarTecnico from "./pages/tecnicos/EditarTecnico";
 import VerTecnico from "./pages/tecnicos/VerTecnico";
 
-// INSPECCIONES
+// Contratos
+import Contratos from "./pages/contratos/Contratos";
+import CrearContrato from "./pages/contratos/CrearContrato";
+import EditarContrato from "./pages/contratos/EditarContrato";
+import VerContrato from "./pages/contratos/VerContrato";
+
+// Inspecciones
 import Inspecciones from "./pages/inspecciones/Inspecciones";
 import CrearInspeccion from "./pages/inspecciones/CrearInspeccion";
 import EditarInspeccion from "./pages/inspecciones/EditarInspeccion";
 import VerInspeccion from "./pages/inspecciones/VerInspeccion";
+import GaleriaInspeccion from "./pages/inspecciones/GaleriaInspeccion";
 
-// FACTURAS
+// Facturas
 import Facturas from "./pages/facturas/Facturas";
+import FacturasLista from "./pages/facturas/FacturasLista";
 import CrearFactura from "./pages/facturas/CrearFactura";
 import EditarFactura from "./pages/facturas/EditarFactura";
 import VerFactura from "./pages/facturas/VerFactura";
+import FiltrosFacturas from "./pages/facturas/FiltrosFacturas";
+import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas";
 
-// PROTECCIÓN DE RUTAS
-import RequireAuth from "./components/src/components/RequireAuth";
+// Protección de rutas
+function ProtectedRoute({ children }) {
+  const session = supabase.auth.getSession();
+  if (!session.data.session) return <Navigate to="/login" replace />;
+  return children;
+}
 
 export default function App() {
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
+    supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+  }, []);
+
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
 
-        {/* LOGIN ES LA PANTALLA INICIAL */}
-        <Route path="/" element={<Login />} />
-
-        {/* INICIO */}
-        <Route
-          path="/inicio"
-          element={
-            <RequireAuth>
-              <Inicio />
-            </RequireAuth>
-          }
-        />
-
-        {/* CONTRATOS */}
-        <Route path="/contratos" element={<RequireAuth><Contratos /></RequireAuth>} />
-        <Route path="/contratos/crear" element={<RequireAuth><CrearContrato /></RequireAuth>} />
-        <Route path="/contratos/editar/:id" element={<RequireAuth><EditarContrato /></RequireAuth>} />
-        <Route path="/contratos/ver/:id" element={<RequireAuth><VerContrato /></RequireAuth>} />
+        {/* AUTH */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/update-password" element={<UpdatePassword />} />
 
         {/* CLIENTES */}
-        <Route path="/clientes" element={<RequireAuth><Clientes /></RequireAuth>} />
-        <Route path="/clientes/crear" element={<RequireAuth><CrearCliente /></RequireAuth>} />
-        <Route path="/clientes/editar/:id" element={<RequireAuth><EditarCliente /></RequireAuth>} />
-        <Route path="/clientes/ver/:id" element={<RequireAuth><VerCliente /></RequireAuth>} />
+        <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+        <Route path="/clientes/crear" element={<ProtectedRoute><CrearCliente /></ProtectedRoute>} />
+        <Route path="/clientes/editar/:id" element={<ProtectedRoute><EditarCliente /></ProtectedRoute>} />
+        <Route path="/clientes/ver/:id" element={<ProtectedRoute><VerCliente /></ProtectedRoute>} />
 
         {/* VIVIENDAS */}
-        <Route path="/viviendas" element={<RequireAuth><Viviendas /></RequireAuth>} />
-        <Route path="/viviendas/crear" element={<RequireAuth><CrearVivienda /></RequireAuth>} />
-        <Route path="/viviendas/editar/:id" element={<RequireAuth><EditarVivienda /></RequireAuth>} />
-        <Route path="/viviendas/ver/:id" element={<RequireAuth><VerVivienda /></RequireAuth>} />
+        <Route path="/viviendas" element={<ProtectedRoute><Viviendas /></ProtectedRoute>} />
+        <Route path="/viviendas/crear" element={<ProtectedRoute><CrearVivienda /></ProtectedRoute>} />
+        <Route path="/viviendas/editar/:id" element={<ProtectedRoute><EditarVivienda /></ProtectedRoute>} />
+        <Route path="/viviendas/ver/:id" element={<ProtectedRoute><VerVivienda /></ProtectedRoute>} />
 
-        {/* TECNICOS */}
-        <Route path="/tecnicos" element={<RequireAuth><Tecnicos /></RequireAuth>} />
-        <Route path="/tecnicos/crear" element={<RequireAuth><CrearTecnico /></RequireAuth>} />
-        <Route path="/tecnicos/editar/:id" element={<RequireAuth><EditarTecnico /></RequireAuth>} />
-        <Route path="/tecnicos/ver/:id" element={<RequireAuth><VerTecnico /></RequireAuth>} />
+        {/* TÉCNICOS */}
+        <Route path="/tecnicos" element={<ProtectedRoute><Tecnicos /></ProtectedRoute>} />
+        <Route path="/tecnicos/crear" element={<ProtectedRoute><CrearTecnico /></ProtectedRoute>} />
+        <Route path="/tecnicos/editar/:id" element={<ProtectedRoute><EditarTecnico /></ProtectedRoute>} />
+        <Route path="/tecnicos/ver/:id" element={<ProtectedRoute><VerTecnico /></ProtectedRoute>} />
+
+        {/* CONTRATOS */}
+        <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
+        <Route path="/contratos/crear" element={<ProtectedRoute><CrearContrato /></ProtectedRoute>} />
+        <Route path="/contratos/editar/:id" element={<ProtectedRoute><EditarContrato /></ProtectedRoute>} />
+
+        {/* 🔥 RUTA DUPLICADA TAL CUAL GITHUB */}
+        <Route path="/contratos/ver/:id" element={<ProtectedRoute><VerContrato /></ProtectedRoute>} />
+        <Route path="/contratos/ver/:id" element={<ProtectedRoute><VerContrato /></ProtectedRoute>} />
 
         {/* INSPECCIONES */}
-        <Route path="/inspecciones" element={<RequireAuth><Inspecciones /></RequireAuth>} />
-        <Route path="/inspecciones/crear" element={<RequireAuth><CrearInspeccion /></RequireAuth>} />
-        <Route path="/inspecciones/editar/:id" element={<RequireAuth><EditarInspeccion /></RequireAuth>} />
-        <Route path="/inspecciones/ver/:id" element={<RequireAuth><VerInspeccion /></RequireAuth>} />
+        <Route path="/inspecciones" element={<ProtectedRoute><Inspecciones /></ProtectedRoute>} />
+        <Route path="/inspecciones/crear" element={<ProtectedRoute><CrearInspeccion /></ProtectedRoute>} />
+        <Route path="/inspecciones/editar/:id" element={<ProtectedRoute><EditarInspeccion /></ProtectedRoute>} />
+        <Route path="/inspecciones/ver/:id" element={<ProtectedRoute><VerInspeccion /></ProtectedRoute>} />
+        <Route path="/inspecciones/galeria/:id" element={<ProtectedRoute><GaleriaInspeccion /></ProtectedRoute>} />
 
         {/* FACTURAS */}
-        <Route path="/facturas" element={<RequireAuth><Facturas /></RequireAuth>} />
-        <Route path="/facturas/crear" element={<RequireAuth><CrearFactura /></RequireAuth>} />
-        <Route path="/facturas/editar/:id" element={<RequireAuth><EditarFactura /></RequireAuth>} />
-        <Route path="/facturas/ver/:id" element={<RequireAuth><VerFactura /></RequireAuth>} />
+        <Route path="/facturas" element={<ProtectedRoute><Facturas /></ProtectedRoute>} />
+        <Route path="/facturas/lista" element={<ProtectedRoute><FacturasLista /></ProtectedRoute>} />
+        <Route path="/facturas/crear" element={<ProtectedRoute><CrearFactura /></ProtectedRoute>} />
+        <Route path="/facturas/editar/:id" element={<ProtectedRoute><EditarFactura /></ProtectedRoute>} />
+        <Route path="/facturas/ver/:id" element={<ProtectedRoute><VerFactura /></ProtectedRoute>} />
+        <Route path="/facturas/filtros" element={<ProtectedRoute><FiltrosFacturas /></ProtectedRoute>} />
+        <Route path="/facturas/estadisticas" element={<ProtectedRoute><EstadisticasFacturas /></ProtectedRoute>} />
+
+        {/* DEFAULT */}
+        <Route path="*" element={<Navigate to={session ? "/clientes" : "/login"} replace />} />
 
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
