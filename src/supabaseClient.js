@@ -14,4 +14,5 @@ export function getSupabase() {
   return supabaseInstance;
 }
 
-export default getSupabase();
+export const supabase = getSupabase();
+export default supabase;

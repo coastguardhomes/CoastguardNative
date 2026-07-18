@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { obtenerFacturas } from "../../services/facturasLista";
 
 export default function FacturasLista() {
+  const navigate = useNavigate();
   const [facturas, setFacturas] = useState([]);
   const [filtros, setFiltros] = useState({
     cliente: "",
@@ -48,7 +50,7 @@ export default function FacturasLista() {
             borderBottom: "1px solid #ccc",
             cursor: "pointer",
           }}
-          onClick={() => (window.location.href = `/facturas/ver/${f.id}`)}
+          onClick={() => navigate(`/facturas/ver/${f.id}`)}
         >
           <strong>Factura #{f.id}</strong><br />
           Cliente: {f.cliente_nombre}<br />
