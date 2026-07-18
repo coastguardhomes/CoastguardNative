@@ -1,55 +1,58 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../supabaseClient";
+import { useParams, useNavigate } from "react-router-dom";
 
 export default function VerContrato() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [contrato, setContrato] = useState(null);
+
+  useEffect(() => {
+    async function cargarContrato() {
+      const { data } = await supabase
+        .from("contratos")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      setContrato(data);
+    }
+
+    cargarContrato();
+  }, [id]);
+
+  async function eliminarContrato() {
+    const { error } = await supabase
+      .from("contratos")
+      .delete()
+      .eq("id", id);
+
+    if (!error) {
+      alert("Contrato eliminado");
+      navigate("/contratos");
+    }
+  }
+
+  if (!contrato) return <Menu><p>Cargando...</p></Menu>;
+
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "28px",
-            fontWeight: "700",
-            marginBottom: "20px",
-            color: "#4db8ff",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
-          Ver Contrato
-        </h1>
+      <div style={{ padding: "20px", color: "#fff" }}>
+        <h1>Contrato #{id}</h1>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Aquí podrás ver todos los detalles del contrato seleccionado.
-          </p>
+        <p><strong>Fecha:</strong> {contrato.fecha}</p>
+        <p><strong>Precio:</strong> {contrato.precio}€</p>
+        <p><strong>Notas:</strong> {contrato.notas}</p>
 
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Cliente asociado</li>
-            <li>Vivienda asociada</li>
-            <li>Fecha del contrato</li>
-            <li>Notas del contrato</li>
-            <li>Generación de PDF</li>
-            <li>Opciones de edición</li>
-          </ul>
+        <button onClick={() => navigate(`/contratos/editar/${id}`)}>
+          Editar contrato
+        </button>
 
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos datos reales desde Supabase, PDF integrado y
-            acciones rápidas.
-          </p>
-        </div>
+        <button onClick={eliminarContrato} style={{ marginTop: "10px", background: "red" }}>
+          Eliminar contrato
+        </button>
       </div>
     </Menu>
   );
