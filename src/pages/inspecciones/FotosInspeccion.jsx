@@ -1,7 +1,90 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../supabaseClient";
+import { useParams } from "react-router-dom";
 
 export default function FotosInspeccion() {
+  const { id } = useParams(); // ID de la inspección
+  const [fotos, setFotos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    cargarFotos();
+  }, [id]);
+
+  async function cargarFotos() {
+    const { data, error } = await supabase
+      .from("fotos_inspeccion")
+      .select("*")
+      .eq("inspeccion_id", id)
+      .order("id", { ascending: false });
+
+    if (error) {
+      alert("Error cargando fotos");
+      return;
+    }
+
+    setFotos(data || []);
+    setLoading(false);
+  }
+
+  async function subirFoto(e) {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+
+    const nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
+
+    // 1) Subir a Storage
+    const { error: storageError } = await supabase.storage
+      .from("fotos")
+      .upload(nombreArchivo, archivo);
+
+    if (storageError) {
+      alert("Error subiendo foto");
+      return;
+    }
+
+    // 2) Obtener URL pública
+    const { data: urlData } = supabase.storage
+      .from("fotos")
+      .getPublicUrl(nombreArchivo);
+
+    const url = urlData.publicUrl;
+
+    // 3) Guardar en la tabla
+    const { error: dbError } = await supabase
+      .from("fotos_inspeccion")
+      .insert([
+        {
+          inspeccion_id: id,
+          url,
+        },
+      ]);
+
+    if (dbError) {
+      alert("Error guardando foto en la base de datos");
+      return;
+    }
+
+    cargarFotos();
+  }
+
+  async function borrarFoto(foto) {
+    // 1) Extraer nombre del archivo desde la URL pública
+    const ruta = foto.url.split("/").pop();
+
+    // 2) Borrar de Storage
+    await supabase.storage.from("fotos").remove([ruta]);
+
+    // 3) Borrar de la tabla
+    await supabase
+      .from("fotos_inspeccion")
+      .delete()
+      .eq("id", foto.id);
+
+    cargarFotos();
+  }
+
   return (
     <Menu>
       <div
@@ -23,32 +106,55 @@ export default function FotosInspeccion() {
           Fotos de la Inspección
         </h1>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Aquí podrás ver, añadir y gestionar las fotos tomadas durante la inspección.
-          </p>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={subirFoto}
+          style={{ marginBottom: "20px" }}
+        />
 
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Subir fotos</li>
-            <li>Ver galería</li>
-            <li>Eliminar fotos</li>
-            <li>Asociar fotos al checklist</li>
-            <li>Sincronización con Supabase</li>
-          </ul>
+        {loading ? (
+          <p>Cargando fotos...</p>
+        ) : fotos.length === 0 ? (
+          <p>No hay fotos registradas.</p>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+              gap: "15px",
+            }}
+          >
+            {fotos.map((foto) => (
+              <div key={foto.id}>
+                <img
+                  src={foto.url}
+                  alt="Foto inspección"
+                  style={{
+                    width: "100%",
+                    borderRadius: "10px",
+                    border: "2px solid #4db8ff",
+                  }}
+                />
 
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos subida real, previsualización, borrado,
-            sincronización con Supabase y galería profesional.
-          </p>
-        </div>
+                <button
+                  onClick={() => borrarFoto(foto)}
+                  style={{
+                    marginTop: "8px",
+                    background: "red",
+                    color: "#fff",
+                    padding: "6px",
+                    borderRadius: "6px",
+                    border: "none",
+                    width: "100%",
+                  }}
+                >
+                  Borrar
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Menu>
   );
