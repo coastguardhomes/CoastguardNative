@@ -1,0 +1,80 @@
+name: CoastGuard Mobile Build
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+
+  android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - run: npm install
+
+      - run: npm run build
+
+      - uses: android-actions/setup-android@v3
+
+      - run: npx cap sync android
+
+      - run: cd android && ./gradlew assembleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coastguard-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+  ios:
+    runs-on: macos-latest
+    needs: android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - run: npm install
+
+      - run: npm run build
+
+      - run: npx cap sync ios
+
+      - run: sudo gem install cocoapods
+
+      - run: cd ios && pod install
+
+      - run: |
+          echo "$IOS_CERTIFICATE_P12" | base64 --decode > ios_certificate.p12
+          echo "$IOS_PROVISIONING_PROFILE" | base64 --decode > profile.mobileprovision
+
+      - run: |
+          security create-keychain -p "" build.keychain
+          security import ios_certificate.p12 -k build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -A
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+
+      - run: |
+          cd ios
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath build/App.xcarchive archive
+
+          xcodebuild -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportPath build \
+            -exportOptionsPlist ExportOptions.plist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coastguard-ipa
+          path: ios/build/*.ipa
