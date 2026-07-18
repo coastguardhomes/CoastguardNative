@@ -23,8 +23,10 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
     doc.text("Detalles del servicio:", 20, 80);
     doc.text(`Tipo de servicio: ${contrato?.tipoServicio || ""}`, 20, 90);
     doc.text(`Fecha de inicio: ${contrato?.fechaInicio || ""}`, 20, 100);
+
+    // ⭐ CORREGIDO: template literal sin barras
     doc.text(
-      \`Precio mensual: \${PRICES[contrato?.tipoServicio] || "N/D"} €\`,
+      `Precio mensual: ${PRICES[contrato?.tipoServicio] || "N/D"} €`,
       20,
       110
     );
@@ -61,7 +63,9 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
 
     // Guardar PDF en Supabase Storage
     const pdfBlob = doc.output("blob");
-    const filePath = \`contratos/contrato_\${contrato.id}.pdf\`;
+
+    // ⭐ CORREGIDO: template literal sin barras
+    const filePath = `contratos/contrato_${contrato.id}.pdf`;
 
     const { error: uploadError } = await supabase.storage
       .from("contratos")
