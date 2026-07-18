@@ -1,7 +1,31 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../supabaseClient";
+import { Link } from "react-router-dom";
 
 export default function Inspecciones() {
+  const [inspecciones, setInspecciones] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function cargarInspecciones() {
+      const { data, error } = await supabase
+        .from("inspecciones")
+        .select("*")
+        .order("id", { ascending: false });
+
+      if (error) {
+        alert("Error cargando inspecciones");
+        return;
+      }
+
+      setInspecciones(data || []);
+      setLoading(false);
+    }
+
+    cargarInspecciones();
+  }, []);
+
   return (
     <Menu>
       <div
@@ -23,35 +47,56 @@ export default function Inspecciones() {
           Inspecciones
         </h1>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Gestión completa de inspecciones CoastGuard.
-          </p>
+        <Link to="/inspecciones/nueva">
+          <button
+            style={{
+              marginBottom: "20px",
+              padding: "10px 15px",
+              background: "#4db8ff",
+              color: "#fff",
+              borderRadius: "6px",
+              border: "none",
+            }}
+          >
+            Nueva inspección
+          </button>
+        </Link>
 
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Listado de inspecciones</li>
-            <li>Crear nueva inspección</li>
-            <li>Editar inspección</li>
-            <li>Checklist</li>
-            <li>Fotos de inspección</li>
-            <li>Firma del cliente</li>
-            <li>Detalle completo</li>
-            <li>Generación de PDF</li>
+        {loading ? (
+          <p style={{ opacity: 0.8 }}>Cargando inspecciones...</p>
+        ) : inspecciones.length === 0 ? (
+          <p style={{ opacity: 0.8 }}>No hay inspecciones registradas.</p>
+        ) : (
+          <ul style={{ marginTop: "20px", lineHeight: "1.8", padding: 0 }}>
+            {inspecciones.map((i) => (
+              <li
+                key={i.id}
+                style={{
+                  marginBottom: "15px",
+                  background: "rgba(255,255,255,0.05)",
+                  padding: "15px",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                <Link
+                  to={`/inspecciones/ver/${i.id}`}
+                  style={{ color: "#4db8ff", fontWeight: "600" }}
+                >
+                  Inspección #{i.id}
+                </Link>
+
+                <p style={{ opacity: 0.8, marginTop: "5px" }}>
+                  <strong>Fecha:</strong> {i.fecha}
+                </p>
+
+                <p style={{ opacity: 0.8 }}>
+                  <strong>Estado:</strong> {i.estado}
+                </p>
+              </li>
+            ))}
           </ul>
-
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos datos reales desde Supabase, filtros,
-            búsqueda avanzada y acciones rápidas.
-          </p>
-        </div>
+        )}
       </div>
     </Menu>
   );
