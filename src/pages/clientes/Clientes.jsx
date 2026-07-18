@@ -1,55 +1,50 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../supabaseClient";
+import { Link } from "react-router-dom";
 
 export default function Clientes() {
+  const [clientes, setClientes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function cargarClientes() {
+      const { data, error } = await supabase
+        .from("clientes")
+        .select("*")
+        .order("id", { ascending: false });
+
+      if (!error) setClientes(data);
+      setLoading(false);
+    }
+
+    cargarClientes();
+  }, []);
+
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "28px",
-            fontWeight: "700",
-            marginBottom: "20px",
-            color: "#4db8ff",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
-          Clientes
-        </h1>
+      <div style={{ padding: "20px", color: "#fff" }}>
+        <h1 style={{ color: "#4db8ff" }}>Clientes</h1>
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Gestión completa de clientes CoastGuard.
-          </p>
+        <Link to="/clientes/crear">
+          <button style={{ marginBottom: "20px" }}>Nuevo cliente</button>
+        </Link>
 
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
-            <li>Listado de clientes</li>
-            <li>Crear cliente</li>
-            <li>Editar cliente</li>
-            <li>Ver cliente</li>
-            <li>Viviendas asociadas</li>
-            <li>Contratos asociados</li>
+        {loading ? (
+          <p>Cargando...</p>
+        ) : clientes.length === 0 ? (
+          <p>No hay clientes registrados.</p>
+        ) : (
+          <ul>
+            {clientes.map((c) => (
+              <li key={c.id} style={{ marginBottom: "10px" }}>
+                <Link to={`/clientes/ver/${c.id}`} style={{ color: "#4db8ff" }}>
+                  {c.nombre} — {c.telefono}
+                </Link>
+              </li>
+            ))}
           </ul>
-
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos listado real desde Supabase, búsqueda,
-            filtros y acciones rápidas.
-          </p>
-        </div>
+        )}
       </div>
     </Menu>
   );
