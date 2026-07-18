@@ -2,46 +2,43 @@ import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 
-// Layout
-import Menu from "./layouts/Menu";
+// AUTH (RUTAS REALES DE TU PROYECTO)
+import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
+import UpdatePassword from "./pages/UpdatePassword";
 
-// Auth
-import Login from "./pages/auth/Login";
-import ResetPassword from "./pages/auth/ResetPassword";
-import UpdatePassword from "./pages/auth/UpdatePassword";
-
-// Clientes
+// CLIENTES
 import Clientes from "./pages/clientes/Clientes";
 import CrearCliente from "./pages/clientes/CrearCliente";
 import EditarCliente from "./pages/clientes/EditarCliente";
 import VerCliente from "./pages/clientes/VerCliente";
 
-// Viviendas
+// VIVIENDAS
 import Viviendas from "./pages/viviendas/Viviendas";
 import CrearVivienda from "./pages/viviendas/CrearVivienda";
 import EditarVivienda from "./pages/viviendas/EditarVivienda";
 import VerVivienda from "./pages/viviendas/VerVivienda";
 
-// Técnicos
+// TÉCNICOS
 import Tecnicos from "./pages/tecnicos/Tecnicos";
 import CrearTecnico from "./pages/tecnicos/CrearTecnico";
 import EditarTecnico from "./pages/tecnicos/EditarTecnico";
 import VerTecnico from "./pages/tecnicos/VerTecnico";
 
-// Contratos
+// CONTRATOS
 import Contratos from "./pages/contratos/Contratos";
 import CrearContrato from "./pages/contratos/CrearContrato";
 import EditarContrato from "./pages/contratos/EditarContrato";
 import VerContrato from "./pages/contratos/VerContrato";
 
-// Inspecciones
+// INSPECCIONES
 import Inspecciones from "./pages/inspecciones/Inspecciones";
 import CrearInspeccion from "./pages/inspecciones/CrearInspeccion";
 import EditarInspeccion from "./pages/inspecciones/EditarInspeccion";
 import VerInspeccion from "./pages/inspecciones/VerInspeccion";
 import GaleriaInspeccion from "./pages/inspecciones/GaleriaInspeccion";
 
-// Facturas
+// FACTURAS
 import Facturas from "./pages/facturas/Facturas";
 import FacturasLista from "./pages/facturas/FacturasLista";
 import CrearFactura from "./pages/facturas/CrearFactura";
@@ -50,7 +47,7 @@ import VerFactura from "./pages/facturas/VerFactura";
 import FiltrosFacturas from "./pages/facturas/FiltrosFacturas";
 import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas";
 
-// Protección de rutas
+// PROTECCIÓN
 function ProtectedRoute({ children }) {
   const session = supabase.auth.getSession();
   if (!session.data.session) return <Navigate to="/login" replace />;
