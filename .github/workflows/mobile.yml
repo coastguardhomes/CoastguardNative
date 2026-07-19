@@ -12,6 +12,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Remove old Android folder
+        run: rm -rf android
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
