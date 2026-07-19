@@ -7,29 +7,29 @@ import Login from "./pages/Login/Login.jsx";
 
 // CLIENTES
 import Clientes from "./pages/clientes/Clientes.jsx";
-import NuevoCliente from "./pages/clientes/NuevoCliente.jsx;
+import NuevoCliente from "./pages/clientes/NuevoCliente.jsx";
 import EditarCliente from "./pages/clientes/EditarCliente.jsx";
 import VerCliente from "./pages/clientes/VerCliente.jsx";
 
 // VIVIENDAS
-import Viviendas from "./pages/viviendas/Viviendas";
-import CrearVivienda from "./pages/viviendas/CrearVivienda";
-import EditarVivienda from "./pages/viviendas/EditarVivienda";
-import VerVivienda from "./pages/viviendas/VerVivienda";
+import Viviendas from "./pages/viviendas/Viviendas.jsx";
+import CrearVivienda from "./pages/viviendas/CrearVivienda.jsx";
+import EditarVivienda from "./pages/viviendas/EditarVivienda.jsx";
+import VerVivienda from "./pages/viviendas/VerVivienda.jsx";
 
 // TÉCNICOS
-import Tecnicos from "./pages/tecnicos/Tecnicos";
-import NuevoTecnico from "./pages/tecnicos/NuevoTecnico";
-import EditarTecnico from "./pages/tecnicos/EditarTecnico";
-import VerTecnico from "./pages/tecnicos/VerTecnico";
+import Tecnicos from "./pages/tecnicos/Tecnicos.jsx";
+import NuevoTecnico from "./pages/tecnicos/NuevoTecnico.jsx";
+import EditarTecnico from "./pages/tecnicos/EditarTecnico.jsx";
+import VerTecnico from "./pages/tecnicos/VerTecnico.jsx";
 
 // CONTRATOS
-import Contratos from "./pages/contratos/Contratos";
-import CrearContrato from "./pages/contratos/CrearContrato";
-import EditarContrato from "./pages/contratos/EditarContrato";
-import VerContrato from "./pages/contratos/VerContrato";
+import Contratos from "./pages/contratos/Contratos.jsx";
+import CrearContrato from "./pages/contratos/CrearContrato.jsx";
+import EditarContrato from "./pages/contratos/EditarContrato.jsx";
+import VerContrato from "./pages/contratos/VerContrato.jsx";
 
-// INSPECCIONES (solo lo que EXISTE)
+// INSPECCIONES (solo archivos que EXISTEN)
 import Inspecciones from "./pages/inspecciones/Inspecciones.jsx";
 import NuevaInspeccion from "./pages/inspecciones/NuevaInspeccion.jsx";
 import EditarInspeccion from "./pages/inspecciones/EditarInspeccion.jsx";
@@ -37,13 +37,13 @@ import VerInspeccion from "./pages/inspecciones/VerInspeccion.jsx";
 import GaleriaInspeccion from "./pages/inspecciones/GaleriaInspeccion.jsx";
 
 // FACTURAS
-import Facturas from "./pages/facturas/Facturas";
-import FacturasLista from "./pages/facturas/FacturasLista";
-import CrearFactura from "./pages/facturas/CrearFactura";
-import EditarFactura from "./pages/facturas/EditarFactura";
-import VerFactura from "./pages/facturas/VerFactura";
-import FiltrosFacturas from "./pages/facturas/FiltrosFacturas";
-import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas";
+import Facturas from "./pages/facturas/Facturas.jsx";
+import FacturasLista from "./pages/facturas/FacturasLista.jsx";
+import CrearFactura from "./pages/facturas/CrearFactura.jsx";
+import EditarFactura from "./pages/facturas/EditarFactura.jsx";
+import VerFactura from "./pages/facturas/VerFactura.jsx";
+import FiltrosFacturas from "./pages/facturas/FiltrosFacturas.jsx";
+import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas.jsx";
 
 // PROTECCIÓN
 function ProtectedRoute({ children }) {
@@ -96,7 +96,7 @@ export default function App() {
         <Route path="/contratos/editar/:id" element={<ProtectedRoute><EditarContrato /></ProtectedRoute>} />
         <Route path="/contratos/ver/:id" element={<ProtectedRoute><VerContrato /></ProtectedRoute>} />
 
-        {/* INSPECCIONES (solo nombres reales) */}
+        {/* INSPECCIONES */}
         <Route path="/inspecciones" element={<ProtectedRoute><Inspecciones /></ProtectedRoute>} />
         <Route path="/inspecciones/nueva" element={<ProtectedRoute><NuevaInspeccion /></ProtectedRoute>} />
         <Route path="/inspecciones/editar/:id" element={<ProtectedRoute><EditarInspeccion /></ProtectedRoute>} />
