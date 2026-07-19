@@ -12,7 +12,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Borrar carpeta android rota para regenerarla limpia
       - name: Remove old Android folder
         run: rm -rf android
 
@@ -42,20 +41,17 @@ jobs:
       - name: Build Vite project
         run: npm run build
 
-      # Regenerar proyecto Android limpio
       - name: Generate Android project
         run: npx cap add android
 
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # Compilar APK
-      - name: Build Android APK
-        run: cd android && ./gradlew assembleRelease
+      - name: Build Android APK (DEBUG)
+        run: cd android && ./gradlew assembleDebug
 
-      # Subir TODO lo que haya en la carpeta release
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: coastguard-apk
-          path: android/app/build/outputs/apk/release/
+          name: coastguard-apk-debug
+          path: android/app/build/outputs/apk/debug/
