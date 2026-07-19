@@ -3,7 +3,7 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
 
-export default function CrearCliente() {
+export default function NuevoCliente() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
