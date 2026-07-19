@@ -23,14 +23,20 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK Platform 35
+        run: sdkmanager "platforms;android-35" "platform-tools" "build-tools;35.0.0"
+
+      - name: Accept licenses
+        run: yes | sdkmanager --licenses
+
       - name: Install dependencies
         run: npm install
 
       - name: Build Vite project
         run: npm run build
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
 
       - name: Capacitor sync
         run: npx cap sync android
