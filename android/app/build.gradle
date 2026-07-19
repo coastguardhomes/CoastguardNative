@@ -1,25 +1,29 @@
 apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
 
 android {
     namespace "com.coastguard.app"
-    compileSdkVersion 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.coastguard.app"
-        minSdkVersion 22
-        targetSdkVersion 34
+        minSdk 24
+        targetSdk 35
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile 'src/main/AndroidManifest.xml'
+            java.srcDirs = ['src/main/java']
+            res.srcDirs = ['src/main/res']
+            assets.srcDirs = ['src/main/assets']
+        }
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     buildTypes {
@@ -30,9 +34,11 @@ android {
     }
 }
 
+repositories {
+    google()
+    mavenCentral()
+}
+
 dependencies {
     implementation project(':capacitor-android')
-    implementation project(':capacitor-cordova-android-plugins')
-
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.0'
 }
