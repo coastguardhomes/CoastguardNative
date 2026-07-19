@@ -38,7 +38,10 @@ jobs:
       - name: Build Vite project
         run: npm run build
 
-      - name: Capacitor sync
+      - name: Generate Android project
+        run: npx cap add android
+
+      - name: Sync Capacitor
         run: npx cap sync android
 
       - name: Build Android APK
