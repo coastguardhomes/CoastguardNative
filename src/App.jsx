@@ -7,7 +7,7 @@ import Login from "./pages/Login/Login.jsx";
 
 // CLIENTES
 import Clientes from "./pages/clientes/Clientes.jsx";
-import NuevoCliente from "./pages/clientes/NuevoCliente.jsx";
+import NuevoCliente from "./pages/clientes/NuevoCliente.jsx;
 import EditarCliente from "./pages/clientes/EditarCliente.jsx";
 import VerCliente from "./pages/clientes/VerCliente.jsx";
 
@@ -17,7 +17,7 @@ import CrearVivienda from "./pages/viviendas/CrearVivienda";
 import EditarVivienda from "./pages/viviendas/EditarVivienda";
 import VerVivienda from "./pages/viviendas/VerVivienda";
 
-// TÉCNICOS (CORREGIDO — SOLO LOS 4 QUE EXISTEN)
+// TÉCNICOS
 import Tecnicos from "./pages/tecnicos/Tecnicos";
 import NuevoTecnico from "./pages/tecnicos/NuevoTecnico";
 import EditarTecnico from "./pages/tecnicos/EditarTecnico";
@@ -29,12 +29,12 @@ import CrearContrato from "./pages/contratos/CrearContrato";
 import EditarContrato from "./pages/contratos/EditarContrato";
 import VerContrato from "./pages/contratos/VerContrato";
 
-// INSPECCIONES
-import Inspecciones from "./pages/inspecciones/Inspecciones";
-import CrearInspeccion from "./pages/inspecciones/CrearInspeccion";
-import EditarInspeccion from "./pages/inspecciones/EditarInspeccion";
-import VerInspeccion from "./pages/inspecciones/VerInspeccion";
-import GaleriaInspeccion from "./pages/inspecciones/GaleriaInspeccion";
+// INSPECCIONES (solo lo que EXISTE)
+import Inspecciones from "./pages/inspecciones/Inspecciones.jsx";
+import NuevaInspeccion from "./pages/inspecciones/NuevaInspeccion.jsx";
+import EditarInspeccion from "./pages/inspecciones/EditarInspeccion.jsx";
+import VerInspeccion from "./pages/inspecciones/VerInspeccion.jsx";
+import GaleriaInspeccion from "./pages/inspecciones/GaleriaInspeccion.jsx";
 
 // FACTURAS
 import Facturas from "./pages/facturas/Facturas";
@@ -84,7 +84,7 @@ export default function App() {
         <Route path="/viviendas/editar/:id" element={<ProtectedRoute><EditarVivienda /></ProtectedRoute>} />
         <Route path="/viviendas/ver/:id" element={<ProtectedRoute><VerVivienda /></ProtectedRoute>} />
 
-        {/* TÉCNICOS — CORREGIDO */}
+        {/* TÉCNICOS */}
         <Route path="/tecnicos" element={<ProtectedRoute><Tecnicos /></ProtectedRoute>} />
         <Route path="/tecnicos/nuevo" element={<ProtectedRoute><NuevoTecnico /></ProtectedRoute>} />
         <Route path="/tecnicos/editar/:id" element={<ProtectedRoute><EditarTecnico /></ProtectedRoute>} />
@@ -96,9 +96,9 @@ export default function App() {
         <Route path="/contratos/editar/:id" element={<ProtectedRoute><EditarContrato /></ProtectedRoute>} />
         <Route path="/contratos/ver/:id" element={<ProtectedRoute><VerContrato /></ProtectedRoute>} />
 
-        {/* INSPECCIONES */}
+        {/* INSPECCIONES (solo nombres reales) */}
         <Route path="/inspecciones" element={<ProtectedRoute><Inspecciones /></ProtectedRoute>} />
-        <Route path="/inspecciones/crear" element={<ProtectedRoute><CrearInspeccion /></ProtectedRoute>} />
+        <Route path="/inspecciones/nueva" element={<ProtectedRoute><NuevaInspeccion /></ProtectedRoute>} />
         <Route path="/inspecciones/editar/:id" element={<ProtectedRoute><EditarInspeccion /></ProtectedRoute>} />
         <Route path="/inspecciones/ver/:id" element={<ProtectedRoute><VerInspeccion /></ProtectedRoute>} />
         <Route path="/inspecciones/galeria/:id" element={<ProtectedRoute><GaleriaInspeccion /></ProtectedRoute>} />
