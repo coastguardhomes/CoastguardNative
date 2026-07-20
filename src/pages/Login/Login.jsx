@@ -1,8 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { supabase } from "../supabaseClient"; // ajusta la ruta si es distinta
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+
+  // Si ya hay sesión, saltar el login
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        navigate("/home"); // ajusta la ruta si tu pantalla principal es otra
+      }
+    });
+  }, [navigate]);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      alert("Introduce email y contraseña");
+      return;
+    }
+
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    // Login correcto → ir a la pantalla principal
+    navigate("/home");
+  };
 
   return (
     <div
@@ -86,6 +124,7 @@ export default function Login() {
         />
 
         <button
+          onClick={handleLogin}
           style={{
             width: "100%",
             padding: "12px",
@@ -99,20 +138,8 @@ export default function Login() {
             boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
-          Entrar
+          {loading ? "Entrando..." : "Entrar"}
         </button>
-
-        <p
-          style={{
-            marginTop: "20px",
-            textAlign: "center",
-            color: "#fff",
-            opacity: 0.6,
-            fontSize: "14px",
-          }}
-        >
-          Próximamente: login real con Supabase Auth.
-        </p>
       </div>
     </div>
   );
