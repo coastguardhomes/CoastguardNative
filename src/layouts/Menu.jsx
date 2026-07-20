@@ -1,140 +1,91 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { FaBars, FaHome, FaUsers, FaUserTie, FaFileContract, FaTools, FaSignOutAlt } from "react-icons/fa";
 
-const Menu = ({ children }) => {
+export default function Menu() {
+  const [open, setOpen] = useState(false);
+
+  const toggleMenu = () => setOpen(!open);
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #0a0f1f 0%, #02040a 100%)",
-        color: "#ffffff",
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
-      <header
+    <>
+      {/* BOTÓN HAMBURGUESA */}
+      <div
         style={{
           width: "100%",
-          padding: "16px 32px",
+          height: 60,
+          background: "#001f3f",
+          color: "#fff",
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
-          background:
-            "linear-gradient(90deg, rgba(0,102,204,0.4), rgba(0,153,255,0.2))",
-          borderBottom: "1px solid rgba(255,255,255,0.1)",
-          backdropFilter: "blur(10px)",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
+          padding: "0 20px",
         }}
       >
-        <div
-          style={{
-            fontSize: "22px",
-            fontWeight: "700",
-            letterSpacing: "1px",
-            color: "#4db8ff",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
-          CoastGuard PRO
-        </div>
+        <FaBars size={26} style={{ cursor: "pointer" }} onClick={toggleMenu} />
+        <h2 style={{ marginLeft: 20 }}>CoastGuard</h2>
+      </div>
 
-        <nav style={{ display: "flex", gap: "24px" }}>
-          <MenuButton to="/">Inicio</MenuButton>
-          <MenuButton to="/contratos">Contratos</MenuButton>
-          <MenuButton to="/inspecciones">Inspecciones</MenuButton>
-          <MenuButton to="/tecnicos">Técnicos</MenuButton>
-          <MenuButton to="/clientes">Clientes</MenuButton>
-          <MenuButton to="/viviendas">Viviendas</MenuButton>
-          <MenuButton to="/galeria">Galería</MenuButton>
+      {/* SIDEBAR */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: open ? 0 : "-260px",
+          width: 260,
+          height: "100vh",
+          background: "#012a4a",
+          color: "#fff",
+          paddingTop: 20,
+          transition: "0.3s",
+          zIndex: 999,
+        }}
+      >
+        <h3 style={{ textAlign: "center", marginBottom: 20 }}>Menú</h3>
 
-          {/* 🟩 FACTURAS */}
-          <MenuButton to="/facturas">Facturas</MenuButton>
-          <MenuButton to="/facturas/filtros">Filtros</MenuButton>
-          <MenuButton to="/facturas/estadisticas">Estadísticas</MenuButton>
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          <li style={{ padding: "12px 20px" }}>
+            <Link to="/inicio" style={{ color: "#fff", textDecoration: "none" }}>
+              <FaHome /> Inicio
+            </Link>
+          </li>
 
-          {/* 🟩 AÑADIDO AHORA MISMO */}
-          <MenuButton to="/extras">Extras</MenuButton>
+          <li style={{ padding: "12px 20px" }}>
+            <Link to="/clientes" style={{ color: "#fff", textDecoration: "none" }}>
+              <FaUsers /> Clientes
+            </Link>
+          </li>
 
-          <MenuButton to="/ajustes">Ajustes</MenuButton>
-        </nav>
+          <li style={{ padding: "12px 20px" }}>
+            <Link to="/tecnicos" style={{ color: "#fff", textDecoration: "none" }}>
+              <FaUserTie /> Técnicos
+            </Link>
+          </li>
 
-        <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-          <div
-            style={{
-              position: "relative",
-              cursor: "pointer",
-              transition: "0.3s",
-            }}
-          >
-            <span style={{ fontSize: "22px" }}>🔔</span>
-            <span
-              style={{
-                position: "absolute",
-                top: "-4px",
-                right: "-6px",
-                background: "#ff4444",
-                color: "#fff",
-                borderRadius: "50%",
-                padding: "2px 6px",
-                fontSize: "10px",
-                fontWeight: "700",
-              }}
-            >
-              1
-            </span>
-          </div>
+          <li style={{ padding: "12px 20px" }}>
+            <Link to="/viviendas" style={{ color: "#fff", textDecoration: "none" }}>
+              <FaHome /> Viviendas
+            </Link>
+          </li>
 
-          <div
-            style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "50%",
-              background: "rgba(255,255,255,0.2)",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              cursor: "pointer",
-              transition: "0.3s",
-            }}
-          >
-            👤
-          </div>
-        </div>
-      </header>
+          <li style={{ padding: "12px 20px" }}>
+            <Link to="/contratos" style={{ color: "#fff", textDecoration: "none" }}>
+              <FaFileContract /> Contratos
+            </Link>
+          </li>
 
-      <main style={{ padding: "32px" }}>{children}</main>
-    </div>
+          <li style={{ padding: "12px 20px" }}>
+            <Link to="/inspecciones" style={{ color: "#fff", textDecoration: "none" }}>
+              <FaTools /> Inspecciones
+            </Link>
+          </li>
+
+          <li style={{ padding: "12px 20px", marginTop: 40 }}>
+            <Link to="/logout" style={{ color: "#ff6b6b", textDecoration: "none" }}>
+              <FaSignOutAlt /> Cerrar sesión
+            </Link>
+          </li>
+        </ul>
+      </div>
+    </>
   );
-};
-
-const MenuButton = ({ to, children }) => {
-  return (
-    <Link
-      to={to}
-      style={{
-        padding: "10px 18px",
-        borderRadius: "12px",
-        background: "rgba(255,255,255,0.05)",
-        color: "#ffffff",
-        textDecoration: "none",
-        fontSize: "14px",
-        fontWeight: "500",
-        transition: "0.3s",
-        border: "1px solid rgba(255,255,255,0.1)",
-      }}
-      onMouseEnter={(e) => {
-        e.target.style.background = "rgba(0,153,255,0.3)";
-        e.target.style.boxShadow = "0 0 12px rgba(0,153,255,0.6)";
-      }}
-      onMouseLeave={(e) => {
-        e.target.style.background = "rgba(255,255,255,0.05)";
-        e.target.style.boxShadow = "none";
-      }}
-    >
-      {children}
-    </Link>
-  );
-};
-
-export default Menu;
+}
