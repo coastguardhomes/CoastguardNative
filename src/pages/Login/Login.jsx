@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../supabaseClient"; // ajusta la ruta si es distinta
+import { supabase } from "../../supabaseClient"; 
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
@@ -13,7 +13,7 @@ export default function Login() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
-        navigate("/home"); // ajusta la ruta si tu pantalla principal es otra
+        navigate("/home"); 
       }
     });
   }, [navigate]);
@@ -38,7 +38,6 @@ export default function Login() {
       return;
     }
 
-    // Login correcto → ir a la pantalla principal
     navigate("/home");
   };
 
