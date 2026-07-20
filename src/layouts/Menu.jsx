@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
-const Menu = ({ children }) => {
+export default function Menu({ children }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <div
       style={{
@@ -11,27 +13,26 @@ const Menu = ({ children }) => {
         fontFamily: "Inter, sans-serif",
       }}
     >
+      {/* HEADER */}
       <header
         style={{
           width: "100%",
-          padding: "16px 32px",
+          padding: "16px 24px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          background:
-            "linear-gradient(90deg, rgba(0,102,204,0.4), rgba(0,153,255,0.2))",
+          background: "rgba(0,0,0,0.4)",
           borderBottom: "1px solid rgba(255,255,255,0.1)",
           backdropFilter: "blur(10px)",
           position: "sticky",
           top: 0,
-          zIndex: 100,
+          zIndex: 200,
         }}
       >
         <div
           style={{
             fontSize: "22px",
             fontWeight: "700",
-            letterSpacing: "1px",
             color: "#4db8ff",
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
@@ -39,87 +40,74 @@ const Menu = ({ children }) => {
           CoastGuard PRO
         </div>
 
-        <nav style={{ display: "flex", gap: "24px" }}>
-          <MenuButton to="/">Inicio</MenuButton>
-          <MenuButton to="/contratos">Contratos</MenuButton>
-          <MenuButton to="/inspecciones">Inspecciones</MenuButton>
-          <MenuButton to="/tecnicos">Técnicos</MenuButton>
-          <MenuButton to="/clientes">Clientes</MenuButton>
-          <MenuButton to="/viviendas">Viviendas</MenuButton>
-          <MenuButton to="/galeria">Galería</MenuButton>
-
-          {/* 🟩 FACTURAS */}
-          <MenuButton to="/facturas">Facturas</MenuButton>
-          <MenuButton to="/facturas/filtros">Filtros</MenuButton>
-          <MenuButton to="/facturas/estadisticas">Estadísticas</MenuButton>
-
-          {/* 🟩 AÑADIDO AHORA MISMO */}
-          <MenuButton to="/extras">Extras</MenuButton>
-
-          <MenuButton to="/ajustes">Ajustes</MenuButton>
-        </nav>
-
-        <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-          <div
-            style={{
-              position: "relative",
-              cursor: "pointer",
-              transition: "0.3s",
-            }}
-          >
-            <span style={{ fontSize: "22px" }}>🔔</span>
-            <span
-              style={{
-                position: "absolute",
-                top: "-4px",
-                right: "-6px",
-                background: "#ff4444",
-                color: "#fff",
-                borderRadius: "50%",
-                padding: "2px 6px",
-                fontSize: "10px",
-                fontWeight: "700",
-              }}
-            >
-              1
-            </span>
-          </div>
-
-          <div
-            style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "50%",
-              background: "rgba(255,255,255,0.2)",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              cursor: "pointer",
-              transition: "0.3s",
-            }}
-          >
-            👤
-          </div>
+        {/* BOTÓN HAMBURGUESA */}
+        <div
+          onClick={() => setOpen(!open)}
+          style={{
+            width: "40px",
+            height: "40px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            cursor: "pointer",
+            borderRadius: "8px",
+            background: "rgba(255,255,255,0.1)",
+          }}
+        >
+          <span style={{ fontSize: "26px" }}>☰</span>
         </div>
       </header>
 
+      {/* MENÚ LATERAL */}
+      <aside
+        style={{
+          position: "fixed",
+          top: 0,
+          left: open ? 0 : "-260px",
+          width: "260px",
+          height: "100vh",
+          background: "rgba(0,0,0,0.85)",
+          backdropFilter: "blur(12px)",
+          padding: "24px",
+          transition: "0.3s",
+          zIndex: 300,
+          borderRight: "1px solid rgba(255,255,255,0.1)",
+        }}
+      >
+        <h2 style={{ marginBottom: "20px", color: "#4db8ff" }}>Menú</h2>
+
+        <MenuItem to="/">🏠 Inicio</MenuItem>
+        <MenuItem to="/clientes">👥 Clientes</MenuItem>
+        <MenuItem to="/viviendas">🏡 Viviendas</MenuItem>
+        <MenuItem to="/tecnicos">🛠 Técnicos</MenuItem>
+        <MenuItem to="/inspecciones">📋 Inspecciones</MenuItem>
+        <MenuItem to="/contratos">📑 Contratos</MenuItem>
+        <MenuItem to="/facturas">💶 Facturas</MenuItem>
+        <MenuItem to="/facturas/filtros">🔍 Filtros</MenuItem>
+        <MenuItem to="/facturas/estadisticas">📊 Estadísticas</MenuItem>
+        <MenuItem to="/extras">✨ Extras</MenuItem>
+        <MenuItem to="/ajustes">⚙ Ajustes</MenuItem>
+      </aside>
+
+      {/* CONTENIDO */}
       <main style={{ padding: "32px" }}>{children}</main>
     </div>
   );
-};
+}
 
-const MenuButton = ({ to, children }) => {
+function MenuItem({ to, children }) {
   return (
     <Link
       to={to}
       style={{
-        padding: "10px 18px",
-        borderRadius: "12px",
+        display: "block",
+        padding: "12px 16px",
+        marginBottom: "12px",
+        borderRadius: "10px",
         background: "rgba(255,255,255,0.05)",
-        color: "#ffffff",
+        color: "#fff",
         textDecoration: "none",
-        fontSize: "14px",
-        fontWeight: "500",
+        fontSize: "16px",
         transition: "0.3s",
         border: "1px solid rgba(255,255,255,0.1)",
       }}
@@ -135,6 +123,4 @@ const MenuButton = ({ to, children }) => {
       {children}
     </Link>
   );
-};
-
-export default Menu;
+}
