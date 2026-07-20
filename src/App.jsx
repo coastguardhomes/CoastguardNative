@@ -4,6 +4,7 @@ import { supabase } from "./supabaseClient";
 
 // LOGIN
 import Login from "./pages/Login/Login.jsx";
+import Register from "./pages/Register/Register.jsx";
 
 // CLIENTES
 import Clientes from "./pages/clientes/Clientes.jsx";
@@ -45,7 +46,6 @@ import VerFactura from "./pages/facturas/VerFactura.jsx";
 import FiltrosFacturas from "./pages/facturas/FiltrosFacturas.jsx";
 import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas.jsx";
 
-// 🔐 PROTECCIÓN REAL (FUNCIONA)
 function ProtectedRoute({ children }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +58,6 @@ function ProtectedRoute({ children }) {
   }, []);
 
   if (loading) return null;
-
   if (!session) return <Navigate to="/login" replace />;
 
   return children;
@@ -81,41 +80,35 @@ export default function App() {
     <Router>
       <Routes>
 
-        {/* LOGIN */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-        {/* CLIENTES */}
         <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
         <Route path="/clientes/nuevo" element={<ProtectedRoute><NuevoCliente /></ProtectedRoute>} />
         <Route path="/clientes/editar/:id" element={<ProtectedRoute><EditarCliente /></ProtectedRoute>} />
         <Route path="/clientes/ver/:id" element={<ProtectedRoute><VerCliente /></ProtectedRoute>} />
 
-        {/* VIVIENDAS */}
         <Route path="/viviendas" element={<ProtectedRoute><Viviendas /></ProtectedRoute>} />
         <Route path="/viviendas/crear" element={<ProtectedRoute><CrearVivienda /></ProtectedRoute>} />
         <Route path="/viviendas/editar/:id" element={<ProtectedRoute><EditarVivienda /></ProtectedRoute>} />
         <Route path="/viviendas/ver/:id" element={<ProtectedRoute><VerVivienda /></ProtectedRoute>} />
 
-        {/* TÉCNICOS */}
         <Route path="/tecnicos" element={<ProtectedRoute><Tecnicos /></ProtectedRoute>} />
         <Route path="/tecnicos/nuevo" element={<ProtectedRoute><NuevoTecnico /></ProtectedRoute>} />
         <Route path="/tecnicos/editar/:id" element={<ProtectedRoute><EditarTecnico /></ProtectedRoute>} />
         <Route path="/tecnicos/ver/:id" element={<ProtectedRoute><VerTecnico /></ProtectedRoute>} />
 
-        {/* CONTRATOS */}
         <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
         <Route path="/contratos/crear" element={<ProtectedRoute><CrearContrato /></ProtectedRoute>} />
         <Route path="/contratos/editar/:id" element={<ProtectedRoute><EditarContrato /></ProtectedRoute>} />
         <Route path="/contratos/ver/:id" element={<ProtectedRoute><VerContrato /></ProtectedRoute>} />
 
-        {/* INSPECCIONES */}
         <Route path="/inspecciones" element={<ProtectedRoute><Inspecciones /></ProtectedRoute>} />
         <Route path="/inspecciones/nueva" element={<ProtectedRoute><NuevaInspeccion /></ProtectedRoute>} />
         <Route path="/inspecciones/editar/:id" element={<ProtectedRoute><EditarInspeccion /></ProtectedRoute>} />
         <Route path="/inspecciones/ver/:id" element={<ProtectedRoute><VerInspeccion /></ProtectedRoute>} />
         <Route path="/inspecciones/galeria/:id" element={<ProtectedRoute><GaleriaInspeccion /></ProtectedRoute>} />
 
-        {/* FACTURAS */}
         <Route path="/facturas" element={<ProtectedRoute><Facturas /></ProtectedRoute>} />
         <Route path="/facturas/lista" element={<ProtectedRoute><FacturasLista /></ProtectedRoute>} />
         <Route path="/facturas/crear" element={<ProtectedRoute><CrearFactura /></ProtectedRoute>} />
@@ -124,7 +117,6 @@ export default function App() {
         <Route path="/facturas/filtros" element={<ProtectedRoute><FiltrosFacturas /></ProtectedRoute>} />
         <Route path="/facturas/estadisticas" element={<ProtectedRoute><EstadisticasFacturas /></ProtectedRoute>} />
 
-        {/* DEFAULT */}
         <Route path="*" element={<Navigate to={session ? "/clientes" : "/login"} replace />} />
 
       </Routes>
