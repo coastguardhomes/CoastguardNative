@@ -36,7 +36,7 @@ import VerTecnico from "./pages/tecnicos/VerTecnico.jsx";
 // CONTRATOS
 import Contratos from "./pages/contratos/Contratos.jsx";
 import CrearContrato from "./pages/contratos/CrearContrato.jsx";
-import EditarContrato from "./pages/contratos/EditarContrato.jsx;
+import EditarContrato from "./pages/contratos/EditarContrato.jsx";
 import VerContrato from "./pages/contratos/VerContrato.jsx";
 
 // INSPECCIONES
@@ -51,7 +51,7 @@ import Facturas from "./pages/facturas/Facturas.jsx";
 import FacturasLista from "./pages/facturas/FacturasLista.jsx";
 import CrearFactura from "./pages/facturas/CrearFactura.jsx";
 import EditarFactura from "./pages/facturas/EditarFactura.jsx";
-import VerFactura from "./pages/facturas/VerFactura.jsx;
+import VerFactura from "./pages/facturas/VerFactura.jsx";
 import FiltrosFacturas from "./pages/facturas/FiltrosFacturas.jsx";
 import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas.jsx";
 
@@ -93,7 +93,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* RUTA PRINCIPAL ADMIN → MENU */}
+        {/* RUTA PRINCIPAL ADMIN */}
         <Route
           path="/admin"
           element={
@@ -103,7 +103,7 @@ export default function App() {
           }
         />
 
-        {/* RUTA PRINCIPAL CLIENTE → CLIENTE DASHBOARD */}
+        {/* RUTA PRINCIPAL CLIENTE */}
         <Route
           path="/dashboard"
           element={
@@ -113,7 +113,7 @@ export default function App() {
           }
         />
 
-        {/* RUTA PRINCIPAL TÉCNICO → TÉCNICO DASHBOARD */}
+        {/* RUTA PRINCIPAL TÉCNICO */}
         <Route
           path="/tecnico"
           element={
@@ -124,240 +124,44 @@ export default function App() {
         />
 
         {/* CLIENTES */}
-        <Route
-          path="/clientes"
-          element={
-            <ProtectedRoute>
-              <Clientes />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/clientes/nuevo"
-          element={
-            <ProtectedRoute>
-              <NuevoCliente />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/clientes/editar/:id"
-          element={
-            <ProtectedRoute>
-              <EditarCliente />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/clientes/ver/:id"
-          element={
-            <ProtectedRoute>
-              <VerCliente />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+        <Route path="/clientes/nuevo" element={<ProtectedRoute><NuevoCliente /></ProtectedRoute>} />
+        <Route path="/clientes/editar/:id" element={<ProtectedRoute><EditarCliente /></ProtectedRoute>} />
+        <Route path="/clientes/ver/:id" element={<ProtectedRoute><VerCliente /></ProtectedRoute>} />
 
         {/* VIVIENDAS */}
-        <Route
-          path="/viviendas"
-          element={
-            <ProtectedRoute>
-              <Viviendas />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/viviendas/crear"
-          element={
-            <ProtectedRoute>
-              <CrearVivienda />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/viviendas/editar/:id"
-          element={
-            <ProtectedRoute>
-              <EditarVivienda />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/viviendas/ver/:id"
-          element={
-            <ProtectedRoute>
-              <VerVivienda />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/viviendas" element={<ProtectedRoute><Viviendas /></ProtectedRoute>} />
+        <Route path="/viviendas/crear" element={<ProtectedRoute><CrearVivienda /></ProtectedRoute>} />
+        <Route path="/viviendas/editar/:id" element={<ProtectedRoute><EditarVivienda /></ProtectedRoute>} />
+        <Route path="/viviendas/ver/:id" element={<ProtectedRoute><VerVivienda /></ProtectedRoute>} />
 
         {/* TÉCNICOS */}
-        <Route
-          path="/tecnicos"
-          element={
-            <ProtectedRoute>
-              <Tecnicos />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/tecnicos/nuevo"
-          element={
-            <ProtectedRoute>
-              <NuevoTecnico />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/tecnicos/editar/:id"
-          element={
-            <ProtectedRoute>
-              <EditarTecnico />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/tecnicos/ver/:id"
-          element={
-            <ProtectedRoute>
-              <VerTecnico />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/tecnicos" element={<ProtectedRoute><Tecnicos /></ProtectedRoute>} />
+        <Route path="/tecnicos/nuevo" element={<ProtectedRoute><NuevoTecnico /></ProtectedRoute>} />
+        <Route path="/tecnicos/editar/:id" element={<ProtectedRoute><EditarTecnico /></ProtectedRoute>} />
+        <Route path="/tecnicos/ver/:id" element={<ProtectedRoute><VerTecnico /></ProtectedRoute>} />
 
         {/* CONTRATOS */}
-        <Route
-          path="/contratos"
-          element={
-            <ProtectedRoute>
-              <Contratos />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/contratos/crear"
-          element={
-            <ProtectedRoute>
-              <CrearContrato />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/contratos/editar/:id"
-          element={
-            <ProtectedRoute>
-              <EditarContrato />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/contratos/ver/:id"
-          element={
-            <ProtectedRoute>
-              <VerContrato />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
+        <Route path="/contratos/crear" element={<ProtectedRoute><CrearContrato /></ProtectedRoute>} />
+        <Route path="/contratos/editar/:id" element={<ProtectedRoute><EditarContrato /></ProtectedRoute>} />
+        <Route path="/contratos/ver/:id" element={<ProtectedRoute><VerContrato /></ProtectedRoute>} />
 
         {/* INSPECCIONES */}
-        <Route
-          path="/inspecciones"
-          element={
-            <ProtectedRoute>
-              <Inspecciones />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/inspecciones/nueva"
-          element={
-            <ProtectedRoute>
-              <NuevaInspeccion />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/inspecciones/editar/:id"
-          element={
-            <ProtectedRoute>
-              <EditarInspeccion />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/inspecciones/ver/:id"
-          element={
-            <ProtectedRoute>
-              <VerInspeccion />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/inspecciones/galeria/:id"
-          element={
-            <ProtectedRoute>
-              <GaleriaInspeccion />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/inspecciones" element={<ProtectedRoute><Inspecciones /></ProtectedRoute>} />
+        <Route path="/inspecciones/nueva" element={<ProtectedRoute><NuevaInspeccion /></ProtectedRoute>} />
+        <Route path="/inspecciones/editar/:id" element={<ProtectedRoute><EditarInspeccion /></ProtectedRoute>} />
+        <Route path="/inspecciones/ver/:id" element={<ProtectedRoute><VerInspeccion /></ProtectedRoute>} />
+        <Route path="/inspecciones/galeria/:id" element={<ProtectedRoute><GaleriaInspeccion /></ProtectedRoute>} />
 
         {/* FACTURAS */}
-        <Route
-          path="/facturas"
-          element={
-            <ProtectedRoute>
-              <Facturas />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/facturas/lista"
-          element={
-            <ProtectedRoute>
-              <FacturasLista />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/facturas/crear"
-          element={
-            <ProtectedRoute>
-              <CrearFactura />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/facturas/editar/:id"
-          element={
-            <ProtectedRoute>
-              <EditarFactura />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/facturas/ver/:id"
-          element={
-            <ProtectedRoute>
-              <VerFactura />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/facturas/filtros"
-          element={
-            <ProtectedRoute>
-              <FiltrosFacturas />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/facturas/estadisticas"
-          element={
-            <ProtectedRoute>
-              <EstadisticasFacturas />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/facturas" element={<ProtectedRoute><Facturas /></ProtectedRoute>} />
+        <Route path="/facturas/lista" element={<ProtectedRoute><FacturasLista /></ProtectedRoute>} />
+        <Route path="/facturas/crear" element={<ProtectedRoute><CrearFactura /></ProtectedRoute>} />
+        <Route path="/facturas/editar/:id" element={<ProtectedRoute><EditarFactura /></ProtectedRoute>} />
+        <Route path="/facturas/ver/:id" element={<ProtectedRoute><VerFactura /></ProtectedRoute>} />
+        <Route path="/facturas/filtros" element={<ProtectedRoute><FiltrosFacturas /></ProtectedRoute>} />
+        <Route path="/facturas/estadisticas" element={<ProtectedRoute><EstadisticasFacturas /></ProtectedRoute>} />
 
         {/* CUALQUIER OTRA RUTA */}
         <Route
