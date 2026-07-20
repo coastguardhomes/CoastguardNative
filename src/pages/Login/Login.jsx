@@ -139,6 +139,25 @@ export default function Login() {
         >
           {loading ? "Entrando..." : "Entrar"}
         </button>
+
+        {/* BOTÓN DE REGISTRO AÑADIDO */}
+        <button
+          onClick={() => navigate("/register")}
+          style={{
+            width: "100%",
+            padding: "12px",
+            background: "transparent",
+            border: "none",
+            color: "#4db8ff",
+            fontWeight: "600",
+            fontSize: "15px",
+            cursor: "pointer",
+            marginTop: "15px",
+            textDecoration: "underline",
+          }}
+        >
+          Registrarse
+        </button>
       </div>
     </div>
   );
