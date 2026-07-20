@@ -29,7 +29,7 @@ import CrearContrato from "./pages/contratos/CrearContrato.jsx";
 import EditarContrato from "./pages/contratos/EditarContrato.jsx";
 import VerContrato from "./pages/contratos/VerContrato.jsx";
 
-// INSPECCIONES (solo archivos que EXISTEN)
+// INSPECCIONES
 import Inspecciones from "./pages/inspecciones/Inspecciones.jsx";
 import NuevaInspeccion from "./pages/inspecciones/NuevaInspeccion.jsx";
 import EditarInspeccion from "./pages/inspecciones/EditarInspeccion.jsx";
@@ -45,10 +45,22 @@ import VerFactura from "./pages/facturas/VerFactura.jsx";
 import FiltrosFacturas from "./pages/facturas/FiltrosFacturas.jsx";
 import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas.jsx";
 
-// PROTECCIÓN
+// 🔐 PROTECCIÓN REAL (FUNCIONA)
 function ProtectedRoute({ children }) {
-  const session = supabase.auth.getSession();
-  if (!session.data.session) return <Navigate to="/login" replace />;
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return null;
+
+  if (!session) return <Navigate to="/login" replace />;
+
   return children;
 }
 
