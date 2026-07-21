@@ -91,34 +91,53 @@ export default function FotosInspeccion() {
 
   return (
     <Menu>
-      <div style={{ padding: "20px", color: "#fff", fontFamily: "Inter, sans-serif" }}>
+      <div
+        style={{
+          padding: "20px",
+          background: "#0a0f1a",
+          minHeight: "100vh",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
         <h1
           style={{
             fontSize: "28px",
             fontWeight: "700",
-            marginBottom: "20px",
+            marginBottom: "25px",
             color: "#4db8ff",
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            textAlign: "center",
           }}
         >
           Fotos de la Inspección
         </h1>
 
         {mensaje && (
-          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+          <p
+            style={{
+              marginBottom: "15px",
+              color: "#4db8ff",
+              fontWeight: "600",
+            }}
+          >
+            {mensaje}
+          </p>
         )}
 
+        {/* Botón subir foto */}
         <label
           style={{
             display: "block",
-            marginBottom: "10px",
+            marginBottom: "20px",
             background: "#4db8ff",
             color: "#000",
-            padding: "12px",
-            borderRadius: "8px",
+            padding: "14px",
+            borderRadius: "10px",
             textAlign: "center",
             fontWeight: "700",
             cursor: "pointer",
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
           Subir foto
@@ -130,6 +149,7 @@ export default function FotosInspeccion() {
           />
         </label>
 
+        {/* Grid de fotos */}
         {loading ? (
           <p>Cargando fotos...</p>
         ) : fotos.length === 0 ? (
@@ -138,12 +158,21 @@ export default function FotosInspeccion() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-              gap: "15px",
+              gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+              gap: "18px",
             }}
           >
             {fotos.map((foto) => (
-              <div key={foto.id}>
+              <div
+                key={foto.id}
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  padding: "12px",
+                  borderRadius: "14px",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+                }}
+              >
                 <img
                   src={foto.url}
                   alt="Foto inspección"
@@ -151,30 +180,8 @@ export default function FotosInspeccion() {
                     width: "100%",
                     borderRadius: "10px",
                     border: "2px solid #4db8ff",
+                    marginBottom: "10px",
                   }}
                 />
 
                 <button
-                  onClick={() => borrarFoto(foto)}
-                  style={{
-                    marginTop: "8px",
-                    background: "red",
-                    color: "#fff",
-                    padding: "10px",
-                    borderRadius: "8px",
-                    border: "none",
-                    width: "100%",
-                    fontWeight: "700",
-                    cursor: "pointer",
-                  }}
-                >
-                  Borrar
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </Menu>
-  );
-}
