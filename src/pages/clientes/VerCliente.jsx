@@ -8,6 +8,7 @@ export default function VerCliente() {
   const navigate = useNavigate();
 
   const [cliente, setCliente] = useState(null);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarCliente() {
@@ -18,7 +19,7 @@ export default function VerCliente() {
         .single();
 
       if (error) {
-        alert("Error cargando cliente");
+        setMensaje("Error cargando cliente");
         return;
       }
 
@@ -35,11 +36,11 @@ export default function VerCliente() {
       .eq("id", id);
 
     if (error) {
-      alert("Error eliminando cliente");
+      setMensaje("Error eliminando cliente");
       return;
     }
 
-    alert("Cliente eliminado correctamente");
+    setMensaje("Cliente eliminado correctamente");
     navigate("/clientes");
   }
 
@@ -58,23 +59,44 @@ export default function VerCliente() {
       <div style={{ padding: "20px", color: "#fff" }}>
         <h1 style={{ color: "#4db8ff" }}>{cliente.nombre}</h1>
 
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
+
         <p><strong>Teléfono:</strong> {cliente.telefono}</p>
         <p><strong>Email:</strong> {cliente.email}</p>
         <p><strong>Dirección:</strong> {cliente.direccion}</p>
 
         <Link to={`/clientes/editar/${id}`}>
-          <button style={{ marginTop: "15px" }}>Editar cliente</button>
+          <button
+            style={{
+              marginTop: "15px",
+              padding: "12px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              cursor: "pointer",
+            }}
+          >
+            Editar cliente
+          </button>
         </Link>
 
         <button
           onClick={eliminarCliente}
           style={{
             marginTop: "15px",
+            padding: "12px",
+            width: "100%",
             background: "red",
             color: "#fff",
-            padding: "10px",
-            borderRadius: "6px",
+            borderRadius: "8px",
             border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
           }}
         >
           Eliminar cliente
