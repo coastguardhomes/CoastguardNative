@@ -3,12 +3,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 
 export default function VerPDFContrato() {
-  const { id } = useParams(); // ID del contrato
+  const { id } = useParams();
   const navigate = useNavigate();
   const [pdfURL, setPdfURL] = useState("");
 
   const cargarPDF = async () => {
-    // 1. Cargar contrato
     const { data, error } = await supabase
       .from("contratos")
       .select("pdf_url")
@@ -25,7 +24,6 @@ export default function VerPDFContrato() {
       return;
     }
 
-    // 2. Obtener URL pública del PDF
     const { data: publicData } = supabase.storage
       .from("contratos")
       .getPublicUrl(data.pdf_url);
@@ -38,49 +36,101 @@ export default function VerPDFContrato() {
   }, []);
 
   if (!pdfURL) {
-    return <p style={{ padding: 20 }}>Cargando PDF...</p>;
+    return (
+      <div
+        style={{
+          height: "100%",
+          background: "#0a0f1a",
+          color: "#fff",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          fontFamily: "Inter, sans-serif",
+          fontSize: "18px",
+        }}
+      >
+        Cargando PDF...
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Contrato PDF #{id}</h2>
+    <div
+      style={{
+        height: "100%",
+        background: "#0a0f1a",
+        padding: "20px",
+        color: "#fff",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <h2
+        style={{
+          textAlign: "center",
+          color: "#4db8ff",
+          marginBottom: "25px",
+          fontSize: "28px",
+          fontWeight: "700",
+          textShadow: "0 0 8px rgba(0,153,255,0.6)",
+        }}
+      >
+        Contrato PDF #{id}
+      </h2>
 
       <button
         onClick={() => navigate(-1)}
         style={{
-          padding: "8px 14px",
+          width: "100%",
+          padding: "12px",
           backgroundColor: "#6c757d",
           color: "#fff",
           border: "none",
-          borderRadius: "4px",
+          borderRadius: "8px",
           cursor: "pointer",
-          marginBottom: 12,
+          marginBottom: "20px",
+          fontWeight: "600",
+          fontSize: "15px",
         }}
       >
         Volver
       </button>
 
-      <iframe
-        src={pdfURL}
-        title="PDF Contrato"
+      <div
         style={{
-          width: "100%",
-          height: "80vh",
-          border: "1px solid #ccc",
-          borderRadius: 6,
+          background: "rgba(255,255,255,0.05)",
+          padding: "10px",
+          borderRadius: "14px",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          marginBottom: "20px",
         }}
-      />
+      >
+        <iframe
+          src={pdfURL}
+          title="PDF Contrato"
+          style={{
+            width: "100%",
+            height: "70vh",
+            border: "none",
+            borderRadius: "10px",
+            background: "#fff",
+          }}
+        />
+      </div>
 
       <button
         onClick={() => window.open(pdfURL, "_blank")}
         style={{
-          padding: "10px 16px",
+          width: "100%",
+          padding: "12px",
           backgroundColor: "#28a745",
           color: "#fff",
           border: "none",
-          borderRadius: "4px",
+          borderRadius: "8px",
           cursor: "pointer",
-          marginTop: 12,
+          fontWeight: "700",
+          fontSize: "16px",
+          boxShadow: "0 0 10px rgba(0,153,255,0.4)",
         }}
       >
         Abrir en nueva pestaña
