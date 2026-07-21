@@ -20,3 +20,4 @@ Aplicación móvil y web desarrollada con **React + Vite + Capacitor**, diseñad
 Clonar el repositorio:
 force build
 Build nuevo 15/06
+Actualización del workflow.
