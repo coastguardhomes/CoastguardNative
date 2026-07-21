@@ -21,13 +21,57 @@ export default function EstadisticasFacturas() {
   }, []);
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Estadísticas de Facturación</h2>
+    <div
+      style={{
+        padding: "20px",
+        background: "#0a0f1a",
+        minHeight: "100vh",
+        color: "#fff",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <h2
+        style={{
+          textAlign: "center",
+          color: "#4db8ff",
+          marginBottom: "25px",
+          fontSize: "28px",
+          fontWeight: "700",
+          textShadow: "0 0 8px rgba(0,153,255,0.6)",
+        }}
+      >
+        Estadísticas de Facturación
+      </h2>
 
-      <p>Total facturas: {stats.total}</p>
-      <p>Pagadas: {stats.pagadas}</p>
-      <p>Pendientes: {stats.pendientes}</p>
-      <p>Total facturado: €{stats.suma}</p>
+      <div
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          padding: "20px",
+          borderRadius: "14px",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+        }}
+      >
+        <p style={{ marginBottom: "12px", fontSize: "18px" }}>
+          <strong style={{ color: "#4db8ff" }}>Total facturas:</strong>{" "}
+          {stats.total}
+        </p>
+
+        <p style={{ marginBottom: "12px", fontSize: "18px" }}>
+          <strong style={{ color: "#4db8ff" }}>Pagadas:</strong>{" "}
+          {stats.pagadas}
+        </p>
+
+        <p style={{ marginBottom: "12px", fontSize: "18px" }}>
+          <strong style={{ color: "#4db8ff" }}>Pendientes:</strong>{" "}
+          {stats.pendientes}
+        </p>
+
+        <p style={{ marginBottom: "12px", fontSize: "18px" }}>
+          <strong style={{ color: "#4db8ff" }}>Total facturado:</strong> €
+          {stats.suma}
+        </p>
+      </div>
     </div>
   );
 }
