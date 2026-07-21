@@ -5,6 +5,7 @@ import { supabase } from "../../supabaseClient";
 export default function VerPDF() {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarPDF() {
@@ -16,6 +17,7 @@ export default function VerPDF() {
         .single();
 
       if (error) {
+        setMensaje("Error cargando PDF");
         setLoading(false);
         return;
       }
@@ -31,6 +33,10 @@ export default function VerPDF() {
     <Menu>
       <div style={{ padding: 20, color: "#fff" }}>
         <h1 style={{ color: "#4db8ff" }}>PDF de Inspección</h1>
+
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
 
         {loading ? (
           <p>Cargando PDF...</p>
@@ -50,14 +56,21 @@ export default function VerPDF() {
               }}
             />
 
-            <a href={pdfUrl} download style={{ display: "inline-block", marginTop: "15px" }}>
+            <a
+              href={pdfUrl}
+              download
+              style={{ display: "inline-block", marginTop: "15px", width: "100%" }}
+            >
               <button
                 style={{
-                  padding: "10px 15px",
+                  padding: "12px",
+                  width: "100%",
                   background: "#4db8ff",
-                  color: "#fff",
-                  borderRadius: "6px",
+                  color: "#000",
+                  borderRadius: "8px",
                   border: "none",
+                  fontWeight: "700",
+                  cursor: "pointer",
                 }}
               >
                 Descargar PDF
