@@ -36,6 +36,11 @@ export default function EditarCliente() {
   }, [id]);
 
   async function guardarCambios() {
+    if (!form.nombre || !form.telefono) {
+      setMensaje("Nombre y teléfono son obligatorios");
+      return;
+    }
+
     const { error } = await supabase
       .from("clientes")
       .update(form)
@@ -50,79 +55,92 @@ export default function EditarCliente() {
     navigate("/clientes");
   }
 
+  const inputStyle = {
+    width: "100%",
+    padding: "12px",
+    marginBottom: "12px",
+    borderRadius: "10px",
+    border: "1px solid #4db8ff",
+    background: "#0d1b2a",
+    color: "#fff",
+    fontSize: "16px",
+  };
+
   return (
     <Menu>
-      <div style={{ padding: "20px", color: "#fff" }}>
-        <h1 style={{ color: "#4db8ff" }}>Editar Cliente</h1>
+      <div
+        style={{
+          padding: "20px",
+          color: "#fff",
+          background: "#0a0f1a",
+          minHeight: "100vh",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        <h1
+          style={{
+            color: "#4db8ff",
+            marginBottom: "20px",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+          }}
+        >
+          Editar Cliente
+        </h1>
 
         {mensaje && (
-          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+          <p
+            style={{
+              marginBottom: "15px",
+              color: "#4db8ff",
+              fontWeight: "600",
+            }}
+          >
+            {mensaje}
+          </p>
         )}
 
         <label>Nombre</label>
         <input
+          style={inputStyle}
           value={form.nombre}
           onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-          style={{
-            padding: "10px",
-            width: "100%",
-            marginBottom: "10px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
         />
 
         <label>Teléfono</label>
         <input
+          style={inputStyle}
           value={form.telefono}
           onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-          style={{
-            padding: "10px",
-            width: "100%",
-            marginBottom: "10px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
         />
 
         <label>Email</label>
         <input
+          style={inputStyle}
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
-          style={{
-            padding: "10px",
-            width: "100%",
-            marginBottom: "10px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
         />
 
         <label>Dirección</label>
         <input
+          style={inputStyle}
           value={form.direccion}
           onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-          style={{
-            padding: "10px",
-            width: "100%",
-            marginBottom: "10px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
         />
 
         <button
           onClick={guardarCambios}
           style={{
             marginTop: "20px",
-            padding: "12px",
             width: "100%",
+            padding: "14px",
             background: "#4db8ff",
             color: "#000",
-            borderRadius: "8px",
+            borderRadius: "10px",
             border: "none",
             fontWeight: "700",
+            fontSize: "17px",
             cursor: "pointer",
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
           Guardar cambios
