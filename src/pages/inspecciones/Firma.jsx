@@ -69,6 +69,8 @@ export default function Firma() {
       <div
         style={{
           padding: "20px",
+          background: "#0a0f1a",
+          minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
         }}
@@ -77,68 +79,94 @@ export default function Firma() {
           style={{
             fontSize: "28px",
             fontWeight: "700",
-            marginBottom: "20px",
+            marginBottom: "25px",
             color: "#4db8ff",
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            textAlign: "center",
           }}
         >
           Firma del Cliente
         </h1>
 
         {mensaje && (
-          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+          <p
+            style={{
+              marginBottom: "15px",
+              color: "#4db8ff",
+              fontWeight: "600",
+            }}
+          >
+            {mensaje}
+          </p>
         )}
 
-        <p style={{ opacity: 0.8, marginBottom: "20px" }}>
+        <p style={{ opacity: 0.8, marginBottom: "20px", textAlign: "center" }}>
           El cliente debe firmar la inspección realizada.
         </p>
 
-        <canvas
-          ref={canvasRef}
-          width={350}
-          height={250}
+        {/* Tarjeta CoastGuard */}
+        <div
           style={{
-            background: "#fff",
-            borderRadius: "10px",
-            border: "2px solid #4db8ff",
-            display: "block",
-            marginBottom: "20px",
-          }}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-        />
-
-        <button
-          onClick={limpiar}
-          style={{
-            marginRight: "10px",
-            padding: "12px",
-            background: "#333",
-            color: "#fff",
-            borderRadius: "8px",
-            border: "none",
-            cursor: "pointer",
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "14px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            marginBottom: "25px",
           }}
         >
-          Limpiar firma
-        </button>
+          <canvas
+            ref={canvasRef}
+            width={350}
+            height={250}
+            style={{
+              background: "#fff",
+              borderRadius: "10px",
+              border: "2px solid #4db8ff",
+              display: "block",
+              margin: "0 auto 20px auto",
+            }}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+          />
 
-        <button
-          onClick={guardarFirma}
-          style={{
-            padding: "12px",
-            background: "#4db8ff",
-            color: "#000",
-            borderRadius: "8px",
-            border: "none",
-            fontWeight: "700",
-            cursor: "pointer",
-          }}
-        >
-          Guardar firma
-        </button>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              onClick={limpiar}
+              style={{
+                flex: 1,
+                padding: "14px",
+                background: "rgba(255,255,255,0.08)",
+                color: "#fff",
+                borderRadius: "10px",
+                border: "none",
+                fontWeight: "700",
+                cursor: "pointer",
+              }}
+            >
+              Limpiar firma
+            </button>
+
+            <button
+              onClick={guardarFirma}
+              style={{
+                flex: 1,
+                padding: "14px",
+                background: "#4db8ff",
+                color: "#000",
+                borderRadius: "10px",
+                border: "none",
+                fontWeight: "700",
+                cursor: "pointer",
+                boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+              }}
+            >
+              Guardar firma
+            </button>
+          </div>
+        </div>
       </div>
     </Menu>
   );
