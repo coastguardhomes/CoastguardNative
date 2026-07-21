@@ -8,6 +8,7 @@ export default function VerInspeccion() {
   const navigate = useNavigate();
 
   const [inspeccion, setInspeccion] = useState(null);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargar() {
@@ -18,7 +19,7 @@ export default function VerInspeccion() {
         .single();
 
       if (error) {
-        alert("Error cargando inspección");
+        setMensaje("Error cargando inspección");
         return;
       }
 
@@ -35,11 +36,11 @@ export default function VerInspeccion() {
       .eq("id", id);
 
     if (error) {
-      alert("Error eliminando inspección");
+      setMensaje("Error eliminando inspección");
       return;
     }
 
-    alert("Inspección eliminada");
+    setMensaje("Inspección eliminada correctamente");
     navigate("/inspecciones");
   }
 
@@ -56,6 +57,10 @@ export default function VerInspeccion() {
       <div style={{ padding: 20, color: "#fff" }}>
         <h1 style={{ color: "#4db8ff" }}>Inspección #{inspeccion.id}</h1>
 
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
+
         <p><strong>Vivienda:</strong> {inspeccion.vivienda_id}</p>
         <p><strong>Técnico:</strong> {inspeccion.tecnico_id}</p>
         <p><strong>Fecha:</strong> {inspeccion.fecha}</p>
@@ -65,38 +70,125 @@ export default function VerInspeccion() {
         <h2 style={{ marginTop: 20, color: "#4db8ff" }}>Acciones</h2>
 
         <Link to={`/inspecciones/checklist/${id}`}>
-          <button style={{ marginTop: 10 }}>Checklist</button>
+          <button
+            style={{
+              marginTop: "10px",
+              padding: "12px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              cursor: "pointer",
+            }}
+          >
+            Checklist
+          </button>
         </Link>
 
         <Link to={`/inspecciones/fotos/${id}`}>
-          <button style={{ marginTop: 10 }}>Fotos</button>
+          <button
+            style={{
+              marginTop: "10px",
+              padding: "12px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              cursor: "pointer",
+            }}
+          >
+            Fotos
+          </button>
         </Link>
 
         <Link to={`/inspecciones/firma/${id}`}>
-          <button style={{ marginTop: 10 }}>Firma</button>
+          <button
+            style={{
+              marginTop: "10px",
+              padding: "12px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              cursor: "pointer",
+            }}
+          >
+            Firma
+          </button>
         </Link>
 
         <Link to={`/inspecciones/pdf/${id}`}>
-          <button style={{ marginTop: 10 }}>Ver PDF</button>
+          <button
+            style={{
+              marginTop: "10px",
+              padding: "12px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              cursor: "pointer",
+            }}
+          >
+            Ver PDF
+          </button>
         </Link>
 
         <Link to={`/inspecciones/detalle/${id}`}>
-          <button style={{ marginTop: 10 }}>Detalle completo</button>
+          <button
+            style={{
+              marginTop: "10px",
+              padding: "12px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              cursor: "pointer",
+            }}
+          >
+            Detalle completo
+          </button>
         </Link>
 
         <Link to={`/inspecciones/editar/${id}`}>
-          <button style={{ marginTop: 10 }}>Editar inspección</button>
+          <button
+            style={{
+              marginTop: "10px",
+              padding: "12px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              cursor: "pointer",
+            }}
+          >
+            Editar inspección
+          </button>
         </Link>
 
         <button
           onClick={eliminar}
           style={{
-            marginTop: 20,
+            marginTop: "20px",
+            padding: "12px",
+            width: "100%",
             background: "red",
             color: "#fff",
-            padding: "10px",
-            borderRadius: "6px",
+            borderRadius: "8px",
             border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
           }}
         >
           Eliminar inspección
