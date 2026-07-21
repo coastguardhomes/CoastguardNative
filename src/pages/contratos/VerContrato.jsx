@@ -47,37 +47,95 @@ export default function VerContrato() {
   if (!contrato)
     return (
       <Menu>
-        <div style={{ padding: "20px", color: "#fff" }}>
-          <p>Cargando...</p>
+        <div
+          style={{
+            height: "100vh",
+            background: "#0a0f1a",
+            color: "#fff",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontFamily: "Inter, sans-serif",
+            fontSize: "18px",
+          }}
+        >
+          Cargando...
         </div>
       </Menu>
     );
 
   return (
     <Menu>
-      <div style={{ padding: "20px", color: "#fff" }}>
-        <h1 style={{ color: "#4db8ff" }}>Contrato #{id}</h1>
+      <div
+        style={{
+          padding: "20px",
+          background: "#0a0f1a",
+          minHeight: "100vh",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        <h1
+          style={{
+            color: "#4db8ff",
+            marginBottom: "25px",
+            fontSize: "28px",
+            fontWeight: "700",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+          }}
+        >
+          Contrato #{id}
+        </h1>
 
         {mensaje && (
-          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+          <p
+            style={{
+              marginBottom: "15px",
+              color: "#4db8ff",
+              fontWeight: "600",
+            }}
+          >
+            {mensaje}
+          </p>
         )}
 
-        <p><strong>Fecha:</strong> {contrato.fecha}</p>
-        <p><strong>Precio:</strong> {contrato.precio}€</p>
-        <p><strong>Notas:</strong> {contrato.notas}</p>
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "14px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            marginBottom: "20px",
+          }}
+        >
+          <p style={{ marginBottom: "10px" }}>
+            <strong style={{ color: "#4db8ff" }}>Fecha:</strong> {contrato.fecha}
+          </p>
+
+          <p style={{ marginBottom: "10px" }}>
+            <strong style={{ color: "#4db8ff" }}>Precio:</strong> {contrato.precio}€
+          </p>
+
+          <p style={{ marginBottom: "10px" }}>
+            <strong style={{ color: "#4db8ff" }}>Notas:</strong> {contrato.notas}
+          </p>
+        </div>
 
         <button
           onClick={() => navigate(`/contratos/editar/${id}`)}
           style={{
-            marginTop: "15px",
-            padding: "12px",
+            padding: "14px",
             width: "100%",
             background: "#4db8ff",
             color: "#000",
-            borderRadius: "8px",
+            borderRadius: "10px",
             border: "none",
             fontWeight: "700",
+            fontSize: "17px",
             cursor: "pointer",
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+            marginBottom: "15px",
           }}
         >
           Editar contrato
@@ -86,20 +144,12 @@ export default function VerContrato() {
         <button
           onClick={eliminarContrato}
           style={{
-            marginTop: "10px",
-            padding: "12px",
+            padding: "14px",
             width: "100%",
             background: "red",
             color: "#fff",
-            borderRadius: "8px",
+            borderRadius: "10px",
             border: "none",
             fontWeight: "700",
-            cursor: "pointer",
-          }}
-        >
-          Eliminar contrato
-        </button>
-      </div>
-    </Menu>
-  );
-}
+            fontSize: "17px",
+            cursor: "pointer
