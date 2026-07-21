@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 export default function Inspecciones() {
   const [inspecciones, setInspecciones] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarInspecciones() {
@@ -15,7 +16,7 @@ export default function Inspecciones() {
         .order("id", { ascending: false });
 
       if (error) {
-        alert("Error cargando inspecciones");
+        setMensaje("Error cargando inspecciones");
         return;
       }
 
@@ -47,15 +48,22 @@ export default function Inspecciones() {
           Inspecciones
         </h1>
 
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
+
         <Link to="/inspecciones/nueva">
           <button
             style={{
               marginBottom: "20px",
-              padding: "10px 15px",
+              padding: "12px",
+              width: "100%",
               background: "#4db8ff",
-              color: "#fff",
-              borderRadius: "6px",
+              color: "#000",
+              borderRadius: "8px",
               border: "none",
+              fontWeight: "700",
+              cursor: "pointer",
             }}
           >
             Nueva inspección
