@@ -1,18 +1,31 @@
-import { obtenerFactura } from "./facturas";
-import { generarFacturaHTML } from "./facturaPdf";
-import { subirFacturaPDF } from "./facturaUpload";
-import { enviarFacturaEmail } from "./facturaEmail";
-
 export async function enviarFactura(id) {
-  const factura = await obtenerFactura(id);
+  try {
+    const factura = await obtenerFactura(id);
+    if (!factura) {
+      return { ok: false, mensaje: "Factura no encontrada" };
+    }
 
-  const html = generarFacturaHTML(factura);
+    const html = generarFacturaHTML(factura);
+    const blob = new Blob([html], { type: "application/pdf" });
 
-  const blob = new Blob([html], { type: "application/pdf" });
+    const pdfUrl = await subirFacturaPDF(id, blob);
+    if (!pdfUrl) {
+      return { ok: false, mensaje: "Error subiendo PDF" };
+    }
 
-  const pdfUrl = await subirFacturaPDF(id, blob);
+    const envio = await enviarFacturaEmail(factura, pdfUrl);
 
-  await enviarFacturaEmail(factura, pdfUrl);
+    return {
+      ok: true,
+      pdfUrl,
+      envio
+    };
 
-  return pdfUrl;
+  } catch (e) {
+    return {
+      ok: false,
+      mensaje: "Error general enviando factura",
+      error: e
+    };
+  }
 }
