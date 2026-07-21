@@ -19,7 +19,13 @@ export async function createExtraInvoice(data) {
     .select()
     .single();
 
-  if (error) return null;
+  if (error) {
+    return {
+      ok: false,
+      mensaje: "Error creando factura",
+      error
+    };
+  }
 
   const pdfUrl = await generarPDF(factura.id);
 
@@ -34,7 +40,12 @@ export async function createExtraInvoice(data) {
     .eq('id', data.clienteId)
     .single();
 
-  await enviarEmailFactura(cliente.email, pdfUrl);
+  const envio = await enviarEmailFactura(cliente.email, pdfUrl);
 
-  return factura.id;
+  return {
+    ok: true,
+    facturaId: factura.id,
+    pdfUrl,
+    envio
+  };
 }
