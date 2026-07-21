@@ -58,21 +58,38 @@ export default function GaleriaInspeccion() {
 
   return (
     <Menu>
-      <div style={{ padding: "20px", color: "#fff" }}>
+      <div
+        style={{
+          padding: "20px",
+          background: "#0a0f1a",
+          minHeight: "100vh",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
         <h1
           style={{
             fontSize: "28px",
             fontWeight: "700",
-            marginBottom: "20px",
+            marginBottom: "25px",
             color: "#4db8ff",
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            textAlign: "center",
           }}
         >
           Galería de Fotos
         </h1>
 
         {mensaje && (
-          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+          <p
+            style={{
+              marginBottom: "15px",
+              color: "#4db8ff",
+              fontWeight: "600",
+            }}
+          >
+            {mensaje}
+          </p>
         )}
 
         {loading ? (
@@ -91,8 +108,9 @@ export default function GaleriaInspeccion() {
                 style={{
                   background: "rgba(255,255,255,0.05)",
                   padding: "12px",
-                  borderRadius: "12px",
+                  borderRadius: "14px",
                   border: "1px solid rgba(255,255,255,0.1)",
+                  boxShadow: "0 0 12px rgba(0,153,255,0.2)",
                   textAlign: "center",
                 }}
               >
@@ -103,7 +121,8 @@ export default function GaleriaInspeccion() {
                     width: "100%",
                     height: "120px",
                     objectFit: "cover",
-                    borderRadius: "8px",
+                    borderRadius: "10px",
+                    border: "2px solid #4db8ff",
                     marginBottom: "10px",
                   }}
                 />
@@ -114,11 +133,12 @@ export default function GaleriaInspeccion() {
                     padding: "12px",
                     background: "#ff4444",
                     border: "none",
-                    borderRadius: "8px",
+                    borderRadius: "10px",
                     color: "#fff",
                     cursor: "pointer",
                     width: "100%",
                     fontWeight: "700",
+                    boxShadow: "0 0 10px rgba(255,0,0,0.4)",
                   }}
                 >
                   Eliminar
