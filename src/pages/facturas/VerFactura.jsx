@@ -10,8 +10,8 @@ export default function VerFactura() {
 
   const [factura, setFactura] = useState(null);
   const [loading, setLoading] = useState(true);
-
   const [config, setConfig] = useState(null);
+  const [mensaje, setMensaje] = useState("");
 
   async function cargar() {
     const f = await obtenerFactura(id);
@@ -37,20 +37,29 @@ export default function VerFactura() {
 
   async function handleEnviar() {
     const url = await enviarFactura(id);
-    alert("Factura enviada. PDF: " + url);
+    setMensaje("Factura enviada. PDF: " + url);
   }
 
   async function handlePagada() {
     await marcarPagada(id);
-    alert("Factura marcada como pagada");
+    setMensaje("Factura marcada como pagada");
     cargar();
   }
 
-  if (loading) return <p>Cargando...</p>;
+  if (loading)
+    return (
+      <div style={{ padding: 20, color: "#fff" }}>
+        <p>Cargando...</p>
+      </div>
+    );
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Factura #{factura.id}</h2>
+    <div style={{ padding: 20, color: "#fff" }}>
+      <h2 style={{ color: "#4db8ff" }}>Factura #{factura.id}</h2>
+
+      {mensaje && (
+        <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+      )}
 
       <p><strong>Cliente:</strong> {factura.cliente_nombre}</p>
       <p><strong>Email:</strong> {factura.cliente_email}</p>
@@ -60,17 +69,7 @@ export default function VerFactura() {
 
       {config && (
         <div style={{ marginTop: 20 }}>
-          <h3>Datos de la empresa</h3>
+          <h3 style={{ color: "#4db8ff" }}>Datos de la empresa</h3>
           <p><strong>Empresa:</strong> {config.nombre_empresa}</p>
           <p><strong>Dirección:</strong> {config.direccion_empresa}</p>
-          <p><strong>Teléfono:</strong> {config.telefono_empresa}</p>
-          <p><strong>Email:</strong> {config.email_empresa}</p>
-          <p><strong>Cuenta bancaria:</strong> {config.cuenta_bancaria}</p>
-        </div>
-      )}
-
-      <button onClick={handleEnviar}>Reenviar factura</button>
-      <button onClick={handlePagada}>Marcar como pagada</button>
-    </div>
-  );
-}
+          <p><strong>Teléfono
