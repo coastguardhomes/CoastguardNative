@@ -48,28 +48,179 @@ export default function VerFactura() {
 
   if (loading)
     return (
-      <div style={{ padding: 20, color: "#fff" }}>
-        <p>Cargando...</p>
+      <div
+        style={{
+          height: "100vh",
+          background: "#0a0f1a",
+          color: "#fff",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          fontFamily: "Inter, sans-serif",
+          fontSize: "18px",
+        }}
+      >
+        Cargando...
       </div>
     );
 
   return (
-    <div style={{ padding: 20, color: "#fff" }}>
-      <h2 style={{ color: "#4db8ff" }}>Factura #{factura.id}</h2>
+    <div
+      style={{
+        padding: "20px",
+        background: "#0a0f1a",
+        minHeight: "100vh",
+        color: "#fff",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <h2
+        style={{
+          color: "#4db8ff",
+          marginBottom: "25px",
+          fontSize: "28px",
+          fontWeight: "700",
+          textShadow: "0 0 8px rgba(0,153,255,0.6)",
+        }}
+      >
+        Factura #{factura.id}
+      </h2>
 
       {mensaje && (
-        <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        <p
+          style={{
+            marginBottom: "15px",
+            color: "#4db8ff",
+            fontWeight: "600",
+          }}
+        >
+          {mensaje}
+        </p>
       )}
 
-      <p><strong>Cliente:</strong> {factura.cliente_nombre}</p>
-      <p><strong>Email:</strong> {factura.cliente_email}</p>
-      <p><strong>Fecha:</strong> {factura.fecha}</p>
-      <p><strong>Total:</strong> €{factura.total}</p>
-      <p><strong>Estado:</strong> {factura.estado}</p>
+      {/* Tarjeta principal */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          padding: "20px",
+          borderRadius: "14px",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          marginBottom: "20px",
+        }}
+      >
+        <p style={{ marginBottom: "10px" }}>
+          <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
+          {factura.cliente_nombre}
+        </p>
 
+        <p style={{ marginBottom: "10px" }}>
+          <strong style={{ color: "#4db8ff" }}>Email:</strong>{" "}
+          {factura.cliente_email}
+        </p>
+
+        <p style={{ marginBottom: "10px" }}>
+          <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
+          {factura.fecha}
+        </p>
+
+        <p style={{ marginBottom: "10px" }}>
+          <strong style={{ color: "#4db8ff" }}>Total:</strong> €{factura.total}
+        </p>
+
+        <p style={{ marginBottom: "10px" }}>
+          <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
+          {factura.estado}
+        </p>
+      </div>
+
+      {/* Tarjeta datos empresa */}
       {config && (
-        <div style={{ marginTop: 20 }}>
-          <h3 style={{ color: "#4db8ff" }}>Datos de la empresa</h3>
-          <p><strong>Empresa:</strong> {config.nombre_empresa}</p>
-          <p><strong>Dirección:</strong> {config.direccion_empresa}</p>
-          <p><strong>Teléfono
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "14px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            marginBottom: "20px",
+          }}
+        >
+          <h3
+            style={{
+              color: "#4db8ff",
+              marginBottom: "15px",
+              fontSize: "22px",
+              fontWeight: "700",
+            }}
+          >
+            Datos de la empresa
+          </h3>
+
+          <p style={{ marginBottom: "10px" }}>
+            <strong style={{ color: "#4db8ff" }}>Empresa:</strong>{" "}
+            {config.nombre_empresa}
+          </p>
+
+          <p style={{ marginBottom: "10px" }}>
+            <strong style={{ color: "#4db8ff" }}>Dirección:</strong>{" "}
+            {config.direccion_empresa}
+          </p>
+
+          <p style={{ marginBottom: "10px" }}>
+            <strong style={{ color: "#4db8ff" }}>Teléfono:</strong>{" "}
+            {config.telefono_empresa}
+          </p>
+
+          <p style={{ marginBottom: "10px" }}>
+            <strong style={{ color: "#4db8ff" }}>Email:</strong>{" "}
+            {config.email_empresa}
+          </p>
+
+          <p style={{ marginBottom: "10px" }}>
+            <strong style={{ color: "#4db8ff" }}>Cuenta bancaria:</strong>{" "}
+            {config.cuenta_bancaria}
+          </p>
+        </div>
+      )}
+
+      {/* Botones */}
+      <button
+        onClick={handleEnviar}
+        style={{
+          padding: "14px",
+          width: "100%",
+          background: "#4db8ff",
+          color: "#000",
+          borderRadius: "10px",
+          border: "none",
+          fontWeight: "700",
+          fontSize: "17px",
+          cursor: "pointer",
+          marginBottom: "15px",
+          boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+        }}
+      >
+        Enviar factura por email
+      </button>
+
+      <button
+        onClick={handlePagada}
+        style={{
+          padding: "14px",
+          width: "100%",
+          background: "green",
+          color: "#fff",
+          borderRadius: "10px",
+          border: "none",
+          fontWeight: "700",
+          fontSize: "17px",
+          cursor: "pointer",
+          boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+        }}
+      >
+        Marcar como pagada
+      </button>
+    </div>
+  );
+}
