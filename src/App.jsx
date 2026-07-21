@@ -95,7 +95,7 @@ export default function App() {
 
         {/* RUTA PRINCIPAL ADMIN */}
         <Route
-          path="/admin"
+          path="/menu"
           element={
             <ProtectedRoute>
               <Menu />
@@ -105,7 +105,7 @@ export default function App() {
 
         {/* RUTA PRINCIPAL CLIENTE */}
         <Route
-          path="/dashboard"
+          path="/cliente"
           element={
             <ProtectedRoute>
               <ClienteDashboard />
@@ -166,7 +166,7 @@ export default function App() {
         {/* CUALQUIER OTRA RUTA */}
         <Route
           path="*"
-          element={<Navigate to={session ? "/dashboard" : "/login"} replace />}
+          element={<Navigate to="/login" replace />}
         />
 
       </Routes>
