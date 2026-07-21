@@ -12,7 +12,7 @@ export default function ResetPassword() {
     }
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/#/update-password`,
+      redirectTo: "https://coastguard.app/#/update-password", // URL FIJA Y SEGURA
     });
 
     if (error) {
@@ -23,42 +23,74 @@ export default function ResetPassword() {
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Recuperar contraseña</h2>
-
-      <input
-        type="email"
-        placeholder="Tu email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+    <div
+      style={{
+        height: "100%",
+        background: "#0a0f1a",
+        padding: 20,
+        color: "#fff",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <h2
         style={{
-          padding: 10,
-          width: "100%",
-          marginTop: 10,
-          borderRadius: 6,
-          border: "1px solid #ccc",
-        }}
-      />
-
-      <button
-        onClick={enviarReset}
-        style={{
-          marginTop: 20,
-          padding: 12,
-          width: "100%",
-          background: "#2196F3",
-          color: "white",
-          borderRadius: 8,
-          border: "none",
-          cursor: "pointer",
+          textAlign: "center",
+          color: "#4db8ff",
+          marginBottom: 20,
+          textShadow: "0 0 8px rgba(0,153,255,0.6)",
         }}
       >
-        Enviar enlace
-      </button>
+        Recuperar contraseña
+      </h2>
 
-      {mensaje && (
-        <p style={{ marginTop: 20, opacity: 0.9 }}>{mensaje}</p>
-      )}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          padding: 20,
+          borderRadius: 12,
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+        }}
+      >
+        <input
+          type="email"
+          placeholder="Tu email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{
+            padding: 12,
+            width: "100%",
+            borderRadius: 8,
+            border: "1px solid rgba(255,255,255,0.2)",
+            background: "rgba(255,255,255,0.08)",
+            color: "#fff",
+            marginBottom: 15,
+          }}
+        />
+
+        <button
+          onClick={enviarReset}
+          style={{
+            padding: 12,
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: 8,
+            border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+          }}
+        >
+          Enviar enlace
+        </button>
+
+        {mensaje && (
+          <p style={{ marginTop: 20, opacity: 0.9, textAlign: "center" }}>
+            {mensaje}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
