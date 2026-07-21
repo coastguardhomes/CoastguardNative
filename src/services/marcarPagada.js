@@ -1,7 +1,3 @@
-import { supabase } from './supabase';
-import { generarPDF } from './pdf';
-import { enviarEmailFactura } from './email';
-
 export async function marcarFacturaComoPagada(id) {
   await supabase
     .from('facturas')
