@@ -3,12 +3,16 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 
 async function urlToBase64(url) {
-  const blob = await fetch(url).then(r => r.blob());
-  return await new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.readAsDataURL(blob);
-  });
+  try {
+    const blob = await fetch(url).then(r => r.blob());
+    return await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
 }
 
 export async function generarPDFCliente(inspeccion) {
@@ -38,21 +42,34 @@ export async function generarPDFCliente(inspeccion) {
 
   let y = doc.lastAutoTable.finalY + 30;
 
+  // FOTOS
   if (inspeccion.fotos && inspeccion.fotos.length > 0) {
     doc.setFontSize(16);
     doc.text("Fotos de la inspección:", 40, y);
     y += 20;
 
     for (let url of inspeccion.fotos) {
-      try {
-        const base64 = await urlToBase64(url);
-        doc.addImage(base64, "JPEG", 40, y, 220, 160);
-        y += 180;
-      } catch (e) {}
+      const base64 = await urlToBase64(url);
+      if (!base64) continue;
+
+      // salto automático si no cabe
+      if (y + 180 > 800) {
+        doc.addPage();
+        y = 40;
+      }
+
+      doc.addImage(base64, "JPEG", 40, y, 220, 160);
+      y += 180;
     }
   }
 
+  // FIRMA
   if (inspeccion.firmaBase64) {
+    if (y + 130 > 800) {
+      doc.addPage();
+      y = 40;
+    }
+
     doc.setFontSize(16);
     doc.text("Firma del cliente:", 40, y);
     y += 20;
@@ -61,9 +78,20 @@ export async function generarPDFCliente(inspeccion) {
     y += 130;
   }
 
-  const qrData = await QRCode.toDataURL(
-    inspeccion.pdf_url || \`https://coastguard.es/inspeccion/\${inspeccion.id}\`
-  );
+  // QR
+  let qrData;
+  try {
+    qrData = await QRCode.toDataURL(
+      inspeccion.pdf_url || `https://coastguard.es/inspeccion/${inspeccion.id}`
+    );
+  } catch {
+    qrData = await QRCode.toDataURL("https://coastguard.es");
+  }
+
+  if (y + 140 > 800) {
+    doc.addPage();
+    y = 40;
+  }
 
   doc.setFontSize(16);
   doc.text("Código QR del informe:", 40, y);
@@ -71,6 +99,7 @@ export async function generarPDFCliente(inspeccion) {
 
   doc.addImage(qrData, "PNG", 40, y, 120, 120);
 
+  // FOOTER
   doc.setFontSize(10);
   doc.setTextColor("#555");
   doc.text(
