@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
 import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
@@ -7,10 +7,12 @@ import { generarPDFInspeccion } from "../../pdf/generarPDFInspeccion";
 
 export default function DetalleInspeccion() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const pdfRef = useRef(null);
 
   const [inspeccion, setInspeccion] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargar() {
@@ -20,12 +22,16 @@ export default function DetalleInspeccion() {
         .eq("id", id)
         .single();
 
-      if (!error) {
-        const fotos = await cargarFotosInspeccion(id);
-        data.fotos = fotos;
-        setInspeccion(data);
+      if (error) {
+        setMensaje("Error cargando inspección");
+        setCargando(false);
+        return;
       }
 
+      const fotos = await cargarFotosInspeccion(id);
+      data.fotos = fotos;
+
+      setInspeccion(data);
       setCargando(false);
     }
 
@@ -43,32 +49,50 @@ export default function DetalleInspeccion() {
   const generarPDF = () => {
     if (inspeccion && pdfRef.current) {
       generarPDFInspeccion(inspeccion.id, pdfRef.current);
+      setMensaje("PDF generado correctamente");
     }
   };
 
   return (
     <Menu>
       <div style={{ padding: 20, color: "#fff" }}>
-        <h2>Inspección #{inspeccion.id}</h2>
+        <h2 style={{ color: "#4db8ff" }}>Inspección #{inspeccion.id}</h2>
+
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
 
         <button
           onClick={generarPDF}
           style={{
-            padding: 10,
-            marginTop: 20,
-            background: "#007bff",
-            color: "#fff",
+            padding: "12px",
+            marginTop: "20px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "8px",
             border: "none",
-            borderRadius: 5,
+            fontWeight: "700",
+            cursor: "pointer",
           }}
         >
           Generar PDF
         </button>
 
-        <div ref={pdfRef} style={{ marginTop: 20 }}>
-          <pre style={{ whiteSpace: "pre-wrap" }}>
-            {JSON.stringify(inspeccion, null, 2)}
-          </pre>
+        <div
+          ref={pdfRef}
+          style={{
+            marginTop: "20px",
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "10px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 10px rgba(0,153,255,0.2)",
+            whiteSpace: "pre-wrap",
+            fontSize: "14px",
+          }}
+        >
+          {JSON.stringify(inspeccion, null, 2)}
         </div>
       </div>
     </Menu>
