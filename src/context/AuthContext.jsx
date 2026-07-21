@@ -1,33 +1,51 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "../supabaseClient";
 
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(undefined); // importante: undefined = cargando
   const [loading, setLoading] = useState(true);
 
-  // Cargar usuario desde localStorage
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    let mounted = true;
+
+    async function cargarSesion() {
+      const { data } = await supabase.auth.getSession();
+
+      if (mounted) {
+        setUser(data.session?.user || null);
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Error cargando usuario:", err);
     }
 
-    setLoading(false);
+    cargarSesion();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user || null);
+      }
+    );
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
-  const login = (data) => {
-    setUser(data);
-    localStorage.setItem("user", JSON.stringify(data));
+  const login = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+    setUser(data.user);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem("user");
   };
 
   return (
@@ -37,7 +55,6 @@ export function AuthProvider({ children }) {
   );
 }
 
-// Hook personalizado
 export function useAuth() {
   return useContext(AuthContext);
 }
