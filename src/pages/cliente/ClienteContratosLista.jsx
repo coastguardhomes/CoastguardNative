@@ -8,7 +8,6 @@ export default function ClienteContratosLista() {
   const [contratos, setContratos] = useState([]);
 
   const cargarContratos = async () => {
-    // 1. Cargar contratos
     const { data: contratosData, error: contratosError } = await supabase
       .from("contratos")
       .select("*")
@@ -19,7 +18,6 @@ export default function ClienteContratosLista() {
       return;
     }
 
-    // 2. Cargar clientes asociados
     const { data: clientesData, error: clientesError } = await supabase
       .from("clientes")
       .select("*");
@@ -29,7 +27,6 @@ export default function ClienteContratosLista() {
       return;
     }
 
-    // 3. Combinar datos
     const contratosConCliente = contratosData.map((contrato) => {
       const cliente = clientesData.find((c) => c.id === contrato.cliente_id);
       return {
@@ -47,27 +44,71 @@ export default function ClienteContratosLista() {
   }, []);
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Contratos de Clientes</h2>
+    <div
+      style={{
+        height: "100%",
+        background: "#0a0f1a",
+        padding: "20px",
+        color: "#fff",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <h2
+        style={{
+          textAlign: "center",
+          color: "#4db8ff",
+          marginBottom: "25px",
+          fontSize: "28px",
+          fontWeight: "700",
+          textShadow: "0 0 8px rgba(0,153,255,0.6)",
+        }}
+      >
+        Contratos de Clientes
+      </h2>
 
-      {contratos.length === 0 && <p>No hay contratos registrados.</p>}
+      {contratos.length === 0 && (
+        <p
+          style={{
+            textAlign: "center",
+            opacity: 0.8,
+            fontSize: "16px",
+          }}
+        >
+          No hay contratos registrados.
+        </p>
+      )}
 
       {contratos.map((c) => (
         <div
           key={c.id}
-          style={{
-            padding: 12,
-            marginBottom: 10,
-            border: "1px solid #ccc",
-            borderRadius: 6,
-            cursor: "pointer",
-          }}
           onClick={() => navigate(`/cliente/contrato/${c.id}`)}
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "18px",
+            borderRadius: "14px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            marginBottom: "15px",
+            cursor: "pointer",
+            transition: "transform 0.15s",
+          }}
         >
-          <p><strong>Cliente:</strong> {c.clienteNombre}</p>
-          <p><strong>Dirección:</strong> {c.clienteDireccion}</p>
-          <p><strong>Servicio:</strong> {c.tipoServicio}</p>
-          <p><strong>Precio:</strong> {PRICES[c.tipoServicio]} €</p>
+          <p style={{ marginBottom: 6 }}>
+            <strong style={{ color: "#4db8ff" }}>Cliente:</strong> {c.clienteNombre}
+          </p>
+
+          <p style={{ marginBottom: 6 }}>
+            <strong style={{ color: "#4db8ff" }}>Dirección:</strong> {c.clienteDireccion}
+          </p>
+
+          <p style={{ marginBottom: 6 }}>
+            <strong style={{ color: "#4db8ff" }}>Servicio:</strong> {c.tipoServicio}
+          </p>
+
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Precio:</strong>{" "}
+            {PRICES[c.tipoServicio]} €
+          </p>
         </div>
       ))}
     </div>
