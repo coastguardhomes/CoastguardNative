@@ -7,6 +7,8 @@ export default function Inicio() {
       <div
         style={{
           padding: "25px",
+          background: "#0a0f1a",
+          minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
         }}
@@ -18,6 +20,7 @@ export default function Inicio() {
             marginBottom: "25px",
             color: "#4db8ff",
             textShadow: "0 0 10px rgba(0,153,255,0.6)",
+            textAlign: "center",
           }}
         >
           Bienvenido a CoastGuard
@@ -33,19 +36,76 @@ export default function Inicio() {
             marginBottom: "20px",
           }}
         >
-          <p style={{ fontSize: "17px", opacity: 0.85 }}>
+          <p style={{ fontSize: "17px", opacity: 0.85, marginBottom: "20px" }}>
             Tu panel principal para gestionar clientes, viviendas, técnicos e inspecciones.
           </p>
 
-          <ul style={{ marginTop: "20px", lineHeight: "1.9" }}>
-            <li>Acceso rápido a módulos</li>
-            <li>Últimas inspecciones</li>
-            <li>Notificaciones importantes</li>
-            <li>Acciones rápidas</li>
-            <li>Estado general del sistema</li>
-          </ul>
+          {/* Reemplazo de la lista por bloques táctiles */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+              marginBottom: "20px",
+            }}
+          >
+            <div
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                padding: "12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              Acceso rápido a módulos
+            </div>
 
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
+            <div
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                padding: "12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              Últimas inspecciones
+            </div>
+
+            <div
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                padding: "12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              Notificaciones importantes
+            </div>
+
+            <div
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                padding: "12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              Acciones rápidas
+            </div>
+
+            <div
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                padding: "12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              Estado general del sistema
+            </div>
+          </div>
+
+          <p style={{ opacity: 0.7 }}>
             Próximamente añadiremos dashboard real, estadísticas, accesos rápidos,
             notificaciones y resumen de actividad.
           </p>
