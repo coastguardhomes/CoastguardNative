@@ -12,8 +12,9 @@ export async function generarPDFInspeccion(idInspeccion, elementoHTML) {
     const canvas = await html2canvas(elementoHTML, {
       scale: 2,
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false,       // más estable en Android
       logging: false,
+      backgroundColor: null,   // respeta fondo transparente
     });
 
     const imgData = canvas.toDataURL("image/png");
@@ -27,8 +28,10 @@ export async function generarPDFInspeccion(idInspeccion, elementoHTML) {
 
     let y = 0;
 
+    // Primera página
     pdf.addImage(imgData, "PNG", 0, y, imgWidth, imgHeight);
 
+    // Paginación automática
     let heightLeft = imgHeight - pageHeight;
 
     while (heightLeft > 0) {
@@ -39,12 +42,14 @@ export async function generarPDFInspeccion(idInspeccion, elementoHTML) {
     }
 
     return pdf.output("blob");
-  } catch (error) {
-    console.error("Error generando PDF:", error);
 
-    // Fallback CoastGuard: PDF vacío pero válido
+  } catch (error) {
+    // Fallback CoastGuard: PDF válido aunque falle html2canvas
     const pdf = new jsPDF();
+    pdf.setFontSize(16);
     pdf.text("Error generando PDF de la inspección.", 20, 20);
+
+    pdf.setFontSize(12);
     pdf.text("CoastGuard — Protección y supervisión de viviendas", 20, 40);
 
     return pdf.output("blob");
