@@ -8,6 +8,7 @@ export default function VerTecnico() {
   const navigate = useNavigate();
 
   const [tecnico, setTecnico] = useState(null);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarTecnico() {
@@ -18,7 +19,7 @@ export default function VerTecnico() {
         .single();
 
       if (error) {
-        alert("Error cargando técnico");
+        setMensaje("Error cargando técnico");
         return;
       }
 
@@ -35,11 +36,11 @@ export default function VerTecnico() {
       .eq("id", id);
 
     if (error) {
-      alert("Error eliminando técnico");
+      setMensaje("Error eliminando técnico");
       return;
     }
 
-    alert("Técnico eliminado correctamente");
+    setMensaje("Técnico eliminado correctamente");
     navigate("/tecnicos");
   }
 
@@ -58,23 +59,44 @@ export default function VerTecnico() {
       <div style={{ padding: "20px", color: "#fff" }}>
         <h1 style={{ color: "#4db8ff" }}>{tecnico.nombre}</h1>
 
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
+
         <p><strong>Teléfono:</strong> {tecnico.telefono}</p>
         <p><strong>Email:</strong> {tecnico.email}</p>
         <p><strong>Especialidad:</strong> {tecnico.especialidad}</p>
 
         <Link to={`/tecnicos/editar/${id}`}>
-          <button style={{ marginTop: "15px" }}>Editar técnico</button>
+          <button
+            style={{
+              marginTop: "15px",
+              padding: "12px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              cursor: "pointer",
+            }}
+          >
+            Editar técnico
+          </button>
         </Link>
 
         <button
           onClick={eliminarTecnico}
           style={{
             marginTop: "15px",
+            padding: "12px",
+            width: "100%",
             background: "red",
             color: "#fff",
-            padding: "10px",
-            borderRadius: "6px",
+            borderRadius: "8px",
             border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
           }}
         >
           Eliminar técnico
