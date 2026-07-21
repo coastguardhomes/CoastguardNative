@@ -8,6 +8,7 @@ export default function VerVivienda() {
   const navigate = useNavigate();
 
   const [vivienda, setVivienda] = useState(null);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarVivienda() {
@@ -18,7 +19,7 @@ export default function VerVivienda() {
         .single();
 
       if (error) {
-        alert("Error cargando vivienda");
+        setMensaje("Error cargando vivienda");
         return;
       }
 
@@ -35,11 +36,11 @@ export default function VerVivienda() {
       .eq("id", id);
 
     if (error) {
-      alert("Error eliminando vivienda");
+      setMensaje("Error eliminando vivienda");
       return;
     }
 
-    alert("Vivienda eliminada");
+    setMensaje("Vivienda eliminada correctamente");
     navigate("/viviendas");
   }
 
@@ -58,23 +59,44 @@ export default function VerVivienda() {
       <div style={{ padding: "20px", color: "#fff" }}>
         <h1 style={{ color: "#4db8ff" }}>{vivienda.nombre}</h1>
 
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
+
         <p><strong>Dirección:</strong> {vivienda.direccion}</p>
         <p><strong>Ciudad:</strong> {vivienda.ciudad}</p>
         <p><strong>Código Postal:</strong> {vivienda.cp}</p>
 
         <Link to={`/viviendas/editar/${id}`}>
-          <button style={{ marginTop: "15px" }}>Editar vivienda</button>
+          <button
+            style={{
+              marginTop: "15px",
+              padding: "12px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "700",
+              cursor: "pointer",
+            }}
+          >
+            Editar vivienda
+          </button>
         </Link>
 
         <button
           onClick={eliminarVivienda}
           style={{
             marginTop: "15px",
+            padding: "12px",
+            width: "100%",
             background: "red",
             color: "#fff",
-            padding: "10px",
-            borderRadius: "6px",
+            borderRadius: "8px",
             border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
           }}
         >
           Eliminar vivienda
