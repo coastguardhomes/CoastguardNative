@@ -4,9 +4,10 @@ import { supabase } from "../../supabaseClient";
 import { useParams } from "react-router-dom";
 
 export default function VerPDFInspeccion() {
-  const { id } = useParams(); // id de inspección
+  const { id } = useParams();
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarPDF() {
@@ -17,6 +18,7 @@ export default function VerPDFInspeccion() {
         .single();
 
       if (error) {
+        setMensaje("Error cargando PDF de esta inspección");
         setLoading(false);
         return;
       }
@@ -49,6 +51,10 @@ export default function VerPDFInspeccion() {
           PDF de la Inspección #{id}
         </h1>
 
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
+
         {loading ? (
           <p style={{ opacity: 0.8 }}>Cargando PDF...</p>
         ) : !pdfUrl ? (
@@ -79,15 +85,18 @@ export default function VerPDFInspeccion() {
             <a
               href={pdfUrl}
               download
-              style={{ display: "inline-block", marginTop: "15px" }}
+              style={{ display: "inline-block", marginTop: "15px", width: "100%" }}
             >
               <button
                 style={{
-                  padding: "10px 15px",
+                  padding: "12px",
+                  width: "100%",
                   background: "#4db8ff",
-                  color: "#fff",
-                  borderRadius: "6px",
+                  color: "#000",
+                  borderRadius: "8px",
                   border: "none",
+                  fontWeight: "700",
+                  cursor: "pointer",
                 }}
               >
                 Descargar PDF
