@@ -15,6 +15,8 @@ export default function EditarInspeccion() {
     notas: "",
   });
 
+  const [mensaje, setMensaje] = useState("");
+
   useEffect(() => {
     async function cargarInspeccion() {
       const { data, error } = await supabase
@@ -24,7 +26,7 @@ export default function EditarInspeccion() {
         .single();
 
       if (error) {
-        alert("Error cargando inspección");
+        setMensaje("Error cargando inspección");
         return;
       }
 
@@ -41,11 +43,11 @@ export default function EditarInspeccion() {
       .eq("id", id);
 
     if (error) {
-      alert("Error guardando cambios");
+      setMensaje("Error guardando cambios");
       return;
     }
 
-    alert("Inspección actualizada correctamente");
+    setMensaje("Inspección actualizada correctamente");
     navigate("/inspecciones");
   }
 
@@ -54,16 +56,34 @@ export default function EditarInspeccion() {
       <div style={{ padding: "20px", color: "#fff" }}>
         <h1 style={{ color: "#4db8ff" }}>Editar Inspección</h1>
 
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
+
         <label>ID Vivienda</label>
         <input
           value={form.vivienda_id}
           onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <label>ID Técnico</label>
         <input
           value={form.tecnico_id}
           onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <label>Fecha</label>
@@ -71,21 +91,56 @@ export default function EditarInspeccion() {
           type="date"
           value={form.fecha}
           onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <label>Estado</label>
         <input
           value={form.estado}
           onChange={(e) => setForm({ ...form, estado: e.target.value })}
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <label>Notas</label>
         <textarea
           value={form.notas}
           onChange={(e) => setForm({ ...form, notas: e.target.value })}
+          style={{
+            padding: "10px",
+            width: "100%",
+            minHeight: "100px",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
-        <button onClick={guardarCambios} style={{ marginTop: "20px" }}>
+        <button
+          onClick={guardarCambios}
+          style={{
+            marginTop: "20px",
+            padding: "12px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "8px",
+            border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
+          }}
+        >
           Guardar cambios
         </button>
       </div>
