@@ -16,6 +16,8 @@ export default function EditarFactura() {
     estado: "",
   });
 
+  const [mensaje, setMensaje] = useState("");
+
   useEffect(() => {
     async function cargarFactura() {
       const { data, error } = await supabase
@@ -25,7 +27,7 @@ export default function EditarFactura() {
         .single();
 
       if (error) {
-        alert("Error cargando factura");
+        setMensaje("Error cargando factura");
         return;
       }
 
@@ -42,11 +44,11 @@ export default function EditarFactura() {
       .eq("id", id);
 
     if (error) {
-      alert("Error guardando cambios");
+      setMensaje("Error guardando cambios");
       return;
     }
 
-    alert("Factura actualizada");
+    setMensaje("Factura actualizada correctamente");
     navigate("/facturas/lista");
   }
 
@@ -55,16 +57,34 @@ export default function EditarFactura() {
       <div style={{ padding: "20px", color: "#fff" }}>
         <h1 style={{ color: "#4db8ff" }}>Editar Factura</h1>
 
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
+
         <label>ID Cliente</label>
         <input
           value={form.cliente_id}
           onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <label>ID Vivienda</label>
         <input
           value={form.vivienda_id}
           onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <label>Fecha</label>
@@ -72,12 +92,26 @@ export default function EditarFactura() {
           type="date"
           value={form.fecha}
           onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <label>Concepto</label>
         <input
           value={form.concepto}
           onChange={(e) => setForm({ ...form, concepto: e.target.value })}
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <label>Importe (€)</label>
@@ -85,15 +119,42 @@ export default function EditarFactura() {
           type="number"
           value={form.importe}
           onChange={(e) => setForm({ ...form, importe: e.target.value })}
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <label>Estado</label>
         <input
           value={form.estado}
           onChange={(e) => setForm({ ...form, estado: e.target.value })}
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
-        <button onClick={guardarCambios} style={{ marginTop: "20px" }}>
+        <button
+          onClick={guardarCambios}
+          style={{
+            marginTop: "20px",
+            padding: "12px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "8px",
+            border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
+          }}
+        >
           Guardar cambios
         </button>
       </div>
