@@ -19,8 +19,8 @@ export default function FiltrosFacturas() {
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Filtros de Facturas</h2>
+    <div style={{ padding: 20, color: "#fff" }}>
+      <h2 style={{ color: "#4db8ff" }}>Filtros de Facturas</h2>
 
       <div style={{ marginBottom: 20 }}>
         <input
@@ -29,6 +29,13 @@ export default function FiltrosFacturas() {
           onChange={(e) =>
             setFiltros({ ...filtros, cliente: e.target.value })
           }
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <select
@@ -36,6 +43,13 @@ export default function FiltrosFacturas() {
           onChange={(e) =>
             setFiltros({ ...filtros, estado: e.target.value })
           }
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         >
           <option value="">Estado</option>
           <option value="pendiente">Pendiente</option>
@@ -48,6 +62,13 @@ export default function FiltrosFacturas() {
           onChange={(e) =>
             setFiltros({ ...filtros, fechaDesde: e.target.value })
           }
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
         <input
@@ -56,24 +77,47 @@ export default function FiltrosFacturas() {
           onChange={(e) =>
             setFiltros({ ...filtros, fechaHasta: e.target.value })
           }
+          style={{
+            padding: "10px",
+            width: "100%",
+            marginBottom: "10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
         />
 
-        <button onClick={aplicarFiltros}>Aplicar filtros</button>
+        <button
+          onClick={aplicarFiltros}
+          style={{
+            padding: "12px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "8px",
+            border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
+          }}
+        >
+          Aplicar filtros
+        </button>
       </div>
 
-      <h3>Resultados</h3>
+      <h3 style={{ color: "#4db8ff" }}>Resultados</h3>
 
       {resultados.map((f) => (
         <div
           key={f.id}
           style={{
-            padding: 10,
-            borderBottom: "1px solid #ccc",
+            padding: "15px",
+            marginBottom: "10px",
+            background: "#1e1e1e",
+            borderRadius: "8px",
             cursor: "pointer",
           }}
           onClick={() => navigate(`/facturas/ver/${f.id}`)}
         >
-          <strong>Factura #{f.id}</strong><br />
+          <strong style={{ color: "#4db8ff" }}>Factura #{f.id}</strong><br />
           Cliente: {f.cliente_nombre}<br />
           Total: €{f.total}<br />
           Estado: {f.estado}<br />
