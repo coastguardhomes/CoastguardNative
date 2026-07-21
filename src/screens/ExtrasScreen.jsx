@@ -22,6 +22,7 @@ export default function ExtrasScreen({ route, navigation }) {
   const [precioTecnico, setPrecioTecnico] = useState('');
   const [materiales, setMateriales] = useState('');
   const [facturaId, setFacturaId] = useState(null);
+  const [mensaje, setMensaje] = useState('');
 
   const toggle = (key) => {
     setExtras({ ...extras, [key]: !extras[key] });
@@ -54,12 +55,33 @@ export default function ExtrasScreen({ route, navigation }) {
       total: calcularTotal()
     });
 
+    if (!id) {
+      setMensaje("Error creando factura");
+      return;
+    }
+
     setFacturaId(id);
+    setMensaje("Factura creada correctamente");
+  };
+
+  const inputStyle = {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 10,
+    backgroundColor: '#fff'
   };
 
   return (
     <ScrollView style={{ padding: 20 }}>
       <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Extras CoastGuard</Text>
+
+      {mensaje !== '' && (
+        <Text style={{ marginTop: 15, color: '#007bff', fontWeight: 'bold' }}>
+          {mensaje}
+        </Text>
+      )}
 
       <TouchableOpacity onPress={() => toggle('apertura')}>
         <Text style={{ marginTop: 20 }}>Apertura (30€): {extras.apertura ? 'Sí' : 'No'}</Text>
@@ -77,7 +99,7 @@ export default function ExtrasScreen({ route, navigation }) {
         <>
           <Text style={{ marginTop: 10 }}>Horas de supervisión</Text>
           <TextInput
-            style={{ borderWidth: 1, padding: 10 }}
+            style={inputStyle}
             keyboardType="numeric"
             value={horas}
             onChangeText={setHoras}
@@ -101,7 +123,7 @@ export default function ExtrasScreen({ route, navigation }) {
         <>
           <Text style={{ marginTop: 10 }}>Precio técnico (€)</Text>
           <TextInput
-            style={{ borderWidth: 1, padding: 10 }}
+            style={inputStyle}
             keyboardType="numeric"
             value={precioTecnico}
             onChangeText={setPrecioTecnico}
@@ -117,7 +139,7 @@ export default function ExtrasScreen({ route, navigation }) {
         <>
           <Text style={{ marginTop: 10 }}>Materiales (€)</Text>
           <TextInput
-            style={{ borderWidth: 1, padding: 10 }}
+            style={inputStyle}
             keyboardType="numeric"
             value={materiales}
             onChangeText={setMateriales}
@@ -133,7 +155,15 @@ export default function ExtrasScreen({ route, navigation }) {
         <Text style={{ marginTop: 20 }}>Emergencia (50€): {extras.emergencia ? 'Sí' : 'No'}</Text>
       </TouchableOpacity>
 
-      <Text style={{ fontSize: 22, marginVertical: 20 }}>
+      <Text style={{
+        fontSize: 22,
+        marginVertical: 20,
+        backgroundColor: '#eef6ff',
+        padding: 15,
+        borderRadius: 10,
+        borderColor: '#007bff',
+        borderWidth: 1
+      }}>
         Total: {calcularTotal()} €
       </Text>
 
