@@ -6,18 +6,19 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mensaje, setMensaje] = useState("");
 
   const navigate = useNavigate();
 
   const handleRegister = async () => {
     if (!email || !password) {
-      alert("Introduce email y contraseña");
+      setMensaje("Introduce email y contraseña");
       return;
     }
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
     });
@@ -25,18 +26,18 @@ export default function Register() {
     setLoading(false);
 
     if (error) {
-      alert(error.message);
+      setMensaje(error.message);
       return;
     }
 
-    alert("Cuenta creada. Revisa tu email para confirmar.");
-    navigate("/home");
+    setMensaje("Cuenta creada. Revisa tu email para confirmar.");
+    setTimeout(() => navigate("/"), 1200);
   };
 
   return (
     <div
       style={{
-        minHeight: "100vh",
+        height: "100%",
         background: "#0a0f1a",
         display: "flex",
         justifyContent: "center",
@@ -68,6 +69,19 @@ export default function Register() {
         >
           Crear cuenta
         </h1>
+
+        {mensaje && (
+          <p
+            style={{
+              color: "#4db8ff",
+              textAlign: "center",
+              marginBottom: "15px",
+              fontSize: "15px",
+            }}
+          >
+            {mensaje}
+          </p>
+        )}
 
         <input
           type="email"
@@ -105,6 +119,7 @@ export default function Register() {
 
         <button
           onClick={handleRegister}
+          disabled={loading}
           style={{
             width: "100%",
             padding: "12px",
@@ -115,6 +130,7 @@ export default function Register() {
             fontWeight: "700",
             fontSize: "16px",
             cursor: "pointer",
+            opacity: loading ? 0.7 : 1,
             boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
