@@ -15,10 +15,9 @@ export default function Login() {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
 
-      // En móvil puede tardar unos ms en restaurar la sesión
-      setTimeout(() => {
+      setTimeout(async () => {
         if (data.session) {
-          navigate("/home", { replace: true });
+          await redirigirSegunRol(data.session.user.id);
         } else {
           setCheckingSession(false);
         }
@@ -28,25 +27,52 @@ export default function Login() {
     checkSession();
   }, [navigate]);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
+  // 🔥 FUNCIÓN QUE DECIDE LA PANTALLA SEGÚN EL ROL
+  async function redirigirSegunRol(userId) {
+    const { data: perfil } = await supabase
+      .from("usuarios")
+      .select("rol")
+      .eq("id", userId)
+      .single();
+
+    if (!perfil) {
+      navigate("/home", { replace: true });
       return;
     }
 
+    switch (perfil.rol) {
+      case "admin":
+        navigate("/menu", { replace: true });   // 🔥 ADMIN → MENU
+        break;
+
+      case "cliente":
+        navigate("/cliente", { replace: true });
+        break;
+
+      case "tecnico":
+        navigate("/tecnico", { replace: true });
+        break;
+
+      default:
+        navigate("/home", { replace: true });
+    }
+  }
+
+  const handleLogin = async () => {
+    if (!email || !password) return;
+
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     setLoading(false);
 
-    if (error) {
-      return;
-    }
+    if (error) return;
 
-    navigate("/home", { replace: true });
+    await redirigirSegunRol(data.user.id);
   };
 
   if (checkingSession) {
