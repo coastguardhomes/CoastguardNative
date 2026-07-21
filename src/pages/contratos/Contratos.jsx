@@ -13,12 +13,7 @@ export default function Contratos() {
         .select("*")
         .order("id", { ascending: false });
 
-      if (error) {
-        console.error("Error cargando contratos:", error);
-      } else {
-        setContratos(data);
-      }
-
+      if (!error) setContratos(data);
       setLoading(false);
     }
 
@@ -27,23 +22,76 @@ export default function Contratos() {
 
   return (
     <Menu>
-      <div style={{ padding: "20px", color: "#fff", fontFamily: "Inter, sans-serif" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: "700", marginBottom: "20px", color: "#4db8ff" }}>
+      <div
+        style={{
+          padding: "20px",
+          background: "#0a0f1a",
+          minHeight: "100vh",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "28px",
+            fontWeight: "700",
+            marginBottom: "20px",
+            color: "#4db8ff",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+          }}
+        >
           Contratos
         </h1>
 
         {loading ? (
-          <p>Cargando contratos...</p>
+          <p
+            style={{
+              textAlign: "center",
+              fontSize: "18px",
+              opacity: 0.8,
+            }}
+          >
+            Cargando contratos...
+          </p>
         ) : contratos.length === 0 ? (
-          <p>No hay contratos registrados.</p>
+          <p
+            style={{
+              textAlign: "center",
+              fontSize: "16px",
+              opacity: 0.8,
+            }}
+          >
+            No hay contratos registrados.
+          </p>
         ) : (
-          <ul style={{ marginTop: "20px", lineHeight: "1.8" }}>
+          <div>
             {contratos.map((c) => (
-              <li key={c.id}>
-                <strong>Contrato #{c.id}</strong> — {c.fecha} — {c.precio}€
-              </li>
+              <div
+                key={c.id}
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  padding: "18px",
+                  borderRadius: "14px",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+                  marginBottom: "15px",
+                }}
+              >
+                <p style={{ marginBottom: "6px" }}>
+                  <strong style={{ color: "#4db8ff" }}>Contrato:</strong> #{c.id}
+                </p>
+
+                <p style={{ marginBottom: "6px" }}>
+                  <strong style={{ color: "#4db8ff" }}>Fecha:</strong> {c.fecha}
+                </p>
+
+                <p>
+                  <strong style={{ color: "#4db8ff" }}>Precio:</strong>{" "}
+                  {c.precio} €
+                </p>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </Menu>
