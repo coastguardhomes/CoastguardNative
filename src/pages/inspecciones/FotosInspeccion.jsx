@@ -4,9 +4,10 @@ import { supabase } from "../../supabaseClient";
 import { useParams } from "react-router-dom";
 
 export default function FotosInspeccion() {
-  const { id } = useParams(); // ID de la inspección
+  const { id } = useParams();
   const [fotos, setFotos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     cargarFotos();
@@ -20,7 +21,7 @@ export default function FotosInspeccion() {
       .order("id", { ascending: false });
 
     if (error) {
-      alert("Error cargando fotos");
+      setMensaje("Error cargando fotos");
       return;
     }
 
@@ -34,66 +35,63 @@ export default function FotosInspeccion() {
 
     const nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
 
-    // 1) Subir a Storage
     const { error: storageError } = await supabase.storage
       .from("fotos")
       .upload(nombreArchivo, archivo);
 
     if (storageError) {
-      alert("Error subiendo foto");
+      setMensaje("Error subiendo foto");
       return;
     }
 
-    // 2) Obtener URL pública
     const { data: urlData } = supabase.storage
       .from("fotos")
       .getPublicUrl(nombreArchivo);
 
     const url = urlData.publicUrl;
 
-    // 3) Guardar en la tabla
     const { error: dbError } = await supabase
       .from("fotos_inspeccion")
-      .insert([
-        {
-          inspeccion_id: id,
-          url,
-        },
-      ]);
+      .insert([{ inspeccion_id: id, url }]);
 
     if (dbError) {
-      alert("Error guardando foto en la base de datos");
+      setMensaje("Error guardando foto en la base de datos");
       return;
     }
 
+    setMensaje("Foto subida correctamente");
     cargarFotos();
   }
 
   async function borrarFoto(foto) {
-    // 1) Extraer nombre del archivo desde la URL pública
     const ruta = foto.url.split("/").pop();
 
-    // 2) Borrar de Storage
-    await supabase.storage.from("fotos").remove([ruta]);
+    const { error: storageError } = await supabase.storage
+      .from("fotos")
+      .remove([ruta]);
 
-    // 3) Borrar de la tabla
-    await supabase
+    if (storageError) {
+      setMensaje("Error borrando foto del almacenamiento");
+      return;
+    }
+
+    const { error: dbError } = await supabase
       .from("fotos_inspeccion")
       .delete()
       .eq("id", foto.id);
 
+    if (dbError) {
+      setMensaje("Error borrando foto de la base de datos");
+      return;
+    }
+
+    setMensaje("Foto eliminada correctamente");
     cargarFotos();
   }
 
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
+      <div style={{ padding: "20px", color: "#fff", fontFamily: "Inter, sans-serif" }}>
         <h1
           style={{
             fontSize: "28px",
@@ -106,12 +104,31 @@ export default function FotosInspeccion() {
           Fotos de la Inspección
         </h1>
 
-        <input
-          type="file"
-          accept="image/*"
-          onChange={subirFoto}
-          style={{ marginBottom: "20px" }}
-        />
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
+
+        <label
+          style={{
+            display: "block",
+            marginBottom: "10px",
+            background: "#4db8ff",
+            color: "#000",
+            padding: "12px",
+            borderRadius: "8px",
+            textAlign: "center",
+            fontWeight: "700",
+            cursor: "pointer",
+          }}
+        >
+          Subir foto
+          <input
+            type="file"
+            accept="image/*"
+            onChange={subirFoto}
+            style={{ display: "none" }}
+          />
+        </label>
 
         {loading ? (
           <p>Cargando fotos...</p>
@@ -143,10 +160,12 @@ export default function FotosInspeccion() {
                     marginTop: "8px",
                     background: "red",
                     color: "#fff",
-                    padding: "6px",
-                    borderRadius: "6px",
+                    padding: "10px",
+                    borderRadius: "8px",
                     border: "none",
                     width: "100%",
+                    fontWeight: "700",
+                    cursor: "pointer",
                   }}
                 >
                   Borrar
