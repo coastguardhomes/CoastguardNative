@@ -4,7 +4,7 @@ import SignaturePad from "react-signature-canvas";
 import { supabase } from "../../supabaseClient";
 
 export default function ClienteFirmaDibujar() {
-  const { id } = useParams(); // ID del contrato
+  const { id } = useParams();
   const navigate = useNavigate();
   const sigCanvas = useRef(null);
 
@@ -17,7 +17,6 @@ export default function ClienteFirmaDibujar() {
 
     const filePath = `firmas/contrato_${id}.png`;
 
-    // 1. Subir firma a Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from("firmas")
       .upload(filePath, blob, {
@@ -30,7 +29,6 @@ export default function ClienteFirmaDibujar() {
       return;
     }
 
-    // 2. Guardar ruta en la tabla contratos
     const { error: updateError } = await supabase
       .from("contratos")
       .update({ firma: filePath })
@@ -49,51 +47,90 @@ export default function ClienteFirmaDibujar() {
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Firma del Cliente</h2>
-
-      <SignaturePad
-        ref={sigCanvas}
-        penColor="black"
-        canvasProps={{
-          width: 300,
-          height: 200,
-          style: {
-            border: "1px solid #ccc",
-            borderRadius: 6,
-            marginBottom: 10,
-          },
-        }}
-      />
-
-      <button
-        onClick={guardarFirma}
+    <div
+      style={{
+        height: "100%",
+        background: "#0a0f1a",
+        padding: "20px",
+        color: "#fff",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <h2
         style={{
-          padding: "10px 16px",
-          backgroundColor: "#28a745",
-          color: "#fff",
-          border: "none",
-          borderRadius: "4px",
-          cursor: "pointer",
-          marginRight: 10,
+          textAlign: "center",
+          color: "#4db8ff",
+          marginBottom: "25px",
+          fontSize: "28px",
+          fontWeight: "700",
+          textShadow: "0 0 8px rgba(0,153,255,0.6)",
         }}
       >
-        Guardar firma
-      </button>
+        Firma del Cliente
+      </h2>
 
-      <button
-        onClick={limpiar}
+      <div
         style={{
-          padding: "10px 16px",
-          backgroundColor: "#dc3545",
-          color: "#fff",
-          border: "none",
-          borderRadius: "4px",
-          cursor: "pointer",
+          background: "rgba(255,255,255,0.05)",
+          padding: "20px",
+          borderRadius: "14px",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          marginBottom: "20px",
+          textAlign: "center",
         }}
       >
-        Limpiar
-      </button>
+        <SignaturePad
+          ref={sigCanvas}
+          penColor="#4db8ff"
+          canvasProps={{
+            width: 320,
+            height: 200,
+            style: {
+              background: "#fff",
+              borderRadius: "10px",
+              border: "2px solid #4db8ff",
+              marginBottom: "20px",
+            },
+          }}
+        />
+
+        <button
+          onClick={guardarFirma}
+          style={{
+            width: "100%",
+            padding: "12px",
+            backgroundColor: "#4db8ff",
+            color: "#000",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "700",
+            fontSize: "16px",
+            marginBottom: "10px",
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+          }}
+        >
+          Guardar firma
+        </button>
+
+        <button
+          onClick={limpiar}
+          style={{
+            width: "100%",
+            padding: "12px",
+            backgroundColor: "#dc3545",
+            color: "#fff",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "700",
+            fontSize: "16px",
+          }}
+        >
+          Limpiar
+        </button>
+      </div>
     </div>
   );
 }
