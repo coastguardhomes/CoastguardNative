@@ -17,7 +17,9 @@ async function urlToBase64(url) {
 
 export async function generarPDFCliente(inspeccion) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageHeight = doc.internal.pageSize.getHeight();
 
+  // LOGO
   if (inspeccion.logoBase64) {
     doc.addImage(inspeccion.logoBase64, "PNG", 40, 30, 120, 60);
   }
@@ -26,6 +28,7 @@ export async function generarPDFCliente(inspeccion) {
   doc.setTextColor("#007BFF");
   doc.text("Informe de Inspección", 200, 60);
 
+  // TABLA
   autoTable(doc, {
     startY: 120,
     head: [["Campo", "Valor"]],
@@ -43,17 +46,16 @@ export async function generarPDFCliente(inspeccion) {
   let y = doc.lastAutoTable.finalY + 30;
 
   // FOTOS
-  if (inspeccion.fotos && inspeccion.fotos.length > 0) {
+  if (inspeccion.fotos?.length > 0) {
     doc.setFontSize(16);
     doc.text("Fotos de la inspección:", 40, y);
     y += 20;
 
-    for (let url of inspeccion.fotos) {
+    for (const url of inspeccion.fotos) {
       const base64 = await urlToBase64(url);
       if (!base64) continue;
 
-      // salto automático si no cabe
-      if (y + 180 > 800) {
+      if (y + 180 > pageHeight - 40) {
         doc.addPage();
         y = 40;
       }
@@ -65,7 +67,7 @@ export async function generarPDFCliente(inspeccion) {
 
   // FIRMA
   if (inspeccion.firmaBase64) {
-    if (y + 130 > 800) {
+    if (y + 130 > pageHeight - 40) {
       doc.addPage();
       y = 40;
     }
@@ -88,7 +90,7 @@ export async function generarPDFCliente(inspeccion) {
     qrData = await QRCode.toDataURL("https://coastguard.es");
   }
 
-  if (y + 140 > 800) {
+  if (y + 140 > pageHeight - 40) {
     doc.addPage();
     y = 40;
   }
@@ -98,14 +100,15 @@ export async function generarPDFCliente(inspeccion) {
   y += 20;
 
   doc.addImage(qrData, "PNG", 40, y, 120, 120);
+  y += 140;
 
-  // FOOTER
+  // FOOTER SIEMPRE EN LA ÚLTIMA PÁGINA
   doc.setFontSize(10);
   doc.setTextColor("#555");
   doc.text(
     "CoastGuard — Protección y supervisión de viviendas",
     40,
-    820
+    pageHeight - 30
   );
 
   const pdfArray = doc.output("arraybuffer");
