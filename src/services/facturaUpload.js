@@ -1,18 +1,34 @@
-import { supabase } from "../supabaseClient";
-
 export async function subirFacturaPDF(id, blob) {
-  const { error } = await supabase.storage
-    .from("facturas")
-    .upload(`factura_${id}.pdf`, blob, {
-      contentType: "application/pdf",
-      upsert: true,
-    });
+  try {
+    const { error } = await supabase.storage
+      .from("facturas")
+      .upload(`factura_${id}.pdf`, blob, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
 
-  if (error) throw error;
+    if (error) {
+      return {
+        ok: false,
+        mensaje: "Error subiendo PDF de factura",
+        error
+      };
+    }
 
-  const { data } = supabase.storage
-    .from("facturas")
-    .getPublicUrl(`factura_${id}.pdf`);
+    const { data } = supabase.storage
+      .from("facturas")
+      .getPublicUrl(`factura_${id}.pdf`);
 
-  return data.publicUrl;
+    return {
+      ok: true,
+      pdfUrl: data.publicUrl
+    };
+
+  } catch (e) {
+    return {
+      ok: false,
+      mensaje: "Error de conexión subiendo PDF",
+      error: e
+    };
+  }
 }
