@@ -24,7 +24,6 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
     doc.text(`Tipo de servicio: ${contrato?.tipoServicio || ""}`, 20, 90);
     doc.text(`Fecha de inicio: ${contrato?.fechaInicio || ""}`, 20, 100);
 
-    // ⭐ CORREGIDO: template literal sin barras
     doc.text(
       `Precio mensual: ${PRICES[contrato?.tipoServicio] || "N/D"} €`,
       20,
@@ -63,8 +62,6 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
 
     // Guardar PDF en Supabase Storage
     const pdfBlob = doc.output("blob");
-
-    // ⭐ CORREGIDO: template literal sin barras
     const filePath = `contratos/contrato_${contrato.id}.pdf`;
 
     const { error: uploadError } = await supabase.storage
@@ -80,7 +77,6 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
       return;
     }
 
-    // Guardar URL en la tabla contratos
     await supabase
       .from("contratos")
       .update({ pdf_url: filePath })
@@ -95,14 +91,18 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
       onClick={generarPDF}
       disabled={loading}
       style={{
-        padding: "10px 16px",
-        backgroundColor: "#007bff",
-        color: "#fff",
+        width: "100%",
+        padding: "12px",
+        backgroundColor: "#4db8ff",
+        color: "#000",
         border: "none",
-        borderRadius: "4px",
+        borderRadius: "8px",
         cursor: "pointer",
-        marginTop: "12px",
-        opacity: loading ? 0.6 : 1,
+        marginTop: "20px",
+        fontWeight: "700",
+        fontSize: "16px",
+        boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+        opacity: loading ? 0.7 : 1,
       }}
     >
       {loading ? "Generando PDF..." : "Generar PDF del contrato"}
