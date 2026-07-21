@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 export default function Checklist() {
-  const { id } = useParams(); // ID de la inspección
+  const { id } = useParams();
+  const navigate = useNavigate();
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarChecklist() {
@@ -18,7 +20,7 @@ export default function Checklist() {
         .order("id", { ascending: true });
 
       if (error) {
-        alert("Error cargando checklist");
+        setMensaje("Error cargando checklist");
         return;
       }
 
@@ -36,7 +38,7 @@ export default function Checklist() {
       .eq("id", itemId);
 
     if (error) {
-      alert("Error actualizando ítem");
+      setMensaje("Error actualizando ítem");
       return;
     }
 
@@ -59,6 +61,10 @@ export default function Checklist() {
     <Menu>
       <div style={{ padding: 20, color: "#fff" }}>
         <h1 style={{ color: "#4db8ff" }}>Checklist de Inspección</h1>
+
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
 
         {items.length === 0 ? (
           <p>No hay ítems en el checklist.</p>
@@ -85,6 +91,7 @@ export default function Checklist() {
                     padding: "8px 12px",
                     borderRadius: 6,
                     border: "none",
+                    cursor: "pointer",
                   }}
                 >
                   ✓ OK
@@ -98,6 +105,7 @@ export default function Checklist() {
                     padding: "8px 12px",
                     borderRadius: 6,
                     border: "none",
+                    cursor: "pointer",
                   }}
                 >
                   ✗ KO
@@ -109,17 +117,56 @@ export default function Checklist() {
 
         <h2 style={{ marginTop: 30, color: "#4db8ff" }}>Acciones</h2>
 
-        <a href={`/inspecciones/fotos/${id}`}>
-          <button style={{ marginTop: 10 }}>Fotos</button>
-        </a>
+        <button
+          onClick={() => navigate(`/inspecciones/fotos/${id}`)}
+          style={{
+            marginTop: "10px",
+            padding: "12px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "8px",
+            border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
+          }}
+        >
+          Fotos
+        </button>
 
-        <a href={`/inspecciones/firma/${id}`}>
-          <button style={{ marginTop: 10 }}>Firma del cliente</button>
-        </a>
+        <button
+          onClick={() => navigate(`/inspecciones/firma/${id}`)}
+          style={{
+            marginTop: "10px",
+            padding: "12px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "8px",
+            border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
+          }}
+        >
+          Firma del cliente
+        </button>
 
-        <a href={`/inspecciones/pdf/${id}`}>
-          <button style={{ marginTop: 10 }}>Generar PDF</button>
-        </a>
+        <button
+          onClick={() => navigate(`/inspecciones/pdf/${id}`)}
+          style={{
+            marginTop: "10px",
+            padding: "12px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "8px",
+            border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
+          }}
+        >
+          Generar PDF
+        </button>
       </div>
     </Menu>
   );
