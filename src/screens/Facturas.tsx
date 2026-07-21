@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Button, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator, TouchableOpacity } from "react-native";
 import { obtenerFactura } from "../services/facturas";
 import { enviarFactura } from "../services/facturaEnviar";
 
 export default function FacturasScreen({ route }) {
   const { facturaId } = route.params;
+
   const [factura, setFactura] = useState(null);
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     cargarFactura();
@@ -18,20 +20,22 @@ export default function FacturasScreen({ route }) {
       const data = await obtenerFactura(facturaId);
       setFactura(data);
     } catch (e) {
-      console.log(e);
+      setMensaje("Error cargando factura");
     }
     setLoading(false);
   }
 
   async function handleEnviar() {
     setEnviando(true);
+    setMensaje("");
+
     try {
       await enviarFactura(factura.id);
-      alert("Factura enviada correctamente");
+      setMensaje("Factura enviada correctamente");
     } catch (e) {
-      alert("Error enviando factura");
-      console.log(e);
+      setMensaje("Error enviando factura");
     }
+
     setEnviando(false);
   }
 
@@ -50,18 +54,52 @@ export default function FacturasScreen({ route }) {
         Factura #{factura.id}
       </Text>
 
+      {mensaje !== "" && (
+        <Text style={{ marginTop: 15, color: "#007bff", fontWeight: "bold" }}>
+          {mensaje}
+        </Text>
+      )}
+
       <View style={{ marginTop: 20 }}>
-        <Text><Text style={{ fontWeight: "bold" }}>Cliente:</Text> {factura.cliente_nombre}</Text>
-        <Text><Text style={{ fontWeight: "bold" }}>Email:</Text> {factura.cliente_email}</Text>
-        <Text><Text style={{ fontWeight: "bold" }}>Fecha:</Text> {factura.fecha}</Text>
-        <Text><Text style={{ fontWeight: "bold" }}>Total:</Text> €{factura.total}</Text>
+        <Text>
+          <Text style={{ fontWeight: "bold" }}>Cliente:</Text>{" "}
+          {factura.cliente_nombre}
+        </Text>
+        <Text>
+          <Text style={{ fontWeight: "bold" }}>Email:</Text>{" "}
+          {factura.cliente_email}
+        </Text>
+        <Text>
+          <Text style={{ fontWeight: "bold" }}>Fecha:</Text> {factura.fecha}
+        </Text>
+        <Text>
+          <Text style={{ fontWeight: "bold" }}>Total:</Text> €{factura.total}
+        </Text>
       </View>
 
       <View style={{ marginTop: 40 }}>
         {enviando ? (
           <ActivityIndicator size="large" />
         ) : (
-          <Button title="Enviar factura por email" onPress={handleEnviar} />
+          <TouchableOpacity
+            onPress={handleEnviar}
+            style={{
+              backgroundColor: "#007bff",
+              padding: 15,
+              borderRadius: 10,
+            }}
+          >
+            <Text
+              style={{
+                color: "#fff",
+                textAlign: "center",
+                fontSize: 18,
+                fontWeight: "600",
+              }}
+            >
+              Enviar factura por email
+            </Text>
+          </TouchableOpacity>
         )}
       </View>
     </View>
