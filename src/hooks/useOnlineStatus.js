@@ -4,15 +4,18 @@ export default function useOnlineStatus() {
   const [online, setOnline] = useState(navigator.onLine);
 
   useEffect(() => {
-    const goOnline = () => setOnline(true);
-    const goOffline = () => setOnline(false);
+    const updateStatus = () => setOnline(navigator.onLine);
 
-    window.addEventListener("online", goOnline);
-    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", updateStatus);
+    window.addEventListener("offline", updateStatus);
+
+    // chequeo periódico para evitar falsos positivos
+    const interval = setInterval(updateStatus, 3000);
 
     return () => {
-      window.removeEventListener("online", goOnline);
-      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", updateStatus);
+      window.removeEventListener("offline", updateStatus);
+      clearInterval(interval);
     };
   }, []);
 
