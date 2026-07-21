@@ -4,9 +4,10 @@ import { supabase } from "../../supabaseClient";
 import { useParams } from "react-router-dom";
 
 export default function Firma() {
-  const { id } = useParams(); // ID de la inspección
+  const { id } = useParams();
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [mensaje, setMensaje] = useState("");
 
   function startDrawing(e) {
     const canvas = canvasRef.current;
@@ -17,10 +18,7 @@ export default function Firma() {
     ctx.strokeStyle = "#4db8ff";
 
     ctx.beginPath();
-    ctx.moveTo(
-      e.nativeEvent.offsetX,
-      e.nativeEvent.offsetY
-    );
+    ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
 
     setIsDrawing(true);
   }
@@ -31,10 +29,7 @@ export default function Firma() {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
-    ctx.lineTo(
-      e.nativeEvent.offsetX,
-      e.nativeEvent.offsetY
-    );
+    ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
     ctx.stroke();
   }
 
@@ -62,11 +57,11 @@ export default function Firma() {
       ]);
 
     if (error) {
-      alert("Error guardando firma");
+      setMensaje("Error guardando firma");
       return;
     }
 
-    alert("Firma guardada correctamente");
+    setMensaje("Firma guardada correctamente");
   }
 
   return (
@@ -89,6 +84,10 @@ export default function Firma() {
         >
           Firma del Cliente
         </h1>
+
+        {mensaje && (
+          <p style={{ marginBottom: "15px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
 
         <p style={{ opacity: 0.8, marginBottom: "20px" }}>
           El cliente debe firmar la inspección realizada.
@@ -115,11 +114,12 @@ export default function Firma() {
           onClick={limpiar}
           style={{
             marginRight: "10px",
-            padding: "10px 15px",
+            padding: "12px",
             background: "#333",
             color: "#fff",
-            borderRadius: "6px",
+            borderRadius: "8px",
             border: "none",
+            cursor: "pointer",
           }}
         >
           Limpiar firma
@@ -128,11 +128,13 @@ export default function Firma() {
         <button
           onClick={guardarFirma}
           style={{
-            padding: "10px 15px",
+            padding: "12px",
             background: "#4db8ff",
-            color: "#fff",
-            borderRadius: "6px",
+            color: "#000",
+            borderRadius: "8px",
             border: "none",
+            fontWeight: "700",
+            cursor: "pointer",
           }}
         >
           Guardar firma
