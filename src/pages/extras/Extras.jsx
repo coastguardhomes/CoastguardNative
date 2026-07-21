@@ -81,66 +81,78 @@ export default function Extras() {
   };
 
   return (
-    <div style={{ padding: 20, color: "#fff" }}>
-      <h1 style={{ color: "#4db8ff" }}>Extras</h1>
-
-      {mensaje && (
-        <p style={{ marginBottom: 15, color: "#4db8ff" }}>{mensaje}</p>
-      )}
-
-      {EXTRAS.map(extra => (
-        <div key={extra.nombre} style={{ marginBottom: 10 }}>
-          <label style={{ display: "flex", alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={seleccionados.includes(extra.nombre)}
-              onChange={() => toggleExtra(extra.nombre)}
-              style={{
-                width: 20,
-                height: 20,
-                marginRight: 10,
-                cursor: "pointer"
-              }}
-            />
-            {extra.nombre} — {extra.precio !== null ? `${extra.precio}€` : "Según tarifa"}
-          </label>
-
-          {extra.precio === null && seleccionados.includes(extra.nombre) && (
-            <input
-              type="number"
-              placeholder="Precio €"
-              style={{
-                padding: "10px",
-                width: "100%",
-                marginTop: "10px",
-                borderRadius: "6px",
-                border: "1px solid #ccc"
-              }}
-              onChange={(e) =>
-                setPrecios({ ...precios, [extra.nombre]: e.target.value })
-              }
-            />
-          )}
-        </div>
-      ))}
-
-      <hr style={{ margin: "20px 0" }} />
-
-      <button
-        onClick={crearFactura}
+    <div
+      style={{
+        padding: "20px",
+        background: "#0a0f1a",
+        minHeight: "100vh",
+        color: "#fff",
+        fontFamily: "Inter, sans-serif"
+      }}
+    >
+      <h1
         style={{
-          padding: "12px",
-          width: "100%",
-          background: "#4db8ff",
-          color: "#000",
-          borderRadius: "8px",
-          border: "none",
+          color: "#4db8ff",
+          marginBottom: "25px",
+          fontSize: "28px",
           fontWeight: "700",
-          cursor: "pointer"
+          textShadow: "0 0 8px rgba(0,153,255,0.6)"
         }}
       >
-        Crear Factura Automática
-      </button>
-    </div>
-  );
-}
+        Extras
+      </h1>
+
+      {mensaje && (
+        <p
+          style={{
+            marginBottom: "15px",
+            color: "#4db8ff",
+            fontWeight: "600"
+          }}
+        >
+          {mensaje}
+        </p>
+      )}
+
+      <div
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          padding: "20px",
+          borderRadius: "14px",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 0 12px rgba(0,153,255,0.2)"
+        }}
+      >
+        {EXTRAS.map(extra => (
+          <div key={extra.nombre} style={{ marginBottom: "20px" }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                fontSize: "16px",
+                cursor: "pointer"
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={seleccionados.includes(extra.nombre)}
+                onChange={() => toggleExtra(extra.nombre)}
+                style={{
+                  width: "22px",
+                  height: "22px",
+                  marginRight: "12px",
+                  cursor: "pointer",
+                  accentColor: "#4db8ff"
+                }}
+              />
+              {extra.nombre} —{" "}
+              {extra.precio !== null ? `${extra.precio}€` : "Según tarifa"}
+            </label>
+
+            {extra.precio === null && seleccionados.includes(extra.nombre) && (
+              <input
+                type="number"
+                placeholder="Precio €"
+                style={{
+                  padding: "12px",
+                  width: "100%",
