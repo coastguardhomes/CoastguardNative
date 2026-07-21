@@ -1,32 +1,41 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../../supabaseClient"; 
+import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   const navigate = useNavigate();
 
-  // Si ya hay sesión, saltar el login
+  // Restauración de sesión estable en móvil
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        navigate("/home"); 
-      }
-    });
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+
+      // En móvil puede tardar unos ms en restaurar la sesión
+      setTimeout(() => {
+        if (data.session) {
+          navigate("/home", { replace: true });
+        } else {
+          setCheckingSession(false);
+        }
+      }, 150);
+    };
+
+    checkSession();
   }, [navigate]);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      alert("Introduce email y contraseña");
       return;
     }
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -34,17 +43,34 @@ export default function Login() {
     setLoading(false);
 
     if (error) {
-      alert(error.message);
       return;
     }
 
-    navigate("/home");
+    navigate("/home", { replace: true });
   };
+
+  if (checkingSession) {
+    return (
+      <div
+        style={{
+          height: "100%",
+          background: "#0a0f1a",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          color: "#fff",
+          fontSize: 18,
+        }}
+      >
+        Cargando...
+      </div>
+    );
+  }
 
   return (
     <div
       style={{
-        minHeight: "100vh",
+        height: "100%",
         background: "#0a0f1a",
         display: "flex",
         justifyContent: "center",
@@ -124,39 +150,20 @@ export default function Login() {
 
         <button
           onClick={handleLogin}
+          disabled={loading}
           style={{
             width: "100%",
             padding: "12px",
-            background: "#4db8ff",
+            background: loading ? "#0a4a7a" : "#0077cc",
+            color: "#fff",
             border: "none",
             borderRadius: "8px",
-            color: "#000",
-            fontWeight: "700",
             fontSize: "16px",
             cursor: "pointer",
-            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+            opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? "Entrando..." : "Entrar"}
-        </button>
-
-        {/* BOTÓN DE REGISTRO AÑADIDO */}
-        <button
-          onClick={() => navigate("/register")}
-          style={{
-            width: "100%",
-            padding: "12px",
-            background: "transparent",
-            border: "none",
-            color: "#4db8ff",
-            fontWeight: "600",
-            fontSize: "15px",
-            cursor: "pointer",
-            marginTop: "15px",
-            textDecoration: "underline",
-          }}
-        >
-          Registrarse
+          {loading ? "Entrando..." : "Iniciar sesión"}
         </button>
       </div>
     </div>
