@@ -1,0 +1,6 @@
+{
+  "appId": "com.coastguard.mobile",
+  "appName": "CoastGuard",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
