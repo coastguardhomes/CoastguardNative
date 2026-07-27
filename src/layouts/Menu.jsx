@@ -88,6 +88,31 @@ export default function Menu() {
           Facturas
         </span>
       </div>
+
+      {/* DASHBOARD ADMIN */}
+      <div
+        onClick={() => navigate("/admin/dashboard")}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          cursor: "pointer",
+        }}
+      >
+        <ion-icon
+          name="stats-chart-outline"
+          style={{ color: "#4da8ff", fontSize: "1.8rem" }}
+        ></ion-icon>
+        <span
+          style={{
+            color: "#f9d71c",
+            fontSize: "0.9rem",
+            marginTop: "4px",
+          }}
+        >
+          Dashboard
+        </span>
+      </div>
     </nav>
   );
 }
