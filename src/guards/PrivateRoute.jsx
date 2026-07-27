@@ -1,49 +1,73 @@
-import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useEffect, useState } from "react";
 
 export default function PrivateRoute() {
-  const { user, loading } = useAuth();
+  const [session, setSession] = useState(null);
   const [role, setRole] = useState(null);
-  const [checking, setChecking] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  const location = useLocation();
 
   useEffect(() => {
-    const fetchRole = async () => {
-      if (!user) {
-        setChecking(false);
-        return;
+    async function load() {
+      // ⭐ Android necesita tiempo para inicializar Supabase
+      const { data } = await supabase.auth.getSession();
+      const currentSession = data.session;
+
+      setSession(currentSession);
+
+      if (currentSession) {
+        const { data: perfil } = await supabase
+          .from("profiles")
+          .select("rol")
+          .eq("id", currentSession.user.id)
+          .single();
+
+        setRole(perfil?.rol || null);
       }
 
-      const { data: perfil } = await supabase
-        .from("profiles")
-        .select("rol")
-        .eq("id", user.id)
-        .single();
+      setLoading(false);
+    }
 
-      setRole(perfil?.rol || null);
-      setChecking(false);
-    };
+    load();
+  }, []);
 
-    fetchRole();
-  }, [user]);
+  if (loading) {
+    return (
+      <div
+        style={{
+          height: "100%",
+          background: "#0a0f1a",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          color: "#fff",
+          fontSize: 18,
+        }}
+      >
+        Cargando...
+      </div>
+    );
+  }
 
-  if (loading || checking) return null;
-
-  if (!user) return <Navigate to="/login" replace />;
-
-  // ADMIN
-  if (window.location.pathname.startsWith("/menu") && role !== "admin") {
+  // ❌ Sin sesión → login
+  if (!session) {
     return <Navigate to="/login" replace />;
   }
 
-  // CLIENTE
-  if (window.location.pathname.startsWith("/cliente") && role !== "cliente") {
+  // ⭐ Rutas protegidas por rol
+  const path = location.pathname;
+
+  if (path.startsWith("/menu") && role !== "admin") {
     return <Navigate to="/login" replace />;
   }
 
-  // TÉCNICO
-  if (window.location.pathname.startsWith("/tecnico") && role !== "tecnico") {
+  if (path.startsWith("/cliente") && role !== "cliente") {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (path.startsWith("/tecnico") && role !== "tecnico") {
     return <Navigate to="/login" replace />;
   }
 
