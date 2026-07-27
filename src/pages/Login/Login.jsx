@@ -11,12 +11,18 @@ export default function Login() {
 
   const navigate = useNavigate();
 
-  // ⭐ CORRECCIÓN: NO LLAMAR A SUPABASE AL INICIAR ANDROID ⭐
+  // ⭐ CORRECCIÓN: NO LLAMAR A SUPABASE AL INICIO EN ANDROID ⭐
   useEffect(() => {
     setCheckingSession(false);
   }, []);
 
   async function redirigirSegunRol(userId) {
+    // ⭐ CORRECCIÓN: evitar fallo si userId viene vacío ⭐
+    if (!userId) {
+      navigate("/home", { replace: true });
+      return;
+    }
+
     const { data: perfil } = await supabase
       .from("profiles")
       .select("rol")
