@@ -15,6 +15,9 @@ import ClienteDashboard from "./pages/cliente/ClienteDashboard.jsx";
 // DASHBOARD TÉCNICO
 import TecnicoDashboard from "./pages/tecnicos/TecnicoDashboard.jsx";
 
+// DASHBOARD ADMIN (NUEVO)
+import Dashboardadmin from "./pages/Dashboardadmin.jsx";
+
 // CLIENTES
 import Clientes from "./pages/clientes/Clientes.jsx";
 import NuevoCliente from "./pages/clientes/NuevoCliente.jsx";
@@ -63,9 +66,14 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* ADMIN */}
+      {/* ADMIN MENÚ */}
       <Route path="/menu" element={<PrivateRoute />}>
         <Route index element={<Menu />} />
+      </Route>
+
+      {/* ADMIN DASHBOARD (NUEVO) */}
+      <Route path="/admin/dashboard" element={<PrivateRoute />}>
+        <Route index element={<Dashboardadmin />} />
       </Route>
 
       {/* CLIENTE */}
