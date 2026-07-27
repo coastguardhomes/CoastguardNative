@@ -14,10 +14,11 @@ export default function Facturas() {
         return;
       }
 
+      // CAMBIO IMPORTANTE: cliente_id en lugar de usuario_id
       const { data, error } = await supabase
         .from("facturas")
         .select("*")
-        .eq("usuario_id", session.user.id);
+        .eq("cliente_id", 2); // O el cliente asociado al usuario
 
       if (!error) {
         setFacturas(data);
@@ -70,9 +71,10 @@ export default function Facturas() {
           }}
         >
           <p><strong>ID:</strong> {f.id}</p>
-          <p><strong>Importe:</strong> {f.importe} €</p>
-          <p><strong>Estado:</strong> {f.estado}</p>
+          <p><strong>Número:</strong> {f.numero}</p>
           <p><strong>Fecha:</strong> {f.fecha}</p>
+          <p><strong>Total:</strong> {f.total} €</p>
+          <p><strong>Estado:</strong> {f.estado}</p>
         </div>
       ))}
     </div>
