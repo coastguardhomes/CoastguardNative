@@ -11,18 +11,9 @@ export default function Login() {
 
   const navigate = useNavigate();
 
+  // ⭐ CORRECCIÓN: NO LLAMAR A SUPABASE AL INICIAR ANDROID ⭐
   useEffect(() => {
-    async function checkSession() {
-      const { data } = await supabase.auth.getSession();
-
-      if (data.session) {
-        await redirigirSegunRol(data.session.user.id);
-      } else {
-        setCheckingSession(false);
-      }
-    }
-
-    checkSession();
+    setCheckingSession(false);
   }, []);
 
   async function redirigirSegunRol(userId) {
@@ -59,7 +50,6 @@ export default function Login() {
     setErrorMsg("");
 
     try {
-      // ⭐ LOGIN REAL DIRECTO CON SUPABASE ⭐
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
