@@ -7,21 +7,24 @@ export default function ClienteDashboard() {
 
   useEffect(() => {
     async function cargarCliente() {
-      const { data: { session } } = await supabase.auth.getSession();
+      // ⭐ Esperar a que Supabase inicialice correctamente
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
 
       if (!session) {
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
+      // ⭐ Consultar cliente usando el usuario_id correcto
+      const { data: clienteData, error } = await supabase
         .from("clientes")
         .select("*")
         .eq("usuario_id", session.user.id)
         .single();
 
       if (!error) {
-        setCliente(data);
+        setCliente(clienteData);
       }
 
       setLoading(false);
@@ -51,7 +54,6 @@ export default function ClienteDashboard() {
       style={{
         background: "#fff",
         padding: "20px",
-        border: "none",
         borderRadius: "8px",
         maxWidth: "600px",
         margin: "0 auto",
