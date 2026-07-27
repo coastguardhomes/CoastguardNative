@@ -27,7 +27,7 @@ export default function Register() {
 
     setLoading(true);
 
-    // 1️⃣ Registrar usuario en Supabase (envía email de confirmación)
+    // 1️⃣ Registrar usuario en Supabase
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -47,11 +47,12 @@ export default function Register() {
       return;
     }
 
-    // 2️⃣ Insertar rol en la tabla profiles
+    // 2️⃣ Insertar perfil en la tabla profiles
     const { error: perfilError } = await supabase
       .from("profiles")
       .insert({
         id: user.id,
+        email: email,
         rol: "cliente",
       });
 
@@ -61,12 +62,13 @@ export default function Register() {
       return;
     }
 
-    // 3️⃣ Mensaje final
-    setMensaje(
-      "Cuenta creada correctamente. Revisa tu email para confirmar la cuenta antes de iniciar sesión."
-    );
-
+    // 3️⃣ Mensaje final + redirección
+    setMensaje("Cuenta creada correctamente. Revisa tu email para confirmar la cuenta.");
     setLoading(false);
+
+    setTimeout(() => {
+      navigate("/login", { replace: true });
+    }, 1500);
   };
 
   return (
