@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { PRICES } from "../../constants/prices";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function ClienteContratoVer() {
+  const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -56,13 +58,13 @@ export default function ClienteContratoVer() {
           fontSize: "18px",
         }}
       >
-        Cargando contrato...
+        {t("clienteContratoCargando")}
       </div>
     );
   }
 
   const precioServicio =
-    PRICES[contrato.tipoServicio] || "Precio no disponible";
+    PRICES[contrato.tipoServicio] || t("clienteContratoPrecioNoDisponible");
 
   return (
     <div
@@ -84,7 +86,7 @@ export default function ClienteContratoVer() {
           textShadow: "0 0 8px rgba(0,153,255,0.6)",
         }}
       >
-        Contrato del Cliente
+        {t("clienteContratoTitulo")}
       </h2>
 
       <div
@@ -104,12 +106,12 @@ export default function ClienteContratoVer() {
             fontSize: "20px",
           }}
         >
-          Datos del Cliente
+          {t("clienteContratoDatosCliente")}
         </h3>
 
-        <p><strong>Nombre:</strong> {cliente.nombre}</p>
-        <p><strong>Dirección:</strong> {cliente.direccion}</p>
-        <p><strong>Teléfono:</strong> {cliente.telefono}</p>
+        <p><strong>{t("clienteContratoNombre")}:</strong> {cliente.nombre}</p>
+        <p><strong>{t("clienteContratoDireccion")}:</strong> {cliente.direccion}</p>
+        <p><strong>{t("clienteContratoTelefono")}:</strong> {cliente.telefono}</p>
       </div>
 
       <div
@@ -128,12 +130,12 @@ export default function ClienteContratoVer() {
             fontSize: "20px",
           }}
         >
-          Detalles del Contrato
+          {t("clienteContratoDetalles")}
         </h3>
 
-        <p><strong>Tipo de servicio:</strong> {contrato.tipoServicio}</p>
-        <p><strong>Precio mensual:</strong> {precioServicio} €</p>
-        <p><strong>Fecha inicio:</strong> {contrato.fechaInicio}</p>
+        <p><strong>{t("clienteContratoTipoServicio")}:</strong> {contrato.tipoServicio}</p>
+        <p><strong>{t("clienteContratoPrecioMensual")}:</strong> {precioServicio} €</p>
+        <p><strong>{t("clienteContratoFechaInicio")}:</strong> {contrato.fechaInicio}</p>
 
         <button
           onClick={() => navigate(`/contratos/${id}/editar`)}
@@ -151,7 +153,7 @@ export default function ClienteContratoVer() {
             boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
-          Editar contrato
+          {t("clienteContratoEditar")}
         </button>
       </div>
     </div>
