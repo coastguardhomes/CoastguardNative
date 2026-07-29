@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import { jsPDF } from "jspdf";
 import { supabase } from "../../lib/supabase";
 import { PRICES } from "../../constants/prices";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function GenerarPDFContrato({ contrato, cliente }) {
+  const { t, lang } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   const generarPDF = async () => {
@@ -13,30 +15,25 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
 
     // Encabezado
     doc.setFontSize(18);
-    doc.text("Contrato de Servicio CoastGuard", 20, 20);
+    doc.text(t("pdfTitulo"), 20, 20);
 
     doc.setFontSize(12);
-    doc.text(`Nombre del cliente: ${cliente?.nombre || ""}`, 20, 40);
-    doc.text(`Dirección: ${cliente?.direccion || ""}`, 20, 50);
-    doc.text(`Teléfono: ${cliente?.telefono || ""}`, 20, 60);
+    doc.text(`${t("pdfNombreCliente")}: ${cliente?.nombre || ""}`, 20, 40);
+    doc.text(`${t("pdfDireccion")}: ${cliente?.direccion || ""}`, 20, 50);
+    doc.text(`${t("pdfTelefono")}: ${cliente?.telefono || ""}`, 20, 60);
 
-    doc.text("Detalles del servicio:", 20, 80);
-    doc.text(`Tipo de servicio: ${contrato?.tipoServicio || ""}`, 20, 90);
-    doc.text(`Fecha de inicio: ${contrato?.fechaInicio || ""}`, 20, 100);
+    doc.text(t("pdfDetallesServicio"), 20, 80);
+    doc.text(`${t("pdfTipoServicio")}: ${contrato?.tipoServicio || ""}`, 20, 90);
+    doc.text(`${t("pdfFechaInicio")}: ${contrato?.fechaInicio || ""}`, 20, 100);
 
     doc.text(
-      `Precio mensual: ${PRICES[contrato?.tipoServicio] || "N/D"} €`,
+      `${t("pdfPrecioMensual")}: ${PRICES[contrato?.tipoServicio] || "N/D"} €`,
       20,
       110
     );
 
-    doc.text("Condiciones generales:", 20, 130);
-    doc.text(
-      "El cliente acepta las condiciones del servicio CoastGuard según lo acordado.",
-      20,
-      140,
-      { maxWidth: 170 }
-    );
+    doc.text(t("pdfCondiciones"), 20, 130);
+    doc.text(t("pdfCondicionesTexto"), 20, 140, { maxWidth: 170 });
 
     // Firma del cliente si existe
     if (contrato?.firma) {
@@ -57,7 +54,7 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
 
       doc.addImage(firmaImg, "PNG", 20, 160, 60, 30);
     } else {
-      doc.text("Firma del cliente: ____________________", 20, 170);
+      doc.text(`${t("pdfFirmaCliente")}: ____________________`, 20, 170);
     }
 
     // Guardar PDF en Supabase Storage
@@ -83,7 +80,7 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
       .eq("id", contrato.id);
 
     setLoading(false);
-    alert("PDF generado y guardado correctamente.");
+    alert(t("pdfGenerado"));
   };
 
   return (
@@ -105,7 +102,7 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
         opacity: loading ? 0.7 : 1,
       }}
     >
-      {loading ? "Generando PDF..." : "Generar PDF del contrato"}
+      {loading ? t("pdfGenerando") : t("pdfGenerar")}
     </button>
   );
 }
