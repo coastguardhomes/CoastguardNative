@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function VerPDFContrato() {
+  const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const [pdfURL, setPdfURL] = useState("");
@@ -20,7 +22,7 @@ export default function VerPDFContrato() {
     }
 
     if (!data?.pdf_url) {
-      console.warn("El contrato no tiene PDF generado.");
+      console.warn(t("pdfNoGenerado"));
       return;
     }
 
@@ -49,7 +51,7 @@ export default function VerPDFContrato() {
           fontSize: "18px",
         }}
       >
-        Cargando PDF...
+        {t("pdfCargando")}
       </div>
     );
   }
@@ -74,7 +76,7 @@ export default function VerPDFContrato() {
           textShadow: "0 0 8px rgba(0,153,255,0.6)",
         }}
       >
-        Contrato PDF #{id}
+        {t("pdfTituloVista")} #{id}
       </h2>
 
       <button
@@ -92,7 +94,7 @@ export default function VerPDFContrato() {
           fontSize: "15px",
         }}
       >
-        Volver
+        {t("pdfVolver")}
       </button>
 
       <div
@@ -107,7 +109,7 @@ export default function VerPDFContrato() {
       >
         <iframe
           src={pdfURL}
-          title="PDF Contrato"
+          title={t("pdfTituloIframe")}
           style={{
             width: "100%",
             height: "70vh",
@@ -133,7 +135,7 @@ export default function VerPDFContrato() {
           boxShadow: "0 0 10px rgba(0,153,255,0.4)",
         }}
       >
-        Abrir en nueva pestaña
+        {t("pdfAbrirNuevaPestana")}
       </button>
     </div>
   );
