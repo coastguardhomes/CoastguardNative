@@ -2,8 +2,10 @@ import { useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SignaturePad from "react-signature-canvas";
 import { supabase } from "../../lib/supabase";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function ClienteFirmaDibujar() {
+  const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const sigCanvas = useRef(null);
@@ -66,7 +68,7 @@ export default function ClienteFirmaDibujar() {
           textShadow: "0 0 8px rgba(0,153,255,0.6)",
         }}
       >
-        Firma del Cliente
+        {t("clienteFirmaTitulo")}
       </h2>
 
       <div
@@ -111,7 +113,7 @@ export default function ClienteFirmaDibujar() {
             boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
-          Guardar firma
+          {t("clienteFirmaGuardar")}
         </button>
 
         <button
@@ -128,7 +130,7 @@ export default function ClienteFirmaDibujar() {
             fontSize: "16px",
           }}
         >
-          Limpiar
+          {t("clienteFirmaLimpiar")}
         </button>
       </div>
     </div>
