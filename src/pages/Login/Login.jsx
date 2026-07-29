@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function Login() {
+  const { t } = useLanguage();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,7 +20,6 @@ export default function Login() {
   }, []);
 
   async function redirigirSegunRol(userId) {
-    // ⭐ CORRECCIÓN: evitar fallo si userId viene vacío ⭐
     if (!userId) {
       navigate("/home", { replace: true });
       return;
@@ -62,7 +64,7 @@ export default function Login() {
       });
 
       if (error || !data.session) {
-        setErrorMsg("Credenciales incorrectas");
+        setErrorMsg(t("loginError"));
         setLoading(false);
         return;
       }
@@ -70,7 +72,7 @@ export default function Login() {
       await redirigirSegunRol(data.session.user.id);
 
     } catch (error) {
-      setErrorMsg("Credenciales incorrectas");
+      setErrorMsg(t("loginError"));
     }
 
     setLoading(false);
@@ -89,7 +91,7 @@ export default function Login() {
           fontSize: 18,
         }}
       >
-        Cargando...
+        {t("loading")}
       </div>
     );
   }
@@ -138,7 +140,7 @@ export default function Login() {
             marginBottom: "25px",
           }}
         >
-          Inicia sesión para continuar
+          {t("loginSubtitle")}
         </p>
 
         {errorMsg && (
@@ -158,7 +160,7 @@ export default function Login() {
 
         <input
           type="email"
-          placeholder="Email"
+          placeholder={t("email")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           style={{
@@ -175,7 +177,7 @@ export default function Login() {
 
         <input
           type="password"
-          placeholder="Contraseña"
+          placeholder={t("password")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           style={{
@@ -205,7 +207,7 @@ export default function Login() {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? "Entrando..." : "Iniciar sesión"}
+          {loading ? t("loggingIn") : t("login")}
         </button>
 
         <button
@@ -223,7 +225,7 @@ export default function Login() {
             textDecoration: "underline",
           }}
         >
-          Registrarse
+          {t("register")}
         </button>
 
       </div>
