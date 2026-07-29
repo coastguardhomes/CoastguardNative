@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function ClienteDashboard() {
+  const { t } = useLanguage();
+
   const [cliente, setCliente] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function cargarCliente() {
-      // ⭐ Esperar a que Supabase inicialice correctamente
       const { data } = await supabase.auth.getSession();
       const session = data.session;
 
@@ -16,7 +18,6 @@ export default function ClienteDashboard() {
         return;
       }
 
-      // ⭐ Consultar cliente usando el usuario_id correcto
       const { data: clienteData, error } = await supabase
         .from("clientes")
         .select("*")
@@ -36,7 +37,7 @@ export default function ClienteDashboard() {
   if (loading) {
     return (
       <div style={{ padding: "20px", textAlign: "center" }}>
-        <h3>Cargando datos del cliente...</h3>
+        <h3>{t("clienteDashboardCargando")}</h3>
       </div>
     );
   }
@@ -44,7 +45,7 @@ export default function ClienteDashboard() {
   if (!cliente) {
     return (
       <div style={{ padding: "20px", textAlign: "center" }}>
-        <h3>No se encontró información del cliente.</h3>
+        <h3>{t("clienteDashboardNoEncontrado")}</h3>
       </div>
     );
   }
@@ -61,11 +62,11 @@ export default function ClienteDashboard() {
         boxShadow: "0px 2px 8px rgba(0,0,0,0.1)",
       }}
     >
-      <h2 style={{ marginBottom: "10px" }}>Panel del Cliente</h2>
+      <h2 style={{ marginBottom: "10px" }}>{t("clienteDashboardTitulo")}</h2>
 
-      <p><strong>Nombre:</strong> {cliente.nombre}</p>
-      <p><strong>Email:</strong> {cliente.email}</p>
-      <p><strong>Teléfono:</strong> {cliente.telefono}</p>
+      <p><strong>{t("clienteDashboardNombre")}:</strong> {cliente.nombre}</p>
+      <p><strong>{t("clienteDashboardEmail")}:</strong> {cliente.email}</p>
+      <p><strong>{t("clienteDashboardTelefono")}:</strong> {cliente.telefono}</p>
 
       <div style={{ marginTop: "20px" }}>
         <button
@@ -78,7 +79,7 @@ export default function ClienteDashboard() {
             cursor: "pointer",
           }}
         >
-          Ver mis viviendas
+          {t("clienteDashboardVerViviendas")}
         </button>
       </div>
     </div>
