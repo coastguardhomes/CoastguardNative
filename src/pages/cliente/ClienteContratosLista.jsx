@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { PRICES } from "../../constants/prices";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function ClienteContratosLista() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [contratos, setContratos] = useState([]);
 
@@ -31,8 +33,8 @@ export default function ClienteContratosLista() {
       const cliente = clientesData.find((c) => c.id === contrato.cliente_id);
       return {
         ...contrato,
-        clienteNombre: cliente?.nombre || "Cliente desconocido",
-        clienteDireccion: cliente?.direccion || "Sin dirección",
+        clienteNombre: cliente?.nombre || t("clienteDesconocido"),
+        clienteDireccion: cliente?.direccion || t("clienteSinDireccion"),
       };
     });
 
@@ -63,7 +65,7 @@ export default function ClienteContratosLista() {
           textShadow: "0 0 8px rgba(0,153,255,0.6)",
         }}
       >
-        Contratos de Clientes
+        {t("clienteListaTitulo")}
       </h2>
 
       {contratos.length === 0 && (
@@ -74,7 +76,7 @@ export default function ClienteContratosLista() {
             fontSize: "16px",
           }}
         >
-          No hay contratos registrados.
+          {t("clienteListaVacio")}
         </p>
       )}
 
@@ -94,19 +96,22 @@ export default function ClienteContratosLista() {
           }}
         >
           <p style={{ marginBottom: 6 }}>
-            <strong style={{ color: "#4db8ff" }}>Cliente:</strong> {c.clienteNombre}
+            <strong style={{ color: "#4db8ff" }}>{t("clienteListaCliente")}:</strong>{" "}
+            {c.clienteNombre}
           </p>
 
           <p style={{ marginBottom: 6 }}>
-            <strong style={{ color: "#4db8ff" }}>Dirección:</strong> {c.clienteDireccion}
+            <strong style={{ color: "#4db8ff" }}>{t("clienteListaDireccion")}:</strong>{" "}
+            {c.clienteDireccion}
           </p>
 
           <p style={{ marginBottom: 6 }}>
-            <strong style={{ color: "#4db8ff" }}>Servicio:</strong> {c.tipoServicio}
+            <strong style={{ color: "#4db8ff" }}>{t("clienteListaServicio")}:</strong>{" "}
+            {c.tipoServicio}
           </p>
 
           <p>
-            <strong style={{ color: "#4db8ff" }}>Precio:</strong>{" "}
+            <strong style={{ color: "#4db8ff" }}>{t("clienteListaPrecio")}:</strong>{" "}
             {PRICES[c.tipoServicio]} €
           </p>
         </div>
