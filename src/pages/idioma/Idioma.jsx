@@ -1,18 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Menu from "../../layouts/Menu";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function Idioma() {
-  const [idioma, setIdioma] = useState("es");
+  const { lang, setLang, t } = useLanguage();
 
-  useEffect(() => {
-    const saved = localStorage.getItem("idioma");
-    if (saved) setIdioma(saved);
-  }, []);
-
-  const cambiarIdioma = (lang) => {
-    setIdioma(lang);
-    localStorage.setItem("idioma", lang);
-    alert(`Idioma cambiado a: ${lang === "es" ? "Español" : "English"}`);
+  const cambiarIdioma = (nuevo) => {
+    setLang(nuevo);
+    localStorage.setItem("idioma", nuevo);
   };
 
   const cardStyle = {
@@ -56,26 +51,26 @@ export default function Idioma() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          🌐 Cambiar idioma
+          🌐 {t("idioma")}
         </h1>
 
         <div style={cardStyle}>
           <p style={{ opacity: 0.8, marginBottom: "15px" }}>
-            Selecciona el idioma de la aplicación.
+            {t("seleccionarIdioma")}
           </p>
 
           <button
-            style={idioma === "es" ? buttonActive : buttonStyle}
+            style={lang === "es" ? buttonActive : buttonStyle}
             onClick={() => cambiarIdioma("es")}
           >
-            🇪🇸 Español
+            🇪🇸 {t("espanol")}
           </button>
 
           <button
-            style={idioma === "en" ? buttonActive : buttonStyle}
+            style={lang === "en" ? buttonActive : buttonStyle}
             onClick={() => cambiarIdioma("en")}
           >
-            🇬🇧 English
+            🇬🇧 {t("ingles")}
           </button>
         </div>
       </div>
