@@ -13,14 +13,20 @@ export default function Checklist() {
 
   useEffect(() => {
     async function cargarChecklist() {
+      // La tabla real es checklist_inspeccion (antes "checklist", que no
+      // existe) y sus columnas son `item` y `completado` (booleano).
       const { data, error } = await supabase
-        .from("checklist")
+        .from("checklist_inspeccion")
         .select("*")
         .eq("inspeccion_id", id)
         .order("id", { ascending: true });
 
       if (error) {
+        console.error("Error cargando checklist:", error);
         setMensaje("Error cargando checklist");
+        // Sin esto la pantalla se quedaba en "Cargando checklist..." para
+        // siempre cuando la consulta fallaba.
+        setLoading(false);
         return;
       }
 
@@ -31,21 +37,20 @@ export default function Checklist() {
     cargarChecklist();
   }, [id]);
 
-  async function actualizarItem(itemId, nuevoEstado) {
+  async function actualizarItem(itemId, completado) {
     const { error } = await supabase
-      .from("checklist")
-      .update({ estado: nuevoEstado })
+      .from("checklist_inspeccion")
+      .update({ completado })
       .eq("id", itemId);
 
     if (error) {
+      console.error("Error actualizando ítem:", error);
       setMensaje("Error actualizando ítem");
       return;
     }
 
     setItems((prev) =>
-      prev.map((i) =>
-        i.id === itemId ? { ...i, estado: nuevoEstado } : i
-      )
+      prev.map((i) => (i.id === itemId ? { ...i, completado } : i))
     );
   }
 
@@ -128,51 +133,47 @@ export default function Checklist() {
                     fontWeight: "600",
                   }}
                 >
-                  {item.titulo}
+                  {item.item}
                 </p>
 
                 <div style={{ display: "flex", gap: "10px" }}>
                   <button
-                    onClick={() => actualizarItem(item.id, "ok")}
+                    onClick={() => actualizarItem(item.id, true)}
                     style={{
                       flex: 1,
                       padding: "12px",
-                      background:
-                        item.estado === "ok"
-                          ? "#4db8ff"
-                          : "rgba(255,255,255,0.08)",
+                      background: item.completado
+                        ? "#4db8ff"
+                        : "rgba(255,255,255,0.08)",
                       color: "#fff",
                       borderRadius: "10px",
                       border: "none",
                       fontWeight: "700",
                       cursor: "pointer",
-                      boxShadow:
-                        item.estado === "ok"
-                          ? "0 0 10px rgba(0,153,255,0.4)"
-                          : "none",
+                      boxShadow: item.completado
+                        ? "0 0 10px rgba(0,153,255,0.4)"
+                        : "none",
                     }}
                   >
                     ✓ OK
                   </button>
 
                   <button
-                    onClick={() => actualizarItem(item.id, "ko")}
+                    onClick={() => actualizarItem(item.id, false)}
                     style={{
                       flex: 1,
                       padding: "12px",
-                      background:
-                        item.estado === "ko"
-                          ? "red"
-                          : "rgba(255,255,255,0.08)",
+                      background: item.completado
+                        ? "rgba(255,255,255,0.08)"
+                        : "red",
                       color: "#fff",
                       borderRadius: "10px",
                       border: "none",
                       fontWeight: "700",
                       cursor: "pointer",
-                      boxShadow:
-                        item.estado === "ko"
-                          ? "0 0 10px rgba(255,0,0,0.4)"
-                          : "none",
+                      boxShadow: item.completado
+                        ? "none"
+                        : "0 0 10px rgba(255,0,0,0.4)",
                     }}
                   >
                     ✗ KO

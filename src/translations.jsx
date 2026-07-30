@@ -1,5 +1,21 @@
 const translations = {
   es: {
+    // --- LOGIN ---
+    // Faltaban todas estas claves y t() devuelve la clave cuando no existe,
+    // así que la pantalla de acceso mostraba literalmente "email",
+    // "password" o "login" en lugar de los textos.
+    loginSubtitle: "Accede a tu cuenta para continuar",
+    email: "Correo electrónico",
+    password: "Contraseña",
+    login: "Iniciar sesión",
+    loggingIn: "Entrando...",
+    loginError: "Correo o contraseña incorrectos.",
+    loginSinRol:
+      "Tu cuenta no tiene un rol asignado. Contacta con un administrador.",
+    register: "Crear una cuenta",
+    loading: "Cargando...",
+    contratoCadaDias: "Cada",
+
     // --- AJUSTES ---
     ajustes: "Ajustes",
     perfil: "Perfil del usuario",
@@ -77,6 +93,18 @@ const translations = {
   },
 
   en: {
+    // --- LOGIN ---
+    loginSubtitle: "Sign in to your account to continue",
+    email: "Email address",
+    password: "Password",
+    login: "Sign in",
+    loggingIn: "Signing in...",
+    loginError: "Incorrect email or password.",
+    loginSinRol: "Your account has no role assigned. Contact an administrator.",
+    register: "Create an account",
+    loading: "Loading...",
+    contratoCadaDias: "Every",
+
     // --- SETTINGS ---
     ajustes: "Settings",
     perfil: "User Profile",

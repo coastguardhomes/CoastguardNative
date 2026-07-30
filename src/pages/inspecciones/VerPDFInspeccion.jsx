@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
+import { resolverUrlPdf } from "../../lib/urlPdf";
 import { useParams } from "react-router-dom";
 
 export default function VerPDFInspeccion() {
@@ -11,19 +12,28 @@ export default function VerPDFInspeccion() {
 
   useEffect(() => {
     async function cargarPDF() {
+      // No existe ninguna tabla "pdf_inspecciones": el PDF de una inspección
+      // se guarda en la columna inspecciones.pdf_url.
       const { data, error } = await supabase
-        .from("pdf_inspecciones")
-        .select("*")
-        .eq("inspeccion_id", id)
-        .single();
+        .from("inspecciones")
+        .select("pdf_url")
+        .eq("id", id)
+        .maybeSingle();
 
       if (error) {
+        console.error("Error cargando PDF de la inspección:", error);
         setMensaje("Error cargando PDF de esta inspección");
         setLoading(false);
         return;
       }
 
-      setPdfUrl(data.url);
+      if (!data?.pdf_url) {
+        setMensaje("Esta inspección todavía no tiene PDF generado.");
+        setLoading(false);
+        return;
+      }
+
+      setPdfUrl(resolverUrlPdf(data.pdf_url));
       setLoading(false);
     }
 

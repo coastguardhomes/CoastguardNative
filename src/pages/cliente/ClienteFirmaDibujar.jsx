@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SignaturePad from "react-signature-canvas";
+import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
@@ -49,6 +50,7 @@ export default function ClienteFirmaDibujar() {
   };
 
   return (
+    <Menu>
     <div
       style={{
         height: "100%",
@@ -134,5 +136,6 @@ export default function ClienteFirmaDibujar() {
         </button>
       </div>
     </div>
+    </Menu>
   );
 }

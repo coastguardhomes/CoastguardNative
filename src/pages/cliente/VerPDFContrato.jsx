@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
@@ -35,28 +36,31 @@ export default function VerPDFContrato() {
 
   useEffect(() => {
     cargarPDF();
-  }, []);
+  }, [id]);
 
   if (!pdfURL) {
     return (
-      <div
-        style={{
-          height: "100%",
-          background: "#0a0f1a",
-          color: "#fff",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          fontFamily: "Inter, sans-serif",
-          fontSize: "18px",
-        }}
-      >
-        {t("pdfCargando")}
-      </div>
+      <Menu>
+        <div
+          style={{
+            height: "100%",
+            background: "#0a0f1a",
+            color: "#fff",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontFamily: "Inter, sans-serif",
+            fontSize: "18px",
+          }}
+        >
+          {t("pdfCargando")}
+        </div>
+      </Menu>
     );
   }
 
   return (
+    <Menu>
     <div
       style={{
         height: "100%",
@@ -138,5 +142,6 @@ export default function VerPDFContrato() {
         {t("pdfAbrirNuevaPestana")}
       </button>
     </div>
+    </Menu>
   );
 }

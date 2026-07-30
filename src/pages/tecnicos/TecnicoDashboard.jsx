@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { FaTools, FaHome, FaClipboardList, FaFileContract, FaUser } from "react-icons/fa";
+import Menu from "../../layouts/Menu";
 
 export default function TecnicoDashboard() {
   const cardStyle = {
@@ -22,6 +23,7 @@ export default function TecnicoDashboard() {
   };
 
   return (
+    <Menu>
     <div
       style={{
         padding: "25px",
@@ -51,7 +53,12 @@ export default function TecnicoDashboard() {
           gap: "20px",
         }}
       >
-        <Link to="/tecnico/inspecciones" style={{ textDecoration: "none" }}>
+        {/* Estas tarjetas apuntaban a /tecnico/inspecciones, /tecnico/viviendas,
+            /tecnico/tareas, /tecnico/documentos y /tecnico/perfil: cinco rutas
+            que no existen en la app, así que caían en el comodín y devolvían al
+            login. Ahora abren los módulos reales, que RLS ya limita a lo que
+            tiene asignado el técnico. */}
+        <Link to="/inspecciones" style={{ textDecoration: "none" }}>
           <div
             style={cardStyle}
             onMouseEnter={(e) => Object.assign(e.currentTarget.style, cardHover)}
@@ -64,7 +71,7 @@ export default function TecnicoDashboard() {
           </div>
         </Link>
 
-        <Link to="/tecnico/viviendas" style={{ textDecoration: "none" }}>
+        <Link to="/viviendas" style={{ textDecoration: "none" }}>
           <div
             style={cardStyle}
             onMouseEnter={(e) => Object.assign(e.currentTarget.style, cardHover)}
@@ -77,7 +84,7 @@ export default function TecnicoDashboard() {
           </div>
         </Link>
 
-        <Link to="/tecnico/tareas" style={{ textDecoration: "none" }}>
+        <Link to="/inspecciones/nueva" style={{ textDecoration: "none" }}>
           <div
             style={cardStyle}
             onMouseEnter={(e) => Object.assign(e.currentTarget.style, cardHover)}
@@ -90,7 +97,9 @@ export default function TecnicoDashboard() {
           </div>
         </Link>
 
-        <Link to="/tecnico/documentos" style={{ textDecoration: "none" }}>
+        {/* /inspecciones/pdf sin :id no existe como ruta: la lista de
+            inspecciones es donde se abren los informes. */}
+        <Link to="/inspecciones" style={{ textDecoration: "none" }}>
           <div
             style={cardStyle}
             onMouseEnter={(e) => Object.assign(e.currentTarget.style, cardHover)}
@@ -103,7 +112,7 @@ export default function TecnicoDashboard() {
           </div>
         </Link>
 
-        <Link to="/tecnico/perfil" style={{ textDecoration: "none" }}>
+        <Link to="/ajustes" style={{ textDecoration: "none" }}>
           <div
             style={cardStyle}
             onMouseEnter={(e) => Object.assign(e.currentTarget.style, cardHover)}
@@ -117,5 +126,6 @@ export default function TecnicoDashboard() {
         </Link>
       </div>
     </div>
+    </Menu>
   );
 }

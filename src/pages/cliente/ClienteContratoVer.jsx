@@ -1,8 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { PRICES } from "../../constants/prices";
 import { useLanguage } from "../../context/LanguageContext.jsx";
+import GenerarPDFContrato from "./GenerarPDFContrato.jsx";
+
+const botonSecundario = {
+  padding: "12px",
+  width: "100%",
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+  border: "1px solid rgba(255,255,255,0.2)",
+  borderRadius: "8px",
+  cursor: "pointer",
+  marginTop: "12px",
+  fontWeight: "600",
+  fontSize: "15px",
+};
 
 export default function ClienteContratoVer() {
   const { t } = useLanguage();
@@ -41,32 +55,39 @@ export default function ClienteContratoVer() {
   };
 
   useEffect(() => {
+    // Depende de `id`: con [] la pantalla se quedaba con el contrato anterior
+    // al navegar de un contrato a otro.
     cargarContrato();
-  }, []);
+  }, [id]);
 
   if (!contrato || !cliente) {
     return (
-      <div
-        style={{
-          height: "100%",
-          background: "#0a0f1a",
-          color: "#fff",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          fontFamily: "Inter, sans-serif",
-          fontSize: "18px",
-        }}
-      >
-        {t("clienteContratoCargando")}
-      </div>
+      <Menu>
+        <div
+          style={{
+            height: "100%",
+            background: "#0a0f1a",
+            color: "#fff",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontFamily: "Inter, sans-serif",
+            fontSize: "18px",
+          }}
+        >
+          {t("clienteContratoCargando")}
+        </div>
+      </Menu>
     );
   }
 
   const precioServicio =
-    PRICES[contrato.tipoServicio] || t("clienteContratoPrecioNoDisponible");
+    contrato.precio != null
+      ? `${contrato.precio} €`
+      : t("clienteContratoPrecioNoDisponible");
 
   return (
+    <Menu>
     <div
       style={{
         height: "100%",
@@ -133,29 +154,42 @@ export default function ClienteContratoVer() {
           {t("clienteContratoDetalles")}
         </h3>
 
-        <p><strong>{t("clienteContratoTipoServicio")}:</strong> {contrato.tipoServicio}</p>
-        <p><strong>{t("clienteContratoPrecioMensual")}:</strong> {precioServicio} €</p>
-        <p><strong>{t("clienteContratoFechaInicio")}:</strong> {contrato.fechaInicio}</p>
+        {/* Columnas reales de la tabla: frecuencia, precio y fecha_inicio.
+            Antes se leían tipoServicio y fechaInicio, que no existen, así que
+            estas tres líneas aparecían en blanco. */}
+        <p>
+          <strong>{t("clienteContratoTipoServicio")}:</strong>{" "}
+          {contrato.frecuencia ? `${t("contratoCadaDias")} ${contrato.frecuencia}` : "—"}
+        </p>
+        <p><strong>{t("clienteContratoPrecioMensual")}:</strong> {precioServicio}</p>
+        <p><strong>{t("clienteContratoFechaInicio")}:</strong> {contrato.fecha_inicio || "—"}</p>
 
+        {/* Acciones del contrato. GenerarPDFContrato y VerPDFContrato existían
+            en /src/pages/cliente pero no se usaban desde ninguna pantalla, por
+            eso el módulo de contratos "no tenía PDF". */}
         <button
-          onClick={() => navigate(`/contratos/${id}/editar`)}
-          style={{
-            padding: "12px",
-            width: "100%",
-            backgroundColor: "#4db8ff",
-            color: "#000",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            marginTop: "20px",
-            fontWeight: "700",
-            fontSize: "16px",
-            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-          }}
+          onClick={() => navigate(`/cliente/firma/${id}`)}
+          style={botonSecundario}
         >
-          {t("clienteContratoEditar")}
+          ✍️ {t("clienteFirmaTitulo")}
         </button>
+
+        <GenerarPDFContrato
+          contrato={contrato}
+          cliente={cliente}
+          onGenerado={cargarContrato}
+        />
+
+        {contrato.pdf_url && (
+          <button
+            onClick={() => navigate(`/cliente/contrato/${id}/pdf`)}
+            style={botonSecundario}
+          >
+            📄 {t("pdfTituloVista")}
+          </button>
+        )}
       </div>
     </div>
+    </Menu>
   );
 }

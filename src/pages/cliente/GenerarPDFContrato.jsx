@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { jsPDF } from "jspdf";
 import { supabase } from "../../lib/supabase";
-import { PRICES } from "../../constants/prices";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
-export default function GenerarPDFContrato({ contrato, cliente }) {
+export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
   const { t, lang } = useLanguage();
   const [loading, setLoading] = useState(false);
 
@@ -22,12 +21,20 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
     doc.text(`${t("pdfDireccion")}: ${cliente?.direccion || ""}`, 20, 50);
     doc.text(`${t("pdfTelefono")}: ${cliente?.telefono || ""}`, 20, 60);
 
+    // Columnas reales: frecuencia (días), fecha_inicio y precio. Antes se
+    // leían tipoServicio/fechaInicio y el PDF salía con los campos vacíos.
     doc.text(t("pdfDetallesServicio"), 20, 80);
-    doc.text(`${t("pdfTipoServicio")}: ${contrato?.tipoServicio || ""}`, 20, 90);
-    doc.text(`${t("pdfFechaInicio")}: ${contrato?.fechaInicio || ""}`, 20, 100);
+    doc.text(
+      `${t("pdfTipoServicio")}: ${
+        contrato?.frecuencia ? `${t("contratoCadaDias")} ${contrato.frecuencia}` : "N/D"
+      }`,
+      20,
+      90
+    );
+    doc.text(`${t("pdfFechaInicio")}: ${contrato?.fecha_inicio || "N/D"}`, 20, 100);
 
     doc.text(
-      `${t("pdfPrecioMensual")}: ${PRICES[contrato?.tipoServicio] || "N/D"} €`,
+      `${t("pdfPrecioMensual")}: ${contrato?.precio != null ? contrato.precio : "N/D"} €`,
       20,
       110
     );
@@ -81,6 +88,10 @@ export default function GenerarPDFContrato({ contrato, cliente }) {
 
     setLoading(false);
     alert(t("pdfGenerado"));
+
+    // Avisa a la pantalla para que recargue el contrato: así aparece el botón
+    // de "Ver PDF" sin tener que salir y volver a entrar.
+    if (onGenerado) onGenerado();
   };
 
   return (

@@ -47,16 +47,18 @@ export default function Register() {
       return;
     }
 
-    // 2️⃣ Insertar perfil en la tabla profiles
+    // 2️⃣ Insertar perfil en la tabla profiles.
+    // La tabla sólo tiene (id, rol): al enviar también `email` el insert
+    // fallaba y el registro terminaba siempre en "Error creando perfil".
     const { error: perfilError } = await supabase
       .from("profiles")
       .insert({
         id: user.id,
-        email: email,
         rol: "cliente",
       });
 
     if (perfilError) {
+      console.error("Error creando perfil:", perfilError);
       setErrorMsg("Error creando perfil del usuario");
       setLoading(false);
       return;

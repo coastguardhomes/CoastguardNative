@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { PRICES } from "../../constants/prices";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function ClienteContratosLista() {
@@ -46,6 +46,7 @@ export default function ClienteContratosLista() {
   }, []);
 
   return (
+    <Menu>
     <div
       style={{
         height: "100%",
@@ -105,17 +106,21 @@ export default function ClienteContratosLista() {
             {c.clienteDireccion}
           </p>
 
+          {/* La tabla contratos no tiene ninguna columna `tipoServicio`: el
+              servicio se describe con `frecuencia` (días entre visitas) y el
+              importe está en `precio`. Antes ambas líneas salían vacías. */}
           <p style={{ marginBottom: 6 }}>
             <strong style={{ color: "#4db8ff" }}>{t("clienteListaServicio")}:</strong>{" "}
-            {c.tipoServicio}
+            {c.frecuencia ? `${t("contratoCadaDias")} ${c.frecuencia}` : "—"}
           </p>
 
           <p>
             <strong style={{ color: "#4db8ff" }}>{t("clienteListaPrecio")}:</strong>{" "}
-            {PRICES[c.tipoServicio]} €
+            {c.precio != null ? `${c.precio} €` : "—"}
           </p>
         </div>
       ))}
     </div>
+    </Menu>
   );
 }

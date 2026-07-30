@@ -16,7 +16,10 @@ export default function Inspecciones() {
         .order("id", { ascending: false });
 
       if (error) {
+        console.error("Error cargando inspecciones:", error);
         setMensaje("Error cargando inspecciones");
+        // Sin esto la lista se quedaba en "Cargando..." para siempre.
+        setLoading(false);
         return;
       }
 

@@ -1,75 +1,98 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { supabase } from "../supabaseClient";
-import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext.jsx";
+
+/**
+ * Guard de sesión y de rol.
+ *
+ * Antes comparaba con `path.startsWith("/cliente")`, y "/clientes" empieza por
+ * "/cliente": el administrador que abría el módulo de Clientes acababa en el
+ * login. Lo mismo ocurría con "/tecnico" y "/tecnicos". Ahora la comparación
+ * es por segmentos completos, así que /cliente y /clientes no se confunden.
+ *
+ * El rol se lee del AuthContext; antes cada PrivateRoute lo consultaba a
+ * Supabase al montarse, es decir una petición en cada navegación.
+ */
+
+// Qué roles pueden entrar en cada área, por el primer tramo de la ruta.
+const PERMISOS = {
+  "/inicio": ["admin"],
+  "/menu": ["admin"],
+  "/admin": ["admin"],
+  "/clientes": ["admin"],
+  "/tecnicos": ["admin"],
+  "/contratos": ["admin"],
+  "/facturas": ["admin"],
+  "/extras": ["admin"],
+  "/viviendas": ["admin", "tecnico"],
+  "/inspecciones": ["admin", "tecnico"],
+  "/cliente": ["cliente"],
+  "/tecnico": ["tecnico"],
+  // Comunes a cualquier rol autenticado.
+  "/ajustes": ["admin", "cliente", "tecnico"],
+  "/idioma": ["admin", "cliente", "tecnico"],
+};
+
+// Pantalla de inicio de cada rol: si alguien abre un área que no le toca se le
+// devuelve a su panel, no al login (que parecía un cierre de sesión).
+const INICIO_POR_ROL = {
+  admin: "/inicio",
+  cliente: "/cliente",
+  tecnico: "/tecnico",
+};
+
+/** Coincidencia por segmentos: "/cliente" NO casa con "/clientes". */
+function coincide(path, base) {
+  return path === base || path.startsWith(base + "/");
+}
 
 export default function PrivateRoute() {
-  const [session, setSession] = useState(null);
-  const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(true);
-
+  const { session, rol, loading } = useAuth();
   const location = useLocation();
 
-  useEffect(() => {
-    async function load() {
-      // ⭐ Android necesita tiempo para inicializar Supabase
-      const { data } = await supabase.auth.getSession();
-      const currentSession = data.session;
-
-      setSession(currentSession);
-
-      if (currentSession) {
-        const { data: perfil } = await supabase
-          .from("profiles")
-          .select("rol")
-          .eq("id", currentSession.user.id)
-          .single();
-
-        setRole(perfil?.rol || null);
-      }
-
-      setLoading(false);
-    }
-
-    load();
-  }, []);
-
   if (loading) {
-    return (
-      <div
-        style={{
-          height: "100%",
-          background: "#0a0f1a",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          color: "#fff",
-          fontSize: 18,
-        }}
-      >
-        Cargando...
-      </div>
-    );
+    return <Aviso texto="Cargando..." />;
   }
 
-  // ❌ Sin sesión → login
   if (!session) {
     return <Navigate to="/login" replace />;
   }
 
-  // ⭐ Rutas protegidas por rol
-  const path = location.pathname;
-
-  if (path.startsWith("/menu") && role !== "admin") {
-    return <Navigate to="/login" replace />;
+  // Sesión válida pero sin fila en profiles: no hay área a la que enviarle y
+  // redirigir provocaría un bucle, así que se explica la situación.
+  if (!rol) {
+    return (
+      <Aviso texto="Tu cuenta todavía no tiene un rol asignado. Un administrador debe asignarlo para poder entrar." />
+    );
   }
 
-  if (path.startsWith("/cliente") && role !== "cliente") {
-    return <Navigate to="/login" replace />;
-  }
+  const base = Object.keys(PERMISOS).find((b) => coincide(location.pathname, b));
+  const permitidos = base ? PERMISOS[base] : null;
 
-  if (path.startsWith("/tecnico") && role !== "tecnico") {
-    return <Navigate to="/login" replace />;
+  if (permitidos && !permitidos.includes(rol)) {
+    return <Navigate to={INICIO_POR_ROL[rol] || "/login"} replace />;
   }
 
   return <Outlet />;
+}
+
+function Aviso({ texto }) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#0a0f1a",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 24,
+        color: "#fff",
+        fontSize: 17,
+        lineHeight: 1.5,
+        textAlign: "center",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      {texto}
+    </div>
+  );
 }

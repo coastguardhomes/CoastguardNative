@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
+import { resolverUrlPdf } from "../../lib/urlPdf";
 
 export default function VerPDF() {
   const [pdfUrl, setPdfUrl] = useState(null);
@@ -9,20 +10,30 @@ export default function VerPDF() {
 
   useEffect(() => {
     async function cargarPDF() {
+      // Muestra el último informe generado. No existe tabla
+      // "pdf_inspecciones": el PDF vive en inspecciones.pdf_url.
       const { data, error } = await supabase
-        .from("pdf_inspecciones")
-        .select("*")
+        .from("inspecciones")
+        .select("id, pdf_url")
+        .not("pdf_url", "is", null)
         .order("id", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
+        console.error("Error cargando PDF:", error);
         setMensaje("Error cargando PDF");
         setLoading(false);
         return;
       }
 
-      setPdfUrl(data.url);
+      if (!data?.pdf_url) {
+        setMensaje("Todavía no hay ningún informe PDF generado.");
+        setLoading(false);
+        return;
+      }
+
+      setPdfUrl(resolverUrlPdf(data.pdf_url));
       setLoading(false);
     }
 

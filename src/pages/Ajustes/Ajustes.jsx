@@ -1,10 +1,16 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function Ajustes() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const cerrarSesion = async () => {
+    await logout();
+    navigate("/login", { replace: true });
+  };
 
   const cardStyle = {
     background: "rgba(255,255,255,0.05)",
@@ -52,13 +58,11 @@ export default function Ajustes() {
             Configuración general de tu cuenta y preferencias.
           </p>
 
+          {/* Sólo se enlaza lo que tiene pantalla real. "Perfil",
+              "Notificaciones" y "Privacidad" apuntaban a /perfil,
+              /notificaciones y /privacidad, que no existen en /src/pages: al
+              pulsarlos la app caía en el comodín y devolvía al login. */}
           <ul style={{ marginTop: "20px", lineHeight: "1.8", listStyle: "none", padding: 0 }}>
-            <li>
-              <Link to="/perfil" style={itemStyle}>
-                👤 Perfil del usuario
-              </Link>
-            </li>
-
             <li>
               <Link to="/idioma" style={itemStyle}>
                 🌐 Cambiar idioma
@@ -66,19 +70,13 @@ export default function Ajustes() {
             </li>
 
             <li>
-              <Link to="/notificaciones" style={itemStyle}>
-                🔔 Notificaciones
-              </Link>
-            </li>
-
-            <li>
-              <Link to="/privacidad" style={itemStyle}>
-                🔒 Privacidad y seguridad
-              </Link>
+              <span style={{ ...itemStyle, color: "#fff", opacity: 0.85 }}>
+                📧 {user?.email || "Sesión activa"}
+              </span>
             </li>
 
             <li
-              onClick={logout}
+              onClick={cerrarSesion}
               style={{
                 ...itemStyle,
                 color: "#ff6b6b",
@@ -87,11 +85,6 @@ export default function Ajustes() {
               🚪 Cerrar sesión
             </li>
           </ul>
-
-          <p style={{ marginTop: "20px", opacity: 0.7 }}>
-            Próximamente añadiremos ajustes reales, selector de idioma funcional,
-            actualización de perfil y configuración avanzada de notificaciones.
-          </p>
         </div>
       </div>
     </Menu>

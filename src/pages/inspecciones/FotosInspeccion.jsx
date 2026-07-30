@@ -21,7 +21,10 @@ export default function FotosInspeccion() {
       .order("id", { ascending: false });
 
     if (error) {
+      console.error("Error cargando fotos:", error);
       setMensaje("Error cargando fotos");
+      // Sin esto la pantalla se quedaba cargando indefinidamente.
+      setLoading(false);
       return;
     }
 

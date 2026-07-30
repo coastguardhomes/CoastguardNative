@@ -21,24 +21,23 @@ export default function Login() {
 
   async function redirigirSegunRol(userId) {
     if (!userId) {
-      navigate("/home", { replace: true });
+      setErrorMsg(t("loginError"));
       return;
     }
 
+    // maybeSingle: si el usuario no tiene fila en profiles devuelve null en
+    // lugar de un error 406, que es lo que pasaba con single().
     const { data: perfil } = await supabase
       .from("profiles")
       .select("rol")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
-    if (!perfil) {
-      navigate("/home", { replace: true });
-      return;
-    }
-
-    switch (perfil.rol) {
+    switch (perfil?.rol) {
       case "admin":
-        navigate("/menu", { replace: true });
+        // Antes iba a /menu, que sólo renderizaba la barra inferior sin
+        // contenido: de ahí la sensación de "menú viejo y pantalla vacía".
+        navigate("/inicio", { replace: true });
         break;
       case "cliente":
         navigate("/cliente", { replace: true });
@@ -47,7 +46,8 @@ export default function Login() {
         navigate("/tecnico", { replace: true });
         break;
       default:
-        navigate("/home", { replace: true });
+        // Sesión creada pero sin rol asignado todavía.
+        setErrorMsg(t("loginSinRol"));
     }
   }
 

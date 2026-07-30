@@ -1,20 +1,59 @@
 import { useState } from "react";
-import { generarPDFInspeccion } from "../../pdf/generarPDFInspeccion";
+import { supabase } from "../../lib/supabase";
+import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
+import { generarPDFCliente } from "../../pdf/generarPDFCliente";
+import { subirPDF } from "../../pdf/subirPDF";
 
-export default function BotonGenerarPDF({ id, elemento }) {
+/**
+ * Botón reutilizable para generar y guardar el informe PDF de una inspección.
+ *
+ * Antes recibía un `elemento` del DOM y hacía una captura con html2canvas,
+ * descartando después el Blob: el PDF nunca se subía y aun así avisaba de
+ * "PDF generado correctamente". Ahora construye el informe con los datos de
+ * la inspección y lo guarda con subirPDF, que además actualiza
+ * inspecciones.pdf_url.
+ */
+export default function BotonGenerarPDF({ id, onGenerado }) {
   const [loading, setLoading] = useState(false);
 
   const handlePDF = async () => {
-    if (!elemento) {
-      alert("Error: no se encontró el contenido del PDF.");
+    if (!id) {
+      alert("Falta el identificador de la inspección.");
       return;
     }
 
     setLoading(true);
-    await generarPDFInspeccion(id, elemento);
-    setLoading(false);
 
-    alert("PDF generado correctamente");
+    try {
+      const { data: inspeccion, error } = await supabase
+        .from("inspecciones")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (error || !inspeccion) {
+        throw new Error(error?.message || "No se encontró la inspección");
+      }
+
+      const blob = await generarPDFCliente({
+        ...inspeccion,
+        fotos: await cargarFotosInspeccion(id),
+      });
+
+      const resultado = await subirPDF(id, blob);
+
+      if (!resultado.ok) {
+        throw new Error(`${resultado.mensaje}: ${resultado.error}`);
+      }
+
+      if (onGenerado) onGenerado(resultado.url);
+      alert("Informe PDF generado y guardado correctamente.");
+    } catch (e) {
+      console.error("Error generando PDF:", e);
+      alert(`No se pudo generar el informe: ${e.message}`);
+    }
+
+    setLoading(false);
   };
 
   return (

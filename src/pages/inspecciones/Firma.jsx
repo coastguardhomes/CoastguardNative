@@ -45,18 +45,45 @@ export default function Firma() {
 
   async function guardarFirma() {
     const canvas = canvasRef.current;
-    const firmaBase64 = canvas.toDataURL("image/png");
+    if (!canvas) return;
+
+    setMensaje("Guardando firma...");
+
+    // La tabla se llama firmas_inspeccion (antes se insertaba en "firmas",
+    // que no existe) y guarda la ruta en la columna `url`, no un base64 en
+    // una columna `firma`. La imagen va al bucket "firmas", igual que hace
+    // la firma del contrato en el área del cliente.
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/png")
+    );
+
+    if (!blob) {
+      setMensaje("No se pudo procesar la firma");
+      return;
+    }
+
+    const filePath = `inspecciones/inspeccion_${id}.png`;
+
+    const { error: errorSubida } = await supabase.storage
+      .from("firmas")
+      .upload(filePath, blob, { upsert: true, contentType: "image/png" });
+
+    if (errorSubida) {
+      console.error("Error subiendo firma:", errorSubida);
+      setMensaje("Error guardando firma");
+      return;
+    }
+
+    const { data: publica } = supabase.storage
+      .from("firmas")
+      .getPublicUrl(filePath);
 
     const { error } = await supabase
-      .from("firmas")
-      .insert([
-        {
-          inspeccion_id: id,
-          firma: firmaBase64,
-        },
-      ]);
+      .from("firmas_inspeccion")
+      .insert([{ inspeccion_id: id, url: publica.publicUrl }]);
 
     if (error) {
+      console.error("Error guardando firma:", error);
       setMensaje("Error guardando firma");
       return;
     }

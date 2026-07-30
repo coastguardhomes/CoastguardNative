@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
 
 export default function NuevoCliente() {
@@ -43,91 +44,116 @@ export default function NuevoCliente() {
   };
 
   return (
+    // Este formulario era la pantalla de "los 3 rectángulos vacíos": el panel
+    // era blanco y global.css fija `color: #ffffff` en el body, así que las
+    // etiquetas Nombre/Email/Teléfono eran blancas sobre blanco y sólo se
+    // intuían los tres inputs. Ahora usa el tema oscuro de la aplicación.
+    <Menu>
     <div
       style={{
-        background: "#fff",
+        background: "#0a0f1a",
+        minHeight: "100vh",
         padding: "20px",
-        borderRadius: "10px",
-        maxWidth: "600px",
-        margin: "0 auto",
-        marginTop: "20px",
-        boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+        color: "#fff",
+        fontFamily: "Inter, sans-serif",
       }}
     >
-      <h2>Nuevo Cliente</h2>
+      <h2 style={{ color: "#4db8ff", marginBottom: 18 }}>Nuevo Cliente</h2>
 
-      <div style={{ marginTop: "15px" }}>
-        <label>Nombre</label>
-        <input
-          type="text"
+      <div style={tarjeta}>
+        <Campo
+          etiqueta="Nombre"
           name="nombre"
           value={form.nombre}
           onChange={handleChange}
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginTop: "5px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
         />
-      </div>
-
-      <div style={{ marginTop: "15px" }}>
-        <label>Email</label>
-        <input
-          type="email"
+        <Campo
+          etiqueta="Email"
           name="email"
+          type="email"
           value={form.email}
           onChange={handleChange}
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginTop: "5px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
         />
-      </div>
-
-      <div style={{ marginTop: "15px" }}>
-        <label>Teléfono</label>
-        <input
-          type="text"
+        <Campo
+          etiqueta="Teléfono"
           name="telefono"
           value={form.telefono}
           onChange={handleChange}
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginTop: "5px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
         />
-      </div>
 
-      <button
-        onClick={crearCliente}
+        <button
+          onClick={crearCliente}
+          style={{
+            marginTop: "20px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#04263f",
+            padding: "14px",
+            border: "none",
+            borderRadius: "10px",
+            fontWeight: 700,
+            fontSize: 16,
+            cursor: "pointer",
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+          }}
+        >
+          Guardar Cliente
+        </button>
+
+        {mensaje && (
+          <p
+            style={{
+              marginTop: "15px",
+              color: "#4ade80",
+              fontWeight: "bold",
+              textAlign: "center",
+            }}
+          >
+            {mensaje}
+          </p>
+        )}
+      </div>
+    </div>
+    </Menu>
+  );
+}
+
+function Campo({ etiqueta, ...props }) {
+  return (
+    <div style={{ marginBottom: "16px" }}>
+      <label
         style={{
-          marginTop: "20px",
-          background: "#0099ff",
-          color: "#fff",
-          padding: "12px 20px",
-          border: "none",
-          borderRadius: "8px",
-          cursor: "pointer",
-          boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+          display: "block",
+          marginBottom: 6,
+          fontSize: 13,
+          color: "#9fb3c8",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
         }}
       >
-        Guardar Cliente
-      </button>
-
-      {mensaje && (
-        <p style={{ marginTop: "15px", color: "green", fontWeight: "bold" }}>
-          {mensaje}
-        </p>
-      )}
+        {etiqueta}
+      </label>
+      <input
+        type="text"
+        {...props}
+        style={{
+          width: "100%",
+          padding: "12px",
+          borderRadius: "10px",
+          border: "1px solid rgba(255,255,255,0.2)",
+          background: "rgba(255,255,255,0.08)",
+          color: "#fff",
+          fontSize: 15,
+        }}
+      />
     </div>
   );
 }
+
+const tarjeta = {
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  padding: "20px",
+  borderRadius: "14px",
+  boxShadow: "0 0 12px rgba(0,153,255,0.15)",
+};

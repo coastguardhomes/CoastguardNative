@@ -6,7 +6,8 @@ export async function getContratos(clienteId) {
     .from("contratos")
     .select("*")
     .eq("cliente_id", clienteId)
-    .order("fecha", { ascending: false })
+    // La tabla no tiene columna `fecha`; la marca temporal es `creado_en`.
+    .order("creado_en", { ascending: false })
 
   if (error) {
     console.error("Error obteniendo contratos:", error)
