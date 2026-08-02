@@ -33,14 +33,20 @@ export async function generarPDFCliente(inspeccion) {
   doc.setDrawColor(0, 123, 255);
   doc.line(40, 95, 550, 95);
 
+  // Fecha real
+  const fechaReal =
+    inspeccion.creado_en
+      ? new Date(inspeccion.creado_en).toLocaleString()
+      : "Sin fecha";
+
   // TABLA
   autoTable(doc, {
     startY: 120,
     head: [["Campo", "Valor"]],
     body: [
       ["ID Inspección", inspeccion.id],
-      ["Contrato", inspeccion.contrato_id],
-      ["Fecha", inspeccion.fecha],
+      ["Contrato", inspeccion.contrato_id || "Sin contrato"],
+      ["Fecha", fechaReal],
       ["Inspector", inspeccion.inspector || "No especificado"],
       ["Notas", inspeccion.notas || "Sin notas"],
     ],
@@ -67,7 +73,6 @@ export async function generarPDFCliente(inspeccion) {
 
       doc.addImage(base64, "JPEG", 40, y, 220, 160, undefined, "FAST");
 
-      // Marco azul CoastGuard
       doc.setDrawColor(0, 123, 255);
       doc.setLineWidth(1);
       doc.rect(40, y, 220, 160);
@@ -95,7 +100,8 @@ export async function generarPDFCliente(inspeccion) {
   let qrData;
   try {
     qrData = await QRCode.toDataURL(
-      inspeccion.pdf_url || `https://coastguard.es/inspeccion/${inspeccion.id}`
+      inspeccion.pdf_url ||
+        `https://coastguard.es/inspeccion/${inspeccion.id}`
     );
   } catch {
     qrData = await QRCode.toDataURL("https://coastguard.es");
@@ -122,7 +128,6 @@ export async function generarPDFCliente(inspeccion) {
     pageHeight - 30
   );
 
-  // Fecha de generación
   doc.text(`Generado: ${new Date().toLocaleString()}`, 40, pageHeight - 45);
 
   // Numeración de páginas
