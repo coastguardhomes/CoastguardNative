@@ -6,15 +6,22 @@ import { Link } from "react-router-dom";
 export default function Clientes() {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarClientes() {
       const { data, error } = await supabase
         .from("clientes")
-        .select("*")
+        .select("id, nombre, telefono")
         .order("id", { ascending: false });
 
-      if (!error) setClientes(data);
+      if (error) {
+        setMensaje("Error cargando clientes");
+        setLoading(false);
+        return;
+      }
+
+      setClientes(data || []);
       setLoading(false);
     }
 
@@ -62,6 +69,10 @@ export default function Clientes() {
         >
           Clientes
         </h1>
+
+        {mensaje && (
+          <p style={{ color: "#4db8ff", marginBottom: "15px" }}>{mensaje}</p>
+        )}
 
         <Link to="/clientes/crear">
           <button
