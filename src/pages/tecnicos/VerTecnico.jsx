@@ -14,7 +14,7 @@ export default function VerTecnico() {
     async function cargarTecnico() {
       const { data, error } = await supabase
         .from("tecnicos")
-        .select("*")
+        .select("id, nombre, telefono, email, especialidad, activo")
         .eq("id", id)
         .single();
 
@@ -30,6 +30,9 @@ export default function VerTecnico() {
   }, [id]);
 
   async function eliminarTecnico() {
+    const confirmar = window.confirm("¿Seguro que deseas eliminar este técnico?");
+    if (!confirmar) return;
+
     const { error } = await supabase
       .from("tecnicos")
       .delete()
@@ -40,7 +43,6 @@ export default function VerTecnico() {
       return;
     }
 
-    setMensaje("Técnico eliminado correctamente");
     navigate("/tecnicos");
   }
 
@@ -113,20 +115,47 @@ export default function VerTecnico() {
         >
           <p style={{ marginBottom: "10px" }}>
             <strong style={{ color: "#4db8ff" }}>Teléfono:</strong>{" "}
-            {tecnico.telefono}
+            {tecnico.telefono || "Sin teléfono"}
           </p>
 
           <p style={{ marginBottom: "10px" }}>
             <strong style={{ color: "#4db8ff" }}>Email:</strong>{" "}
-            {tecnico.email}
+            {tecnico.email || "Sin email"}
           </p>
 
           <p style={{ marginBottom: "10px" }}>
             <strong style={{ color: "#4db8ff" }}>Especialidad:</strong>{" "}
-            {tecnico.especialidad}
+            {tecnico.especialidad || "Sin especialidad"}
+          </p>
+
+          <p style={{ marginBottom: "10px" }}>
+            <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
+            {tecnico.activo ? "Activo" : "Inactivo"}
           </p>
         </div>
 
+        {/* Inspecciones del técnico */}
+        <Link to={`/inspecciones?tecnico_id=${id}`}>
+          <button
+            style={{
+              marginBottom: "15px",
+              padding: "14px",
+              width: "100%",
+              background: "#1e90ff",
+              color: "#fff",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "17px",
+              cursor: "pointer",
+              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+            }}
+          >
+            Ver inspecciones del técnico
+          </button>
+        </Link>
+
+        {/* Editar */}
         <Link to={`/tecnicos/editar/${id}`}>
           <button
             style={{
@@ -147,6 +176,7 @@ export default function VerTecnico() {
           </button>
         </Link>
 
+        {/* Eliminar */}
         <button
           onClick={eliminarTecnico}
           style={{
