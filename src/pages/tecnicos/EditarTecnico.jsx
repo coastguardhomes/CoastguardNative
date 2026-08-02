@@ -12,6 +12,7 @@ export default function EditarTecnico() {
     telefono: "",
     email: "",
     especialidad: "",
+    activo: true,
   });
 
   const [mensaje, setMensaje] = useState("");
@@ -20,7 +21,7 @@ export default function EditarTecnico() {
     async function cargarTecnico() {
       const { data, error } = await supabase
         .from("tecnicos")
-        .select("*")
+        .select("nombre, telefono, email, especialidad, activo")
         .eq("id", id)
         .single();
 
@@ -36,9 +37,20 @@ export default function EditarTecnico() {
   }, [id]);
 
   async function guardarCambios() {
+    if (!form.nombre) {
+      setMensaje("El nombre es obligatorio");
+      return;
+    }
+
     const { error } = await supabase
       .from("tecnicos")
-      .update(form)
+      .update({
+        nombre: form.nombre,
+        telefono: form.telefono,
+        email: form.email,
+        especialidad: form.especialidad,
+        activo: form.activo,
+      })
       .eq("id", id);
 
     if (error) {
@@ -46,9 +58,18 @@ export default function EditarTecnico() {
       return;
     }
 
-    setMensaje("Técnico actualizado correctamente");
     navigate("/tecnicos");
   }
+
+  const inputStyle = {
+    padding: "12px",
+    width: "100%",
+    marginBottom: "15px",
+    borderRadius: "10px",
+    border: "1px solid rgba(255,255,255,0.2)",
+    background: "rgba(255,255,255,0.08)",
+    color: "#fff",
+  };
 
   return (
     <Menu>
@@ -98,45 +119,21 @@ export default function EditarTecnico() {
           <input
             value={form.nombre}
             onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>Teléfono</label>
           <input
             value={form.telefono}
             onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>Email</label>
           <input
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>Especialidad</label>
@@ -145,16 +142,20 @@ export default function EditarTecnico() {
             onChange={(e) =>
               setForm({ ...form, especialidad: e.target.value })
             }
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
+
+          <label>Activo</label>
+          <select
+            value={form.activo}
+            onChange={(e) =>
+              setForm({ ...form, activo: e.target.value === "true" })
+            }
+            style={inputStyle}
+          >
+            <option value="true">Activo</option>
+            <option value="false">Inactivo</option>
+          </select>
 
           <button
             onClick={guardarCambios}
