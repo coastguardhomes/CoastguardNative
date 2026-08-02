@@ -12,13 +12,25 @@ export default function Inspecciones() {
     async function cargarInspecciones() {
       const { data, error } = await supabase
         .from("inspecciones")
-        .select("*")
+        .select(`
+          id,
+          fecha,
+          estado,
+          vivienda_id,
+          viviendas (
+            direccion,
+            localidad,
+            cliente_id,
+            clientes (
+              nombre
+            )
+          )
+        `)
         .order("id", { ascending: false });
 
       if (error) {
         console.error("Error cargando inspecciones:", error);
         setMensaje("Error cargando inspecciones");
-        // Sin esto la lista se quedaba en "Cargando..." para siempre.
         setLoading(false);
         return;
       }
@@ -116,7 +128,18 @@ export default function Inspecciones() {
                 </Link>
 
                 <p style={{ opacity: 0.8, marginTop: "10px" }}>
-                  <strong style={{ color: "#4db8ff" }}>Fecha:</strong> {i.fecha}
+                  <strong style={{ color: "#4db8ff" }}>Dirección:</strong>{" "}
+                  {i.viviendas?.direccion || "Sin dirección"}
+                </p>
+
+                <p style={{ opacity: 0.8 }}>
+                  <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
+                  {i.viviendas?.clientes?.nombre || "Sin cliente"}
+                </p>
+
+                <p style={{ opacity: 0.8 }}>
+                  <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
+                  {i.fecha}
                 </p>
 
                 <p style={{ opacity: 0.8 }}>
