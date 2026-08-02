@@ -1,19 +1,26 @@
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
+import { useParams, useNavigate } from "react-router-dom";
 
 export default function GaleriaInspeccion() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
   const [fotos, setFotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
+  const [fotoGrande, setFotoGrande] = useState(null);
 
+  // 🔥 Cargar solo fotos de esta inspección
   const cargarFotos = async () => {
     setLoading(true);
 
     const { data, error } = await supabase
       .from("fotos_inspeccion")
       .select("*")
-      .order("created_at", { ascending: false });
+      .eq("inspeccion_id", id)
+      .order("id", { ascending: false });
 
     if (error) {
       setMensaje("Error cargando fotos");
@@ -52,9 +59,30 @@ export default function GaleriaInspeccion() {
     cargarFotos();
   };
 
+  // 🔥 Marcar foto como principal (para PDF)
+  async function marcarPrincipal(foto) {
+    try {
+      await supabase
+        .from("fotos_inspeccion")
+        .update({ principal: false })
+        .eq("inspeccion_id", id);
+
+      await supabase
+        .from("fotos_inspeccion")
+        .update({ principal: true })
+        .eq("id", foto.id);
+
+      setMensaje("Foto marcada como principal");
+      cargarFotos();
+    } catch (e) {
+      console.error(e);
+      setMensaje("Error marcando foto como principal");
+    }
+  }
+
   useEffect(() => {
     cargarFotos();
-  }, []);
+  }, [id]);
 
   return (
     <Menu>
@@ -92,8 +120,53 @@ export default function GaleriaInspeccion() {
           </p>
         )}
 
+        {/* 🔥 Foto en grande */}
+        {fotoGrande && (
+          <div
+            style={{
+              marginBottom: "25px",
+              textAlign: "center",
+              background: "rgba(255,255,255,0.05)",
+              padding: "20px",
+              borderRadius: "14px",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+          >
+            <img
+              src={fotoGrande.url}
+              alt="Foto grande"
+              style={{
+                width: "100%",
+                maxHeight: "400px",
+                objectFit: "contain",
+                borderRadius: "10px",
+                border: "3px solid #4db8ff",
+                marginBottom: "15px",
+              }}
+            />
+
+            <button
+              onClick={() => setFotoGrande(null)}
+              style={{
+                padding: "12px",
+                background: "#4db8ff",
+                border: "none",
+                borderRadius: "10px",
+                color: "#000",
+                cursor: "pointer",
+                fontWeight: "700",
+                width: "100%",
+              }}
+            >
+              Cerrar foto
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <p>Cargando fotos...</p>
+        ) : fotos.length === 0 ? (
+          <p>No hay fotos registradas.</p>
         ) : (
           <div
             style={{
@@ -122,10 +195,31 @@ export default function GaleriaInspeccion() {
                     height: "120px",
                     objectFit: "cover",
                     borderRadius: "10px",
-                    border: "2px solid #4db8ff",
+                    border: foto.principal
+                      ? "3px solid #4ade80"
+                      : "2px solid #4db8ff",
                     marginBottom: "10px",
+                    cursor: "pointer",
                   }}
+                  onClick={() => setFotoGrande(foto)}
                 />
+
+                <button
+                  onClick={() => marcarPrincipal(foto)}
+                  style={{
+                    padding: "10px",
+                    background: foto.principal ? "#4ade80" : "#4db8ff",
+                    border: "none",
+                    borderRadius: "10px",
+                    color: "#000",
+                    cursor: "pointer",
+                    width: "100%",
+                    fontWeight: "700",
+                    marginBottom: "8px",
+                  }}
+                >
+                  {foto.principal ? "Principal ✔" : "Marcar como principal"}
+                </button>
 
                 <button
                   onClick={() => borrarFoto(foto)}
@@ -147,6 +241,26 @@ export default function GaleriaInspeccion() {
             ))}
           </div>
         )}
+
+        {/* 🔥 Botón volver */}
+        <button
+          onClick={() => navigate(`/inspecciones/${id}`)}
+          style={{
+            marginTop: "30px",
+            padding: "14px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "17px",
+            cursor: "pointer",
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+          }}
+        >
+          Volver a la inspección
+        </button>
       </div>
     </Menu>
   );
