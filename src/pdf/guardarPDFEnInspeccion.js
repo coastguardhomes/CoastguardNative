@@ -1,26 +1,47 @@
 import { supabase } from "../lib/supabase";
 
+/**
+ * Sube un PDF a Supabase y guarda su URL en la inspección
+ * CoastGuard versión optimizada
+ */
 export async function guardarPDFEnInspeccion(id, pdfBlob) {
   if (!id || !pdfBlob) {
     throw new Error("ID o PDF inválido");
   }
 
-  if (pdfBlob.type !== "application/pdf") {
+  // Validación robusta del PDF
+  const esPDF =
+    pdfBlob.type === "application/pdf" ||
+    pdfBlob.type === "" || // Android/iOS a veces no envían type
+    pdfBlob.name?.endsWith(".pdf");
+
+  if (!esPDF) {
     throw new Error("El archivo no es un PDF válido");
   }
 
   // Verificar que la inspección existe
-  const { data: inspeccionExiste } = await supabase
+  const { data: inspeccionExiste, error: existeError } = await supabase
     .from("inspecciones")
-    .select("id")
+    .select("id, pdf_url")
     .eq("id", id)
     .single();
 
-  if (!inspeccionExiste) {
+  if (existeError || !inspeccionExiste) {
     throw new Error("La inspección no existe");
   }
 
   const filePath = `inspecciones/${id}.pdf`;
+
+  // Si ya existe un PDF, evitar subirlo de nuevo
+  if (inspeccionExiste.pdf_url) {
+    return {
+      ok: true,
+      id,
+      url: inspeccionExiste.pdf_url,
+      filePath,
+      mensaje: "PDF ya existía, no se subió de nuevo",
+    };
+  }
 
   // SUBIR PDF
   const { error: uploadError } = await supabase.storage
@@ -49,7 +70,10 @@ export async function guardarPDFEnInspeccion(id, pdfBlob) {
   // GUARDAR URL EN LA INSPECCIÓN
   const { error: updateError } = await supabase
     .from("inspecciones")
-    .update({ pdf_url: publicUrl })
+    .update({
+      pdf_url: publicUrl,
+      firmado_en: new Date().toISOString(), // opcional
+    })
     .eq("id", id);
 
   if (updateError) {
