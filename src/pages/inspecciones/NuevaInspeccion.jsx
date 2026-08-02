@@ -1,10 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
 export default function NuevaInspeccion() {
   const navigate = useNavigate();
+
+  const [viviendas, setViviendas] = useState([]);
+  const [tecnicos, setTecnicos] = useState([]);
+  const [mensaje, setMensaje] = useState("");
 
   const [form, setForm] = useState({
     vivienda_id: "",
@@ -14,18 +18,92 @@ export default function NuevaInspeccion() {
     notas: "",
   });
 
-  const [mensaje, setMensaje] = useState("");
+  // 🔥 Cargar viviendas y técnicos reales
+  useEffect(() => {
+    async function cargarDatos() {
+      const { data: viv } = await supabase
+        .from("viviendas")
+        .select("id, direccion, cliente_id, contrato_id");
 
-  async function crear() {
-    const { error } = await supabase.from("inspecciones").insert([form]);
+      const { data: tec } = await supabase
+        .from("tecnicos")
+        .select("id, nombre");
 
-    if (error) {
-      setMensaje("Error creando inspección");
-      return;
+      setViviendas(viv || []);
+      setTecnicos(tec || []);
     }
 
-    setMensaje("Inspección creada correctamente");
-    navigate("/inspecciones");
+    cargarDatos();
+  }, []);
+
+  async function crear() {
+    setMensaje("");
+
+    try {
+      // 1️⃣ Obtener vivienda seleccionada
+      const vivienda = viviendas.find((v) => v.id == form.vivienda_id);
+
+      if (!vivienda) {
+        setMensaje("Selecciona una vivienda válida.");
+        return;
+      }
+
+      // 2️⃣ Obtener cliente y contrato automáticamente
+      const cliente_id = vivienda.cliente_id;
+      const contrato_id = vivienda.contrato_id;
+
+      if (!cliente_id || !contrato_id) {
+        setMensaje("La vivienda no tiene cliente o contrato asignado.");
+        return;
+      }
+
+      // 3️⃣ Crear inspección completa
+      const nuevaInspeccion = {
+        vivienda_id: vivienda.id,
+        cliente_id,
+        contrato_id,
+        tecnico_id: form.tecnico_id,
+        fecha: form.fecha,
+        estado: "pendiente",
+        notas: form.notas,
+        origen: "app",
+      };
+
+      const { data: insp, error } = await supabase
+        .from("inspecciones")
+        .insert([nuevaInspeccion])
+        .select()
+        .maybeSingle();
+
+      if (error || !insp) {
+        setMensaje("Error creando inspección.");
+        return;
+      }
+
+      // 4️⃣ Crear checklist automático
+      const plantilla = [
+        "Puertas y ventanas cerradas",
+        "Persianas en posición correcta",
+        "Ausencia de humedades",
+        "Estado general de la vivienda",
+        "Revisión de electrodomésticos",
+        "Comprobación de fugas",
+      ];
+
+      const checklistItems = plantilla.map((texto) => ({
+        inspeccion_id: insp.id,
+        item: texto,
+        completado: false,
+      }));
+
+      await supabase.from("checklist_inspeccion").insert(checklistItems);
+
+      setMensaje("Inspección creada correctamente.");
+      navigate(`/inspecciones/${insp.id}`);
+    } catch (e) {
+      console.error(e);
+      setMensaje("Error inesperado creando inspección.");
+    }
   }
 
   return (
@@ -72,10 +150,13 @@ export default function NuevaInspeccion() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          <label>ID Vivienda</label>
-          <input
+          {/* 🔥 Selección de vivienda */}
+          <label>Vivienda</label>
+          <select
             value={form.vivienda_id}
-            onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, vivienda_id: e.target.value })
+            }
             style={{
               padding: "12px",
               width: "100%",
@@ -85,12 +166,22 @@ export default function NuevaInspeccion() {
               background: "rgba(255,255,255,0.08)",
               color: "#fff",
             }}
-          />
+          >
+            <option value="">Selecciona una vivienda</option>
+            {viviendas.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.direccion}
+              </option>
+            ))}
+          </select>
 
-          <label>ID Técnico</label>
-          <input
+          {/* 🔥 Selección de técnico */}
+          <label>Técnico</label>
+          <select
             value={form.tecnico_id}
-            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, tecnico_id: e.target.value })
+            }
             style={{
               padding: "12px",
               width: "100%",
@@ -100,8 +191,16 @@ export default function NuevaInspeccion() {
               background: "rgba(255,255,255,0.08)",
               color: "#fff",
             }}
-          />
+          >
+            <option value="">Selecciona un técnico</option>
+            {tecnicos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
 
+          {/* Fecha */}
           <label>Fecha</label>
           <input
             type="date"
@@ -118,6 +217,7 @@ export default function NuevaInspeccion() {
             }}
           />
 
+          {/* Notas */}
           <label>Notas</label>
           <textarea
             value={form.notas}
