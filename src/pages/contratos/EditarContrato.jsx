@@ -8,20 +8,21 @@ export default function EditarContrato() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    cliente_id: "",
-    vivienda_id: "",
-    fecha: "",
+    fecha_inicio: "",
     precio: "",
     notas: "",
+    frecuencia: "",
+    tecnico_id: "",
   });
 
+  const [tecnicos, setTecnicos] = useState([]);
   const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarContrato() {
       const { data, error } = await supabase
         .from("contratos")
-        .select("*")
+        .select("fecha_inicio, precio, notas, frecuencia, tecnico_id")
         .eq("id", id)
         .single();
 
@@ -33,13 +34,28 @@ export default function EditarContrato() {
       if (data) setForm(data);
     }
 
+    async function cargarTecnicos() {
+      const { data } = await supabase
+        .from("tecnicos")
+        .select("id, nombre");
+
+      setTecnicos(data || []);
+    }
+
     cargarContrato();
+    cargarTecnicos();
   }, [id]);
 
   async function guardarCambios() {
     const { error } = await supabase
       .from("contratos")
-      .update(form)
+      .update({
+        fecha_inicio: form.fecha_inicio || null,
+        precio: form.precio || null,
+        notas: form.notas || null,
+        frecuencia: form.frecuencia || null,
+        tecnico_id: form.tecnico_id || null,
+      })
       .eq("id", id);
 
     if (error) {
@@ -47,9 +63,18 @@ export default function EditarContrato() {
       return;
     }
 
-    setMensaje("Contrato actualizado correctamente");
     navigate("/contratos");
   }
+
+  const inputStyle = {
+    padding: "12px",
+    width: "100%",
+    marginBottom: "15px",
+    borderRadius: "10px",
+    border: "1px solid rgba(255,255,255,0.2)",
+    background: "rgba(255,255,255,0.08)",
+    color: "#fff",
+  };
 
   return (
     <Menu>
@@ -95,50 +120,55 @@ export default function EditarContrato() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          <label>Fecha:</label>
+          {/* Fecha inicio */}
+          <label>Fecha inicio:</label>
           <input
             type="date"
-            value={form.fecha}
-            onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            value={form.fecha_inicio || ""}
+            onChange={(e) => setForm({ ...form, fecha_inicio: e.target.value })}
+            style={inputStyle}
           />
 
+          {/* Precio */}
           <label>Precio (€):</label>
           <input
             type="number"
-            value={form.precio}
+            value={form.precio || ""}
             onChange={(e) => setForm({ ...form, precio: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
+          {/* Frecuencia */}
+          <label>Frecuencia (días):</label>
+          <input
+            type="number"
+            value={form.frecuencia || ""}
+            onChange={(e) => setForm({ ...form, frecuencia: e.target.value })}
+            style={inputStyle}
+          />
+
+          {/* Técnico */}
+          <label>Técnico:</label>
+          <select
+            value={form.tecnico_id || ""}
+            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="">Selecciona técnico</option>
+            {tecnicos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
+
+          {/* Notas */}
           <label>Notas:</label>
           <textarea
-            value={form.notas}
+            value={form.notas || ""}
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
             style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
+              ...inputStyle,
               minHeight: "90px",
             }}
           />
