@@ -14,7 +14,7 @@ export default function VerVivienda() {
     async function cargarVivienda() {
       const { data, error } = await supabase
         .from("viviendas")
-        .select("*")
+        .select("nombre, direccion, ciudad, codigo_postal")
         .eq("id", id)
         .single();
 
@@ -123,7 +123,7 @@ export default function VerVivienda() {
 
           <p style={{ marginBottom: "10px" }}>
             <strong style={{ color: "#4db8ff" }}>Código Postal:</strong>{" "}
-            {vivienda.cp}
+            {vivienda.codigo_postal}
           </p>
         </div>
 
