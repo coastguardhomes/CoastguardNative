@@ -133,6 +133,11 @@ export default function Inspecciones() {
                 </p>
 
                 <p style={{ opacity: 0.8 }}>
+                  <strong style={{ color: "#4db8ff" }}>Localidad:</strong>{" "}
+                  {i.viviendas?.localidad || "Sin localidad"}
+                </p>
+
+                <p style={{ opacity: 0.8 }}>
                   <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
                   {i.viviendas?.clientes?.nombre || "Sin cliente"}
                 </p>
