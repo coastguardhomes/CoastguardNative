@@ -2,18 +2,21 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 /**
- * Genera un PDF PRO de una inspección
+ * Genera un PDF PRO de una inspección (versión optimizada CoastGuard)
  * @param {string} idInspeccion
  * @param {HTMLElement} elementoHTML - El contenedor HTML del PDF
  * @returns {Promise<Blob>} PDF listo para guardar o subir
  */
 export async function generarPDFInspeccion(idInspeccion, elementoHTML) {
   try {
-    // Fondo blanco para evitar PDF gris en Android
+    // Evita capturas parciales en móviles
+    window.scrollTo(0, 0);
+
+    // Render HTML → Canvas
     const canvas = await html2canvas(elementoHTML, {
       scale: 2,
       useCORS: true,
-      allowTaint: true,        // más estable en WebView
+      allowTaint: true,
       logging: false,
       backgroundColor: "#ffffff",
       imageTimeout: 2000,
@@ -33,7 +36,7 @@ export async function generarPDFInspeccion(idInspeccion, elementoHTML) {
     // Primera página
     pdf.addImage(imgData, "PNG", 0, y, imgWidth, imgHeight);
 
-    // Paginación real
+    // Paginación automática
     let heightLeft = imgHeight - pageHeight;
 
     while (heightLeft > 0) {
@@ -41,6 +44,25 @@ export async function generarPDFInspeccion(idInspeccion, elementoHTML) {
       y = heightLeft * -1;
       pdf.addImage(imgData, "PNG", 0, y, imgWidth, imgHeight);
       heightLeft -= pageHeight;
+    }
+
+    // Numeración de páginas
+    const totalPages = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(10);
+      pdf.text(`Página ${i} de ${totalPages}`, pageWidth - 40, pageHeight - 10);
+    }
+
+    // Footer CoastGuard
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(10);
+      pdf.text(
+        "CoastGuard — Protección y supervisión de viviendas",
+        20,
+        pageHeight - 10
+      );
     }
 
     return pdf.output("blob");
