@@ -14,7 +14,7 @@ export default function VerCliente() {
     async function cargarCliente() {
       const { data, error } = await supabase
         .from("clientes")
-        .select("*")
+        .select("id, nombre, telefono, email, direccion")
         .eq("id", id)
         .single();
 
@@ -30,6 +30,9 @@ export default function VerCliente() {
   }, [id]);
 
   async function eliminarCliente() {
+    const confirmar = window.confirm("¿Seguro que deseas eliminar este cliente?");
+    if (!confirmar) return;
+
     const { error } = await supabase
       .from("clientes")
       .delete()
@@ -40,7 +43,6 @@ export default function VerCliente() {
       return;
     }
 
-    setMensaje("Cliente eliminado correctamente");
     navigate("/clientes");
   }
 
@@ -113,10 +115,32 @@ export default function VerCliente() {
           <p><strong>Dirección:</strong> {cliente.direccion}</p>
         </div>
 
-        <Link to={`/clientes/editar/${id}`}>
+        {/* Ver viviendas del cliente */}
+        <Link to={`/viviendas?cliente_id=${id}`}>
           <button
             style={{
               marginTop: "10px",
+              padding: "14px",
+              width: "100%",
+              background: "#1e90ff",
+              color: "#fff",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "17px",
+              cursor: "pointer",
+              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+            }}
+          >
+            Ver viviendas del cliente
+          </button>
+        </Link>
+
+        {/* Editar */}
+        <Link to={`/clientes/editar/${id}`}>
+          <button
+            style={{
+              marginTop: "15px",
               padding: "14px",
               width: "100%",
               background: "#4db8ff",
@@ -133,6 +157,7 @@ export default function VerCliente() {
           </button>
         </Link>
 
+        {/* Eliminar */}
         <button
           onClick={eliminarCliente}
           style={{
