@@ -1,12 +1,16 @@
 import React, { useState } from "react";
 import Menu from "../../layouts/Menu";
-import { supabase } from "../../supabaseClient";
+import { supabase } from "../../lib/supabase";
+import { useNavigate } from "react-router-dom";
 
 export default function NuevoCliente() {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({
     nombre: "",
     email: "",
     telefono: "",
+    direccion: "",
   });
 
   const [mensaje, setMensaje] = useState("");
@@ -19,18 +23,19 @@ export default function NuevoCliente() {
   };
 
   const crearCliente = async () => {
-    if (!form.nombre || !form.email || !form.telefono) {
-      setMensaje("Todos los campos son obligatorios");
+    if (!form.nombre) {
+      setMensaje("El nombre es obligatorio");
       return;
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("clientes")
       .insert([
         {
           nombre: form.nombre,
           email: form.email,
           telefono: form.telefono,
+          direccion: form.direccion,
         },
       ]);
 
@@ -39,81 +44,85 @@ export default function NuevoCliente() {
       return;
     }
 
-    setMensaje("Cliente creado correctamente");
-    setForm({ nombre: "", email: "", telefono: "" });
+    navigate("/clientes");
   };
 
   return (
-    // Este formulario era la pantalla de "los 3 rectángulos vacíos": el panel
-    // era blanco y global.css fija `color: #ffffff` en el body, así que las
-    // etiquetas Nombre/Email/Teléfono eran blancas sobre blanco y sólo se
-    // intuían los tres inputs. Ahora usa el tema oscuro de la aplicación.
     <Menu>
-    <div
-      style={{
-        background: "#0a0f1a",
-        minHeight: "100vh",
-        padding: "20px",
-        color: "#fff",
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
-      <h2 style={{ color: "#4db8ff", marginBottom: 18 }}>Nuevo Cliente</h2>
+      <div
+        style={{
+          background: "#0a0f1a",
+          minHeight: "100vh",
+          padding: "20px",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        <h2 style={{ color: "#4db8ff", marginBottom: 18 }}>Nuevo Cliente</h2>
 
-      <div style={tarjeta}>
-        <Campo
-          etiqueta="Nombre"
-          name="nombre"
-          value={form.nombre}
-          onChange={handleChange}
-        />
-        <Campo
-          etiqueta="Email"
-          name="email"
-          type="email"
-          value={form.email}
-          onChange={handleChange}
-        />
-        <Campo
-          etiqueta="Teléfono"
-          name="telefono"
-          value={form.telefono}
-          onChange={handleChange}
-        />
+        <div style={tarjeta}>
+          <Campo
+            etiqueta="Nombre"
+            name="nombre"
+            value={form.nombre}
+            onChange={handleChange}
+          />
 
-        <button
-          onClick={crearCliente}
-          style={{
-            marginTop: "20px",
-            width: "100%",
-            background: "#4db8ff",
-            color: "#04263f",
-            padding: "14px",
-            border: "none",
-            borderRadius: "10px",
-            fontWeight: 700,
-            fontSize: 16,
-            cursor: "pointer",
-            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-          }}
-        >
-          Guardar Cliente
-        </button>
+          <Campo
+            etiqueta="Email"
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+          />
 
-        {mensaje && (
-          <p
+          <Campo
+            etiqueta="Teléfono"
+            name="telefono"
+            value={form.telefono}
+            onChange={handleChange}
+          />
+
+          <Campo
+            etiqueta="Dirección"
+            name="direccion"
+            value={form.direccion}
+            onChange={handleChange}
+          />
+
+          <button
+            onClick={crearCliente}
             style={{
-              marginTop: "15px",
-              color: "#4ade80",
-              fontWeight: "bold",
-              textAlign: "center",
+              marginTop: "20px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#04263f",
+              padding: "14px",
+              border: "none",
+              borderRadius: "10px",
+              fontWeight: 700,
+              fontSize: 16,
+              cursor: "pointer",
+              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
             }}
           >
-            {mensaje}
-          </p>
-        )}
+            Guardar Cliente
+          </button>
+
+          {mensaje && (
+            <p
+              style={{
+                marginTop: "15px",
+                color: "#4ade80",
+                fontWeight: "bold",
+                textAlign: "center",
+              }}
+            >
+              {mensaje}
+            </p>
+          )}
+        </div>
       </div>
-    </div>
     </Menu>
   );
 }
