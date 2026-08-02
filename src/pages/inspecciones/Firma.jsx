@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useParams } from "react-router-dom";
@@ -8,6 +8,23 @@ export default function Firma() {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [mensaje, setMensaje] = useState("");
+  const [firmaGuardada, setFirmaGuardada] = useState(null);
+
+  // 🔥 Cargar firma existente
+  useEffect(() => {
+    async function cargarFirma() {
+      const { data } = await supabase
+        .from("firmas_inspeccion")
+        .select("url")
+        .eq("inspeccion_id", id)
+        .order("id", { ascending: false })
+        .limit(1);
+
+      setFirmaGuardada(data?.[0]?.url || null);
+    }
+
+    cargarFirma();
+  }, [id]);
 
   function startDrawing(e) {
     const canvas = canvasRef.current;
@@ -49,10 +66,6 @@ export default function Firma() {
 
     setMensaje("Guardando firma...");
 
-    // La tabla se llama firmas_inspeccion (antes se insertaba en "firmas",
-    // que no existe) y guarda la ruta en la columna `url`, no un base64 en
-    // una columna `firma`. La imagen va al bucket "firmas", igual que hace
-    // la firma del contrato en el área del cliente.
     const blob = await new Promise((resolve) =>
       canvas.toBlob(resolve, "image/png")
     );
@@ -64,6 +77,7 @@ export default function Firma() {
 
     const filePath = `inspecciones/inspeccion_${id}.png`;
 
+    // 🔥 Subir firma (con upsert)
     const { error: errorSubida } = await supabase.storage
       .from("firmas")
       .upload(filePath, blob, { upsert: true, contentType: "image/png" });
@@ -78,9 +92,18 @@ export default function Firma() {
       .from("firmas")
       .getPublicUrl(filePath);
 
+    const url = publica.publicUrl;
+
+    // 🔥 Borrar firmas anteriores
+    await supabase
+      .from("firmas_inspeccion")
+      .delete()
+      .eq("inspeccion_id", id);
+
+    // 🔥 Guardar firma nueva
     const { error } = await supabase
       .from("firmas_inspeccion")
-      .insert([{ inspeccion_id: id, url: publica.publicUrl }]);
+      .insert([{ inspeccion_id: id, url }]);
 
     if (error) {
       console.error("Error guardando firma:", error);
@@ -88,6 +111,13 @@ export default function Firma() {
       return;
     }
 
+    // 🔥 Actualizar inspección → firma capturada
+    await supabase
+      .from("inspecciones")
+      .update({ firma_capturada: true })
+      .eq("id", id);
+
+    setFirmaGuardada(url);
     setMensaje("Firma guardada correctamente");
   }
 
@@ -125,6 +155,29 @@ export default function Firma() {
           >
             {mensaje}
           </p>
+        )}
+
+        {/* 🔥 Mostrar firma guardada */}
+        {firmaGuardada && (
+          <div
+            style={{
+              marginBottom: "20px",
+              textAlign: "center",
+            }}
+          >
+            <p style={{ marginBottom: "10px", opacity: 0.8 }}>
+              Firma ya registrada:
+            </p>
+            <img
+              src={firmaGuardada}
+              alt="Firma guardada"
+              style={{
+                width: "300px",
+                borderRadius: "10px",
+                border: "2px solid #4db8ff",
+              }}
+            />
+          </div>
         )}
 
         <p style={{ opacity: 0.8, marginBottom: "20px", textAlign: "center" }}>
