@@ -8,31 +8,59 @@ export default function CrearContrato() {
 
   const [clientes, setClientes] = useState([]);
   const [viviendas, setViviendas] = useState([]);
+  const [tecnicos, setTecnicos] = useState([]);
 
   const [form, setForm] = useState({
     cliente_id: "",
     vivienda_id: "",
-    fecha: "",
+    tecnico_id: "",
+    fecha_inicio: "",
     precio: "",
     notas: "",
+    frecuencia: "",
   });
 
   const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarDatos() {
-      const { data: clientesData } = await supabase.from("clientes").select("*");
-      const { data: viviendasData } = await supabase.from("viviendas").select("*");
+      const { data: clientesData } = await supabase
+        .from("clientes")
+        .select("id, nombre");
+
+      const { data: viviendasData } = await supabase
+        .from("viviendas")
+        .select("id, direccion");
+
+      const { data: tecnicosData } = await supabase
+        .from("tecnicos")
+        .select("id, nombre");
 
       setClientes(clientesData || []);
       setViviendas(viviendasData || []);
+      setTecnicos(tecnicosData || []);
     }
 
     cargarDatos();
   }, []);
 
   async function crearContrato() {
-    const { error } = await supabase.from("contratos").insert([form]);
+    if (!form.cliente_id || !form.vivienda_id || !form.tecnico_id) {
+      setMensaje("Cliente, vivienda y técnico son obligatorios");
+      return;
+    }
+
+    const { error } = await supabase.from("contratos").insert([
+      {
+        cliente_id: form.cliente_id,
+        vivienda_id: form.vivienda_id,
+        tecnico_id: form.tecnico_id,
+        fecha_inicio: form.fecha_inicio || null,
+        precio: form.precio || null,
+        notas: form.notas || null,
+        frecuencia: form.frecuencia || null,
+      },
+    ]);
 
     if (error) {
       setMensaje("Error creando contrato");
@@ -40,9 +68,18 @@ export default function CrearContrato() {
       return;
     }
 
-    setMensaje("Contrato creado correctamente");
     navigate("/contratos");
   }
+
+  const inputStyle = {
+    padding: "12px",
+    width: "100%",
+    marginBottom: "15px",
+    borderRadius: "10px",
+    border: "1px solid rgba(255,255,255,0.2)",
+    background: "rgba(255,255,255,0.08)",
+    color: "#fff",
+  };
 
   return (
     <Menu>
@@ -88,90 +125,85 @@ export default function CrearContrato() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
+          {/* Cliente */}
           <label>Cliente:</label>
           <select
             value={form.cliente_id}
             onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           >
             <option value="">Selecciona cliente</option>
             {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
             ))}
           </select>
 
+          {/* Vivienda */}
           <label>Vivienda:</label>
           <select
             value={form.vivienda_id}
             onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           >
             <option value="">Selecciona vivienda</option>
             {viviendas.map((v) => (
-              <option key={v.id} value={v.id}>{v.direccion}</option>
+              <option key={v.id} value={v.id}>
+                {v.direccion}
+              </option>
             ))}
           </select>
 
-          <label>Fecha:</label>
+          {/* Técnico */}
+          <label>Técnico:</label>
+          <select
+            value={form.tecnico_id}
+            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="">Selecciona técnico</option>
+            {tecnicos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
+
+          {/* Fecha inicio */}
+          <label>Fecha inicio:</label>
           <input
             type="date"
-            value={form.fecha}
-            onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            value={form.fecha_inicio}
+            onChange={(e) => setForm({ ...form, fecha_inicio: e.target.value })}
+            style={inputStyle}
           />
 
+          {/* Precio */}
           <label>Precio (€):</label>
           <input
             type="number"
             value={form.precio}
             onChange={(e) => setForm({ ...form, precio: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
+          {/* Frecuencia */}
+          <label>Frecuencia (días):</label>
+          <input
+            type="number"
+            value={form.frecuencia}
+            onChange={(e) => setForm({ ...form, frecuencia: e.target.value })}
+            style={inputStyle}
+          />
+
+          {/* Notas */}
           <label>Notas:</label>
           <textarea
             value={form.notas}
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
             style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
+              ...inputStyle,
               minHeight: "90px",
             }}
           />
