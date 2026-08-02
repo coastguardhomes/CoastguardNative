@@ -20,7 +20,7 @@ export default function EditarCliente() {
     async function cargarCliente() {
       const { data, error } = await supabase
         .from("clientes")
-        .select("*")
+        .select("nombre, telefono, email, direccion")
         .eq("id", id)
         .single();
 
@@ -36,14 +36,19 @@ export default function EditarCliente() {
   }, [id]);
 
   async function guardarCambios() {
-    if (!form.nombre || !form.telefono) {
-      setMensaje("Nombre y teléfono son obligatorios");
+    if (!form.nombre) {
+      setMensaje("El nombre es obligatorio");
       return;
     }
 
     const { error } = await supabase
       .from("clientes")
-      .update(form)
+      .update({
+        nombre: form.nombre,
+        telefono: form.telefono,
+        email: form.email,
+        direccion: form.direccion,
+      })
       .eq("id", id);
 
     if (error) {
@@ -51,7 +56,6 @@ export default function EditarCliente() {
       return;
     }
 
-    setMensaje("Cliente actualizado correctamente");
     navigate("/clientes");
   }
 
