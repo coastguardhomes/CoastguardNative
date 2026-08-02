@@ -23,7 +23,6 @@ export default function FotosInspeccion() {
     if (error) {
       console.error("Error cargando fotos:", error);
       setMensaje("Error cargando fotos");
-      // Sin esto la pantalla se quedaba cargando indefinidamente.
       setLoading(false);
       return;
     }
@@ -38,6 +37,7 @@ export default function FotosInspeccion() {
 
     const nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
 
+    // 1️⃣ Subir a Storage
     const { error: storageError } = await supabase.storage
       .from("fotos")
       .upload(nombreArchivo, archivo);
@@ -47,15 +47,17 @@ export default function FotosInspeccion() {
       return;
     }
 
+    // 2️⃣ Obtener URL pública
     const { data: urlData } = supabase.storage
       .from("fotos")
       .getPublicUrl(nombreArchivo);
 
     const url = urlData.publicUrl;
 
+    // 3️⃣ Guardar en la tabla
     const { error: dbError } = await supabase
       .from("fotos_inspeccion")
-      .insert([{ inspeccion_id: id, url }]);
+      .insert([{ inspeccion_id: id, url, principal: false }]);
 
     if (dbError) {
       setMensaje("Error guardando foto en la base de datos");
@@ -69,6 +71,7 @@ export default function FotosInspeccion() {
   async function borrarFoto(foto) {
     const ruta = foto.url.split("/").pop();
 
+    // 1️⃣ Borrar de Storage
     const { error: storageError } = await supabase.storage
       .from("fotos")
       .remove([ruta]);
@@ -78,6 +81,7 @@ export default function FotosInspeccion() {
       return;
     }
 
+    // 2️⃣ Borrar de la tabla
     const { error: dbError } = await supabase
       .from("fotos_inspeccion")
       .delete()
@@ -90,6 +94,29 @@ export default function FotosInspeccion() {
 
     setMensaje("Foto eliminada correctamente");
     cargarFotos();
+  }
+
+  // 🔥 NUEVO: marcar foto como principal (para PDF)
+  async function marcarPrincipal(foto) {
+    try {
+      // Quitar principal de todas
+      await supabase
+        .from("fotos_inspeccion")
+        .update({ principal: false })
+        .eq("inspeccion_id", id);
+
+      // Marcar esta como principal
+      await supabase
+        .from("fotos_inspeccion")
+        .update({ principal: true })
+        .eq("id", foto.id);
+
+      setMensaje("Foto marcada como principal");
+      cargarFotos();
+    } catch (e) {
+      console.error(e);
+      setMensaje("Error marcando foto como principal");
+    }
   }
 
   return (
@@ -182,11 +209,32 @@ export default function FotosInspeccion() {
                   style={{
                     width: "100%",
                     borderRadius: "10px",
-                    border: "2px solid #4db8ff",
+                    border: foto.principal
+                      ? "3px solid #4ade80"
+                      : "2px solid #4db8ff",
                     marginBottom: "10px",
                   }}
                 />
 
+                {/* Botón principal */}
+                <button
+                  onClick={() => marcarPrincipal(foto)}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    background: foto.principal ? "#4ade80" : "#4db8ff",
+                    color: "#000",
+                    borderRadius: "10px",
+                    border: "none",
+                    fontWeight: "700",
+                    cursor: "pointer",
+                    marginBottom: "8px",
+                  }}
+                >
+                  {foto.principal ? "Principal ✔" : "Marcar como principal"}
+                </button>
+
+                {/* Botón borrar */}
                 <button
                   onClick={() => borrarFoto(foto)}
                   style={{
