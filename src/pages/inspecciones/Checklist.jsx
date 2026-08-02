@@ -10,11 +10,12 @@ export default function Checklist() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
+  const [observaciones, setObservaciones] = useState("");
+  const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     async function cargarChecklist() {
-      // La tabla real es checklist_inspeccion (antes "checklist", que no
-      // existe) y sus columnas son `item` y `completado` (booleano).
+      // 1️⃣ Cargar checklist existente
       const { data, error } = await supabase
         .from("checklist_inspeccion")
         .select("*")
@@ -24,13 +25,49 @@ export default function Checklist() {
       if (error) {
         console.error("Error cargando checklist:", error);
         setMensaje("Error cargando checklist");
-        // Sin esto la pantalla se quedaba en "Cargando checklist..." para
-        // siempre cuando la consulta fallaba.
         setLoading(false);
         return;
       }
 
-      setItems(data || []);
+      // 2️⃣ Si no existe checklist → generarlo automáticamente
+      if (!data || data.length === 0) {
+        const plantilla = [
+          "Puertas y ventanas cerradas",
+          "Persianas en posición correcta",
+          "Ausencia de humedades",
+          "Estado general de la vivienda",
+          "Revisión de electrodomésticos",
+          "Comprobación de fugas",
+        ];
+
+        const nuevosItems = plantilla.map((texto) => ({
+          inspeccion_id: id,
+          item: texto,
+          completado: false,
+        }));
+
+        const { error: errorInsert } = await supabase
+          .from("checklist_inspeccion")
+          .insert(nuevosItems);
+
+        if (errorInsert) {
+          console.error("Error generando checklist:", errorInsert);
+          setMensaje("No se pudo generar el checklist.");
+          setLoading(false);
+          return;
+        }
+
+        const { data: dataFinal } = await supabase
+          .from("checklist_inspeccion")
+          .select("*")
+          .eq("inspeccion_id", id)
+          .order("id", { ascending: true });
+
+        setItems(dataFinal);
+      } else {
+        setItems(data);
+      }
+
       setLoading(false);
     }
 
@@ -52,6 +89,30 @@ export default function Checklist() {
     setItems((prev) =>
       prev.map((i) => (i.id === itemId ? { ...i, completado } : i))
     );
+  }
+
+  async function guardarChecklistCompleto() {
+    setGuardando(true);
+    setMensaje("");
+
+    try {
+      // 1️⃣ Guardar observaciones
+      await supabase
+        .from("inspecciones")
+        .update({
+          observaciones,
+          checklist_completado: true,
+          fecha_checklist: new Date().toISOString(),
+        })
+        .eq("id", id);
+
+      setMensaje("Checklist guardado correctamente.");
+    } catch (e) {
+      console.error(e);
+      setMensaje("Error guardando checklist.");
+    }
+
+    setGuardando(false);
   }
 
   if (loading) {
@@ -183,6 +244,45 @@ export default function Checklist() {
             ))}
           </div>
         )}
+
+        {/* 🔥 Observaciones */}
+        <textarea
+          placeholder="Observaciones de la inspección..."
+          value={observaciones}
+          onChange={(e) => setObservaciones(e.target.value)}
+          style={{
+            width: "100%",
+            minHeight: "120px",
+            marginTop: "20px",
+            padding: "12px",
+            borderRadius: "10px",
+            background: "rgba(255,255,255,0.06)",
+            color: "#fff",
+            border: "1px solid rgba(255,255,255,0.18)",
+            fontSize: "15px",
+          }}
+        />
+
+        <button
+          onClick={guardarChecklistCompleto}
+          disabled={guardando}
+          style={{
+            marginTop: "20px",
+            padding: "14px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "17px",
+            cursor: "pointer",
+            opacity: guardando ? 0.6 : 1,
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+          }}
+        >
+          {guardando ? "Guardando..." : "Guardar checklist completo"}
+        </button>
 
         <h2
           style={{
