@@ -12,8 +12,8 @@ export default function Tecnicos() {
     async function cargarTecnicos() {
       const { data, error } = await supabase
         .from("tecnicos")
-        .select("*")
-        .order("id", { ascending: false });
+        .select("id, nombre, telefono, activo")
+        .order("created_at", { ascending: false });
 
       if (error) {
         setMensaje("Error cargando técnicos");
@@ -108,10 +108,15 @@ export default function Tecnicos() {
                     color: "#4db8ff",
                     fontWeight: "700",
                     fontSize: "18px",
+                    textDecoration: "none",
                   }}
                 >
-                  {t.nombre} — {t.telefono}
+                  {t.nombre} — {t.telefono || "Sin teléfono"}
                 </Link>
+
+                <p style={{ marginTop: "6px", color: t.activo ? "#4ade80" : "#ff6b6b" }}>
+                  {t.activo ? "Activo" : "Inactivo"}
+                </p>
               </div>
             ))}
           </div>
