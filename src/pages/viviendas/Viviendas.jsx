@@ -12,7 +12,7 @@ export default function Viviendas() {
     async function cargarViviendas() {
       const { data, error } = await supabase
         .from("viviendas")
-        .select("*")
+        .select("id, nombre, direccion, ciudad, codigo_postal")
         .order("id", { ascending: false });
 
       if (error) {
@@ -112,6 +112,10 @@ export default function Viviendas() {
                 >
                   {v.nombre} — {v.direccion}
                 </Link>
+
+                <p style={{ marginTop: "8px", opacity: 0.8 }}>
+                  {v.ciudad} — {v.codigo_postal}
+                </p>
               </div>
             ))}
           </div>
