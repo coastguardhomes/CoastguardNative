@@ -10,7 +10,8 @@ export default function CrearVivienda() {
     nombre: "",
     direccion: "",
     ciudad: "",
-    cp: "",
+    codigo_postal: "",
+    activa: true, // obligatorio en tu tabla
   });
 
   const [mensaje, setMensaje] = useState("");
@@ -75,60 +76,30 @@ export default function CrearVivienda() {
           <input
             value={form.nombre}
             onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>Dirección</label>
           <input
             value={form.direccion}
             onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>Ciudad</label>
           <input
             value={form.ciudad}
             onChange={(e) => setForm({ ...form, ciudad: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>Código Postal</label>
           <input
-            value={form.cp}
-            onChange={(e) => setForm({ ...form, cp: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            value={form.codigo_postal}
+            onChange={(e) =>
+              setForm({ ...form, codigo_postal: e.target.value })
+            }
+            style={inputStyle}
           />
 
           <button
@@ -154,3 +125,13 @@ export default function CrearVivienda() {
     </Menu>
   );
 }
+
+const inputStyle = {
+  padding: "12px",
+  width: "100%",
+  marginBottom: "15px",
+  borderRadius: "10px",
+  border: "1px solid rgba(255,255,255,0.2)",
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+};
