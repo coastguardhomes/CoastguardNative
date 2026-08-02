@@ -11,7 +11,7 @@ export default function EditarVivienda() {
     nombre: "",
     direccion: "",
     ciudad: "",
-    cp: "",
+    codigo_postal: "",
   });
 
   const [mensaje, setMensaje] = useState("");
@@ -20,7 +20,7 @@ export default function EditarVivienda() {
     async function cargarVivienda() {
       const { data, error } = await supabase
         .from("viviendas")
-        .select("*")
+        .select("nombre, direccion, ciudad, codigo_postal")
         .eq("id", id)
         .single();
 
@@ -38,7 +38,12 @@ export default function EditarVivienda() {
   async function guardarCambios() {
     const { error } = await supabase
       .from("viviendas")
-      .update(form)
+      .update({
+        nombre: form.nombre,
+        direccion: form.direccion,
+        ciudad: form.ciudad,
+        codigo_postal: form.codigo_postal,
+      })
       .eq("id", id);
 
     if (error) {
@@ -98,60 +103,30 @@ export default function EditarVivienda() {
           <input
             value={form.nombre}
             onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>Dirección</label>
           <input
             value={form.direccion}
             onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>Ciudad</label>
           <input
             value={form.ciudad}
             onChange={(e) => setForm({ ...form, ciudad: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>Código Postal</label>
           <input
-            value={form.cp}
-            onChange={(e) => setForm({ ...form, cp: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            value={form.codigo_postal}
+            onChange={(e) =>
+              setForm({ ...form, codigo_postal: e.target.value })
+            }
+            style={inputStyle}
           />
 
           <button
@@ -177,3 +152,13 @@ export default function EditarVivienda() {
     </Menu>
   );
 }
+
+const inputStyle = {
+  padding: "12px",
+  width: "100%",
+  marginBottom: "15px",
+  borderRadius: "10px",
+  border: "1px solid rgba(255,255,255,0.2)",
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+};
