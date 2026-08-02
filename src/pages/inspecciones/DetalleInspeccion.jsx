@@ -6,23 +6,6 @@ import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
 import { generarPDFCliente } from "../../pdf/generarPDFCliente";
 import { subirPDF } from "../../pdf/subirPDF";
 
-/**
- * Detalle de una inspección y generación del informe PDF.
- *
- * Qué estaba mal antes:
- *   · La pantalla mostraba `JSON.stringify(inspeccion)` en crudo dentro de una
- *     caja oscura, y el "informe" era una captura (html2canvas) de esa caja:
- *     un PDF con JSON sobre fondo negro.
- *   · El Blob generado se descartaba: nunca se llamaba a subirPDF, así que no
- *     se guardaba en Storage ni en inspecciones.pdf_url. El mensaje "PDF
- *     generado correctamente" era falso.
- *   · generarPDFInspeccion no se esperaba (sin await), así que cualquier error
- *     quedaba en silencio.
- *
- * Ahora se usa generarPDFCliente, que dibuja un informe real (tabla de datos,
- * fotos, firma y QR) y se sube con subirPDF, que además guarda la URL en la
- * inspección.
- */
 export default function DetalleInspeccion() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -30,6 +13,13 @@ export default function DetalleInspeccion() {
   const [inspeccion, setInspeccion] = useState(null);
   const [fotos, setFotos] = useState([]);
   const [firma, setFirma] = useState(null);
+
+  // 🔥 NUEVOS ESTADOS
+  const [cliente, setCliente] = useState(null);
+  const [vivienda, setVivienda] = useState(null);
+  const [tecnico, setTecnico] = useState(null);
+  const [contrato, setContrato] = useState(null);
+
   const [cargando, setCargando] = useState(true);
   const [generando, setGenerando] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -39,7 +29,8 @@ export default function DetalleInspeccion() {
     let cancelado = false;
 
     async function cargar() {
-      const { data, error: errorInsp } = await supabase
+      // 1️⃣ Cargar inspección
+      const { data: insp, error: errorInsp } = await supabase
         .from("inspecciones")
         .select("*")
         .eq("id", id)
@@ -47,17 +38,56 @@ export default function DetalleInspeccion() {
 
       if (cancelado) return;
 
-      if (errorInsp || !data) {
-        console.error("Error cargando inspección:", errorInsp);
+      if (errorInsp || !insp) {
         setError("No se pudo cargar la inspección.");
         setCargando(false);
         return;
       }
 
-      setInspeccion(data);
+      setInspeccion(insp);
+
+      // 2️⃣ Cargar vivienda
+      const { data: viv } = await supabase
+        .from("viviendas")
+        .select("*")
+        .eq("id", insp.vivienda_id)
+        .maybeSingle();
+
+      setVivienda(viv);
+
+      // 3️⃣ Cargar cliente
+      if (viv?.cliente_id) {
+        const { data: cli } = await supabase
+          .from("clientes")
+          .select("*")
+          .eq("id", viv.cliente_id)
+          .maybeSingle();
+
+        setCliente(cli);
+      }
+
+      // 4️⃣ Cargar técnico
+      const { data: tec } = await supabase
+        .from("tecnicos")
+        .select("*")
+        .eq("id", insp.tecnico_id)
+        .maybeSingle();
+
+      setTecnico(tec);
+
+      // 5️⃣ Cargar contrato
+      const { data: cont } = await supabase
+        .from("contratos")
+        .select("*")
+        .eq("id", insp.contrato_id)
+        .maybeSingle();
+
+      setContrato(cont);
+
+      // 6️⃣ Cargar fotos
       setFotos(await cargarFotosInspeccion(id));
 
-      // La firma vive en firmas_inspeccion (una fila por firma capturada).
+      // 7️⃣ Cargar firma
       const { data: firmas } = await supabase
         .from("firmas_inspeccion")
         .select("url")
@@ -65,8 +95,8 @@ export default function DetalleInspeccion() {
         .order("id", { ascending: false })
         .limit(1);
 
-      if (cancelado) return;
       setFirma(firmas?.[0]?.url || null);
+
       setCargando(false);
     }
 
@@ -76,7 +106,6 @@ export default function DetalleInspeccion() {
     };
   }, [id]);
 
-  /** Convierte una imagen de Storage a base64 para incrustarla en el PDF. */
   async function aBase64(url) {
     if (!url) return null;
     try {
@@ -115,7 +144,6 @@ export default function DetalleInspeccion() {
       setMensaje("Informe PDF generado y guardado correctamente.");
       setGenerando(false);
     } catch (e) {
-      console.error("Error generando informe:", e);
       setError(`No se pudo generar el informe: ${e.message}`);
       setGenerando(false);
     }
@@ -129,14 +157,6 @@ export default function DetalleInspeccion() {
     );
   }
 
-  if (error && !inspeccion) {
-    return (
-      <Menu>
-        <div style={estilos.centrado}>{error}</div>
-      </Menu>
-    );
-  }
-
   return (
     <Menu>
       <div style={estilos.pagina}>
@@ -145,14 +165,27 @@ export default function DetalleInspeccion() {
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
         {error && <p style={estilos.error}>{error}</p>}
 
-        {/* Resumen legible en lugar del JSON en crudo */}
+        {/* 🔥 TARJETA COMPLETA */}
         <div style={estilos.tarjeta}>
           <Dato clave="Fecha" valor={String(inspeccion.fecha || "").slice(0, 10)} />
           <Dato clave="Estado" valor={inspeccion.estado} />
-          <Dato clave="Inspector" valor={inspeccion.inspector} />
-          <Dato clave="Vivienda" valor={inspeccion.vivienda_id} />
-          <Dato clave="Contrato" valor={inspeccion.contrato_id} />
-          <Dato clave="Origen" valor={inspeccion.origen} />
+
+          {/* Cliente */}
+          <Dato clave="Cliente" valor={cliente?.nombre} />
+          <Dato clave="Teléfono" valor={cliente?.telefono} />
+
+          {/* Vivienda */}
+          <Dato clave="Vivienda" valor={vivienda?.direccion} />
+          <Dato clave="Localidad" valor={vivienda?.localidad} />
+
+          {/* Técnico */}
+          <Dato clave="Técnico" valor={tecnico?.nombre} />
+
+          {/* Contrato */}
+          <Dato clave="Contrato" valor={contrato?.modalidad} />
+          <Dato clave="Precio" valor={contrato?.precio} />
+
+          {/* Otros */}
           <Dato clave="Fotos" valor={fotos.length} />
           <Dato clave="Firma" valor={firma ? "capturada" : "pendiente"} />
           {inspeccion.notas && <Dato clave="Notas" valor={inspeccion.notas} />}
@@ -201,7 +234,7 @@ export default function DetalleInspeccion() {
 }
 
 function Dato({ clave, valor }) {
-  if (valor === null || valor === undefined || valor === "") return null;
+  if (!valor) return null;
   return (
     <div style={estilos.fila}>
       <span style={estilos.clave}>{clave}</span>
