@@ -10,7 +10,6 @@ export default function VerCliente() {
   const [cliente, setCliente] = useState(null);
   const [mensaje, setMensaje] = useState("");
 
-  // Nuevos estados para datos relacionados
   const [viviendas, setViviendas] = useState([]);
   const [contratos, setContratos] = useState([]);
   const [inspecciones, setInspecciones] = useState([]);
@@ -18,8 +17,11 @@ export default function VerCliente() {
 
   useEffect(() => {
     cargarCliente();
-    cargarRelacionados();
   }, [id]);
+
+  useEffect(() => {
+    if (cliente) cargarRelacionados();
+  }, [cliente]);
 
   async function cargarCliente() {
     const { data, error } = await supabase
@@ -37,28 +39,24 @@ export default function VerCliente() {
   }
 
   async function cargarRelacionados() {
-    // Viviendas del cliente
     const { data: viv } = await supabase
       .from("viviendas")
       .select("*")
       .eq("cliente_id", id);
     setViviendas(viv || []);
 
-    // Contratos del cliente
     const { data: cont } = await supabase
       .from("contratos")
       .select("*")
       .eq("cliente_id", id);
     setContratos(cont || []);
 
-    // Inspecciones del cliente
     const { data: insp } = await supabase
       .from("inspecciones")
       .select("id, fecha, estado, vivienda_id, tecnico_id")
       .eq("cliente_id", id);
     setInspecciones(insp || []);
 
-    // Facturas del cliente (si existe tabla)
     const { data: fac } = await supabase
       .from("facturas")
       .select("*")
@@ -86,18 +84,16 @@ export default function VerCliente() {
   if (!cliente) {
     return (
       <Menu>
-        <div
-          style={{
-            height: "100vh",
-            background: "#0a0f1a",
-            color: "#fff",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            fontSize: "18px",
-            fontFamily: "Inter, sans-serif",
-          }}
-        >
+        <div style={{
+          height: "100vh",
+          background: "#0a0f1a",
+          color: "#fff",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          fontSize: "18px",
+          fontFamily: "Inter, sans-serif",
+        }}>
           Cargando cliente...
         </div>
       </Menu>
@@ -106,54 +102,43 @@ export default function VerCliente() {
 
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          color: "#fff",
-          background: "#0a0f1a",
-          minHeight: "100vh",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <h1
-          style={{
-            color: "#4db8ff",
-            marginBottom: "20px",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
+      <div style={{
+        padding: "20px",
+        color: "#fff",
+        background: "#0a0f1a",
+        minHeight: "100vh",
+        fontFamily: "Inter, sans-serif",
+      }}>
+        <h1 style={{
+          color: "#4db8ff",
+          marginBottom: "20px",
+          textShadow: "0 0 8px rgba(0,153,255,0.6)",
+        }}>
           {cliente.nombre}
         </h1>
 
         {mensaje && (
-          <p
-            style={{
-              marginBottom: "15px",
-              color: "#4db8ff",
-              fontWeight: "600",
-            }}
-          >
+          <p style={{
+            marginBottom: "15px",
+            color: "#4db8ff",
+            fontWeight: "600",
+          }}>
             {mensaje}
           </p>
         )}
 
-        {/* Datos del cliente */}
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-            marginBottom: "20px",
-          }}
-        >
+        <div style={{
+          background: "rgba(255,255,255,0.05)",
+          padding: "20px",
+          borderRadius: "14px",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          marginBottom: "20px",
+        }}>
           <p><strong>Teléfono:</strong> {cliente.telefono}</p>
           <p><strong>Email:</strong> {cliente.email}</p>
           <p><strong>Dirección:</strong> {cliente.direccion}</p>
         </div>
-
-        {/* ---------------- BLOQUES PROFESIONALES ---------------- */}
 
         <Bloque titulo="Viviendas del cliente">
           {viviendas.length === 0 ? (
@@ -170,11 +155,7 @@ export default function VerCliente() {
             <p style={{ opacity: 0.7 }}>No hay contratos.</p>
           ) : (
             contratos.map((c) => (
-              <Item
-                key={c.id}
-                to={`/contratos/${c.id}`}
-                titulo={`${c.modalidad} — ${c.precio}€`}
-              />
+              <Item key={c.id} to={`/contratos/${c.id}`} titulo={`${c.modalidad} — ${c.precio}€`} />
             ))
           )}
         </Bloque>
@@ -184,11 +165,7 @@ export default function VerCliente() {
             <p style={{ opacity: 0.7 }}>No hay inspecciones.</p>
           ) : (
             inspecciones.map((i) => (
-              <Item
-                key={i.id}
-                to={`/inspecciones/${i.id}`}
-                titulo={`Inspección del ${i.fecha} — Estado: ${i.estado}`}
-              />
+              <Item key={i.id} to={`/inspecciones/${i.id}`} titulo={`Inspección del ${i.fecha} — Estado: ${i.estado}`} />
             ))
           )}
         </Bloque>
@@ -198,72 +175,59 @@ export default function VerCliente() {
             <p style={{ opacity: 0.7 }}>No hay facturas.</p>
           ) : (
             facturas.map((f) => (
-              <Item
-                key={f.id}
-                to={`/facturas/${f.id}`}
-                titulo={`Factura ${f.id} — ${f.total}€`}
-              />
+              <Item key={f.id} to={`/facturas/${f.id}`} titulo={`Factura ${f.id} — ${f.total}€`} />
             ))
           )}
         </Bloque>
 
-        {/* ---------------- BOTONES ORIGINALES (NO TOCO NADA) ---------------- */}
-
         <Link to={`/viviendas?cliente_id=${id}`}>
-          <button
-            style={{
-              marginTop: "10px",
-              padding: "14px",
-              width: "100%",
-              background: "#1e90ff",
-              color: "#fff",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "17px",
-              cursor: "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-            }}
-          >
-            Ver viviendas del cliente
-          </button>
-        </Link>
-
-        <Link to={`/clientes/editar/${id}`}>
-          <button
-            style={{
-              marginTop: "15px",
-              padding: "14px",
-              width: "100%",
-              background: "#4db8ff",
-              color: "#000",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "17px",
-              cursor: "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-            }}
-          >
-            Editar cliente
-          </button>
-        </Link>
-
-        <button
-          onClick={eliminarCliente}
-          style={{
-            marginTop: "15px",
+          <button style={{
+            marginTop: "10px",
             padding: "14px",
             width: "100%",
-            background: "red",
+            background: "#1e90ff",
             color: "#fff",
             borderRadius: "10px",
             border: "none",
             fontWeight: "700",
             fontSize: "17px",
             cursor: "pointer",
-          }}
-        >
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+          }}>
+            Ver viviendas del cliente
+          </button>
+        </Link>
+
+        <Link to={`/clientes/editar/${id}`}>
+          <button style={{
+            marginTop: "15px",
+            padding: "14px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "17px",
+            cursor: "pointer",
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+          }}>
+            Editar cliente
+          </button>
+        </Link>
+
+        <button onClick={eliminarCliente} style={{
+          marginTop: "15px",
+          padding: "14px",
+          width: "100%",
+          background: "red",
+          color: "#fff",
+          borderRadius: "10px",
+          border: "none",
+          fontWeight: "700",
+          fontSize: "17px",
+          cursor: "pointer",
+        }}>
           Eliminar cliente
         </button>
       </div>
@@ -271,29 +235,23 @@ export default function VerCliente() {
   );
 }
 
-/* ---------------- COMPONENTES REUTILIZABLES ---------------- */
-
 function Bloque({ titulo, children }) {
   return (
     <div style={{ marginBottom: "25px" }}>
-      <h2
-        style={{
-          fontSize: "18px",
-          marginBottom: "10px",
-          color: "#4db8ff",
-        }}
-      >
+      <h2 style={{
+        fontSize: "18px",
+        marginBottom: "10px",
+        color: "#4db8ff",
+      }}>
         {titulo}
       </h2>
 
-      <div
-        style={{
-          background: "rgba(255,255,255,0.04)",
-          padding: "12px",
-          borderRadius: "10px",
-          border: "1px solid rgba(255,255,255,0.08)",
-        }}
-      >
+      <div style={{
+        background: "rgba(255,255,255,0.04)",
+        padding: "12px",
+        borderRadius: "10px",
+        border: "1px solid rgba(255,255,255,0.08)",
+      }}>
         {children}
       </div>
     </div>
@@ -303,17 +261,15 @@ function Bloque({ titulo, children }) {
 function Item({ to, titulo }) {
   return (
     <Link to={to} style={{ textDecoration: "none" }}>
-      <div
-        style={{
-          padding: "10px",
-          marginBottom: "8px",
-          background: "rgba(255,255,255,0.06)",
-          borderRadius: "8px",
-          border: "1px solid rgba(255,255,255,0.12)",
-          color: "#fff",
-          cursor: "pointer",
-        }}
-      >
+      <div style={{
+        padding: "10px",
+        marginBottom: "8px",
+        background: "rgba(255,255,255,0.06)",
+        borderRadius: "8px",
+        border: "1px solid rgba(255,255,255,0.12)",
+        color: "#fff",
+        cursor: "pointer",
+      }}>
         {titulo}
       </div>
     </Link>
