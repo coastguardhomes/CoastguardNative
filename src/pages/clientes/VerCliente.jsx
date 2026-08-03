@@ -10,24 +10,61 @@ export default function VerCliente() {
   const [cliente, setCliente] = useState(null);
   const [mensaje, setMensaje] = useState("");
 
+  // Nuevos estados para datos relacionados
+  const [viviendas, setViviendas] = useState([]);
+  const [contratos, setContratos] = useState([]);
+  const [inspecciones, setInspecciones] = useState([]);
+  const [facturas, setFacturas] = useState([]);
+
   useEffect(() => {
-    async function cargarCliente() {
-      const { data, error } = await supabase
-        .from("clientes")
-        .select("id, nombre, telefono, email, direccion")
-        .eq("id", id)
-        .single();
+    cargarCliente();
+    cargarRelacionados();
+  }, [id]);
 
-      if (error) {
-        setMensaje("Error cargando cliente");
-        return;
-      }
+  async function cargarCliente() {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("id, nombre, telefono, email, direccion")
+      .eq("id", id)
+      .single();
 
-      setCliente(data);
+    if (error) {
+      setMensaje("Error cargando cliente");
+      return;
     }
 
-    cargarCliente();
-  }, [id]);
+    setCliente(data);
+  }
+
+  async function cargarRelacionados() {
+    // Viviendas del cliente
+    const { data: viv } = await supabase
+      .from("viviendas")
+      .select("*")
+      .eq("cliente_id", id);
+    setViviendas(viv || []);
+
+    // Contratos del cliente
+    const { data: cont } = await supabase
+      .from("contratos")
+      .select("*")
+      .eq("cliente_id", id);
+    setContratos(cont || []);
+
+    // Inspecciones del cliente
+    const { data: insp } = await supabase
+      .from("inspecciones")
+      .select("id, fecha, estado, vivienda_id, tecnico_id")
+      .eq("cliente_id", id);
+    setInspecciones(insp || []);
+
+    // Facturas del cliente (si existe tabla)
+    const { data: fac } = await supabase
+      .from("facturas")
+      .select("*")
+      .eq("cliente_id", id);
+    setFacturas(fac || []);
+  }
 
   async function eliminarCliente() {
     const confirmar = window.confirm("¿Seguro que deseas eliminar este cliente?");
@@ -100,6 +137,7 @@ export default function VerCliente() {
           </p>
         )}
 
+        {/* Datos del cliente */}
         <div
           style={{
             background: "rgba(255,255,255,0.05)",
@@ -115,7 +153,62 @@ export default function VerCliente() {
           <p><strong>Dirección:</strong> {cliente.direccion}</p>
         </div>
 
-        {/* Ver viviendas del cliente */}
+        {/* ---------------- BLOQUES PROFESIONALES ---------------- */}
+
+        <Bloque titulo="Viviendas del cliente">
+          {viviendas.length === 0 ? (
+            <p style={{ opacity: 0.7 }}>No hay viviendas registradas.</p>
+          ) : (
+            viviendas.map((v) => (
+              <Item key={v.id} to={`/viviendas/${v.id}`} titulo={v.direccion} />
+            ))
+          )}
+        </Bloque>
+
+        <Bloque titulo="Contratos del cliente">
+          {contratos.length === 0 ? (
+            <p style={{ opacity: 0.7 }}>No hay contratos.</p>
+          ) : (
+            contratos.map((c) => (
+              <Item
+                key={c.id}
+                to={`/contratos/${c.id}`}
+                titulo={`${c.modalidad} — ${c.precio}€`}
+              />
+            ))
+          )}
+        </Bloque>
+
+        <Bloque titulo="Inspecciones del cliente">
+          {inspecciones.length === 0 ? (
+            <p style={{ opacity: 0.7 }}>No hay inspecciones.</p>
+          ) : (
+            inspecciones.map((i) => (
+              <Item
+                key={i.id}
+                to={`/inspecciones/${i.id}`}
+                titulo={`Inspección del ${i.fecha} — Estado: ${i.estado}`}
+              />
+            ))
+          )}
+        </Bloque>
+
+        <Bloque titulo="Facturas del cliente">
+          {facturas.length === 0 ? (
+            <p style={{ opacity: 0.7 }}>No hay facturas.</p>
+          ) : (
+            facturas.map((f) => (
+              <Item
+                key={f.id}
+                to={`/facturas/${f.id}`}
+                titulo={`Factura ${f.id} — ${f.total}€`}
+              />
+            ))
+          )}
+        </Bloque>
+
+        {/* ---------------- BOTONES ORIGINALES (NO TOCO NADA) ---------------- */}
+
         <Link to={`/viviendas?cliente_id=${id}`}>
           <button
             style={{
@@ -136,7 +229,6 @@ export default function VerCliente() {
           </button>
         </Link>
 
-        {/* Editar */}
         <Link to={`/clientes/editar/${id}`}>
           <button
             style={{
@@ -157,7 +249,6 @@ export default function VerCliente() {
           </button>
         </Link>
 
-        {/* Eliminar */}
         <button
           onClick={eliminarCliente}
           style={{
@@ -177,5 +268,54 @@ export default function VerCliente() {
         </button>
       </div>
     </Menu>
+  );
+}
+
+/* ---------------- COMPONENTES REUTILIZABLES ---------------- */
+
+function Bloque({ titulo, children }) {
+  return (
+    <div style={{ marginBottom: "25px" }}>
+      <h2
+        style={{
+          fontSize: "18px",
+          marginBottom: "10px",
+          color: "#4db8ff",
+        }}
+      >
+        {titulo}
+      </h2>
+
+      <div
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          padding: "12px",
+          borderRadius: "10px",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Item({ to, titulo }) {
+  return (
+    <Link to={to} style={{ textDecoration: "none" }}>
+      <div
+        style={{
+          padding: "10px",
+          marginBottom: "8px",
+          background: "rgba(255,255,255,0.06)",
+          borderRadius: "8px",
+          border: "1px solid rgba(255,255,255,0.12)",
+          color: "#fff",
+          cursor: "pointer",
+        }}
+      >
+        {titulo}
+      </div>
+    </Link>
   );
 }
