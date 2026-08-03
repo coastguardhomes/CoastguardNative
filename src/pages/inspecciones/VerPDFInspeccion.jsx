@@ -10,6 +10,7 @@ export default function VerPDFInspeccion() {
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
   const [generando, setGenerando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
     cargarPDF();
@@ -23,7 +24,7 @@ export default function VerPDFInspeccion() {
       .maybeSingle();
 
     if (error) {
-      console.error("Error cargando PDF:", error);
+      console.error("Error cargando PDF de la inspección:", error);
       setMensaje("Error cargando PDF de esta inspección");
       setLoading(false);
       return;
@@ -39,12 +40,12 @@ export default function VerPDFInspeccion() {
     setLoading(false);
   }
 
+  // 🔥 GENERAR / REGENERAR PDF
   async function generarPDF() {
     setGenerando(true);
     setMensaje("");
 
     try {
-      // 🔥 Llamar a la función RPC que genera el PDF
       const { data, error } = await supabase.rpc("generar_pdf_inspeccion", {
         inspeccion_id: id,
       });
@@ -56,7 +57,6 @@ export default function VerPDFInspeccion() {
         return;
       }
 
-      // 🔥 Guardar PDF en inspecciones
       await supabase
         .from("inspecciones")
         .update({
@@ -74,6 +74,24 @@ export default function VerPDFInspeccion() {
     }
 
     setGenerando(false);
+  }
+
+  // 🔥 ENVIAR EMAIL
+  async function enviarEmail() {
+    setEnviando(true);
+    setMensaje("");
+
+    try {
+      const { enviarEmailInspeccion } = await import("../../lib/emailInspeccion");
+      const resultado = await enviarEmailInspeccion(id);
+
+      setMensaje(resultado.mensaje);
+    } catch (e) {
+      console.error(e);
+      setMensaje("Error enviando email.");
+    }
+
+    setEnviando(false);
   }
 
   return (
@@ -184,6 +202,27 @@ export default function VerPDFInspeccion() {
                 Descargar PDF
               </button>
             </a>
+
+            {/* 🔥 Botón enviar email */}
+            <button
+              onClick={enviarEmail}
+              disabled={enviando}
+              style={{
+                padding: "14px",
+                width: "100%",
+                background: "#4ade80",
+                color: "#000",
+                borderRadius: "10px",
+                border: "none",
+                fontWeight: "700",
+                fontSize: "17px",
+                cursor: "pointer",
+                marginTop: "10px",
+                opacity: enviando ? 0.6 : 1,
+              }}
+            >
+              {enviando ? "Enviando email..." : "Enviar informe por email"}
+            </button>
           </div>
         )}
       </div>
