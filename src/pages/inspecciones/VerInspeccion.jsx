@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import supabase from "../../lib/supabase";
-import { format } from "date-fns";
 
 export default function VerInspeccion() {
   const { id } = useParams();
   const [inspeccion, setInspeccion] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Función para formatear fecha sin date-fns
+  function formatearFecha(fechaISO) {
+    const fecha = new Date(fechaISO);
+    const dia = String(fecha.getDate()).padStart(2, "0");
+    const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+    const año = fecha.getFullYear();
+    return `${dia}/${mes}/${año}`;
+  }
 
   useEffect(() => {
     async function cargarInspeccion() {
@@ -78,7 +86,7 @@ export default function VerInspeccion() {
 
       <p>
         <strong>Fecha:</strong>{" "}
-        {format(new Date(inspeccion.fecha), "dd/MM/yyyy")}
+        {formatearFecha(inspeccion.fecha)}
       </p>
 
       <p>
