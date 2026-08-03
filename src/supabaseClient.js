@@ -1,5 +1,4 @@
-// Reexporta el cliente único definido en src/lib/supabase.js.
-//
+
 // Antes este archivo llamaba a createClient() por su cuenta, así que la app
 // levantaba DOS clientes de Supabase: uno aquí (Login, PrivateRoute,
 // AuthContext, Register...) y otro en lib/supabase.js (el resto de pantallas).
