@@ -1,231 +1,95 @@
 import React, { useEffect, useState } from "react";
-import Menu from "../../layouts/Menu";
-import { supabase } from "../../lib/supabase";
-import { resolverUrlPdf } from "../../lib/urlPdf";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import supabase from "../../lib/supabase";
 
 export default function VerPDFInspeccion() {
   const { id } = useParams();
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [mensaje, setMensaje] = useState("");
-  const [generando, setGenerando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
+    async function cargarPDF() {
+      try {
+        // Buscar el PDF en Supabase Storage
+        const { data, error } = await supabase.storage
+          .from("pdfs-inspecciones")
+          .createSignedUrl(`inspeccion-${id}.pdf`, 3600);
+
+        if (error) {
+          console.error("Error cargando PDF:", error);
+        } else {
+          setPdfUrl(data.signedUrl);
+        }
+      } catch (err) {
+        console.error("Error inesperado:", err);
+      }
+
+      setLoading(false);
+    }
+
     cargarPDF();
   }, [id]);
 
-  async function cargarPDF() {
-    const { data, error } = await supabase
-      .from("inspecciones")
-      .select("pdf_url")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (error) {
-      console.error("Error cargando PDF de la inspección:", error);
-      setMensaje("Error cargando PDF de esta inspección");
-      setLoading(false);
-      return;
-    }
-
-    if (!data?.pdf_url) {
-      setMensaje("Esta inspección todavía no tiene PDF generado.");
-      setLoading(false);
-      return;
-    }
-
-    setPdfUrl(resolverUrlPdf(data.pdf_url));
-    setLoading(false);
+  if (loading) {
+    return (
+      <div
+        style={{
+          height: "100vh",
+          background: "#0a0f1a",
+          color: "#fff",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          fontFamily: "Inter, sans-serif",
+          fontSize: "18px",
+        }}
+      >
+        Cargando PDF…
+      </div>
+    );
   }
 
-  // 🔥 GENERAR / REGENERAR PDF
-  async function generarPDF() {
-    setGenerando(true);
-    setMensaje("");
-
-    try {
-      const { data, error } = await supabase.rpc("generar_pdf_inspeccion", {
-        inspeccion_id: id,
-      });
-
-      if (error) {
-        console.error("Error generando PDF:", error);
-        setMensaje("Error generando PDF.");
-        setGenerando(false);
-        return;
-      }
-
-      await supabase
-        .from("inspecciones")
-        .update({
-          pdf_url: data.pdf_url,
-          fecha_pdf: new Date().toISOString(),
-          estado: "pdf_generado",
-        })
-        .eq("id", id);
-
-      setPdfUrl(resolverUrlPdf(data.pdf_url));
-      setMensaje("PDF generado correctamente.");
-    } catch (e) {
-      console.error(e);
-      setMensaje("Error generando PDF.");
-    }
-
-    setGenerando(false);
-  }
-
-  // 🔥 ENVIAR EMAIL
-  async function enviarEmail() {
-    setEnviando(true);
-    setMensaje("");
-
-    try {
-      const { enviarEmailInspeccion } = await import("../../lib/emailInspeccion");
-      const resultado = await enviarEmailInspeccion(id);
-
-      setMensaje(resultado.mensaje);
-    } catch (e) {
-      console.error(e);
-      setMensaje("Error enviando email.");
-    }
-
-    setEnviando(false);
+  if (!pdfUrl) {
+    return (
+      <div className="p-4">
+        <h2>No se encontró el PDF de esta inspección</h2>
+        <Link to="/inspecciones">Volver</Link>
+      </div>
+    );
   }
 
   return (
-    <Menu>
-      <div
+    <div className="p-4">
+      <h1>PDF de la Inspección #{id}</h1>
+
+      <iframe
+        src={pdfUrl}
+        title="PDF Inspección"
         style={{
-          padding: "20px",
-          background: "#0a0f1a",
-          minHeight: "100vh",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
+          width: "100%",
+          height: "80vh",
+          border: "1px solid #ccc",
+          marginTop: "20px",
         }}
-      >
-        <h1
-          style={{
-            fontSize: "28px",
-            fontWeight: "700",
-            marginBottom: "25px",
-            color: "#4db8ff",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-            textAlign: "center",
-          }}
+      />
+
+      <div style={{ marginTop: "20px" }}>
+        <a
+          href={pdfUrl}
+          download={`inspeccion-${id}.pdf`}
+          className="btn btn-success"
         >
-          PDF de la Inspección #{id}
-        </h1>
+          Descargar PDF
+        </a>
 
-        {mensaje && (
-          <p
-            style={{
-              marginBottom: "15px",
-              color: "#4db8ff",
-              fontWeight: "600",
-            }}
-          >
-            {mensaje}
-          </p>
-        )}
-
-        {/* 🔥 Botón generar PDF */}
-        <button
-          onClick={generarPDF}
-          disabled={generando}
-          style={{
-            padding: "14px",
-            width: "100%",
-            background: "#4db8ff",
-            color: "#000",
-            borderRadius: "10px",
-            border: "none",
-            fontWeight: "700",
-            fontSize: "17px",
-            cursor: "pointer",
-            marginBottom: "20px",
-            opacity: generando ? 0.6 : 1,
-          }}
+        <Link
+          to={`/inspecciones/ver/${id}`}
+          className="btn btn-secondary"
+          style={{ marginLeft: "10px" }}
         >
-          {generando ? "Generando PDF..." : "Generar / Regenerar PDF"}
-        </button>
-
-        {loading ? (
-          <p style={{ opacity: 0.8 }}>Cargando PDF...</p>
-        ) : !pdfUrl ? (
-          <p style={{ opacity: 0.8 }}>
-            No hay PDF generado todavía para esta inspección.
-          </p>
-        ) : (
-          <div
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              padding: "20px",
-              borderRadius: "14px",
-              border: "1px solid rgba(255,255,255,0.1)",
-              boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-              marginBottom: "25px",
-            }}
-          >
-            <iframe
-              src={pdfUrl}
-              title={`PDF inspección ${id}`}
-              style={{
-                width: "100%",
-                height: "500px",
-                border: "2px solid #4db8ff",
-                borderRadius: "12px",
-                background: "#fff",
-              }}
-            />
-
-            <a
-              href={pdfUrl}
-              download
-              style={{ display: "block", marginTop: "20px", width: "100%" }}
-            >
-              <button
-                style={{
-                  padding: "14px",
-                  width: "100%",
-                  background: "#4db8ff",
-                  color: "#000",
-                  borderRadius: "10px",
-                  border: "none",
-                  fontWeight: "700",
-                  fontSize: "17px",
-                  cursor: "pointer",
-                  boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-                }}
-              >
-                Descargar PDF
-              </button>
-            </a>
-
-            {/* 🔥 Botón enviar email */}
-            <button
-              onClick={enviarEmail}
-              disabled={enviando}
-              style={{
-                padding: "14px",
-                width: "100%",
-                background: "#4ade80",
-                color: "#000",
-                borderRadius: "10px",
-                border: "none",
-                fontWeight: "700",
-                fontSize: "17px",
-                cursor: "pointer",
-                marginTop: "10px",
-                opacity: enviando ? 0.6 : 1,
-              }}
-            >
-              {enviando ? "Enviando email..." : "Enviar informe por email"}
-            </button>
-          </div>
-        )}
+          Volver
+        </Link>
       </div>
-    </Menu>
+    </div>
   );
 }
