@@ -8,12 +8,12 @@ export default function NuevaInspeccion() {
 
   const [viviendas, setViviendas] = useState([]);
   const [tecnicos, setTecnicos] = useState([]);
-  const [contratos, setContratos] = useState([]);   // ← AÑADIDO
+  const [contratos, setContratos] = useState([]);
   const [mensaje, setMensaje] = useState("");
 
   const [form, setForm] = useState({
     vivienda_id: "",
-    contrato_id: "",        // ← AÑADIDO
+    contrato_id: "",
     tecnico_id: "",
     fecha: "",
     estado: "pendiente",
@@ -77,7 +77,7 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 3️⃣ Contrato seleccionado por el usuario
+      // 3️⃣ Contrato seleccionado
       const contrato_id = form.contrato_id;
 
       if (!contrato_id) {
@@ -100,7 +100,13 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 5️⃣ Crear inspección completa
+      // 5️⃣ Validar fecha
+      if (!form.fecha) {
+        setMensaje("Selecciona una fecha.");
+        return;
+      }
+
+      // 6️⃣ Crear inspección completa
       const nuevaInspeccion = {
         vivienda_id: vivienda.id,
         cliente_id,
@@ -123,7 +129,7 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 6️⃣ Crear checklist automático
+      // 7️⃣ Crear checklist automático (tabla REAL: checklist_inspeccion)
       const plantilla = [
         "Puertas y ventanas cerradas",
         "Persianas en posición correcta",
@@ -136,11 +142,11 @@ export default function NuevaInspeccion() {
       const checklistItems = plantilla.map((texto) => ({
         inspeccion_id: insp.id,
         item: texto,
-        estado: "pendiente",
+        completado: false,
         observaciones: "",
       }));
 
-      await supabase.from("checklist_respuestas").insert(checklistItems);
+      await supabase.from("checklist_inspeccion").insert(checklistItems);
 
       setMensaje("Inspección creada correctamente.");
       navigate(`/inspecciones/${insp.id}`);
