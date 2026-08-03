@@ -1,72 +1,27 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "../supabaseClient";
+import { useNavigate } from "react-router-dom";
 
-const AuthContext = createContext();
+const navigate = useNavigate();
 
-export const AuthProvider = ({ children }) => {
-  const [session, setSession] = useState(null);
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null); // ← CAMBIO
-  const [loading, setLoading] = useState(true);
+useEffect(() => {
+  if (loading) return;
 
-  useEffect(() => {
-    let cancelado = false;
+  if (!user) {
+    navigate("/login", { replace: true });
+    return;
+  }
 
-    async function cargarRol(usuario) {
-      if (!usuario) return null;
+  if (role === "admin") {
+    navigate("/admin/dashboard", { replace: true });
+    return;
+  }
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("rol")
-        .eq("id", usuario.id)
-        .maybeSingle();
+  if (role === "tecnico") {
+    navigate("/tecnico", { replace: true });
+    return;
+  }
 
-      return data?.rol || null;
-    }
-
-    async function inicializar() {
-      const { data } = await supabase.auth.getSession();
-      const sesion = data?.session || null;
-
-      const roleActual = await cargarRol(sesion?.user); // ← CAMBIO
-      if (cancelado) return;
-
-      setSession(sesion);
-      setUser(sesion?.user || null);
-      setRole(roleActual); // ← CAMBIO
-      setLoading(false);
-    }
-
-    inicializar();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, sesion) => {
-        setSession(sesion || null);
-        setUser(sesion?.user || null);
-
-        const roleActual = await cargarRol(sesion?.user); // ← CAMBIO
-        if (!cancelado) setRole(roleActual); // ← CAMBIO
-      }
-    );
-
-    return () => {
-      cancelado = true;
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setSession(null);
-    setUser(null);
-    setRole(null); // ← CAMBIO
-  };
-
-  return (
-    <AuthContext.Provider value={{ session, user, role, logout, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => useContext(AuthContext);
+  if (role === "cliente") {
+    navigate("/cliente", { replace: true });
+    return;
+  }
+}, [user, role, loading]);
