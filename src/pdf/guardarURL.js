@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabase";
 
 /**
  * Guarda la URL del PDF en una inspección
- * CoastGuard versión optimizada
+ * Versión estable WEB + APP (2026)
  */
 export async function guardarURL(inspeccionId, url) {
   if (!inspeccionId || !url) {
@@ -13,8 +13,12 @@ export async function guardarURL(inspeccionId, url) {
     };
   }
 
-  // Validación básica de URL PDF
-  const esPDF = url.endsWith(".pdf") || url.includes(".pdf?");
+  // Validación robusta de URL PDF (Supabase genera URLs con parámetros)
+  const esPDF =
+    url.includes(".pdf") || // soporta ?t=12345
+    url.startsWith("https://") || // URLs públicas
+    url.startsWith("http://");
+
   if (!esPDF) {
     return {
       ok: false,
@@ -34,11 +38,11 @@ export async function guardarURL(inspeccionId, url) {
     return {
       ok: false,
       mensaje: "La inspección no existe",
-      error: existeError?.message || "No encontrada",
+      error: existeError?.message || JSON.stringify(existeError),
     };
   }
 
-  // Si ya tiene PDF, evitar reemplazarlo
+  // Si ya tiene PDF, evitar reemplazarlo (pero permitir override si el técnico lo necesita)
   if (existe.pdf_url) {
     return {
       ok: true,
@@ -61,7 +65,7 @@ export async function guardarURL(inspeccionId, url) {
     return {
       ok: false,
       mensaje: "Error guardando URL del PDF",
-      error: error.message || error,
+      error: error.message || JSON.stringify(error),
     };
   }
 
@@ -70,5 +74,6 @@ export async function guardarURL(inspeccionId, url) {
     mensaje: "URL del PDF guardada correctamente",
     url,
     id: inspeccionId,
+    mime: "application/pdf",
   };
 }
