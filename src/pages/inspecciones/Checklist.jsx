@@ -68,6 +68,17 @@ export default function Checklist() {
         setItems(data);
       }
 
+      // 3️⃣ Cargar observaciones y estado actual de la inspección
+      const { data: inspeccionData, error: inspeccionError } = await supabase
+        .from("inspecciones")
+        .select("observaciones")
+        .eq("id", id)
+        .single();
+
+      if (!inspeccionError && inspeccionData?.observaciones) {
+        setObservaciones(inspeccionData.observaciones);
+      }
+
       setLoading(false);
     }
 
@@ -96,17 +107,28 @@ export default function Checklist() {
     setMensaje("");
 
     try {
-      // 1️⃣ Guardar observaciones
-      await supabase
+      // 1️⃣ Comprobar si todos los ítems están completados
+      const todoOk = items.length > 0 && items.every((i) => i.completado === true);
+
+      // 2️⃣ Guardar observaciones + checklist + estado
+      const { error: updateError } = await supabase
         .from("inspecciones")
         .update({
           observaciones,
-          checklist_completado: true,
+          checklist_completado: todoOk,
           fecha_checklist: new Date().toISOString(),
+          estado: todoOk ? "checklist_completado" : "checklist_incompleto",
         })
         .eq("id", id);
 
-      setMensaje("Checklist guardado correctamente.");
+      if (updateError) {
+        console.error(updateError);
+        setMensaje("Error guardando checklist.");
+      } else {
+        setMensaje("Checklist guardado correctamente.");
+        // 3️⃣ Avanzar automáticamente a Fotos
+        navigate(`/inspecciones/fotos/${id}`);
+      }
     } catch (e) {
       console.error(e);
       setMensaje("Error guardando checklist.");
