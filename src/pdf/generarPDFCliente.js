@@ -2,26 +2,44 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 
+/**
+ * Convierte una URL a Base64 (compatible con WEB + APP)
+ */
 async function urlToBase64(url) {
   try {
-    const blob = await fetch(url).then(r => r.blob());
-    return await new Promise(resolve => {
+    const res = await fetch(url, { mode: "cors" });
+    const blob = await res.blob();
+
+    return await new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result);
       reader.readAsDataURL(blob);
     });
-  } catch {
+  } catch (e) {
+    console.warn("Error convirtiendo imagen a base64:", e);
     return null;
   }
 }
 
+/**
+ * Genera el PDF del cliente (WEB + APP)
+ */
 export async function generarPDFCliente(inspeccion) {
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const doc = new jsPDF({
+    unit: "pt",
+    format: "a4",
+    compress: true, // 🔥 evita PDFs corruptos en APP
+  });
+
   const pageHeight = doc.internal.pageSize.getHeight();
 
   // LOGO
   if (inspeccion.logoBase64) {
-    doc.addImage(inspeccion.logoBase64, "PNG", 40, 30, 120, 60);
+    try {
+      doc.addImage(inspeccion.logoBase64, "PNG", 40, 30, 120, 60);
+    } catch {
+      console.warn("Logo no válido");
+    }
   }
 
   doc.setFontSize(22);
@@ -34,12 +52,11 @@ export async function generarPDFCliente(inspeccion) {
   doc.line(40, 95, 550, 95);
 
   // Fecha real
-  const fechaReal =
-    inspeccion.creado_en
-      ? new Date(inspeccion.creado_en).toLocaleString()
-      : "Sin fecha";
+  const fechaReal = inspeccion.creado_en
+    ? new Date(inspeccion.creado_en).toLocaleString()
+    : "Sin fecha";
 
-  // TABLA
+  // TABLA (versión estable para APP)
   autoTable(doc, {
     startY: 120,
     head: [["Campo", "Valor"]],
@@ -52,6 +69,8 @@ export async function generarPDFCliente(inspeccion) {
     ],
     theme: "grid",
     headStyles: { fillColor: [0, 123, 255] },
+    styles: { fontSize: 11, cellPadding: 4 },
+    margin: { left: 40, right: 40 },
   });
 
   let y = doc.lastAutoTable.finalY + 30;
@@ -71,7 +90,11 @@ export async function generarPDFCliente(inspeccion) {
         y = 40;
       }
 
-      doc.addImage(base64, "JPEG", 40, y, 220, 160, undefined, "FAST");
+      try {
+        doc.addImage(base64, "JPEG", 40, y, 220, 160);
+      } catch {
+        doc.addImage(base64, "PNG", 40, y, 220, 160);
+      }
 
       doc.setDrawColor(0, 123, 255);
       doc.setLineWidth(1);
@@ -92,7 +115,12 @@ export async function generarPDFCliente(inspeccion) {
     doc.text("Firma del cliente:", 40, y);
     y += 20;
 
-    doc.addImage(inspeccion.firmaBase64, "PNG", 40, y, 200, 100);
+    try {
+      doc.addImage(inspeccion.firmaBase64, "PNG", 40, y, 200, 100);
+    } catch {
+      console.warn("Firma no válida");
+    }
+
     y += 130;
   }
 
