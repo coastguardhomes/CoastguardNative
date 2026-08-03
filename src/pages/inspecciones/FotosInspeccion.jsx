@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 export default function FotosInspeccion() {
   const { id } = useParams();
+  const navigate = useNavigate();
+
   const [fotos, setFotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
@@ -26,7 +28,6 @@ export default function FotosInspeccion() {
       return;
     }
 
-    // 🔥 Generar URL pública desde el archivo
     const fotosConURL = data.map((f) => {
       const { data: urlData } = supabase.storage
         .from("fotos")
@@ -45,7 +46,6 @@ export default function FotosInspeccion() {
 
     const nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
 
-    // 1️⃣ Subir a Storage
     const { error: storageError } = await supabase.storage
       .from("fotos")
       .upload(nombreArchivo, archivo);
@@ -55,22 +55,40 @@ export default function FotosInspeccion() {
       return;
     }
 
-    // 2️⃣ Guardar en la tabla (solo el nombre del archivo)
+    const { data: urlData } = supabase.storage
+      .from("fotos")
+      .getPublicUrl(nombreArchivo);
+
     const { error: dbError } = await supabase
       .from("fotos_inspeccion")
-      .insert([{ inspeccion_id: id, archivo: nombreArchivo, principal: false }]);
+      .insert([
+        {
+          inspeccion_id: id,
+          archivo: nombreArchivo,
+          url: urlData.publicUrl,   // 🔥 GUARDAMOS LA URL PARA EL PDF
+          principal: false,
+        },
+      ]);
 
     if (dbError) {
       setMensaje("Error guardando foto en la base de datos");
       return;
     }
 
+    // 🔥 Guardar fecha de fotos + estado
+    await supabase
+      .from("inspecciones")
+      .update({
+        fecha_fotos: new Date().toISOString(),
+        estado: "fotos_completadas",
+      })
+      .eq("id", id);
+
     setMensaje("Foto subida correctamente");
     cargarFotos();
   }
 
   async function borrarFoto(foto) {
-    // 1️⃣ Borrar de Storage usando el nombre del archivo
     const { error: storageError } = await supabase.storage
       .from("fotos")
       .remove([foto.archivo]);
@@ -80,7 +98,6 @@ export default function FotosInspeccion() {
       return;
     }
 
-    // 2️⃣ Borrar de la tabla
     const { error: dbError } = await supabase
       .from("fotos_inspeccion")
       .delete()
@@ -97,23 +114,38 @@ export default function FotosInspeccion() {
 
   async function marcarPrincipal(foto) {
     try {
-      // Quitar principal de todas
       await supabase
         .from("fotos_inspeccion")
         .update({ principal: false })
         .eq("inspeccion_id", id);
 
-      // Marcar esta como principal
       await supabase
         .from("fotos_inspeccion")
         .update({ principal: true })
         .eq("id", foto.id);
+
+      // 🔥 Guardar foto principal en inspecciones
+      await supabase
+        .from("inspecciones")
+        .update({
+          foto_principal: foto.url,
+        })
+        .eq("id", id);
 
       setMensaje("Foto marcada como principal");
       cargarFotos();
     } catch (e) {
       setMensaje("Error marcando foto como principal");
     }
+  }
+
+  function continuarAFirma() {
+    if (fotos.length === 0) {
+      setMensaje("Debes subir al menos una foto antes de continuar.");
+      return;
+    }
+
+    navigate(`/inspecciones/firma/${id}`);
   }
 
   return (
@@ -123,13 +155,11 @@ export default function FotosInspeccion() {
 
         {mensaje && <p style={mensajeEstilo}>{mensaje}</p>}
 
-        {/* Botón subir foto */}
         <label style={botonSubir}>
           Subir foto
           <input type="file" accept="image/*" onChange={subirFoto} style={{ display: "none" }} />
         </label>
 
-        {/* Grid de fotos */}
         {loading ? (
           <p>Cargando fotos...</p>
         ) : fotos.length === 0 ? (
@@ -166,6 +196,25 @@ export default function FotosInspeccion() {
             ))}
           </div>
         )}
+
+        {/* 🔥 Botón continuar */}
+        <button
+          onClick={continuarAFirma}
+          style={{
+            marginTop: "20px",
+            padding: "14px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "17px",
+            cursor: "pointer",
+          }}
+        >
+          Continuar a firma
+        </button>
       </div>
     </Menu>
   );
