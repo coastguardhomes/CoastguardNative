@@ -1,7 +1,8 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+
 import PrivateRoute from "./guards/PrivateRoute.jsx";
-import ClienteRoute from "./routes/ClienteRoute.jsx"; // ← AÑADIDO
+import ClienteRoute from "./pages/cliente/ClienteRoute.jsx";
 
 // LOGIN / REGISTER / RECUPERAR CONTRASEÑA
 import Login from "./pages/Login/Login.jsx";
@@ -11,7 +12,6 @@ import UpdatePassword from "./pages/auth/UpdatePassword.jsx";
 
 // INICIO / DASHBOARDS
 import Inicio from "./pages/inicio/Inicio.jsx";
-import Dashboardadmin from "./pages/Dashboardadmin.jsx";
 import ClienteDashboard from "./pages/cliente/ClienteDashboard.jsx";
 import TecnicoDashboard from "./pages/tecnicos/TecnicoDashboard.jsx";
 
@@ -69,7 +69,7 @@ import ClienteContratosLista from "./pages/cliente/ClienteContratosLista.jsx";
 import ClienteContratoVer from "./pages/cliente/ClienteContratoVer.jsx";
 import ClienteFirmaDibujar from "./pages/cliente/ClienteFirmaDibujar.jsx";
 import VerPDFContrato from "./pages/cliente/VerPDFContrato.jsx";
-import PerfilCliente from "./pages/cliente/PerfilCliente.jsx"; // ← AÑADIDO
+import PerfilCliente from "./pages/cliente/Perfilcliente.jsx";
 
 // AJUSTES / IDIOMA
 import Ajustes from "./pages/Ajustes/Ajustes.jsx";
@@ -95,7 +95,7 @@ export default function App() {
       <Route path="/home" element={<Navigate to="/inicio" replace />} />
 
       <Route path="/admin/dashboard" element={<PrivateRoute />}>
-        <Route index element={<Dashboardadmin />} />
+        {/* aquí puedes añadir rutas de admin si las necesitas */}
       </Route>
 
       <Route path="/tecnico" element={<PrivateRoute />}>
@@ -103,7 +103,14 @@ export default function App() {
       </Route>
 
       {/* ---------------- ÁREA DEL CLIENTE (PROTEGIDA POR ROL) ---------------- */}
-      <Route path="/cliente" element={<ClienteRoute> <PrivateRoute /> </ClienteRoute>}>
+      <Route
+        path="/cliente"
+        element={
+          <ClienteRoute>
+            <PrivateRoute />
+          </ClienteRoute>
+        }
+      >
         <Route index element={<ClienteDashboard />} />
         <Route path="contratos" element={<ClienteContratosLista />} />
         <Route path="contrato/:id" element={<ClienteContratoVer />} />
@@ -157,10 +164,7 @@ export default function App() {
         <Route path="detalle/:id" element={<DetalleInspeccion />} />
         <Route path="galeria/:id" element={<GaleriaInspeccion />} />
         <Route path="fotos/:id" element={<FotosInspeccion />} />
-
-        {/* ⭐ ÚNICA CORRECCIÓN NECESARIA */}
         <Route path=":id/checklist" element={<Checklist />} />
-
         <Route path="firma/:id" element={<Firma />} />
         <Route path="pdf/:id" element={<VerPDFInspeccion />} />
         <Route path="pdf" element={<VerPDF />} />
