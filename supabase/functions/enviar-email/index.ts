@@ -2,30 +2,56 @@ import { serve } from "https://deno.land/x/sift@0.6.0/mod.ts";
 
 serve({
   "/": async (req) => {
-    const { email, pdfUrl } = await req.json();
+    try {
+      const {
+        email,
+        pdfUrl,
+        cliente_nombre,
+        direccion,
+        fecha,
+        observaciones,
+        foto_principal,
+        tipo_servicio,
+      } = await req.json();
 
-    const apiKey = Deno.env.get("RESEND_API_KEY");
+      const apiKey = Deno.env.get("RESEND_API_KEY");
 
-    const html = `
-      <div style="font-family: Arial; padding: 20px; color: #333;">
-        
-        <img src="https://YOUR-LOGO-URL/logo.png" style="height: 55px; margin-bottom: 25px;" />
+      if (!email || !pdfUrl) {
+        return new Response(
+          JSON.stringify({ error: "Faltan parámetros obligatorios" }),
+          { status: 400 }
+        );
+      }
 
-        <h2 style="color: #003366; margin-bottom: 10px;">CoastGuard</h2>
+      // 1️⃣ Descargar PDF desde Supabase Storage
+      const pdfResponse = await fetch(pdfUrl);
+      const pdfBuffer = await pdfResponse.arrayBuffer();
 
-        <p><strong>ES:</strong></p>
-        <p>Adjuntamos su factura correspondiente. Puede descargarla en el siguiente enlace:</p>
-        <p><a href="${pdfUrl}" style="color: #007bff; font-weight: bold;">Descargar factura</a></p>
+      // 2️⃣ HTML del email
+      const html = `
+        <div style="font-family: Arial; padding: 20px; color: #333;">
+          
+          <h2 style="color: #003366; margin-bottom: 10px;">Informe de Inspección - CoastGuard</h2>
 
-        <br/>
+          <p>Hola <strong>${cliente_nombre}</strong>,</p>
 
-        <p><strong>EN:</strong></p>
-        <p>We have attached your corresponding invoice. You can download it from the link below:</p>
-        <p><a href="${pdfUrl}" style="color: #007bff; font-weight: bold;">Download invoice</a></p>
+          <p>Adjuntamos el informe correspondiente a la inspección realizada en:</p>
+          <p><strong>${direccion}</strong></p>
 
-        <br/><br/>
+          <p><strong>Fecha:</strong> ${fecha}</p>
+          <p><strong>Servicio:</strong> ${tipo_servicio}</p>
 
-        <div style="border-top: 1px solid #ccc; padding-top: 15px; margin-top: 25px;">
+          <h3 style="color:#003366;">Observaciones</h3>
+          <p>${observaciones || "Sin observaciones"}</p>
+
+          ${
+            foto_principal
+              ? `<img src="${foto_principal}" alt="Foto principal" style="width:300px;border-radius:10px;margin-top:20px;" />`
+              : ""
+          }
+
+          <br/><br/>
+
           <p style="font-size: 14px; margin: 0; font-weight: bold;">CoastGuard · Home Supervision Services</p>
 
           <p style="font-size: 12px; margin: 5px 0;">
@@ -43,27 +69,47 @@ serve({
             ES: Gracias por confiar en CoastGuard.<br/>
             EN: Thank you for trusting CoastGuard.
           </p>
+
         </div>
+      `;
 
-      </div>
-    `;
+      // 3️⃣ Enviar email con Resend
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "CoastGuard <noreply@coastguard.es>",
+          to: email,
+          subject: `Informe de inspección - ${direccion}`,
+          html,
+          attachments: [
+            {
+              filename: "informe_inspeccion.pdf",
+              content: Array.from(new Uint8Array(pdfBuffer)), // Resend requiere array de números
+            },
+          ],
+        }),
+      });
 
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        from: "CoastGuard <noreply@coastguard.es>",
-        to: email,
-        subject: "Factura / Invoice - CoastGuard",
-        html
-      })
-    });
+      if (!response.ok) {
+        console.error(await response.text());
+        return new Response(
+          JSON.stringify({ error: "Error enviando email" }),
+          { status: 500 }
+        );
+      }
 
-    return new Response(JSON.stringify({ status: "ok" }), {
-      headers: { "Content-Type": "application/json" }
-    });
-  }
+      return new Response(JSON.stringify({ status: "ok" }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (e) {
+      console.error("ERROR EN FUNCIÓN enviar-email:", e);
+      return new Response(JSON.stringify({ error: e.message }), {
+        status: 500,
+      });
+    }
+  },
 });
