@@ -14,6 +14,7 @@ import UpdatePassword from "./pages/auth/UpdatePassword.jsx";
 import Inicio from "./pages/inicio/Inicio.jsx";
 import ClienteDashboard from "./pages/cliente/ClienteDashboard.jsx";
 import TecnicoDashboard from "./pages/tecnicos/TecnicoDashboard.jsx";
+import Dashboardadmin from "./pages/Dashboardadmin.jsx";   // ⭐ AÑADIDO
 
 // CLIENTES
 import Clientes from "./pages/clientes/Clientes.jsx";
@@ -94,15 +95,17 @@ export default function App() {
       <Route path="/menu" element={<Navigate to="/inicio" replace />} />
       <Route path="/home" element={<Navigate to="/inicio" replace />} />
 
+      {/* ---------------- ADMIN ---------------- */}
       <Route path="/admin/dashboard" element={<PrivateRoute />}>
-        {/* aquí puedes añadir rutas de admin si las necesitas */}
+        <Route index element={<Dashboardadmin />} />   {/* ⭐ CONECTADO */}
       </Route>
 
+      {/* ---------------- TÉCNICO ---------------- */}
       <Route path="/tecnico" element={<PrivateRoute />}>
         <Route index element={<TecnicoDashboard />} />
       </Route>
 
-      {/* ---------------- ÁREA DEL CLIENTE (PROTEGIDA POR ROL) ---------------- */}
+      {/* ---------------- ÁREA DEL CLIENTE ---------------- */}
       <Route
         path="/cliente"
         element={
