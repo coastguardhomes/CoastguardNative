@@ -6,15 +6,12 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
-  const [rol, setRol] = useState(null);
+  const [role, setRole] = useState(null); // ← CAMBIO
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelado = false;
 
-    // El rol vive en profiles.rol. Se resuelve aquí una sola vez y se comparte
-    // por contexto: antes cada PrivateRoute lo consultaba al montarse, o sea
-    // una petición de red en cada navegación.
     async function cargarRol(usuario) {
       if (!usuario) return null;
 
@@ -31,12 +28,12 @@ export const AuthProvider = ({ children }) => {
       const { data } = await supabase.auth.getSession();
       const sesion = data?.session || null;
 
-      const rolActual = await cargarRol(sesion?.user);
+      const roleActual = await cargarRol(sesion?.user); // ← CAMBIO
       if (cancelado) return;
 
       setSession(sesion);
       setUser(sesion?.user || null);
-      setRol(rolActual);
+      setRole(roleActual); // ← CAMBIO
       setLoading(false);
     }
 
@@ -44,12 +41,11 @@ export const AuthProvider = ({ children }) => {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, sesion) => {
-        // onAuthStateChange se dispara en login, logout y refresco de token.
         setSession(sesion || null);
         setUser(sesion?.user || null);
 
-        const rolActual = await cargarRol(sesion?.user);
-        if (!cancelado) setRol(rolActual);
+        const roleActual = await cargarRol(sesion?.user); // ← CAMBIO
+        if (!cancelado) setRole(roleActual); // ← CAMBIO
       }
     );
 
@@ -63,11 +59,11 @@ export const AuthProvider = ({ children }) => {
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);
-    setRol(null);
+    setRole(null); // ← CAMBIO
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, rol, logout, loading }}>
+    <AuthContext.Provider value={{ session, user, role, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
