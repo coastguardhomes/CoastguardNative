@@ -157,7 +157,10 @@ export default function App() {
         <Route path="detalle/:id" element={<DetalleInspeccion />} />
         <Route path="galeria/:id" element={<GaleriaInspeccion />} />
         <Route path="fotos/:id" element={<FotosInspeccion />} />
-        <Route path="checklist/:id" element={<Checklist />} />
+
+        {/* ⭐ ÚNICA CORRECCIÓN NECESARIA */}
+        <Route path=":id/checklist" element={<Checklist />} />
+
         <Route path="firma/:id" element={<Firma />} />
         <Route path="pdf/:id" element={<VerPDFInspeccion />} />
         <Route path="pdf" element={<VerPDF />} />
