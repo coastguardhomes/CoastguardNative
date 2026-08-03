@@ -15,12 +15,20 @@ export default function Firma() {
     async function cargarFirma() {
       const { data } = await supabase
         .from("firmas_inspeccion")
-        .select("url")
+        .select("*")
         .eq("inspeccion_id", id)
         .order("id", { ascending: false })
         .limit(1);
 
-      setFirmaGuardada(data?.[0]?.url || null);
+      if (data?.length > 0) {
+        const archivo = data[0].archivo;
+
+        const { data: urlData } = supabase.storage
+          .from("firmas")
+          .getPublicUrl(archivo);
+
+        setFirmaGuardada(urlData.publicUrl);
+      }
     }
 
     cargarFirma();
@@ -75,24 +83,17 @@ export default function Firma() {
       return;
     }
 
-    const filePath = `inspecciones/inspeccion_${id}.png`;
+    const nombreArchivo = `firma_${id}_${Date.now()}.png`;
 
     // 🔥 Subir firma (con upsert)
     const { error: errorSubida } = await supabase.storage
       .from("firmas")
-      .upload(filePath, blob, { upsert: true, contentType: "image/png" });
+      .upload(nombreArchivo, blob, { upsert: true });
 
     if (errorSubida) {
-      console.error("Error subiendo firma:", errorSubida);
       setMensaje("Error guardando firma");
       return;
     }
-
-    const { data: publica } = supabase.storage
-      .from("firmas")
-      .getPublicUrl(filePath);
-
-    const url = publica.publicUrl;
 
     // 🔥 Borrar firmas anteriores
     await supabase
@@ -100,24 +101,17 @@ export default function Firma() {
       .delete()
       .eq("inspeccion_id", id);
 
-    // 🔥 Guardar firma nueva
-    const { error } = await supabase
-      .from("firmas_inspeccion")
-      .insert([{ inspeccion_id: id, url }]);
-
-    if (error) {
-      console.error("Error guardando firma:", error);
-      setMensaje("Error guardando firma");
-      return;
-    }
-
-    // 🔥 Actualizar inspección → firma capturada
+    // 🔥 Guardar firma nueva (solo el nombre del archivo)
     await supabase
-      .from("inspecciones")
-      .update({ firma_capturada: true })
-      .eq("id", id);
+      .from("firmas_inspeccion")
+      .insert([{ inspeccion_id: id, archivo: nombreArchivo }]);
 
-    setFirmaGuardada(url);
+    // 🔥 URL pública
+    const { data: urlData } = supabase.storage
+      .from("firmas")
+      .getPublicUrl(nombreArchivo);
+
+    setFirmaGuardada(urlData.publicUrl);
     setMensaje("Firma guardada correctamente");
   }
 
