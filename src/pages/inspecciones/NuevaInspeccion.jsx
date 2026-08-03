@@ -23,7 +23,7 @@ export default function NuevaInspeccion() {
     async function cargarDatos() {
       const { data: viv } = await supabase
         .from("viviendas")
-        .select("id, direccion, cliente_id, contrato_id");
+        .select("id, direccion, cliente_id");
 
       const { data: tec } = await supabase
         .from("tecnicos")
@@ -48,21 +48,44 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 2️⃣ Obtener cliente y contrato automáticamente
+      // 2️⃣ Obtener cliente automáticamente
       const cliente_id = vivienda.cliente_id;
-      const contrato_id = vivienda.contrato_id;
 
-      if (!cliente_id || !contrato_id) {
-        setMensaje("La vivienda no tiene cliente o contrato asignado.");
+      if (!cliente_id) {
+        setMensaje("La vivienda no tiene cliente asignado.");
         return;
       }
 
-      // 3️⃣ Crear inspección completa
+      // 3️⃣ Obtener contrato activo del cliente
+      const { data: contrato } = await supabase
+        .from("contratos")
+        .select("id, tecnico_id")
+        .eq("cliente_id", cliente_id)
+        .limit(1)
+        .maybeSingle();
+
+      if (!contrato) {
+        setMensaje("El cliente no tiene contrato activo.");
+        return;
+      }
+
+      const contrato_id = contrato.id;
+
+      // 4️⃣ Técnico automático si existe en contrato
+      const tecnicoFinal =
+        contrato.tecnico_id || form.tecnico_id || null;
+
+      if (!tecnicoFinal) {
+        setMensaje("Selecciona un técnico.");
+        return;
+      }
+
+      // 5️⃣ Crear inspección completa
       const nuevaInspeccion = {
         vivienda_id: vivienda.id,
         cliente_id,
         contrato_id,
-        tecnico_id: form.tecnico_id,
+        tecnico_id: tecnicoFinal,
         fecha: form.fecha,
         estado: "pendiente",
         notas: form.notas,
@@ -80,7 +103,7 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 4️⃣ Crear checklist automático
+      // 6️⃣ Crear checklist automático (compatible con VerInspeccion.jsx)
       const plantilla = [
         "Puertas y ventanas cerradas",
         "Persianas en posición correcta",
@@ -93,10 +116,11 @@ export default function NuevaInspeccion() {
       const checklistItems = plantilla.map((texto) => ({
         inspeccion_id: insp.id,
         item: texto,
-        completado: false,
+        estado: "pendiente",
+        observaciones: "",
       }));
 
-      await supabase.from("checklist_inspeccion").insert(checklistItems);
+      await supabase.from("checklist_respuestas").insert(checklistItems);
 
       setMensaje("Inspección creada correctamente.");
       navigate(`/inspecciones/${insp.id}`);
@@ -150,7 +174,7 @@ export default function NuevaInspeccion() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          {/* 🔥 Selección de vivienda */}
+          {/* Vivienda */}
           <label>Vivienda</label>
           <select
             value={form.vivienda_id}
@@ -175,7 +199,7 @@ export default function NuevaInspeccion() {
             ))}
           </select>
 
-          {/* 🔥 Selección de técnico */}
+          {/* Técnico */}
           <label>Técnico</label>
           <select
             value={form.tecnico_id}
