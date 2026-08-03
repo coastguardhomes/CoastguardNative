@@ -9,36 +9,72 @@ export default function VerPDFInspeccion() {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
+  const [generando, setGenerando] = useState(false);
 
   useEffect(() => {
-    async function cargarPDF() {
-      // No existe ninguna tabla "pdf_inspecciones": el PDF de una inspección
-      // se guarda en la columna inspecciones.pdf_url.
-      const { data, error } = await supabase
-        .from("inspecciones")
-        .select("pdf_url")
-        .eq("id", id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error cargando PDF de la inspección:", error);
-        setMensaje("Error cargando PDF de esta inspección");
-        setLoading(false);
-        return;
-      }
-
-      if (!data?.pdf_url) {
-        setMensaje("Esta inspección todavía no tiene PDF generado.");
-        setLoading(false);
-        return;
-      }
-
-      setPdfUrl(resolverUrlPdf(data.pdf_url));
-      setLoading(false);
-    }
-
     cargarPDF();
   }, [id]);
+
+  async function cargarPDF() {
+    const { data, error } = await supabase
+      .from("inspecciones")
+      .select("pdf_url")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error cargando PDF:", error);
+      setMensaje("Error cargando PDF de esta inspección");
+      setLoading(false);
+      return;
+    }
+
+    if (!data?.pdf_url) {
+      setMensaje("Esta inspección todavía no tiene PDF generado.");
+      setLoading(false);
+      return;
+    }
+
+    setPdfUrl(resolverUrlPdf(data.pdf_url));
+    setLoading(false);
+  }
+
+  async function generarPDF() {
+    setGenerando(true);
+    setMensaje("");
+
+    try {
+      // 🔥 Llamar a la función RPC que genera el PDF
+      const { data, error } = await supabase.rpc("generar_pdf_inspeccion", {
+        inspeccion_id: id,
+      });
+
+      if (error) {
+        console.error("Error generando PDF:", error);
+        setMensaje("Error generando PDF.");
+        setGenerando(false);
+        return;
+      }
+
+      // 🔥 Guardar PDF en inspecciones
+      await supabase
+        .from("inspecciones")
+        .update({
+          pdf_url: data.pdf_url,
+          fecha_pdf: new Date().toISOString(),
+          estado: "pdf_generado",
+        })
+        .eq("id", id);
+
+      setPdfUrl(resolverUrlPdf(data.pdf_url));
+      setMensaje("PDF generado correctamente.");
+    } catch (e) {
+      console.error(e);
+      setMensaje("Error generando PDF.");
+    }
+
+    setGenerando(false);
+  }
 
   return (
     <Menu>
@@ -75,6 +111,27 @@ export default function VerPDFInspeccion() {
             {mensaje}
           </p>
         )}
+
+        {/* 🔥 Botón generar PDF */}
+        <button
+          onClick={generarPDF}
+          disabled={generando}
+          style={{
+            padding: "14px",
+            width: "100%",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "17px",
+            cursor: "pointer",
+            marginBottom: "20px",
+            opacity: generando ? 0.6 : 1,
+          }}
+        >
+          {generando ? "Generando PDF..." : "Generar / Regenerar PDF"}
+        </button>
 
         {loading ? (
           <p style={{ opacity: 0.8 }}>Cargando PDF...</p>
