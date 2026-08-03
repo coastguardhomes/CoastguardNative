@@ -1,11 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+
+  // Seguridad: comprobar que el contrato pertenece al cliente
+  useEffect(() => {
+    async function comprobarContrato() {
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("contratos")
+        .select("cliente_id")
+        .eq("id", contrato.id)
+        .single();
+
+      if (error || !data || data.cliente_id !== user.id) {
+        alert(t("clienteAccesoDenegado"));
+      }
+    }
+
+    comprobarContrato();
+  }, [user, contrato.id, t]);
 
   const generarPDF = async () => {
     setLoading(true);
@@ -21,8 +42,6 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
     doc.text(`${t("pdfDireccion")}: ${cliente?.direccion || ""}`, 20, 50);
     doc.text(`${t("pdfTelefono")}: ${cliente?.telefono || ""}`, 20, 60);
 
-    // Columnas reales: frecuencia (días), fecha_inicio y precio. Antes se
-    // leían tipoServicio/fechaInicio y el PDF salía con los campos vacíos.
     doc.text(t("pdfDetallesServicio"), 20, 80);
     doc.text(
       `${t("pdfTipoServicio")}: ${
@@ -32,9 +51,10 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
       90
     );
     doc.text(`${t("pdfFechaInicio")}: ${contrato?.fecha_inicio || "N/D"}`, 20, 100);
-
     doc.text(
-      `${t("pdfPrecioMensual")}: ${contrato?.precio != null ? contrato.precio : "N/D"} €`,
+      `${t("pdfPrecioMensual")}: ${
+        contrato?.precio != null ? contrato.precio : "N/D"
+      } €`,
       20,
       110
     );
@@ -44,22 +64,26 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
 
     // Firma del cliente si existe
     if (contrato?.firma) {
-      const { data } = supabase.storage
-        .from("firmas")
-        .getPublicUrl(contrato.firma);
+      try {
+        const { data } = supabase.storage
+          .from("firmas")
+          .getPublicUrl(contrato.firma);
 
-      const firmaImg = await fetch(data.publicUrl)
-        .then((r) => r.blob())
-        .then(
-          (b) =>
-            new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result);
-              reader.readAsDataURL(b);
-            })
-        );
+        const firmaImg = await fetch(data.publicUrl)
+          .then((r) => r.blob())
+          .then(
+            (b) =>
+              new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsDataURL(b);
+              })
+          );
 
-      doc.addImage(firmaImg, "PNG", 20, 160, 60, 30);
+        doc.addImage(firmaImg, "PNG", 20, 160, 60, 30);
+      } catch (e) {
+        doc.text(`${t("pdfFirmaCliente")}: ____________________`, 20, 170);
+      }
     } else {
       doc.text(`${t("pdfFirmaCliente")}: ____________________`, 20, 170);
     }
@@ -83,14 +107,16 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
 
     await supabase
       .from("contratos")
-      .update({ pdf_url: filePath })
+      .update({
+        pdf_url: filePath,
+        fecha_pdf: new Date().toISOString(),
+        estado_pdf: "generado",
+      })
       .eq("id", contrato.id);
 
     setLoading(false);
     alert(t("pdfGenerado"));
 
-    // Avisa a la pantalla para que recargue el contrato: así aparece el botón
-    // de "Ver PDF" sin tener que salir y volver a entrar.
     if (onGenerado) onGenerado();
   };
 
