@@ -2,19 +2,21 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 /**
- * Genera un PDF PRO de una inspección CoastGuard
- * @param {HTMLElement} elementoHTML - El contenedor HTML del informe
- * @returns {Promise<Blob>} PDF listo para subir a Supabase
+ * Genera un PDF de inspección que funciona IGUAL en WEB y APP (CoastGuardNative)
+ * Versión estable 2026
  */
-export async function generarInspeccion(elementoHTML) {
+export async function generarPDFInspeccion(elementoHTML) {
   try {
     // 🔥 Asegurar que todo está visible antes de capturar
     window.scrollTo(0, 0);
 
-    // 🔥 Esperar a que todas las imágenes carguen
-    const imgs = Array.from(elementoHTML.querySelectorAll("img"));
+    // 🔥 Forzar que el contenedor tenga tamaño real (evita recortes en WebView)
+    elementoHTML.style.minHeight = elementoHTML.scrollHeight + "px";
+
+    // 🔥 Esperar a que todas las imágenes carguen (web + app)
+    const imagenes = Array.from(elementoHTML.querySelectorAll("img"));
     await Promise.all(
-      imgs.map(
+      imagenes.map(
         (img) =>
           new Promise((resolve) => {
             if (img.complete) resolve();
@@ -24,14 +26,13 @@ export async function generarInspeccion(elementoHTML) {
       )
     );
 
-    // 🔥 Captura HTML → Canvas
+    // 🔥 Captura HTML → Canvas (configuración universal web + app)
     const canvas = await html2canvas(elementoHTML, {
       scale: 2,
       useCORS: true,
       allowTaint: false,
       backgroundColor: "#ffffff",
       logging: false,
-      imageTimeout: 2000,
       scrollX: 0,
       scrollY: 0,
       windowWidth: elementoHTML.scrollWidth,
@@ -53,7 +54,7 @@ export async function generarInspeccion(elementoHTML) {
     // 🔥 Primera página
     pdf.addImage(imgData, "PNG", 0, y, imgWidth, imgHeight);
 
-    // 🔥 Paginación automática
+    // 🔥 Paginación automática (web + app)
     let heightLeft = imgHeight - pageHeight;
 
     while (heightLeft > 0) {
@@ -86,7 +87,7 @@ export async function generarInspeccion(elementoHTML) {
   } catch (error) {
     console.error("Error generando PDF:", error);
 
-    // 🔥 Fallback CoastGuard: PDF válido aunque falle html2canvas
+    // 🔥 Fallback válido (web + app)
     const pdf = new jsPDF();
     pdf.setFontSize(16);
     pdf.text("Error generando PDF de la inspección.", 20, 20);
