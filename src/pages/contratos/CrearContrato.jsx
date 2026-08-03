@@ -18,31 +18,56 @@ export default function CrearContrato() {
     precio: "",
     notas: "",
     frecuencia: "",
+    modalidad: "",
   });
 
   const [mensaje, setMensaje] = useState("");
 
+  // 🔥 Modalidades y precios automáticos
+  const modalidades = [
+    { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
+    { id: "premium", nombre: "Premium", precio: 59, frecuencia: 30 },
+    { id: "plus", nombre: "Plus", precio: 79, frecuencia: 30 },
+  ];
+
   useEffect(() => {
-    async function cargarDatos() {
-      const { data: clientesData } = await supabase
-        .from("clientes")
-        .select("id, nombre");
-
-      const { data: viviendasData } = await supabase
-        .from("viviendas")
-        .select("id, direccion");
-
-      const { data: tecnicosData } = await supabase
-        .from("tecnicos")
-        .select("id, nombre");
-
-      setClientes(clientesData || []);
-      setViviendas(viviendasData || []);
-      setTecnicos(tecnicosData || []);
-    }
-
     cargarDatos();
   }, []);
+
+  async function cargarDatos() {
+    const { data: clientesData } = await supabase
+      .from("clientes")
+      .select("id, nombre");
+
+    const { data: viviendasData } = await supabase
+      .from("viviendas")
+      .select("id, direccion, cliente_id");
+
+    const { data: tecnicosData } = await supabase
+      .from("tecnicos")
+      .select("id, nombre");
+
+    setClientes(clientesData || []);
+    setViviendas(viviendasData || []);
+    setTecnicos(tecnicosData || []);
+  }
+
+  // 🔥 Auto‑filtrar viviendas según cliente
+  const viviendasFiltradas = form.cliente_id
+    ? viviendas.filter((v) => v.cliente_id === form.cliente_id)
+    : viviendas;
+
+  // 🔥 Auto‑calcular precio y frecuencia según modalidad
+  function seleccionarModalidad(modalidadId) {
+    const mod = modalidades.find((m) => m.id === modalidadId);
+
+    setForm({
+      ...form,
+      modalidad: modalidadId,
+      precio: mod ? mod.precio : "",
+      frecuencia: mod ? mod.frecuencia : "",
+    });
+  }
 
   async function crearContrato() {
     if (!form.cliente_id || !form.vivienda_id || !form.tecnico_id) {
@@ -59,6 +84,7 @@ export default function CrearContrato() {
         precio: form.precio || null,
         notas: form.notas || null,
         frecuencia: form.frecuencia || null,
+        modalidad: form.modalidad || null,
       },
     ]);
 
@@ -148,7 +174,7 @@ export default function CrearContrato() {
             style={inputStyle}
           >
             <option value="">Selecciona vivienda</option>
-            {viviendas.map((v) => (
+            {viviendasFiltradas.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.direccion}
               </option>
@@ -166,6 +192,21 @@ export default function CrearContrato() {
             {tecnicos.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.nombre}
+              </option>
+            ))}
+          </select>
+
+          {/* Modalidad */}
+          <label>Modalidad:</label>
+          <select
+            value={form.modalidad}
+            onChange={(e) => seleccionarModalidad(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="">Selecciona modalidad</option>
+            {modalidades.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre} — {m.precio}€
               </option>
             ))}
           </select>
