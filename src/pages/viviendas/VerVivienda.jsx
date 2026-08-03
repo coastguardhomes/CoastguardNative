@@ -10,26 +10,62 @@ export default function VerVivienda() {
   const [vivienda, setVivienda] = useState(null);
   const [mensaje, setMensaje] = useState("");
 
+  // Nuevos estados para datos relacionados
+  const [cliente, setCliente] = useState(null);
+  const [contratos, setContratos] = useState([]);
+  const [inspecciones, setInspecciones] = useState([]);
+
   useEffect(() => {
-    async function cargarVivienda() {
-      const { data, error } = await supabase
-        .from("viviendas")
-        .select("nombre, direccion, ciudad, codigo_postal")
-        .eq("id", id)
-        .single();
-
-      if (error) {
-        setMensaje("Error cargando vivienda");
-        return;
-      }
-
-      setVivienda(data);
-    }
-
     cargarVivienda();
+    cargarRelacionados();
   }, [id]);
 
+  async function cargarVivienda() {
+    const { data, error } = await supabase
+      .from("viviendas")
+      .select("id, nombre, direccion, ciudad, codigo_postal, cliente_id")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      setMensaje("Error cargando vivienda");
+      return;
+    }
+
+    setVivienda(data);
+  }
+
+  async function cargarRelacionados() {
+    // Cliente propietario
+    const { data: clienteData } = await supabase
+      .from("clientes")
+      .select("id, nombre, telefono, email")
+      .eq("id", vivienda?.cliente_id)
+      .single();
+
+    setCliente(clienteData || null);
+
+    // Contratos asociados
+    const { data: contratosData } = await supabase
+      .from("contratos")
+      .select("*")
+      .eq("vivienda_id", id);
+
+    setContratos(contratosData || []);
+
+    // Inspecciones realizadas
+    const { data: inspeccionesData } = await supabase
+      .from("inspecciones")
+      .select("id, fecha, estado, tecnico_id")
+      .eq("vivienda_id", id);
+
+    setInspecciones(inspeccionesData || []);
+  }
+
   async function eliminarVivienda() {
+    const confirmar = window.confirm("¿Seguro que deseas eliminar esta vivienda?");
+    if (!confirmar) return;
+
     const { error } = await supabase
       .from("viviendas")
       .delete()
@@ -101,6 +137,7 @@ export default function VerVivienda() {
           </p>
         )}
 
+        {/* DATOS DE LA VIVIENDA */}
         <div
           style={{
             background: "rgba(255,255,255,0.05)",
@@ -126,6 +163,49 @@ export default function VerVivienda() {
             {vivienda.codigo_postal}
           </p>
         </div>
+
+        {/* ---------------- BLOQUES PROFESIONALES ---------------- */}
+
+        <Bloque titulo="Cliente propietario">
+          {!cliente ? (
+            <p style={{ opacity: 0.7 }}>No se encontró el cliente.</p>
+          ) : (
+            <Item
+              to={`/clientes/${cliente.id}`}
+              titulo={`${cliente.nombre} — ${cliente.email}`}
+            />
+          )}
+        </Bloque>
+
+        <Bloque titulo="Contratos asociados">
+          {contratos.length === 0 ? (
+            <p style={{ opacity: 0.7 }}>No hay contratos asociados.</p>
+          ) : (
+            contratos.map((c) => (
+              <Item
+                key={c.id}
+                to={`/contratos/${c.id}`}
+                titulo={`${c.modalidad} — ${c.precio}€`}
+              />
+            ))
+          )}
+        </Bloque>
+
+        <Bloque titulo="Inspecciones realizadas">
+          {inspecciones.length === 0 ? (
+            <p style={{ opacity: 0.7 }}>No hay inspecciones.</p>
+          ) : (
+            inspecciones.map((i) => (
+              <Item
+                key={i.id}
+                to={`/inspecciones/${i.id}`}
+                titulo={`Inspección del ${i.fecha} — Estado: ${i.estado}`}
+              />
+            ))
+          )}
+        </Bloque>
+
+        {/* ---------------- BOTONES ORIGINALES ---------------- */}
 
         <Link to={`/viviendas/editar/${id}`}>
           <button
@@ -167,5 +247,54 @@ export default function VerVivienda() {
         </button>
       </div>
     </Menu>
+  );
+}
+
+/* ---------------- COMPONENTES REUTILIZABLES ---------------- */
+
+function Bloque({ titulo, children }) {
+  return (
+    <div style={{ marginBottom: "25px" }}>
+      <h2
+        style={{
+          fontSize: "18px",
+          marginBottom: "10px",
+          color: "#4db8ff",
+        }}
+      >
+        {titulo}
+      </h2>
+
+      <div
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          padding: "12px",
+          borderRadius: "10px",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Item({ to, titulo }) {
+  return (
+    <Link to={to} style={{ textDecoration: "none" }}>
+      <div
+        style={{
+          padding: "10px",
+          marginBottom: "8px",
+          background: "rgba(255,255,255,0.06)",
+          borderRadius: "8px",
+          border: "1px solid rgba(255,255,255,0.12)",
+          color: "#fff",
+          cursor: "pointer",
+        }}
+      >
+        {titulo}
+      </div>
+    </Link>
   );
 }
