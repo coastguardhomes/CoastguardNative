@@ -13,16 +13,19 @@ export function AuthProvider({ children }) {
 
   // Cargar sesión al iniciar la app
   useEffect(() => {
-    const session = supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
+    async function cargarSesion() {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user) {
         setUser(data.session.user);
       }
       setLoading(false);
-    });
+    }
+
+    cargarSesion();
 
     // Escuchar cambios de sesión
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         if (session?.user) {
           setUser(session.user);
         } else {
