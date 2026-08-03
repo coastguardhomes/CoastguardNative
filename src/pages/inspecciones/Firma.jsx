@@ -1,16 +1,17 @@
 import React, { useRef, useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 export default function Firma() {
   const { id } = useParams();
+  const navigate = useNavigate();
+
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [firmaGuardada, setFirmaGuardada] = useState(null);
 
-  // 🔥 Cargar firma existente
   useEffect(() => {
     async function cargarFirma() {
       const { data } = await supabase
@@ -72,6 +73,16 @@ export default function Firma() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // 🔥 Validar que hay firma dibujada
+    const ctx = canvas.getContext("2d");
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const hayFirma = pixels.some((p) => p !== 255);
+
+    if (!hayFirma) {
+      setMensaje("Debes dibujar la firma antes de guardar.");
+      return;
+    }
+
     setMensaje("Guardando firma...");
 
     const blob = await new Promise((resolve) =>
@@ -85,7 +96,6 @@ export default function Firma() {
 
     const nombreArchivo = `firma_${id}_${Date.now()}.png`;
 
-    // 🔥 Subir firma (con upsert)
     const { error: errorSubida } = await supabase.storage
       .from("firmas")
       .upload(nombreArchivo, blob, { upsert: true });
@@ -95,24 +105,37 @@ export default function Firma() {
       return;
     }
 
-    // 🔥 Borrar firmas anteriores
     await supabase
       .from("firmas_inspeccion")
       .delete()
       .eq("inspeccion_id", id);
 
-    // 🔥 Guardar firma nueva (solo el nombre del archivo)
     await supabase
       .from("firmas_inspeccion")
       .insert([{ inspeccion_id: id, archivo: nombreArchivo }]);
 
-    // 🔥 URL pública
     const { data: urlData } = supabase.storage
       .from("firmas")
       .getPublicUrl(nombreArchivo);
 
     setFirmaGuardada(urlData.publicUrl);
+
+    // 🔥 Guardar firma en inspecciones (para PDF)
+    await supabase
+      .from("inspecciones")
+      .update({
+        firma_url: urlData.publicUrl,
+        fecha_firma: new Date().toISOString(),
+        estado: "firma_completada",
+      })
+      .eq("id", id);
+
     setMensaje("Firma guardada correctamente");
+
+    // 🔥 Avanzar automáticamente al PDF
+    setTimeout(() => {
+      navigate(`/inspecciones/pdf/${id}`);
+    }, 800);
   }
 
   return (
@@ -151,7 +174,6 @@ export default function Firma() {
           </p>
         )}
 
-        {/* 🔥 Mostrar firma guardada */}
         {firmaGuardada && (
           <div
             style={{
