@@ -1,5 +1,9 @@
 import { supabase } from "../lib/supabase";
 
+/**
+ * Sube un PDF a Supabase y guarda su URL en la inspección
+ * CoastGuard versión optimizada
+ */
 export async function subirPDF(inspeccionId, pdfBlob) {
   if (!inspeccionId || !pdfBlob) {
     return {
@@ -9,7 +13,13 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     };
   }
 
-  if (pdfBlob.type !== "application/pdf") {
+  // Validación robusta del PDF
+  const esPDF =
+    pdfBlob.type === "application/pdf" ||
+    pdfBlob.type === "" || // Android/iOS a veces no envían type
+    pdfBlob.name?.endsWith(".pdf");
+
+  if (!esPDF) {
     return {
       ok: false,
       mensaje: "El archivo no es un PDF válido",
@@ -17,8 +27,34 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     };
   }
 
+  // Verificar que la inspección existe
+  const { data: inspeccion, error: inspeccionError } = await supabase
+    .from("inspecciones")
+    .select("id, pdf_url")
+    .eq("id", inspeccionId)
+    .single();
+
+  if (inspeccionError || !inspeccion) {
+    return {
+      ok: false,
+      mensaje: "La inspección no existe",
+      error: inspeccionError?.message || "No encontrada",
+    };
+  }
+
   const bucket = "pdfs";
   const filePath = `inspecciones/inspeccion_${inspeccionId}.pdf`;
+
+  // Si ya existe un PDF, evitar reemplazarlo
+  if (inspeccion.pdf_url) {
+    return {
+      ok: true,
+      mensaje: "La inspección ya tenía PDF, no se reemplazó",
+      url: inspeccion.pdf_url,
+      id: inspeccionId,
+      filePath,
+    };
+  }
 
   // SUBIR PDF
   const { error: uploadError } = await supabase.storage
@@ -55,7 +91,10 @@ export async function subirPDF(inspeccionId, pdfBlob) {
   // GUARDAR URL EN LA INSPECCIÓN
   const { error: updateError } = await supabase
     .from("inspecciones")
-    .update({ pdf_url: publicUrl })
+    .update({
+      pdf_url: publicUrl,
+      firmado_en: new Date().toISOString(), // opcional
+    })
     .eq("id", inspeccionId);
 
   if (updateError) {
@@ -70,6 +109,7 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     ok: true,
     mensaje: "PDF subido y guardado correctamente",
     url: publicUrl,
+    id: inspeccionId,
     filePath,
   };
 }
