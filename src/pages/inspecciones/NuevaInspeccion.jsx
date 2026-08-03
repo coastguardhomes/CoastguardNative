@@ -8,10 +8,12 @@ export default function NuevaInspeccion() {
 
   const [viviendas, setViviendas] = useState([]);
   const [tecnicos, setTecnicos] = useState([]);
+  const [contratos, setContratos] = useState([]);   // ← AÑADIDO
   const [mensaje, setMensaje] = useState("");
 
   const [form, setForm] = useState({
     vivienda_id: "",
+    contrato_id: "",        // ← AÑADIDO
     tecnico_id: "",
     fecha: "",
     estado: "pendiente",
@@ -36,6 +38,25 @@ export default function NuevaInspeccion() {
     cargarDatos();
   }, []);
 
+  // 🔥 Cargar contratos de la vivienda seleccionada
+  useEffect(() => {
+    async function cargarContratos() {
+      if (!form.vivienda_id) {
+        setContratos([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("contratos")
+        .select("*")
+        .eq("vivienda_id", form.vivienda_id);
+
+      if (!error) setContratos(data || []);
+    }
+
+    cargarContratos();
+  }, [form.vivienda_id]);
+
   async function crear() {
     setMensaje("");
 
@@ -56,24 +77,23 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 3️⃣ Obtener contrato activo del cliente
-      const { data: contrato } = await supabase
-        .from("contratos")
-        .select("id, tecnico_id")
-        .eq("cliente_id", cliente_id)
-        .limit(1)
-        .maybeSingle();
+      // 3️⃣ Contrato seleccionado por el usuario
+      const contrato_id = form.contrato_id;
 
-      if (!contrato) {
-        setMensaje("El cliente no tiene contrato activo.");
+      if (!contrato_id) {
+        setMensaje("Selecciona un contrato.");
         return;
       }
 
-      const contrato_id = contrato.id;
-
       // 4️⃣ Técnico automático si existe en contrato
+      const { data: contratoData } = await supabase
+        .from("contratos")
+        .select("tecnico_id")
+        .eq("id", contrato_id)
+        .maybeSingle();
+
       const tecnicoFinal =
-        contrato.tecnico_id || form.tecnico_id || null;
+        contratoData?.tecnico_id || form.tecnico_id || null;
 
       if (!tecnicoFinal) {
         setMensaje("Selecciona un técnico.");
@@ -103,7 +123,7 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 6️⃣ Crear checklist automático (compatible con VerInspeccion.jsx)
+      // 6️⃣ Crear checklist automático
       const plantilla = [
         "Puertas y ventanas cerradas",
         "Persianas en posición correcta",
@@ -181,20 +201,29 @@ export default function NuevaInspeccion() {
             onChange={(e) =>
               setForm({ ...form, vivienda_id: e.target.value })
             }
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={selectStyle}
           >
             <option value="">Selecciona una vivienda</option>
             {viviendas.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.direccion}
+              </option>
+            ))}
+          </select>
+
+          {/* Contrato */}
+          <label>Contrato</label>
+          <select
+            value={form.contrato_id}
+            onChange={(e) =>
+              setForm({ ...form, contrato_id: e.target.value })
+            }
+            style={selectStyle}
+          >
+            <option value="">Selecciona un contrato</option>
+            {contratos.map((c) => (
+              <option key={c.id} value={c.id}>
+                Contrato #{c.id} — {c.precio}€
               </option>
             ))}
           </select>
@@ -206,15 +235,7 @@ export default function NuevaInspeccion() {
             onChange={(e) =>
               setForm({ ...form, tecnico_id: e.target.value })
             }
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={selectStyle}
           >
             <option value="">Selecciona un técnico</option>
             {tecnicos.map((t) => (
@@ -230,15 +251,7 @@ export default function NuevaInspeccion() {
             type="date"
             value={form.fecha}
             onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={selectStyle}
           />
 
           {/* Notas */}
@@ -247,14 +260,8 @@ export default function NuevaInspeccion() {
             value={form.notas}
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
             style={{
-              padding: "12px",
-              width: "100%",
+              ...selectStyle,
               minHeight: "100px",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
             }}
           />
 
@@ -281,3 +288,13 @@ export default function NuevaInspeccion() {
     </Menu>
   );
 }
+
+const selectStyle = {
+  padding: "12px",
+  width: "100%",
+  marginBottom: "15px",
+  borderRadius: "10px",
+  border: "1px solid rgba(255,255,255,0.2)",
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+};
