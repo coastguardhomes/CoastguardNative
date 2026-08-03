@@ -10,11 +10,10 @@ import Register from "./pages/Register/Register.jsx";
 import ResetPassword from "./pages/auth/ResetPassword.jsx";
 import UpdatePassword from "./pages/auth/UpdatePassword.jsx";
 
-// INICIO / DASHBOARDS
-import Inicio from "./pages/inicio/Inicio.jsx";
+// DASHBOARDS POR ROL
 import ClienteDashboard from "./pages/cliente/ClienteDashboard.jsx";
 import TecnicoDashboard from "./pages/tecnicos/TecnicoDashboard.jsx";
-import Dashboardadmin from "./pages/Dashboardadmin.jsx";   // ⭐ AÑADIDO
+import Dashboardadmin from "./pages/Dashboardadmin.jsx";
 
 // CLIENTES
 import Clientes from "./pages/clientes/Clientes.jsx";
@@ -85,19 +84,12 @@ export default function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/update-password" element={<UpdatePassword />} />
 
-      {/* ---------------- INICIO / DASHBOARDS ---------------- */}
+      {/* ---------------- REDIRECCIÓN INICIAL ---------------- */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-
-      <Route path="/inicio" element={<PrivateRoute />}>
-        <Route index element={<Inicio />} />
-      </Route>
-
-      <Route path="/menu" element={<Navigate to="/inicio" replace />} />
-      <Route path="/home" element={<Navigate to="/inicio" replace />} />
 
       {/* ---------------- ADMIN ---------------- */}
       <Route path="/admin/dashboard" element={<PrivateRoute />}>
-        <Route index element={<Dashboardadmin />} />   {/* ⭐ CONECTADO */}
+        <Route index element={<Dashboardadmin />} />
       </Route>
 
       {/* ---------------- TÉCNICO ---------------- */}
