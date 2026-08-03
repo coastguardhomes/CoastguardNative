@@ -2,18 +2,19 @@ import { supabase } from "../lib/supabase";
 
 /**
  * Sube un PDF a Supabase y guarda su URL en la inspección
- * CoastGuard versión optimizada
+ * Versión estable WEB + APP (2026)
  */
 export async function guardarPDFEnInspeccion(id, pdfBlob) {
   if (!id || !pdfBlob) {
     throw new Error("ID o PDF inválido");
   }
 
-  // Validación robusta del PDF
+  // Validación robusta del PDF (Android/iOS envían blobs sin type)
   const esPDF =
     pdfBlob.type === "application/pdf" ||
-    pdfBlob.type === "" || // Android/iOS a veces no envían type
-    pdfBlob.name?.endsWith(".pdf");
+    pdfBlob.type === "" ||
+    pdfBlob.name?.endsWith(".pdf") ||
+    pdfBlob.size > 100; // evita PDFs corruptos de 0 bytes
 
   if (!esPDF) {
     throw new Error("El archivo no es un PDF válido");
@@ -30,7 +31,8 @@ export async function guardarPDFEnInspeccion(id, pdfBlob) {
     throw new Error("La inspección no existe");
   }
 
-  const filePath = `inspecciones/${id}.pdf`;
+  // Nombre único para evitar sobrescribir PDFs
+  const filePath = `inspecciones/inspeccion_${id}_${Date.now()}.pdf`;
 
   // Si ya existe un PDF, evitar subirlo de nuevo
   if (inspeccionExiste.pdf_url) {
@@ -53,7 +55,10 @@ export async function guardarPDFEnInspeccion(id, pdfBlob) {
     });
 
   if (uploadError) {
-    throw new Error("Error subiendo PDF: " + uploadError.message);
+    throw new Error(
+      "Error subiendo PDF: " +
+        (uploadError.message || JSON.stringify(uploadError))
+    );
   }
 
   // OBTENER URL PÚBLICA
@@ -72,12 +77,15 @@ export async function guardarPDFEnInspeccion(id, pdfBlob) {
     .from("inspecciones")
     .update({
       pdf_url: publicUrl,
-      firmado_en: new Date().toISOString(), // opcional
+      firmado_en: new Date().toISOString(),
     })
     .eq("id", id);
 
   if (updateError) {
-    throw new Error("PDF subido pero error guardando URL en inspección");
+    throw new Error(
+      "PDF subido pero error guardando URL en inspección: " +
+        (updateError.message || JSON.stringify(updateError))
+    );
   }
 
   return {
@@ -85,5 +93,6 @@ export async function guardarPDFEnInspeccion(id, pdfBlob) {
     id,
     url: publicUrl,
     filePath,
+    mime: "application/pdf",
   };
 }
