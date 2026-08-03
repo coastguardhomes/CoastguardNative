@@ -75,16 +75,21 @@ export default function VerInspeccion() {
 
     setContrato(cont);
 
-    // 6️⃣ Fotos
+    // 6️⃣ Fotos (con URL pública)
     const { data: fotosData } = await supabase
       .from("fotos_inspeccion")
       .select("*")
       .eq("inspeccion_id", id)
       .order("id", { ascending: false });
 
-    setFotos(fotosData || []);
+    const fotosConURL = fotosData?.map((f) => {
+      const { data } = supabase.storage.from("fotos").getPublicUrl(f.url);
+      return { ...f, publicUrl: data.publicUrl };
+    });
 
-    // 7️⃣ Firma
+    setFotos(fotosConURL || []);
+
+    // 7️⃣ Firma (con URL pública)
     const { data: firmas } = await supabase
       .from("firmas_inspeccion")
       .select("url")
@@ -92,7 +97,10 @@ export default function VerInspeccion() {
       .order("id", { ascending: false })
       .limit(1);
 
-    setFirma(firmas?.[0]?.url || null);
+    if (firmas?.[0]?.url) {
+      const { data } = supabase.storage.from("firmas").getPublicUrl(firmas[0].url);
+      setFirma(data.publicUrl);
+    }
 
     // 8️⃣ Checklist
     const { data: checklistData } = await supabase
@@ -101,6 +109,27 @@ export default function VerInspeccion() {
       .eq("inspeccion_id", id);
 
     setChecklist(checklistData || []);
+  }
+
+  // 🔥 Actualizar checklist
+  async function actualizarChecklist(itemId, nuevoEstado) {
+    await supabase
+      .from("checklist_respuestas")
+      .update({ estado: nuevoEstado })
+      .eq("id", itemId);
+
+    cargarTodo();
+  }
+
+  // 🔥 Eliminar foto
+  async function eliminarFoto(foto) {
+    const confirmar = window.confirm("¿Eliminar esta foto?");
+    if (!confirmar) return;
+
+    await supabase.storage.from("fotos").remove([foto.url]);
+    await supabase.from("fotos_inspeccion").delete().eq("id", foto.id);
+
+    cargarTodo();
   }
 
   // 🔥 Finalizar inspección
@@ -122,7 +151,7 @@ export default function VerInspeccion() {
     cargarTodo();
   }
 
-  // 🔥 Generar PDF (llamada a Edge Function)
+  // 🔥 Generar PDF
   async function generarPDF() {
     setMensaje("Generando PDF...");
 
@@ -135,7 +164,6 @@ export default function VerInspeccion() {
       return;
     }
 
-    // Guardar URL del PDF
     await supabase
       .from("inspecciones")
       .update({ pdf_url: data.url })
@@ -185,6 +213,8 @@ export default function VerInspeccion() {
     );
   }
 
+  const bloqueado = inspeccion.estado === "finalizada";
+
   return (
     <Menu>
       <div style={contenedor}>
@@ -201,6 +231,15 @@ export default function VerInspeccion() {
           <p><strong style={label}>Fecha:</strong> {String(inspeccion.fecha).slice(0,10)}</p>
           <p><strong style={label}>Estado:</strong> {inspeccion.estado}</p>
           <p><strong style={label}>Notas:</strong> {inspeccion.notas}</p>
+
+          {inspeccion.pdf_url && (
+            <p>
+              <strong style={label}>PDF:</strong>{" "}
+              <a href={inspeccion.pdf_url} target="_blank" style={{ color: "#4db8ff" }}>
+                Ver PDF
+              </a>
+            </p>
+          )}
         </div>
 
         {/* 🔥 Checklist */}
@@ -211,7 +250,23 @@ export default function VerInspeccion() {
             checklist.map((item) => (
               <div key={item.id} style={itemChecklist}>
                 <p><strong>{item.item}</strong></p>
-                <p>Estado: {item.estado}</p>
+
+                <select
+                  disabled={bloqueado}
+                  value={item.estado}
+                  onChange={(e) => actualizarChecklist(item.id, e.target.value)}
+                  style={{
+                    padding: "8px",
+                    borderRadius: "8px",
+                    marginBottom: "10px",
+                    width: "100%",
+                  }}
+                >
+                  <option value="pendiente">Pendiente</option>
+                  <option value="correcto">Correcto</option>
+                  <option value="incorrecto">Incorrecto</option>
+                </select>
+
                 <p>Obs: {item.observaciones}</p>
               </div>
             ))
@@ -225,7 +280,26 @@ export default function VerInspeccion() {
           ) : (
             <div style={galeria}>
               {fotos.map((f) => (
-                <img key={f.id} src={f.url} style={foto} />
+                <div key={f.id}>
+                  <img src={f.publicUrl} style={foto} />
+                  {!bloqueado && (
+                    <button
+                      onClick={() => eliminarFoto(f)}
+                      style={{
+                        marginTop: "5px",
+                        width: "100%",
+                        background: "red",
+                        color: "#fff",
+                        border: "none",
+                        padding: "6px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -241,35 +315,39 @@ export default function VerInspeccion() {
         </Bloque>
 
         {/* 🔥 Acciones */}
-        <h2 style={subtitulo}>Acciones</h2>
+        {!bloqueado && (
+          <>
+            <h2 style={subtitulo}>Acciones</h2>
 
-        <Link to={`/inspecciones/checklist/${id}`}>
-          <button style={boton}>Checklist</button>
-        </Link>
+            <Link to={`/inspecciones/checklist/${id}`}>
+              <button style={boton}>Checklist</button>
+            </Link>
 
-        <Link to={`/inspecciones/fotos/${id}`}>
-          <button style={boton}>Fotos</button>
-        </Link>
+            <Link to={`/inspecciones/fotos/${id}`}>
+              <button style={boton}>Fotos</button>
+            </Link>
 
-        <Link to={`/inspecciones/firma/${id}`}>
-          <button style={boton}>Firma</button>
-        </Link>
+            <Link to={`/inspecciones/firma/${id}`}>
+              <button style={boton}>Firma</button>
+            </Link>
 
-        <button style={boton} onClick={finalizarInspeccion}>
-          Finalizar inspección
-        </button>
+            <button style={boton} onClick={finalizarInspeccion}>
+              Finalizar inspección
+            </button>
 
-        <button style={boton} onClick={generarPDF}>
-          Generar PDF
-        </button>
+            <button style={boton} onClick={generarPDF}>
+              Generar PDF
+            </button>
 
-        <button style={boton} onClick={enviarEmail}>
-          Enviar email
-        </button>
+            <button style={boton} onClick={enviarEmail}>
+              Enviar email
+            </button>
 
-        <button style={botonEliminar} onClick={eliminar}>
-          Eliminar inspección
-        </button>
+            <button style={botonEliminar} onClick={eliminar}>
+              Eliminar inspección
+            </button>
+          </>
+        )}
       </div>
     </Menu>
   );
