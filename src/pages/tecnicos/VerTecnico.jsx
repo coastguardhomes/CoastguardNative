@@ -10,24 +10,37 @@ export default function VerTecnico() {
   const [tecnico, setTecnico] = useState(null);
   const [mensaje, setMensaje] = useState("");
 
+  // NUEVO: inspecciones del técnico
+  const [inspecciones, setInspecciones] = useState([]);
+
   useEffect(() => {
-    async function cargarTecnico() {
-      const { data, error } = await supabase
-        .from("tecnicos")
-        .select("id, nombre, telefono, email, especialidad, activo")
-        .eq("id", id)
-        .single();
+    cargarTecnico();
+    cargarInspecciones();
+  }, [id]);
 
-      if (error) {
-        setMensaje("Error cargando técnico");
-        return;
-      }
+  async function cargarTecnico() {
+    const { data, error } = await supabase
+      .from("tecnicos")
+      .select("id, nombre, telefono, email, especialidad, activo")
+      .eq("id", id)
+      .single();
 
-      setTecnico(data);
+    if (error) {
+      setMensaje("Error cargando técnico");
+      return;
     }
 
-    cargarTecnico();
-  }, [id]);
+    setTecnico(data);
+  }
+
+  async function cargarInspecciones() {
+    const { data } = await supabase
+      .from("inspecciones")
+      .select("id, fecha, estado, vivienda_id, cliente_id")
+      .eq("tecnico_id", id);
+
+    setInspecciones(data || []);
+  }
 
   async function eliminarTecnico() {
     const confirmar = window.confirm("¿Seguro que deseas eliminar este técnico?");
@@ -103,6 +116,7 @@ export default function VerTecnico() {
           </p>
         )}
 
+        {/* DATOS DEL TÉCNICO */}
         <div
           style={{
             background: "rgba(255,255,255,0.05)",
@@ -134,7 +148,24 @@ export default function VerTecnico() {
           </p>
         </div>
 
-        {/* Inspecciones del técnico */}
+        {/* ---------------- BLOQUE PROFESIONAL ---------------- */}
+
+        <Bloque titulo="Inspecciones realizadas por el técnico">
+          {inspecciones.length === 0 ? (
+            <p style={{ opacity: 0.7 }}>Este técnico no tiene inspecciones.</p>
+          ) : (
+            inspecciones.map((i) => (
+              <Item
+                key={i.id}
+                to={`/inspecciones/${i.id}`}
+                titulo={`Inspección del ${i.fecha} — Estado: ${i.estado}`}
+              />
+            ))
+          )}
+        </Bloque>
+
+        {/* ---------------- BOTONES ORIGINALES ---------------- */}
+
         <Link to={`/inspecciones?tecnico_id=${id}`}>
           <button
             style={{
@@ -155,7 +186,6 @@ export default function VerTecnico() {
           </button>
         </Link>
 
-        {/* Editar */}
         <Link to={`/tecnicos/editar/${id}`}>
           <button
             style={{
@@ -176,7 +206,6 @@ export default function VerTecnico() {
           </button>
         </Link>
 
-        {/* Eliminar */}
         <button
           onClick={eliminarTecnico}
           style={{
@@ -197,5 +226,54 @@ export default function VerTecnico() {
         </button>
       </div>
     </Menu>
+  );
+}
+
+/* ---------------- COMPONENTES REUTILIZABLES ---------------- */
+
+function Bloque({ titulo, children }) {
+  return (
+    <div style={{ marginBottom: "25px" }}>
+      <h2
+        style={{
+          fontSize: "18px",
+          marginBottom: "10px",
+          color: "#4db8ff",
+        }}
+      >
+        {titulo}
+      </h2>
+
+      <div
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          padding: "12px",
+          borderRadius: "10px",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Item({ to, titulo }) {
+  return (
+    <Link to={to} style={{ textDecoration: "none" }}>
+      <div
+        style={{
+          padding: "10px",
+          marginBottom: "8px",
+          background: "rgba(255,255,255,0.06)",
+          borderRadius: "8px",
+          border: "1px solid rgba(255,255,255,0.12)",
+          color: "#fff",
+          cursor: "pointer",
+        }}
+      >
+        {titulo}
+      </div>
+    </Link>
   );
 }
