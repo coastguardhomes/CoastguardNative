@@ -13,38 +13,58 @@ export default function EditarContrato() {
     notas: "",
     frecuencia: "",
     tecnico_id: "",
+    modalidad: "",
   });
 
   const [tecnicos, setTecnicos] = useState([]);
   const [mensaje, setMensaje] = useState("");
 
+  // 🔥 Modalidades y precios automáticos (igual que CrearContrato.jsx)
+  const modalidades = [
+    { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
+    { id: "premium", nombre: "Premium", precio: 59, frecuencia: 30 },
+    { id: "plus", nombre: "Plus", precio: 79, frecuencia: 30 },
+  ];
+
   useEffect(() => {
-    async function cargarContrato() {
-      const { data, error } = await supabase
-        .from("contratos")
-        .select("fecha_inicio, precio, notas, frecuencia, tecnico_id")
-        .eq("id", id)
-        .single();
-
-      if (error) {
-        setMensaje("Error cargando contrato");
-        return;
-      }
-
-      if (data) setForm(data);
-    }
-
-    async function cargarTecnicos() {
-      const { data } = await supabase
-        .from("tecnicos")
-        .select("id, nombre");
-
-      setTecnicos(data || []);
-    }
-
     cargarContrato();
     cargarTecnicos();
   }, [id]);
+
+  async function cargarContrato() {
+    const { data, error } = await supabase
+      .from("contratos")
+      .select("fecha_inicio, precio, notas, frecuencia, tecnico_id, modalidad")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      setMensaje("Error cargando contrato");
+      return;
+    }
+
+    if (data) setForm(data);
+  }
+
+  async function cargarTecnicos() {
+    const { data } = await supabase
+      .from("tecnicos")
+      .select("id, nombre");
+
+    setTecnicos(data || []);
+  }
+
+  // 🔥 Auto‑calcular precio y frecuencia según modalidad
+  function seleccionarModalidad(modalidadId) {
+    const mod = modalidades.find((m) => m.id === modalidadId);
+
+    setForm({
+      ...form,
+      modalidad: modalidadId,
+      precio: mod ? mod.precio : form.precio,
+      frecuencia: mod ? mod.frecuencia : form.frecuencia,
+    });
+  }
 
   async function guardarCambios() {
     const { error } = await supabase
@@ -55,6 +75,7 @@ export default function EditarContrato() {
         notas: form.notas || null,
         frecuencia: form.frecuencia || null,
         tecnico_id: form.tecnico_id || null,
+        modalidad: form.modalidad || null,
       })
       .eq("id", id);
 
@@ -120,6 +141,21 @@ export default function EditarContrato() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
+          {/* Modalidad */}
+          <label>Modalidad:</label>
+          <select
+            value={form.modalidad || ""}
+            onChange={(e) => seleccionarModalidad(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="">Selecciona modalidad</option>
+            {modalidades.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre} — {m.precio}€
+              </option>
+            ))}
+          </select>
+
           {/* Fecha inicio */}
           <label>Fecha inicio:</label>
           <input
