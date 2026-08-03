@@ -1,5 +1,9 @@
 import { supabase } from "../lib/supabase";
 
+/**
+ * Guarda la URL del PDF en una inspección
+ * CoastGuard versión optimizada
+ */
 export async function guardarURL(inspeccionId, url) {
   if (!inspeccionId || !url) {
     return {
@@ -9,10 +13,20 @@ export async function guardarURL(inspeccionId, url) {
     };
   }
 
+  // Validación básica de URL PDF
+  const esPDF = url.endsWith(".pdf") || url.includes(".pdf?");
+  if (!esPDF) {
+    return {
+      ok: false,
+      mensaje: "La URL no parece ser un PDF válido",
+      error: "Formato incorrecto",
+    };
+  }
+
   // Verificar que la inspección existe
   const { data: existe, error: existeError } = await supabase
     .from("inspecciones")
-    .select("id")
+    .select("id, pdf_url")
     .eq("id", inspeccionId)
     .single();
 
@@ -24,10 +38,23 @@ export async function guardarURL(inspeccionId, url) {
     };
   }
 
-  // Guardar URL
+  // Si ya tiene PDF, evitar reemplazarlo
+  if (existe.pdf_url) {
+    return {
+      ok: true,
+      mensaje: "La inspección ya tenía PDF, no se reemplazó",
+      url: existe.pdf_url,
+      id: inspeccionId,
+    };
+  }
+
+  // Guardar URL + fecha de firmado
   const { error } = await supabase
     .from("inspecciones")
-    .update({ pdf_url: url })
+    .update({
+      pdf_url: url,
+      firmado_en: new Date().toISOString(),
+    })
     .eq("id", inspeccionId);
 
   if (error) {
@@ -42,5 +69,6 @@ export async function guardarURL(inspeccionId, url) {
     ok: true,
     mensaje: "URL del PDF guardada correctamente",
     url,
+    id: inspeccionId,
   };
 }
