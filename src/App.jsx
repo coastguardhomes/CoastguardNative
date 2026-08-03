@@ -1,6 +1,7 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import PrivateRoute from "./guards/PrivateRoute.jsx";
+import ClienteRoute from "./routes/ClienteRoute.jsx"; // ← AÑADIDO
 
 // LOGIN / REGISTER / RECUPERAR CONTRASEÑA
 import Login from "./pages/Login/Login.jsx";
@@ -38,7 +39,7 @@ import CrearContrato from "./pages/contratos/CrearContrato.jsx";
 import EditarContrato from "./pages/contratos/EditarContrato.jsx";
 import VerContrato from "./pages/contratos/VerContrato.jsx";
 
-// INSPECCIONES (los 11 pasos del módulo)
+// INSPECCIONES
 import Inspecciones from "./pages/inspecciones/Inspecciones.jsx";
 import NuevaInspeccion from "./pages/inspecciones/NuevaInspeccion.jsx";
 import EditarInspeccion from "./pages/inspecciones/EditarInspeccion.jsx";
@@ -63,28 +64,17 @@ import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas.jsx";
 // EXTRAS
 import Extras from "./pages/extras/Extras.jsx";
 
-// ÁREA DEL CLIENTE (contratos, firma y PDF)
+// ÁREA DEL CLIENTE
 import ClienteContratosLista from "./pages/cliente/ClienteContratosLista.jsx";
 import ClienteContratoVer from "./pages/cliente/ClienteContratoVer.jsx";
 import ClienteFirmaDibujar from "./pages/cliente/ClienteFirmaDibujar.jsx";
 import VerPDFContrato from "./pages/cliente/VerPDFContrato.jsx";
+import PerfilCliente from "./pages/cliente/PerfilCliente.jsx"; // ← AÑADIDO
 
 // AJUSTES / IDIOMA
 import Ajustes from "./pages/Ajustes/Ajustes.jsx";
 import Idioma from "./pages/idioma/Idioma.jsx";
 
-/**
- * Tabla de rutas de la aplicación.
- *
- * Todas las pantallas de /src/pages tienen aquí su ruta. Antes faltaban 17
- * (los pasos de inspección, los PDF de contrato, ajustes, idioma, extras,
- * recuperación de contraseña e incluso el propio Inicio), así que existían en
- * el repositorio pero no había forma de llegar a ellas dentro del APK.
- *
- * Se conservan además algunos alias porque hay pantallas que ya navegaban a
- * rutas que no existían: /clientes/crear, /tecnicos/crear, /contratos/:id/editar
- * y /home. Ir a esas direcciones caía en el comodín "*" y devolvía al login.
- */
 export default function App() {
   return (
     <Routes>
@@ -101,7 +91,6 @@ export default function App() {
         <Route index element={<Inicio />} />
       </Route>
 
-      {/* /menu y /home apuntaban al layout vacío o a ninguna ruta */}
       <Route path="/menu" element={<Navigate to="/inicio" replace />} />
       <Route path="/home" element={<Navigate to="/inicio" replace />} />
 
@@ -113,20 +102,20 @@ export default function App() {
         <Route index element={<TecnicoDashboard />} />
       </Route>
 
-      {/* ---------------- ÁREA DEL CLIENTE ---------------- */}
-      <Route path="/cliente" element={<PrivateRoute />}>
+      {/* ---------------- ÁREA DEL CLIENTE (PROTEGIDA POR ROL) ---------------- */}
+      <Route path="/cliente" element={<ClienteRoute> <PrivateRoute /> </ClienteRoute>}>
         <Route index element={<ClienteDashboard />} />
         <Route path="contratos" element={<ClienteContratosLista />} />
         <Route path="contrato/:id" element={<ClienteContratoVer />} />
         <Route path="contrato/:id/pdf" element={<VerPDFContrato />} />
         <Route path="firma/:id" element={<ClienteFirmaDibujar />} />
+        <Route path="perfil" element={<PerfilCliente />} />
       </Route>
 
       {/* ---------------- CLIENTES ---------------- */}
       <Route path="/clientes" element={<PrivateRoute />}>
         <Route index element={<Clientes />} />
         <Route path="nuevo" element={<NuevoCliente />} />
-        {/* alias: Clientes.jsx enlaza a /clientes/crear */}
         <Route path="crear" element={<NuevoCliente />} />
         <Route path="editar/:id" element={<EditarCliente />} />
         <Route path="ver/:id" element={<VerCliente />} />
@@ -145,7 +134,6 @@ export default function App() {
       <Route path="/tecnicos" element={<PrivateRoute />}>
         <Route index element={<Tecnicos />} />
         <Route path="nuevo" element={<NuevoTecnico />} />
-        {/* alias: Tecnicos.jsx enlaza a /tecnicos/crear */}
         <Route path="crear" element={<NuevoTecnico />} />
         <Route path="editar/:id" element={<EditarTecnico />} />
         <Route path="ver/:id" element={<VerTecnico />} />
@@ -156,7 +144,6 @@ export default function App() {
         <Route index element={<Contratos />} />
         <Route path="crear" element={<CrearContrato />} />
         <Route path="editar/:id" element={<EditarContrato />} />
-        {/* alias: ClienteContratoVer.jsx navega a /contratos/:id/editar */}
         <Route path=":id/editar" element={<EditarContrato />} />
         <Route path="ver/:id" element={<VerContrato />} />
       </Route>
@@ -173,7 +160,6 @@ export default function App() {
         <Route path="checklist/:id" element={<Checklist />} />
         <Route path="firma/:id" element={<Firma />} />
         <Route path="pdf/:id" element={<VerPDFInspeccion />} />
-        {/* sin id: muestra el último PDF generado */}
         <Route path="pdf" element={<VerPDF />} />
       </Route>
 
