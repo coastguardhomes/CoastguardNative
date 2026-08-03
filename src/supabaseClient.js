@@ -8,4 +8,6 @@
 // login.
 //
 // Se mantiene el archivo para no tocar los imports que ya apuntan aquí.
-export { supabase } from "./lib/supabase.js";
+
+import supabase from "./lib/supabase.js";
+export default supabase;
