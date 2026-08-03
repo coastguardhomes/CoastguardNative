@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabase";
 
 /**
  * Sube un PDF a Supabase y guarda su URL en la inspección
- * CoastGuard versión optimizada
+ * Versión estable WEB + APP (2026)
  */
 export async function subirPDF(inspeccionId, pdfBlob) {
   if (!inspeccionId || !pdfBlob) {
@@ -13,11 +13,12 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     };
   }
 
-  // Validación robusta del PDF
+  // Validación robusta del PDF (Android/iOS envían blobs sin type)
   const esPDF =
     pdfBlob.type === "application/pdf" ||
-    pdfBlob.type === "" || // Android/iOS a veces no envían type
-    pdfBlob.name?.endsWith(".pdf");
+    pdfBlob.type === "" ||
+    pdfBlob.name?.endsWith(".pdf") ||
+    pdfBlob.size > 100; // evita PDFs corruptos de 0 bytes
 
   if (!esPDF) {
     return {
@@ -38,12 +39,14 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     return {
       ok: false,
       mensaje: "La inspección no existe",
-      error: inspeccionError?.message || "No encontrada",
+      error: inspeccionError?.message || JSON.stringify(inspeccionError),
     };
   }
 
   const bucket = "pdfs";
-  const filePath = `inspecciones/inspeccion_${inspeccionId}.pdf`;
+
+  // Nombre único para evitar sobrescribir PDFs
+  const filePath = `inspecciones/inspeccion_${inspeccionId}_${Date.now()}.pdf`;
 
   // Si ya existe un PDF, evitar reemplazarlo
   if (inspeccion.pdf_url) {
@@ -69,7 +72,7 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     return {
       ok: false,
       mensaje: "Error subiendo PDF",
-      error: uploadError.message || uploadError,
+      error: uploadError.message || JSON.stringify(uploadError),
     };
   }
 
@@ -82,7 +85,7 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     return {
       ok: false,
       mensaje: "Error obteniendo URL pública del PDF",
-      error: urlError?.message || "URL no generada",
+      error: urlError?.message || JSON.stringify(urlError),
     };
   }
 
@@ -93,7 +96,7 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     .from("inspecciones")
     .update({
       pdf_url: publicUrl,
-      firmado_en: new Date().toISOString(), // opcional
+      firmado_en: new Date().toISOString(),
     })
     .eq("id", inspeccionId);
 
@@ -101,7 +104,7 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     return {
       ok: false,
       mensaje: "PDF subido pero error guardando URL en inspección",
-      error: updateError.message || updateError,
+      error: updateError.message || JSON.stringify(updateError),
     };
   }
 
@@ -111,5 +114,6 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     url: publicUrl,
     id: inspeccionId,
     filePath,
+    mime: "application/pdf",
   };
 }
