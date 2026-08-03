@@ -14,6 +14,7 @@ export default function EditarVivienda() {
     codigo_postal: "",
   });
 
+  const [contratos, setContratos] = useState([]); // ← AÑADIDO
   const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
@@ -32,7 +33,17 @@ export default function EditarVivienda() {
       setForm(data);
     }
 
+    async function cargarContratos() {   // ← AÑADIDO
+      const { data, error } = await supabase
+        .from("contratos")
+        .select("*")
+        .eq("vivienda_id", id);
+
+      if (!error) setContratos(data || []);
+    }
+
     cargarVivienda();
+    cargarContratos();  // ← AÑADIDO
   }, [id]);
 
   async function guardarCambios() {
@@ -148,6 +159,31 @@ export default function EditarVivienda() {
             Guardar cambios
           </button>
         </div>
+
+        {/* 🔵 CONTRATOS DE ESTA VIVIENDA */}
+        <h2 style={{ marginTop: "30px", color: "#4db8ff" }}>
+          Contratos de esta vivienda
+        </h2>
+
+        {contratos.length === 0 ? (
+          <p>No hay contratos para esta vivienda.</p>
+        ) : (
+          contratos.map((c) => (
+            <div
+              key={c.id}
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                padding: "15px",
+                borderRadius: "10px",
+                marginBottom: "10px",
+              }}
+            >
+              <p><strong>ID:</strong> {c.id}</p>
+              <p><strong>Precio:</strong> {c.precio} €</p>
+              <p><strong>Inicio:</strong> {c.fecha_inicio}</p>
+            </div>
+          ))
+        )}
       </div>
     </Menu>
   );
