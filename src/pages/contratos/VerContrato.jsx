@@ -7,32 +7,77 @@ export default function VerContrato() {
   const { id } = useParams();
   const [contrato, setContrato] = useState(null);
 
-  useEffect(() => {
-    async function cargar() {
-      const { data, error } = await supabase
-        .from("contratos")
-        .select(
-          `
-          id,
-          cliente_id,
-          vivienda_id,
-          tecnico_id,
-          precio,
-          notas,
-          frecuencia,
-          fecha_inicio,
-          pdf_url,
-          firma,
-          firmado_en
-        `
-        )
-        .eq("id", id)
-        .single();
+  // NUEVO: datos relacionados
+  const [cliente, setCliente] = useState(null);
+  const [vivienda, setVivienda] = useState(null);
+  const [tecnico, setTecnico] = useState(null);
+  const [inspecciones, setInspecciones] = useState([]);
 
-      if (!error) setContrato(data);
-    }
-    cargar();
+  useEffect(() => {
+    cargarContrato();
   }, [id]);
+
+  async function cargarContrato() {
+    const { data, error } = await supabase
+      .from("contratos")
+      .select(
+        `
+        id,
+        cliente_id,
+        vivienda_id,
+        tecnico_id,
+        precio,
+        notas,
+        frecuencia,
+        fecha_inicio,
+        pdf_url,
+        firma,
+        firmado_en,
+        modalidad
+      `
+      )
+      .eq("id", id)
+      .single();
+
+    if (!error) {
+      setContrato(data);
+      cargarRelacionados(data);
+    }
+  }
+
+  async function cargarRelacionados(c) {
+    // Cliente
+    const { data: clienteData } = await supabase
+      .from("clientes")
+      .select("id, nombre, email, telefono")
+      .eq("id", c.cliente_id)
+      .single();
+    setCliente(clienteData || null);
+
+    // Vivienda
+    const { data: viviendaData } = await supabase
+      .from("viviendas")
+      .select("id, nombre, direccion")
+      .eq("id", c.vivienda_id)
+      .single();
+    setVivienda(viviendaData || null);
+
+    // Técnico
+    const { data: tecnicoData } = await supabase
+      .from("tecnicos")
+      .select("id, nombre, telefono")
+      .eq("id", c.tecnico_id)
+      .single();
+    setTecnico(tecnicoData || null);
+
+    // Inspecciones del contrato
+    const { data: inspData } = await supabase
+      .from("inspecciones")
+      .select("id, fecha, estado")
+      .eq("contrato_id", c.id);
+
+    setInspecciones(inspData || []);
+  }
 
   if (!contrato) {
     return (
@@ -65,23 +110,49 @@ export default function VerContrato() {
           Contrato #{contrato.id}
         </h1>
 
+        {/* Modalidad */}
+        {contrato.modalidad && (
+          <p style={{ marginBottom: "10px" }}>
+            <strong style={{ color: "#4db8ff" }}>Modalidad:</strong>{" "}
+            {contrato.modalidad}
+          </p>
+        )}
+
         {/* Cliente */}
-        <p style={{ marginBottom: "10px" }}>
-          <strong style={{ color: "#4db8ff" }}>Cliente ID:</strong>{" "}
-          {contrato.cliente_id}
-        </p>
+        <Bloque titulo="Cliente asociado">
+          {!cliente ? (
+            <p style={{ opacity: 0.7 }}>No encontrado.</p>
+          ) : (
+            <Item
+              to={`/clientes/${cliente.id}`}
+              titulo={`${cliente.nombre} — ${cliente.email}`}
+            />
+          )}
+        </Bloque>
 
         {/* Vivienda */}
-        <p style={{ marginBottom: "10px" }}>
-          <strong style={{ color: "#4db8ff" }}>Vivienda ID:</strong>{" "}
-          {contrato.vivienda_id}
-        </p>
+        <Bloque titulo="Vivienda asociada">
+          {!vivienda ? (
+            <p style={{ opacity: 0.7 }}>No encontrada.</p>
+          ) : (
+            <Item
+              to={`/viviendas/${vivienda.id}`}
+              titulo={`${vivienda.nombre} — ${vivienda.direccion}`}
+            />
+          )}
+        </Bloque>
 
         {/* Técnico */}
-        <p style={{ marginBottom: "10px" }}>
-          <strong style={{ color: "#4db8ff" }}>Técnico ID:</strong>{" "}
-          {contrato.tecnico_id}
-        </p>
+        <Bloque titulo="Técnico asignado">
+          {!tecnico ? (
+            <p style={{ opacity: 0.7 }}>No asignado.</p>
+          ) : (
+            <Item
+              to={`/tecnicos/${tecnico.id}`}
+              titulo={`${tecnico.nombre} — ${tecnico.telefono}`}
+            />
+          )}
+        </Bloque>
 
         {/* Fecha inicio */}
         <p style={{ marginBottom: "10px" }}>
@@ -113,10 +184,28 @@ export default function VerContrato() {
           {contrato.firmado_en ? contrato.firmado_en : "No firmado"}
         </p>
 
+        {/* Inspecciones del contrato */}
+        <Bloque titulo="Inspecciones del contrato">
+          {inspecciones.length === 0 ? (
+            <p style={{ opacity: 0.7 }}>No hay inspecciones.</p>
+          ) : (
+            inspecciones.map((i) => (
+              <Item
+                key={i.id}
+                to={`/inspecciones/${i.id}`}
+                titulo={`Inspección del ${i.fecha} — Estado: ${i.estado}`}
+              />
+            ))
+          )}
+        </Bloque>
+
         {/* PDF */}
         {contrato.pdf_url ? (
           <a
-            href={supabase.storage.from("contratos").getPublicUrl(contrato.pdf_url).data.publicUrl}
+            href={
+              supabase.storage.from("contratos").getPublicUrl(contrato.pdf_url)
+                .data.publicUrl
+            }
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -160,5 +249,54 @@ export default function VerContrato() {
         </Link>
       </div>
     </Menu>
+  );
+}
+
+/* ---------------- COMPONENTES REUTILIZABLES ---------------- */
+
+function Bloque({ titulo, children }) {
+  return (
+    <div style={{ marginBottom: "25px" }}>
+      <h2
+        style={{
+          fontSize: "18px",
+          marginBottom: "10px",
+          color: "#4db8ff",
+        }}
+      >
+        {titulo}
+      </h2>
+
+      <div
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          padding: "12px",
+          borderRadius: "10px",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Item({ to, titulo }) {
+  return (
+    <Link to={to} style={{ textDecoration: "none" }}>
+      <div
+        style={{
+          padding: "10px",
+          marginBottom: "8px",
+          background: "rgba(255,255,255,0.06)",
+          borderRadius: "8px",
+          border: "1px solid rgba(255,255,255,0.12)",
+          color: "#fff",
+          cursor: "pointer",
+        }}
+      >
+        {titulo}
+      </div>
+    </Link>
   );
 }
