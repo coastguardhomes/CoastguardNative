@@ -4,16 +4,10 @@ import { useAuth } from "../context/AuthContext.jsx";
 /**
  * Guard de sesión y de rol.
  *
- * Antes comparaba con `path.startsWith("/cliente")`, y "/clientes" empieza por
- * "/cliente": el administrador que abría el módulo de Clientes acababa en el
- * login. Lo mismo ocurría con "/tecnico" y "/tecnicos". Ahora la comparación
- * es por segmentos completos, así que /cliente y /clientes no se confunden.
- *
- * El rol se lee del AuthContext; antes cada PrivateRoute lo consultaba a
- * Supabase al montarse, es decir una petición en cada navegación.
+ * Ahora PrivateRoute solo controla acceso general por rol.
+ * El área cliente está protegida por ClienteRoute.jsx.
  */
 
-// Qué roles pueden entrar en cada área, por el primer tramo de la ruta.
 const PERMISOS = {
   "/inicio": ["admin"],
   "/menu": ["admin"],
@@ -25,28 +19,25 @@ const PERMISOS = {
   "/extras": ["admin"],
   "/viviendas": ["admin", "tecnico"],
   "/inspecciones": ["admin", "tecnico"],
-  "/cliente": ["cliente"],
   "/tecnico": ["tecnico"],
-  // Comunes a cualquier rol autenticado.
+
+  // Comunes
   "/ajustes": ["admin", "cliente", "tecnico"],
   "/idioma": ["admin", "cliente", "tecnico"],
 };
 
-// Pantalla de inicio de cada rol: si alguien abre un área que no le toca se le
-// devuelve a su panel, no al login (que parecía un cierre de sesión).
 const INICIO_POR_ROL = {
   admin: "/inicio",
   cliente: "/cliente",
   tecnico: "/tecnico",
 };
 
-/** Coincidencia por segmentos: "/cliente" NO casa con "/clientes". */
 function coincide(path, base) {
   return path === base || path.startsWith(base + "/");
 }
 
 export default function PrivateRoute() {
-  const { session, rol, loading } = useAuth();
+  const { session, role, loading } = useAuth(); // ← rol → role
   const location = useLocation();
 
   if (loading) {
@@ -57,9 +48,7 @@ export default function PrivateRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  // Sesión válida pero sin fila en profiles: no hay área a la que enviarle y
-  // redirigir provocaría un bucle, así que se explica la situación.
-  if (!rol) {
+  if (!role) {
     return (
       <Aviso texto="Tu cuenta todavía no tiene un rol asignado. Un administrador debe asignarlo para poder entrar." />
     );
@@ -68,8 +57,8 @@ export default function PrivateRoute() {
   const base = Object.keys(PERMISOS).find((b) => coincide(location.pathname, b));
   const permitidos = base ? PERMISOS[base] : null;
 
-  if (permitidos && !permitidos.includes(rol)) {
-    return <Navigate to={INICIO_POR_ROL[rol] || "/login"} replace />;
+  if (permitidos && !permitidos.includes(role)) {
+    return <Navigate to={INICIO_POR_ROL[role] || "/login"} replace />;
   }
 
   return <Outlet />;
