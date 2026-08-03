@@ -1,22 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
-import { supabase } from "../../supabaseClient";
+import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function ClienteDashboard() {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   const [cliente, setCliente] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function cargarCliente() {
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
-
-      if (!session) {
+      if (!user) {
         setLoading(false);
         return;
       }
@@ -24,7 +23,7 @@ export default function ClienteDashboard() {
       const { data: clienteData, error } = await supabase
         .from("clientes")
         .select("*")
-        .eq("usuario_id", session.user.id)
+        .eq("usuario_id", user.id)
         .single();
 
       if (!error) {
@@ -35,65 +34,76 @@ export default function ClienteDashboard() {
     }
 
     cargarCliente();
-  }, []);
+  }, [user]);
 
   if (loading) {
     return (
-      <div style={{ padding: "20px", textAlign: "center" }}>
-        <h3>{t("clienteDashboardCargando")}</h3>
-      </div>
+      <Menu>
+        <div style={{ padding: "20px", textAlign: "center", color: "#fff" }}>
+          <h3>{t("clienteDashboardCargando")}</h3>
+        </div>
+      </Menu>
     );
   }
 
   if (!cliente) {
     return (
-      <div style={{ padding: "20px", textAlign: "center" }}>
-        <h3>{t("clienteDashboardNoEncontrado")}</h3>
-      </div>
+      <Menu>
+        <div style={{ padding: "20px", textAlign: "center", color: "#fff" }}>
+          <h3>{t("clienteDashboardNoEncontrado")}</h3>
+        </div>
+      </Menu>
     );
   }
 
   return (
-    // El panel era blanco con el texto blanco heredado de global.css, así que
-    // el cliente no veía ni su nombre ni sus datos. Además el único botón no
-    // tenía onClick: no llevaba a ninguna parte.
     <Menu>
-    <div
-      style={{
-        background: "#0a0f1a",
-        minHeight: "100vh",
-        padding: "20px",
-        color: "#fff",
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
-      <h2 style={{ color: "#4db8ff", marginBottom: 6 }}>
-        {t("clienteDashboardTitulo")}
-      </h2>
-      <p style={{ opacity: 0.7, fontSize: 14, marginBottom: 20 }}>
-        {cliente.nombre}
-      </p>
-
-      <div style={estilosCliente.tarjeta}>
-        <Linea clave={t("clienteDashboardNombre")} valor={cliente.nombre} />
-        <Linea clave={t("clienteDashboardEmail")} valor={cliente.email} />
-        <Linea clave={t("clienteDashboardTelefono")} valor={cliente.telefono} />
-        {cliente.direccion && (
-          <Linea clave={t("clienteContratoDireccion")} valor={cliente.direccion} />
-        )}
-      </div>
-
-      <button
-        onClick={() => navigate("/cliente/contratos")}
-        style={estilosCliente.boton}
+      <div
+        style={{
+          background: "#0a0f1a",
+          minHeight: "100vh",
+          padding: "20px",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+        }}
       >
-        {t("clienteListaTitulo")}
-      </button>
+        <h2 style={{ color: "#4db8ff", marginBottom: 6 }}>
+          {t("clienteDashboardTitulo")}
+        </h2>
+        <p style={{ opacity: 0.7, fontSize: 14, marginBottom: 20 }}>
+          {cliente.nombre}
+        </p>
 
-      <button onClick={() => navigate("/ajustes")} style={estilosCliente.botonSec}>
-        {t("ajustes")}
-      </button>
-    </div>
+        <div style={estilosCliente.tarjeta}>
+          <Linea clave={t("clienteDashboardNombre")} valor={cliente.nombre} />
+          <Linea clave={t("clienteDashboardEmail")} valor={cliente.email} />
+          <Linea clave={t("clienteDashboardTelefono")} valor={cliente.telefono} />
+          {cliente.direccion && (
+            <Linea clave={t("clienteContratoDireccion")} valor={cliente.direccion} />
+          )}
+        </div>
+
+        <button
+          onClick={() => navigate("/cliente/contratos")}
+          style={estilosCliente.boton}
+        >
+          {t("clienteListaTitulo")}
+        </button>
+
+        <button
+          onClick={() => navigate("/cliente/perfil")}
+          style={estilosCliente.botonSec}
+        >
+          {t("clientePerfilTitulo")}
+        </button>
+
+        <button
+          onClick={logout}
+          style={estilosCliente.botonSec}
+        >
+          {t("logout")}
+        </button>
+      </div>
     </Menu>
   );
 }
@@ -149,5 +159,6 @@ const estilosCliente = {
     fontWeight: 600,
     fontSize: 14.5,
     cursor: "pointer",
+    marginBottom: 10,
   },
 };
