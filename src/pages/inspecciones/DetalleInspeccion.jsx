@@ -176,7 +176,7 @@ export default function DetalleInspeccion() {
 
           {/* Vivienda */}
           <Dato clave="Vivienda" valor={vivienda?.direccion} />
-          <Dato clave="Localidad" valor={vivienda?.localidad} />
+          <Dato clave="Localidad" valor={vivienda?.ciudad} />
 
           {/* Técnico */}
           <Dato clave="Técnico" valor={tecnico?.nombre} />

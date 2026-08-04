@@ -19,7 +19,7 @@ export default function Inspecciones() {
           vivienda_id,
           viviendas (
             direccion,
-            localidad,
+            ciudad,
             cliente_id,
             clientes (
               nombre
@@ -134,7 +134,7 @@ export default function Inspecciones() {
 
                 <p style={{ opacity: 0.8 }}>
                   <strong style={{ color: "#4db8ff" }}>Localidad:</strong>{" "}
-                  {i.viviendas?.localidad || "Sin localidad"}
+                  {i.viviendas?.ciudad || "Sin localidad"}
                 </p>
 
                 <p style={{ opacity: 0.8 }}>
