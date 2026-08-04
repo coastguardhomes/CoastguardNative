@@ -23,6 +23,16 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
 
 const BUCKET = "facturas";
 
+// El navegador (y el WebView del APK) mandan un OPTIONS de comprobación antes
+// del POST. Sin estas cabeceras esa comprobación fallaba y la llamada nunca
+// llegaba a salir: la app sólo veía "Failed to fetch" y el PDF no se generaba.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
 const cabecerasRest = {
   apikey: SERVICE_KEY,
   Authorization: `Bearer ${SERVICE_KEY}`,
@@ -57,6 +67,10 @@ function limpiar(texto: unknown): string {
 const dinero = (n: unknown) => `${Number(n ?? 0).toFixed(2)} EUR`;
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS });
+  }
+
   try {
     const cuerpo = await req.json().catch(() => ({}));
     // Se aceptan las dos formas por compatibilidad con llamadas antiguas.
@@ -271,6 +285,6 @@ Deno.serve(async (req) => {
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...CORS, "Content-Type": "application/json" },
   });
 }

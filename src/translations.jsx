@@ -90,6 +90,21 @@ const translations = {
     pdfVolver: "Volver",
     pdfTituloIframe: "PDF del contrato",
     pdfAbrirNuevaPestana: "Abrir en nueva pestaña",
+
+    // --- NAVEGACIÓN INFERIOR ---
+    navInicio: "Inicio",
+    navClientes: "Clientes",
+    navViviendas: "Viviendas",
+    navInspecciones: "Inspecciones",
+    navContratos: "Contratos",
+    navFacturas: "Facturas",
+    navTecnicos: "Técnicos",
+    navDashboard: "Dashboard",
+    navAjustes: "Ajustes",
+    navPerfil: "Perfil",
+
+    // --- DASHBOARD ADMIN ---
+    dashboardAdminTitulo: "Dashboard Admin",
   },
 
   en: {
@@ -179,6 +194,21 @@ const translations = {
     pdfVolver: "Go back",
     pdfTituloIframe: "Contract PDF",
     pdfAbrirNuevaPestana: "Open in new tab",
+
+    // --- BOTTOM NAVIGATION ---
+    navInicio: "Home",
+    navClientes: "Clients",
+    navViviendas: "Properties",
+    navInspecciones: "Inspections",
+    navContratos: "Contracts",
+    navFacturas: "Invoices",
+    navTecnicos: "Technicians",
+    navDashboard: "Dashboard",
+    navAjustes: "Settings",
+    navPerfil: "Profile",
+
+    // --- ADMIN DASHBOARD ---
+    dashboardAdminTitulo: "Admin Dashboard",
   },
 };
 

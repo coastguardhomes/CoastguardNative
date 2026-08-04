@@ -22,6 +22,16 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
 
 const BUCKET = "contratos";
 
+// Sin responder al OPTIONS de comprobación el navegador bloquea la llamada
+// antes de enviarla, así que desde la web y el APK sólo se veía
+// "Failed to fetch" y el contrato nunca generaba su PDF.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
 const cabecerasRest = {
   apikey: SERVICE_KEY,
   Authorization: `Bearer ${SERVICE_KEY}`,
@@ -57,6 +67,10 @@ const CONDICIONES = [
 ];
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS });
+  }
+
   try {
     const cuerpo = await req.json().catch(() => ({}));
     const contratoId = cuerpo.contratoId ?? cuerpo.contrato_id;
@@ -300,6 +314,6 @@ Deno.serve(async (req) => {
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...CORS, "Content-Type": "application/json" },
   });
 }

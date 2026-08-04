@@ -1,7 +1,21 @@
 import { serve } from "https://deno.land/x/sift@0.6.0/mod.ts";
 
+// Sin responder al OPTIONS de comprobación el navegador bloquea la llamada
+// antes de enviarla: la app sólo veía "Failed to fetch" y el correo con el
+// informe nunca llegaba a salir.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
 serve({
   "/": async (req) => {
+    if (req.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: CORS });
+    }
+
     try {
       const {
         email,
@@ -19,7 +33,7 @@ serve({
       if (!email || !pdfUrl) {
         return new Response(
           JSON.stringify({ error: "Faltan parámetros obligatorios" }),
-          { status: 400 }
+          { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
         );
       }
 
@@ -98,17 +112,18 @@ serve({
         console.error(await response.text());
         return new Response(
           JSON.stringify({ error: "Error enviando email" }),
-          { status: 500 }
+          { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
         );
       }
 
       return new Response(JSON.stringify({ status: "ok" }), {
-        headers: { "Content-Type": "application/json" },
+        headers: { ...CORS, "Content-Type": "application/json" },
       });
     } catch (e) {
       console.error("ERROR EN FUNCIÓN enviar-email:", e);
       return new Response(JSON.stringify({ error: e.message }), {
         status: 500,
+        headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
   },
