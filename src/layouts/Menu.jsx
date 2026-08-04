@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx"; // ← AÑADIDO
+import { useAuth } from "../context/AuthContext.jsx";
 import {
   FaHome,
   FaUsers,
@@ -41,39 +41,51 @@ const AMARILLO_ETIQUETA = "#f9d71c";
 export default function Menu({ children }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { role } = useAuth(); // ← AÑADIDO
+  const { role } = useAuth();
 
-  // Elegir menú según el rol
-  const ITEMS = role === "cliente" ? ITEMS_CLIENTE : ITEMS_ADMIN;
+  // ---------------- MENÚ SEGÚN ROL ----------------
+  let ITEMS = null;
+
+  if (role === "admin") {
+    ITEMS = ITEMS_ADMIN;
+  } else if (role === "cliente") {
+    ITEMS = ITEMS_CLIENTE;
+  } else {
+    ITEMS = null; // técnico → sin menú inferior
+  }
 
   return (
     <div style={estilos.contenedor}>
       <main style={estilos.contenido}>{children}</main>
 
-      <nav style={estilos.barra}>
-        {ITEMS.map(({ ruta, etiqueta, icono: Icono }) => {
-          const activo = pathname === ruta || pathname.startsWith(ruta + "/");
+      {/* Renderizar menú solo si ITEMS existe */}
+      {ITEMS && (
+        <nav style={estilos.barra}>
+          {ITEMS.map(({ ruta, etiqueta, icono: Icono }) => {
+            const activo =
+              pathname === ruta || pathname.startsWith(ruta + "/");
 
-          return (
-            <div
-              key={ruta}
-              onClick={() => navigate(ruta)}
-              style={{ ...estilos.item, opacity: activo ? 1 : 0.82 }}
-            >
-              <Icono color={AZUL_ICONO} />
-              <span
-                style={{
-                  ...estilos.etiqueta,
-                  color: AMARILLO_ETIQUETA,
-                  fontWeight: activo ? 700 : 400,
-                }}
+            return (
+              <div
+                key={ruta}
+                onClick={() => navigate(ruta)}
+                style={{ ...estilos.item, opacity: activo ? 1 : 0.82 }}
               >
-                {etiqueta}
-              </span>
-            </div>
-          );
-        })}
-      </nav>
+                <Icono color={AZUL_ICONO} />
+                <span
+                  style={{
+                    ...estilos.etiqueta,
+                    color: AMARILLO_ETIQUETA,
+                    fontWeight: activo ? 700 : 400,
+                  }}
+                >
+                  {etiqueta}
+                </span>
+              </div>
+            );
+          })}
+        </nav>
+      )}
     </div>
   );
 }
@@ -89,7 +101,6 @@ const estilos = {
   },
   contenido: {
     flex: 1,
-    // Alto de la barra + margen de seguridad del móvil.
     paddingBottom: "calc(84px + env(safe-area-inset-bottom, 0px))",
   },
   barra: {
@@ -99,8 +110,6 @@ const estilos = {
     right: 0,
     display: "flex",
     justifyContent: "space-around",
-    // La barra lleva varios módulos: se desliza en horizontal en pantallas
-    // estrechas en lugar de esconder los últimos.
     overflowX: "auto",
     backgroundColor: "#0b0c10",
     borderTop: "2px solid #1f2833",
