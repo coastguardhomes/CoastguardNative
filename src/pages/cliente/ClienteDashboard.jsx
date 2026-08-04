@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -38,73 +37,67 @@ export default function ClienteDashboard() {
 
   if (loading) {
     return (
-      <Menu>
-        <div style={{ padding: "20px", textAlign: "center", color: "#fff" }}>
-          <h3>{t("clienteDashboardCargando")}</h3>
-        </div>
-      </Menu>
+      <div style={{ padding: "20px", textAlign: "center", color: "#fff" }}>
+        <h3>{t("clienteDashboardCargando")}</h3>
+      </div>
     );
   }
 
   if (!cliente) {
     return (
-      <Menu>
-        <div style={{ padding: "20px", textAlign: "center", color: "#fff" }}>
-          <h3>{t("clienteDashboardNoEncontrado")}</h3>
-        </div>
-      </Menu>
+      <div style={{ padding: "20px", textAlign: "center", color: "#fff" }}>
+        <h3>{t("clienteDashboardNoEncontrado")}</h3>
+      </div>
     );
   }
 
   return (
-    <Menu>
-      <div
-        style={{
-          background: "#0a0f1a",
-          minHeight: "100vh",
-          padding: "20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <h2 style={{ color: "#4db8ff", marginBottom: 6 }}>
-          {t("clienteDashboardTitulo")}
-        </h2>
-        <p style={{ opacity: 0.7, fontSize: 14, marginBottom: 20 }}>
-          {cliente.nombre}
-        </p>
+    <div
+      style={{
+        background: "#0a0f1a",
+        minHeight: "100vh",
+        padding: "20px",
+        color: "#fff",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <h2 style={{ color: "#4db8ff", marginBottom: 6 }}>
+        {t("clienteDashboardTitulo")}
+      </h2>
+      <p style={{ opacity: 0.7, fontSize: 14, marginBottom: 20 }}>
+        {cliente.nombre}
+      </p>
 
-        <div style={estilosCliente.tarjeta}>
-          <Linea clave={t("clienteDashboardNombre")} valor={cliente.nombre} />
-          <Linea clave={t("clienteDashboardEmail")} valor={cliente.email} />
-          <Linea clave={t("clienteDashboardTelefono")} valor={cliente.telefono} />
-          {cliente.direccion && (
-            <Linea clave={t("clienteContratoDireccion")} valor={cliente.direccion} />
-          )}
-        </div>
-
-        <button
-          onClick={() => navigate("/cliente/contratos")}
-          style={estilosCliente.boton}
-        >
-          {t("clienteListaTitulo")}
-        </button>
-
-        <button
-          onClick={() => navigate("/cliente/perfil")}
-          style={estilosCliente.botonSec}
-        >
-          {t("clientePerfilTitulo")}
-        </button>
-
-        <button
-          onClick={logout}
-          style={estilosCliente.botonSec}
-        >
-          {t("logout")}
-        </button>
+      <div style={estilosCliente.tarjeta}>
+        <Linea clave={t("clienteDashboardNombre")} valor={cliente.nombre} />
+        <Linea clave={t("clienteDashboardEmail")} valor={cliente.email} />
+        <Linea clave={t("clienteDashboardTelefono")} valor={cliente.telefono} />
+        {cliente.direccion && (
+          <Linea clave={t("clienteContratoDireccion")} valor={cliente.direccion} />
+        )}
       </div>
-    </Menu>
+
+      <button
+        onClick={() => navigate("/cliente/contratos")}
+        style={estilosCliente.boton}
+      >
+        {t("clienteListaTitulo")}
+      </button>
+
+      <button
+        onClick={() => navigate("/cliente/perfil")}
+        style={estilosCliente.botonSec}
+      >
+        {t("clientePerfilTitulo")}
+      </button>
+
+      <button
+        onClick={logout}
+        style={estilosCliente.botonSec}
+      >
+        {t("logout")}
+      </button>
+    </div>
   );
 }
 
