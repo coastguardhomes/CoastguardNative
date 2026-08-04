@@ -26,12 +26,12 @@ export default function VerInspeccion() {
           fecha,
           estado,
           notas,
-          vivienda (
+          viviendas (
             id,
             direccion,
-            poblacion
+            ciudad
           ),
-          tecnico (
+          tecnicos (
             id,
             nombre
           )
@@ -95,11 +95,12 @@ export default function VerInspeccion() {
 
       <h3>Vivienda</h3>
       <p>
-        {inspeccion.vivienda.direccion}, {inspeccion.vivienda.poblacion}
+        {inspeccion.viviendas?.direccion || "Sin dirección"},{" "}
+        {inspeccion.viviendas?.ciudad || "Sin localidad"}
       </p>
 
       <h3>Técnico</h3>
-      <p>{inspeccion.tecnico.nombre}</p>
+      <p>{inspeccion.tecnicos?.nombre || "Sin técnico asignado"}</p>
 
       <h3>Notas</h3>
       <p>{inspeccion.notas || "Sin notas"}</p>
