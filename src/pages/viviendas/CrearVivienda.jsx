@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useNavigate } from "react-router-dom";
@@ -7,6 +7,8 @@ export default function CrearVivienda() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
+    cliente_id: "",
+    tecnico_id: "",
     nombre: "",
     direccion: "",
     ciudad: "",
@@ -14,10 +16,38 @@ export default function CrearVivienda() {
     activa: true, // obligatorio en tu tabla
   });
 
+  const [clientes, setClientes] = useState([]);
+  const [tecnicos, setTecnicos] = useState([]);
   const [mensaje, setMensaje] = useState("");
 
+  // Sin cliente la vivienda queda huérfana: no se le puede crear contrato ni
+  // inspección, porque ambos cuelgan de la relación cliente → vivienda.
+  useEffect(() => {
+    async function cargarListas() {
+      const [{ data: cli }, { data: tec }] = await Promise.all([
+        supabase.from("clientes").select("id, nombre").order("nombre"),
+        supabase.from("tecnicos").select("id, nombre").order("nombre"),
+      ]);
+
+      setClientes(cli || []);
+      setTecnicos(tec || []);
+    }
+
+    cargarListas();
+  }, []);
+
   async function crearVivienda() {
-    const { error } = await supabase.from("viviendas").insert([form]);
+    if (!form.cliente_id) {
+      setMensaje("Selecciona el cliente propietario de la vivienda");
+      return;
+    }
+
+    const { error } = await supabase.from("viviendas").insert([
+      {
+        ...form,
+        tecnico_id: form.tecnico_id || null,
+      },
+    ]);
 
     if (error) {
       setMensaje("Error creando vivienda");
@@ -72,6 +102,34 @@ export default function CrearVivienda() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
+          <label>Cliente</label>
+          <select
+            value={form.cliente_id}
+            onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="">Selecciona cliente</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
+
+          <label>Técnico asignado</label>
+          <select
+            value={form.tecnico_id}
+            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="">Sin técnico asignado</option>
+            {tecnicos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
+
           <label>Nombre</label>
           <input
             value={form.nombre}
