@@ -1,26 +1,37 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx"; // ← AÑADIDO
+import {
+  FaHome,
+  FaUsers,
+  FaBuilding,
+  FaSearch,
+  FaFileContract,
+  FaMoneyBillWave,
+  FaKey,
+  FaChartBar,
+  FaCog,
+} from "react-icons/fa";
 
 // ---------------- ITEMS ADMIN ----------------
 const ITEMS_ADMIN = [
-  { ruta: "/inicio", etiqueta: "Inicio", icono: IconoInicio },
-  { ruta: "/clientes", etiqueta: "Clientes", icono: IconoPersona },
-  { ruta: "/viviendas", etiqueta: "Viviendas", icono: IconoCasa },
-  { ruta: "/inspecciones", etiqueta: "Inspecciones", icono: IconoLupa },
-  { ruta: "/contratos", etiqueta: "Contratos", icono: IconoDocumento },
-  { ruta: "/facturas", etiqueta: "Facturas", icono: IconoDinero },
-  { ruta: "/tecnicos", etiqueta: "Técnicos", icono: IconoLlave },
-  { ruta: "/admin/dashboard", etiqueta: "Dashboard", icono: IconoEstadisticas },
-  { ruta: "/ajustes", etiqueta: "Ajustes", icono: IconoEngranaje },
+  { ruta: "/inicio", etiqueta: "Inicio", icono: FaHome },
+  { ruta: "/clientes", etiqueta: "Clientes", icono: FaUsers },
+  { ruta: "/viviendas", etiqueta: "Viviendas", icono: FaBuilding },
+  { ruta: "/inspecciones", etiqueta: "Inspecciones", icono: FaSearch },
+  { ruta: "/contratos", etiqueta: "Contratos", icono: FaFileContract },
+  { ruta: "/facturas", etiqueta: "Facturas", icono: FaMoneyBillWave },
+  { ruta: "/tecnicos", etiqueta: "Técnicos", icono: FaKey },
+  { ruta: "/admin/dashboard", etiqueta: "Dashboard", icono: FaChartBar },
+  { ruta: "/ajustes", etiqueta: "Ajustes", icono: FaCog },
 ];
 
 // ---------------- ITEMS CLIENTE ----------------
 const ITEMS_CLIENTE = [
-  { ruta: "/cliente", etiqueta: "Inicio", icono: IconoInicio },
-  { ruta: "/cliente/contratos", etiqueta: "Contratos", icono: IconoDocumento },
-  { ruta: "/cliente/perfil", etiqueta: "Perfil", icono: IconoPersona },
-  { ruta: "/ajustes", etiqueta: "Ajustes", icono: IconoEngranaje },
+  { ruta: "/cliente", etiqueta: "Inicio", icono: FaHome },
+  { ruta: "/cliente/contratos", etiqueta: "Contratos", icono: FaFileContract },
+  { ruta: "/cliente/perfil", etiqueta: "Perfil", icono: FaUsers },
+  { ruta: "/ajustes", etiqueta: "Ajustes", icono: FaCog },
 ];
 
 // Colores del diseño original
@@ -66,3 +77,47 @@ export default function Menu({ children }) {
     </div>
   );
 }
+
+/* ------------------------------ ESTILOS ------------------------------ */
+
+const estilos = {
+  contenedor: {
+    minHeight: "100vh",
+    background: "#0a0f1a",
+    display: "flex",
+    flexDirection: "column",
+  },
+  contenido: {
+    flex: 1,
+    // Alto de la barra + margen de seguridad del móvil.
+    paddingBottom: "calc(84px + env(safe-area-inset-bottom, 0px))",
+  },
+  barra: {
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    display: "flex",
+    justifyContent: "space-around",
+    // La barra lleva varios módulos: se desliza en horizontal en pantallas
+    // estrechas en lugar de esconder los últimos.
+    overflowX: "auto",
+    backgroundColor: "#0b0c10",
+    borderTop: "2px solid #1f2833",
+    padding: "10px 4px calc(10px + env(safe-area-inset-bottom, 0px))",
+    zIndex: 50,
+  },
+  item: {
+    flex: "1 0 auto",
+    minWidth: 74,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    cursor: "pointer",
+  },
+  etiqueta: {
+    fontSize: "0.9rem",
+    marginTop: "4px",
+    whiteSpace: "nowrap",
+  },
+};

@@ -36,7 +36,7 @@ export default function Login() {
 
     switch (role) {
       case "admin":
-        navigate("/inicio", { replace: true });
+        navigate("/admin/dashboard", { replace: true });
         break;
 
       case "cliente":

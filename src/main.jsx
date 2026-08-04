@@ -28,11 +28,11 @@ window.onerror = function (msg, url, line, col, error) {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <LanguageProvider>
-      <AuthProvider>
-        <HashRouter>
+      <HashRouter>
+        <AuthProvider>
           <App />
-        </HashRouter>
-      </AuthProvider>
+        </AuthProvider>
+      </HashRouter>
     </LanguageProvider>
   </React.StrictMode>
 );
