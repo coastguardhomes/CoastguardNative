@@ -32,12 +32,108 @@ export default function Checklist() {
       // 2️⃣ Si no existe checklist → generarlo automáticamente
       if (!data || data.length === 0) {
         const plantilla = [
-          "Puertas y ventanas cerradas",
-          "Persianas en posición correcta",
-          "Ausencia de humedades",
-          "Estado general de la vivienda",
-          "Revisión de electrodomésticos",
-          "Comprobación de fugas",
+          // 🔐 Seguridad y accesos
+          "Puerta principal cerrada correctamente",
+          "Cerraduras sin daños",
+          "Ventanas cerradas",
+          "Persianas bajadas o en posición correcta",
+          "Rejas sin daños",
+          "Comprobación de alarma (si existe)",
+          "Comprobación de sensores de movimiento",
+          "Comprobación de llaves en su lugar",
+          "Accesos exteriores revisados (puertas jardín, trastero, garaje)",
+
+          // 💧 Humedades y filtraciones
+          "Ausencia de humedades en paredes",
+          "Ausencia de humedades en techos",
+          "Ausencia de manchas nuevas",
+          "Ausencia de filtraciones en ventanas",
+          "Ausencia de filtraciones en puertas",
+          "Ausencia de filtraciones en terraza",
+          "Ausencia de filtraciones en sótano",
+          "Ausencia de condensación en cristales",
+          "Ausencia de olores a humedad",
+
+          // 🔌 Electricidad
+          "Cuadro eléctrico sin disparos",
+          "Luces funcionando correctamente",
+          "Interruptores sin daños",
+          "Enchufes sin quemaduras",
+          "Electrodomésticos con corriente",
+          "Aire acondicionado funcionando",
+          "Calefacción funcionando",
+          "Ausencia de chispazos o ruidos eléctricos",
+
+          // 🚰 Agua y fontanería
+          "Grifos funcionando",
+          "Presión correcta",
+          "Ausencia de fugas visibles",
+          "Ausencia de fugas en baños",
+          "Ausencia de fugas en cocina",
+          "Ausencia de fugas en calentador",
+          "Cisterna funcionando",
+          "Agua caliente funcionando",
+          "Ausencia de malos olores en desagües",
+
+          // 🧼 Limpieza y estado general
+          "Ausencia de polvo excesivo",
+          "Ausencia de suciedad en suelos",
+          "Ausencia de basura",
+          "Ausencia de objetos fuera de lugar",
+          "Ausencia de insectos muertos",
+          "Ausencia de manchas nuevas",
+          "Ausencia de roturas visibles",
+          "Ausencia de cristales rotos",
+          "Ausencia de daños en mobiliario",
+
+          // 🌿 Exterior / Jardín
+          "Estado general del jardín",
+          "Ramas caídas",
+          "Objetos movidos por viento",
+          "Mobiliario exterior en su sitio",
+          "Ausencia de daños en vallas",
+          "Ausencia de daños en puertas exteriores",
+          "Ausencia de daños en pérgolas",
+          "Ausencia de daños en toldos",
+
+          // 🏊 Piscina
+          "Nivel de agua correcto",
+          "Agua sin turbidez",
+          "Bomba funcionando",
+          "Skimmer limpio",
+          "Ausencia de objetos en piscina",
+          "Ausencia de fugas visibles",
+          "Tapa del motor cerrada",
+          "Cuadro eléctrico de piscina sin disparos",
+
+          // 🐜 Plagas
+          "Ausencia de hormigas",
+          "Ausencia de cucarachas",
+          "Ausencia de roedores",
+          "Ausencia de nidos de insectos",
+          "Ausencia de excrementos de animales",
+          "Ausencia de mosquitos acumulados",
+          "Ausencia de telarañas excesivas",
+
+          // 🔧 Daños y mantenimiento
+          "Ausencia de grietas nuevas",
+          "Ausencia de pintura levantada",
+          "Ausencia de baldosas sueltas",
+          "Ausencia de puertas descolgadas",
+          "Ausencia de muebles rotos",
+          "Ausencia de fugas en electrodomésticos",
+          "Ausencia de daños por tormenta",
+          "Ausencia de daños por viento",
+
+          // 🧾 Preparación para llegada de cliente
+          "Aire acondicionado funcionando",
+          "Agua caliente funcionando",
+          "Limpieza ligera correcta",
+          "Baño revisado",
+          "Cocina revisada",
+          "Camas revisadas",
+          "Terraza revisada",
+          "Fotos finales tomadas"
         ];
 
         const nuevosItems = plantilla.map((texto) => ({
@@ -68,14 +164,14 @@ export default function Checklist() {
         setItems(data);
       }
 
-      // 3️⃣ Cargar observaciones y estado actual de la inspección
-      const { data: inspeccionData, error: inspeccionError } = await supabase
+      // 3️⃣ Cargar observaciones
+      const { data: inspeccionData } = await supabase
         .from("inspecciones")
         .select("observaciones")
         .eq("id", id)
         .single();
 
-      if (!inspeccionError && inspeccionData?.observaciones) {
+      if (inspeccionData?.observaciones) {
         setObservaciones(inspeccionData.observaciones);
       }
 
@@ -107,10 +203,8 @@ export default function Checklist() {
     setMensaje("");
 
     try {
-      // 1️⃣ Comprobar si todos los ítems están completados
       const todoOk = items.length > 0 && items.every((i) => i.completado === true);
 
-      // 2️⃣ Guardar observaciones + checklist + estado
       const { error: updateError } = await supabase
         .from("inspecciones")
         .update({
@@ -126,7 +220,6 @@ export default function Checklist() {
         setMensaje("Error guardando checklist.");
       } else {
         setMensaje("Checklist guardado correctamente.");
-        // 3️⃣ Avanzar automáticamente a Fotos
         navigate(`/inspecciones/fotos/${id}`);
       }
     } catch (e) {
@@ -267,7 +360,6 @@ export default function Checklist() {
           </div>
         )}
 
-        {/* 🔥 Observaciones */}
         <textarea
           placeholder="Observaciones de la inspección..."
           value={observaciones}
