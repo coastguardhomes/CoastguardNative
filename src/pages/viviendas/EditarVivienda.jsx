@@ -8,12 +8,16 @@ export default function EditarVivienda() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
+    cliente_id: "",
+    tecnico_id: "",
     nombre: "",
     direccion: "",
     ciudad: "",
     codigo_postal: "",
   });
 
+  const [clientes, setClientes] = useState([]);
+  const [tecnicos, setTecnicos] = useState([]);
   const [contratos, setContratos] = useState([]); // ← AÑADIDO
   const [mensaje, setMensaje] = useState("");
 
@@ -21,7 +25,7 @@ export default function EditarVivienda() {
     async function cargarVivienda() {
       const { data, error } = await supabase
         .from("viviendas")
-        .select("nombre, direccion, ciudad, codigo_postal")
+        .select("cliente_id, tecnico_id, nombre, direccion, ciudad, codigo_postal")
         .eq("id", id)
         .single();
 
@@ -30,7 +34,11 @@ export default function EditarVivienda() {
         return;
       }
 
-      setForm(data);
+      setForm({
+        ...data,
+        cliente_id: data.cliente_id || "",
+        tecnico_id: data.tecnico_id || "",
+      });
     }
 
     async function cargarContratos() {   // ← AÑADIDO
@@ -42,14 +50,34 @@ export default function EditarVivienda() {
       if (!error) setContratos(data || []);
     }
 
+    // Sin cliente la vivienda queda huérfana: no se le puede crear contrato
+    // ni inspección (ambos cuelgan de la relación cliente -> vivienda).
+    async function cargarListas() {
+      const [{ data: cli }, { data: tec }] = await Promise.all([
+        supabase.from("clientes").select("id, nombre").order("nombre"),
+        supabase.from("tecnicos").select("id, nombre").order("nombre"),
+      ]);
+
+      setClientes(cli || []);
+      setTecnicos(tec || []);
+    }
+
     cargarVivienda();
     cargarContratos();  // ← AÑADIDO
+    cargarListas();
   }, [id]);
 
   async function guardarCambios() {
+    if (!form.cliente_id) {
+      setMensaje("Selecciona el cliente propietario de la vivienda");
+      return;
+    }
+
     const { error } = await supabase
       .from("viviendas")
       .update({
+        cliente_id: form.cliente_id,
+        tecnico_id: form.tecnico_id || null,
         nombre: form.nombre,
         direccion: form.direccion,
         ciudad: form.ciudad,
@@ -110,6 +138,34 @@ export default function EditarVivienda() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
+          <label>Cliente</label>
+          <select
+            value={form.cliente_id}
+            onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="">Selecciona cliente</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
+
+          <label>Técnico asignado</label>
+          <select
+            value={form.tecnico_id}
+            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="">Sin técnico asignado</option>
+            {tecnicos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
+
           <label>Nombre</label>
           <input
             value={form.nombre}

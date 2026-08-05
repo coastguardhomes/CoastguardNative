@@ -44,6 +44,26 @@ export default function Contratos() {
           Contratos
         </h1>
 
+        <Link to="/contratos/crear">
+          <button
+            style={{
+              marginBottom: "25px",
+              padding: "14px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "17px",
+              cursor: "pointer",
+              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+            }}
+          >
+            Nuevo contrato
+          </button>
+        </Link>
+
         {loading ? (
           <p style={{ textAlign: "center", fontSize: "18px", opacity: 0.8 }}>
             Cargando contratos...

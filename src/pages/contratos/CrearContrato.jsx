@@ -53,8 +53,12 @@ export default function CrearContrato() {
   }
 
   // 🔥 Auto‑filtrar viviendas según cliente
+  //
+  // cliente_id en viviendas es numérico (columna serial) pero el <select>
+  // siempre entrega su value como string, así que "===" nunca coincidía y
+  // la lista de viviendas quedaba vacía para cualquier cliente elegido.
   const viviendasFiltradas = form.cliente_id
-    ? viviendas.filter((v) => v.cliente_id === form.cliente_id)
+    ? viviendas.filter((v) => String(v.cliente_id) === String(form.cliente_id))
     : viviendas;
 
   // 🔥 Auto‑calcular precio y frecuencia según modalidad
