@@ -14,11 +14,13 @@ export default function ClienteContratosLista() {
   const cargarContratos = async () => {
     if (!user) return;
 
-    // FILTRAR SOLO LOS CONTRATOS DEL CLIENTE LOGUEADO
+    // clientes.id/contratos.cliente_id son bigint y user.id es el UUID de
+    // auth: nunca coinciden. RLS ya limita "contratos" a las viviendas del
+    // cliente logueado (ver contratos_select), así que basta con no
+    // filtrar aquí; para el perfil hay que resolverlo por usuario_id.
     const { data: contratosData, error: contratosError } = await supabase
       .from("contratos")
       .select("*")
-      .eq("cliente_id", user.id)   // ← ARREGLA TODO
       .order("id", { ascending: false });
 
     if (contratosError) {
@@ -29,7 +31,7 @@ export default function ClienteContratosLista() {
     const { data: clienteData, error: clienteError } = await supabase
       .from("clientes")
       .select("*")
-      .eq("id", user.id)           // ← SOLO SU PROPIO PERFIL
+      .eq("usuario_id", user.id)
       .single();
 
     if (clienteError) {

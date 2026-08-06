@@ -64,6 +64,22 @@ export default function Register() {
       return;
     }
 
+    // 2️⃣b Crear la ficha de cliente y enlazarla con el usuario recién
+    // creado. Sin esto usuario_id queda NULL y mi_cliente_id() nunca
+    // encuentra al cliente: el dashboard, las inspecciones y las facturas
+    // parecen vacíos aunque el login funcione.
+    const { error: clienteError } = await supabase.from("clientes").insert({
+      usuario_id: user.id,
+      email,
+    });
+
+    if (clienteError) {
+      console.error("Error creando cliente:", clienteError);
+      setErrorMsg("Error creando la ficha de cliente");
+      setLoading(false);
+      return;
+    }
+
     // 3️⃣ Mensaje final + redirección
     setMensaje("Cuenta creada correctamente. Revisa tu email para confirmar la cuenta.");
     setLoading(false);

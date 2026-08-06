@@ -70,6 +70,10 @@ import ClienteContratoVer from "./pages/cliente/ClienteContratoVer.jsx";
 import ClienteFirmaDibujar from "./pages/cliente/ClienteFirmaDibujar.jsx";
 import VerPDFContrato from "./pages/cliente/VerPDFContrato.jsx";
 import PerfilCliente from "./pages/cliente/Perfilcliente.jsx";
+import ClienteInspeccionesLista from "./pages/cliente/ClienteInspeccionesLista.jsx";
+import ClienteInspeccionVer from "./pages/cliente/ClienteInspeccionVer.jsx";
+import ClienteFacturasLista from "./pages/cliente/ClienteFacturasLista.jsx";
+import ClienteFacturaVer from "./pages/cliente/ClienteFacturaVer.jsx";
 
 // AJUSTES / IDIOMA
 import Ajustes from "./pages/Ajustes/Ajustes.jsx";
@@ -112,6 +116,10 @@ export default function App() {
         <Route path="contrato/:id/pdf" element={<VerPDFContrato />} />
         <Route path="firma/:id" element={<ClienteFirmaDibujar />} />
         <Route path="perfil" element={<PerfilCliente />} />
+        <Route path="inspecciones" element={<ClienteInspeccionesLista />} />
+        <Route path="inspeccion/:id" element={<ClienteInspeccionVer />} />
+        <Route path="facturas" element={<ClienteFacturasLista />} />
+        <Route path="factura/:id" element={<ClienteFacturaVer />} />
       </Route>
 
       {/* ---------------- CLIENTES ---------------- */}

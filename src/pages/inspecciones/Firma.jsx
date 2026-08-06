@@ -35,27 +35,48 @@ export default function Firma() {
     cargarFirma();
   }, [id]);
 
+  // offsetX/offsetY sólo existen en eventos de ratón. En el móvil el trazo
+  // se dibuja con eventos táctiles, y su posición hay que calcularla a mano
+  // a partir de getBoundingClientRect(): por eso el firmado salía
+  // descentrado en el teléfono aunque funcionaba bien con ratón.
+  function obtenerPosicion(e) {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const punto = e.touches?.[0] || e.changedTouches?.[0] || e.nativeEvent;
+    const escalaX = canvas.width / rect.width;
+    const escalaY = canvas.height / rect.height;
+
+    return {
+      x: (punto.clientX - rect.left) * escalaX,
+      y: (punto.clientY - rect.top) * escalaY,
+    };
+  }
+
   function startDrawing(e) {
+    e.preventDefault();
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
+    const { x, y } = obtenerPosicion(e);
 
     ctx.lineWidth = 3;
     ctx.lineCap = "round";
     ctx.strokeStyle = "#4db8ff";
 
     ctx.beginPath();
-    ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    ctx.moveTo(x, y);
 
     setIsDrawing(true);
   }
 
   function draw(e) {
     if (!isDrawing) return;
+    e.preventDefault();
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
+    const { x, y } = obtenerPosicion(e);
 
-    ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    ctx.lineTo(x, y);
     ctx.stroke();
   }
 
@@ -220,11 +241,16 @@ export default function Firma() {
               border: "2px solid #4db8ff",
               display: "block",
               margin: "0 auto 20px auto",
+              maxWidth: "100%",
+              touchAction: "none",
             }}
             onMouseDown={startDrawing}
             onMouseMove={draw}
             onMouseUp={stopDrawing}
             onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
           />
 
           <div style={{ display: "flex", gap: "10px" }}>

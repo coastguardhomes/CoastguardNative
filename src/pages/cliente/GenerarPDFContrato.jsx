@@ -14,13 +14,17 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
     async function comprobarContrato() {
       if (!user) return;
 
+      // contratos.cliente_id es bigint y user.id el UUID de auth: nunca
+      // coinciden, así que esta alerta saltaba siempre aunque el contrato
+      // SÍ fuera del cliente. RLS (contratos_select) ya impide leer
+      // contratos de otro cliente, por eso basta con mirar error/data.
       const { data, error } = await supabase
         .from("contratos")
         .select("cliente_id")
         .eq("id", contrato.id)
         .single();
 
-      if (error || !data || data.cliente_id !== user.id) {
+      if (error || !data) {
         alert(t("clienteAccesoDenegado"));
       }
     }
