@@ -26,11 +26,31 @@ export default function Login() {
     }
 
     // maybeSingle evita error 406 si no existe fila en profiles
-    const { data: perfil } = await supabase
+    let { data: perfil } = await supabase
       .from("profiles")
       .select("rol")
       .eq("id", userId)
       .maybeSingle();
+
+    // Alta diferida: cuando el registro exige confirmar el email, signUp()
+    // no devuelve sesión y por tanto no hay auth.uid() disponible todavía,
+    // así que Register.jsx no pudo crear profiles/clientes en ese momento
+    // (RLS los habría rechazado igualmente al ir como rol anónimo). Aquí,
+    // en el primer login ya confirmado, sí hay sesión real y se completa
+    // el alta que quedó pendiente.
+    if (!perfil) {
+      const { error: perfilError } = await supabase
+        .from("profiles")
+        .insert({ id: userId, rol: "cliente" });
+
+      if (!perfilError) {
+        await supabase
+          .from("clientes")
+          .insert({ usuario_id: userId, email });
+
+        perfil = { rol: "cliente" };
+      }
+    }
 
     const role = perfil?.rol; // ⭐ UNIFICADO
 

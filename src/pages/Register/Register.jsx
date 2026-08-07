@@ -47,37 +47,36 @@ export default function Register() {
       return;
     }
 
-    // 2️⃣ Insertar perfil en la tabla profiles.
-    // La tabla sólo tiene (id, rol): al enviar también `email` el insert
-    // fallaba y el registro terminaba siempre en "Error creando perfil".
-    const { error: perfilError } = await supabase
-      .from("profiles")
-      .insert({
-        id: user.id,
-        rol: "cliente",
-      });
+    // 2️⃣ Insertar perfil + ficha de cliente, sólo si signUp devolvió una
+    // sesión activa (proyecto sin confirmación de email obligatoria).
+    //
+    // Con confirmación obligatoria, data.session viene null aquí: no hay
+    // auth.uid() todavía, así que estos inserts siempre serían rechazados
+    // por RLS (llegan como rol anónimo). En ese caso el alta se completa
+    // en el primer login ya confirmado (ver Login.jsx), donde sí existe
+    // una sesión real.
+    if (data.session) {
+      const { error: perfilError } = await supabase
+        .from("profiles")
+        .insert({ id: user.id, rol: "cliente" });
 
-    if (perfilError) {
-      console.error("Error creando perfil:", perfilError);
-      setErrorMsg("Error creando perfil del usuario");
-      setLoading(false);
-      return;
-    }
+      if (perfilError) {
+        console.error("Error creando perfil:", perfilError);
+        setErrorMsg("Error creando perfil del usuario");
+        setLoading(false);
+        return;
+      }
 
-    // 2️⃣b Crear la ficha de cliente y enlazarla con el usuario recién
-    // creado. Sin esto usuario_id queda NULL y mi_cliente_id() nunca
-    // encuentra al cliente: el dashboard, las inspecciones y las facturas
-    // parecen vacíos aunque el login funcione.
-    const { error: clienteError } = await supabase.from("clientes").insert({
-      usuario_id: user.id,
-      email,
-    });
+      const { error: clienteError } = await supabase
+        .from("clientes")
+        .insert({ usuario_id: user.id, email });
 
-    if (clienteError) {
-      console.error("Error creando cliente:", clienteError);
-      setErrorMsg("Error creando la ficha de cliente");
-      setLoading(false);
-      return;
+      if (clienteError) {
+        console.error("Error creando cliente:", clienteError);
+        setErrorMsg("Error creando la ficha de cliente");
+        setLoading(false);
+        return;
+      }
     }
 
     // 3️⃣ Mensaje final + redirección
