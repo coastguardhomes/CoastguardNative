@@ -47,36 +47,27 @@ export default function Register() {
       return;
     }
 
-    // 2️⃣ Insertar perfil + ficha de cliente, sólo si signUp devolvió una
-    // sesión activa (proyecto sin confirmación de email obligatoria).
-    //
-    // Con confirmación obligatoria, data.session viene null aquí: no hay
-    // auth.uid() todavía, así que estos inserts siempre serían rechazados
-    // por RLS (llegan como rol anónimo). En ese caso el alta se completa
-    // en el primer login ya confirmado (ver Login.jsx), donde sí existe
-    // una sesión real.
-    if (data.session) {
-      const { error: perfilError } = await supabase
-        .from("profiles")
-        .insert({ id: user.id, rol: "cliente" });
+    // 2️⃣ Insertar SIEMPRE perfil y cliente (tu proyecto NO usa confirmación obligatoria)
+    const { error: perfilError } = await supabase
+      .from("profiles")
+      .insert({ id: user.id, rol: "cliente" });
 
-      if (perfilError) {
-        console.error("Error creando perfil:", perfilError);
-        setErrorMsg("Error creando perfil del usuario");
-        setLoading(false);
-        return;
-      }
+    if (perfilError) {
+      console.error("Error creando perfil:", perfilError);
+      setErrorMsg("Error creando perfil del usuario");
+      setLoading(false);
+      return;
+    }
 
-      const { error: clienteError } = await supabase
-        .from("clientes")
-        .insert({ usuario_id: user.id, email });
+    const { error: clienteError } = await supabase
+      .from("clientes")
+      .insert({ usuario_id: user.id, email });
 
-      if (clienteError) {
-        console.error("Error creando cliente:", clienteError);
-        setErrorMsg("Error creando la ficha de cliente");
-        setLoading(false);
-        return;
-      }
+    if (clienteError) {
+      console.error("Error creando cliente:", clienteError);
+      setErrorMsg("Error creando la ficha de cliente");
+      setLoading(false);
+      return;
     }
 
     // 3️⃣ Mensaje final + redirección
