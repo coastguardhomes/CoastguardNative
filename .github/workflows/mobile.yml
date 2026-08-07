@@ -43,17 +43,25 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # ⭐ ESTE PASO ES CRÍTICO: GENERA EL BUILD WEB
       - name: Build Vite project
         run: npm run build
 
+      # ⭐ ESTE PASO ES EL QUE FALTABA: COPIA EL BUILD WEB AL PROYECTO ANDROID
+      - name: Copy web to Android
+        run: npx cap copy android
+
+      # ⭐ SINCRONIZA CAPACITOR (YA CON EL BUILD NUEVO)
       - name: Sync Capacitor
         run: npx cap sync android
 
+      # ⭐ COMPILA EL APK REAL
       - name: Build Android APK (DEBUG)
         run: cd android && ./gradlew assembleDebug
 
+      # ⭐ SUBE EL APK PARA DESCARGARLO
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: coastguard-apk-debug
-          path: android/app/build/outputs/apk/debug/
+          path: android/app/build/outputs/apk/debug/app-debug.apk
