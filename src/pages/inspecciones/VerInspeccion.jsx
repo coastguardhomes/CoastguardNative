@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 
 export default function VerInspeccion() {
   const { id } = useParams();
+  const navigate = useNavigate();
+
   const [inspeccion, setInspeccion] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +53,38 @@ export default function VerInspeccion() {
 
     cargarInspeccion();
   }, [id]);
+
+  // ⭐ BORRAR INSPECCIÓN COMPLETA
+  async function eliminarInspeccion() {
+    const confirmar = window.confirm("¿Seguro que deseas eliminar esta inspección?");
+    if (!confirmar) return;
+
+    // 1. Borrar checklist asociado
+    await supabase
+      .from("checklist_inspeccion")
+      .delete()
+      .eq("inspeccion_id", id);
+
+    // 2. Borrar fotos asociadas (si existe tabla)
+    await supabase
+      .from("fotos_inspeccion")
+      .delete()
+      .eq("inspeccion_id", id);
+
+    // 3. Borrar inspección
+    const { error } = await supabase
+      .from("inspecciones")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert("Error eliminando inspección");
+      return;
+    }
+
+    alert("Inspección eliminada correctamente");
+    navigate("/inspecciones");
+  }
 
   if (loading) {
     return (
@@ -129,6 +163,25 @@ export default function VerInspeccion() {
           Ver PDF
         </Link>
       </div>
+
+      {/* ⭐ BOTÓN NUEVO: BORRAR INSPECCIÓN */}
+      <button
+        onClick={eliminarInspeccion}
+        style={{
+          marginTop: "20px",
+          padding: "14px",
+          width: "100%",
+          background: "red",
+          color: "#fff",
+          borderRadius: "10px",
+          border: "none",
+          fontWeight: "700",
+          fontSize: "17px",
+          cursor: "pointer",
+        }}
+      >
+        Eliminar inspección
+      </button>
     </div>
   );
 }
