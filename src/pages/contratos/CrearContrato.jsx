@@ -15,14 +15,10 @@ export default function CrearContrato() {
     vivienda_id: "",
     tecnico_id: "",
     fecha_inicio: "",
-    fecha_fin: "",       // ← NUEVO
     precio: "",
     notas: "",
     frecuencia: "",
     modalidad: "",
-    pdf_url: "",         // ← NUEVO
-    firma: "",           // ← NUEVO
-    firmado_en: "",      // ← NUEVO
   });
 
   const [mensaje, setMensaje] = useState("");
@@ -76,28 +72,59 @@ export default function CrearContrato() {
       return;
     }
 
-    const { error } = await supabase.from("contratos").insert([
-      {
-        cliente_id: form.cliente_id,
-        vivienda_id: form.vivienda_id,
-        tecnico_id: form.tecnico_id,
-        fecha_inicio: form.fecha_inicio || null,
-        fecha_fin: form.fecha_fin || null,        // ← NUEVO
-        precio: form.precio || null,
-        notas: form.notas || null,
-        frecuencia: form.frecuencia || null,
-        modalidad: form.modalidad || null,
-        pdf_url: form.pdf_url || null,            // ← NUEVO
-        firma: form.firma || null,                // ← NUEVO
-        firmado_en: form.firmado_en || null,      // ← NUEVO
-      },
-    ]);
+    // 1️⃣ Crear contrato básico
+    const { data, error } = await supabase
+      .from("contratos")
+      .insert([
+        {
+          cliente_id: form.cliente_id,
+          vivienda_id: form.vivienda_id,
+          tecnico_id: form.tecnico_id,
+          fecha_inicio: form.fecha_inicio,
+          precio: form.precio,
+          notas: form.notas,
+          frecuencia: form.frecuencia,
+          modalidad: form.modalidad,
+        },
+      ])
+      .select();
 
     if (error) {
       setMensaje("Error creando contrato");
       console.error(error);
       return;
     }
+
+    const contratoId = data[0].id;
+
+    // 2️⃣ Calcular fecha_fin automáticamente
+    const fechaInicio = new Date(form.fecha_inicio);
+    const fechaFin = new Date(
+      fechaInicio.getTime() + form.frecuencia * 24 * 60 * 60 * 1000
+    )
+      .toISOString()
+      .split("T")[0];
+
+    // 3️⃣ Generar PDF automáticamente
+    let pdfUrl = null;
+    try {
+      const pdfResponse = await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${contratoId}`
+      );
+      pdfUrl = await pdfResponse.text();
+    } catch (e) {
+      console.error("Error generando PDF:", e);
+    }
+
+    // 4️⃣ Guardar datos automáticos
+    await supabase
+      .from("contratos")
+      .update({
+        fecha_fin: fechaFin,
+        firmado_en: new Date().toISOString().split("T")[0],
+        pdf_url: pdfUrl,
+      })
+      .eq("id", contratoId);
 
     navigate("/contratos");
   }
@@ -222,44 +249,6 @@ export default function CrearContrato() {
             type="date"
             value={form.fecha_inicio}
             onChange={(e) => setForm({ ...form, fecha_inicio: e.target.value })}
-            style={inputStyle}
-          />
-
-          {/* Fecha fin */}
-          <label>Fecha fin:</label>
-          <input
-            type="date"
-            value={form.fecha_fin}
-            onChange={(e) => setForm({ ...form, fecha_fin: e.target.value })}
-            style={inputStyle}
-          />
-
-          {/* PDF */}
-          <label>PDF (URL):</label>
-          <input
-            type="text"
-            value={form.pdf_url}
-            onChange={(e) => setForm({ ...form, pdf_url: e.target.value })}
-            placeholder="https://..."
-            style={inputStyle}
-          />
-
-          {/* Firma */}
-          <label>Firma (URL):</label>
-          <input
-            type="text"
-            value={form.firma}
-            onChange={(e) => setForm({ ...form, firma: e.target.value })}
-            placeholder="https://..."
-            style={inputStyle}
-          />
-
-          {/* Fecha firma */}
-          <label>Fecha de firma:</label>
-          <input
-            type="date"
-            value={form.firmado_en}
-            onChange={(e) => setForm({ ...form, firmado_en: e.target.value })}
             style={inputStyle}
           />
 
