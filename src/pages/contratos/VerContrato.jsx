@@ -34,6 +34,7 @@ export default function VerContrato() {
         pdf_url,
         firma,
         firmado_en,
+        estado,
         modalidad
       `)
       .eq("id", id)
@@ -118,6 +119,12 @@ export default function VerContrato() {
           Contrato #{contrato.id}
         </h1>
 
+        {/* Estado */}
+        <p style={{ marginBottom: "10px" }}>
+          <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
+          {contrato.estado || "pendiente"}
+        </p>
+
         {/* Modalidad */}
         {contrato.modalidad && (
           <p style={{ marginBottom: "10px" }}>
@@ -198,6 +205,23 @@ export default function VerContrato() {
           {contrato.firmado_en ? contrato.firmado_en : "No firmado"}
         </p>
 
+        {/* Mostrar firma */}
+        {contrato.firma && (
+          <img
+            src={contrato.firma}
+            alt="Firma del contrato"
+            style={{
+              width: "100%",
+              maxWidth: "400px",
+              display: "block",
+              margin: "20px auto",
+              background: "#fff",
+              padding: "10px",
+              borderRadius: "10px",
+            }}
+          />
+        )}
+
         {/* Inspecciones */}
         <Bloque titulo="Inspecciones del contrato">
           {inspecciones.length === 0 ? (
@@ -252,6 +276,25 @@ export default function VerContrato() {
             }}
           >
             Editar contrato
+          </button>
+        </Link>
+
+        {/* Firmar contrato */}
+        <Link to={`/cliente/firma/${contrato.id}`}>
+          <button
+            style={{
+              marginTop: "20px",
+              padding: "12px 20px",
+              background: "#00c853",
+              borderRadius: "10px",
+              border: "none",
+              color: "#fff",
+              fontWeight: "700",
+              cursor: "pointer",
+              width: "100%",
+            }}
+          >
+            Firmar contrato
           </button>
         </Link>
 
