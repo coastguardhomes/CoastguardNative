@@ -34,16 +34,15 @@ export default function ClienteFirmaDibujar() {
     comprobarContrato();
   }, [user, id, navigate]);
 
-  // 🔥 Ajuste RESPONSIVE del canvas
+  // Ajuste responsive del canvas
   const ajustarCanvas = () => {
     if (!sigCanvas.current) return;
 
     const canvas = sigCanvas.current.getCanvas();
     const container = canvas.parentNode;
 
-    // Ajustar al ancho del contenedor
     canvas.width = container.offsetWidth;
-    canvas.height = 250; // altura fija pero adaptable
+    canvas.height = 250;
 
     sigCanvas.current.clear();
   };
@@ -60,11 +59,13 @@ export default function ClienteFirmaDibujar() {
 
     setLoading(true);
 
+    // Convertir firma a PNG
     const dataURL = canvas.getTrimmedCanvas().toDataURL("image/png");
     const blob = await (await fetch(dataURL)).blob();
 
     const filePath = `firmas/contrato_${id}.png`;
 
+    // Subir firma
     const { error: uploadError } = await supabase.storage
       .from("firmas")
       .upload(filePath, blob, {
@@ -78,13 +79,15 @@ export default function ClienteFirmaDibujar() {
       return;
     }
 
+    // Obtener URL pública
     const { data: publicUrlData } = supabase.storage
       .from("firmas")
       .getPublicUrl(filePath);
 
     const firmaUrl = publicUrlData.publicUrl;
 
-    const { error: updateError } = await supabase
+    // Guardar firma en contrato
+    await supabase
       .from("contratos")
       .update({
         firma: firmaUrl,
@@ -93,10 +96,24 @@ export default function ClienteFirmaDibujar() {
       })
       .eq("id", id);
 
-    if (updateError) {
-      console.error("Error guardando firma en contrato:", updateError);
-      setLoading(false);
-      return;
+    // Regenerar PDF con firma
+    try {
+      await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${id}&firma=${encodeURIComponent(
+          firmaUrl
+        )}`
+      );
+    } catch (e) {
+      console.error("Error regenerando PDF:", e);
+    }
+
+    // Enviar email automático
+    try {
+      await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${id}`
+      );
+    } catch (e) {
+      console.error("Error enviando email:", e);
     }
 
     navigate(`/cliente/contrato/${id}`);
