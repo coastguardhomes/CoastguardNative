@@ -1,195 +1,117 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
+import { useParams, useNavigate, Link } from "react-router-dom";
 
 export default function VerContrato() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [contrato, setContrato] = useState(null);
+  const [mensaje, setMensaje] = useState("");
   const [cliente, setCliente] = useState(null);
   const [vivienda, setVivienda] = useState(null);
-  const [tecnico, setTecnico] = useState(null);
   const [inspecciones, setInspecciones] = useState([]);
-  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     cargarContrato();
   }, [id]);
 
+  useEffect(() => {
+    if (contrato) cargarRelacionados();
+  }, [contrato]);
+
   async function cargarContrato() {
     const { data, error } = await supabase
       .from("contratos")
-      .select(`
-        id,
-        cliente_id,
-        vivienda_id,
-        tecnico_id,
-        precio,
-        notas,
-        frecuencia,
-        fecha_inicio,
-        fecha_fin,
-        pdf_url,
-        firma,
-        firmado_en,
-        estado,
-        modalidad
-      `)
+      .select("*")
       .eq("id", id)
       .single();
 
-    if (!error) {
-      setContrato(data);
-      cargarRelacionados(data);
-    }
-  }
-
-  async function cargarRelacionados(c) {
-    const { data: clienteData } = await supabase
-      .from("clientes")
-      .select("id, nombre, email, telefono")
-      .eq("id", c.cliente_id)
-      .single();
-    setCliente(clienteData || null);
-
-    const { data: viviendaData } = await supabase
-      .from("viviendas")
-      .select("id, nombre, direccion")
-      .eq("id", c.vivienda_id)
-      .single();
-    setVivienda(viviendaData || null);
-
-    const { data: tecnicoData } = await supabase
-      .from("tecnicos")
-      .select("id, nombre, telefono")
-      .eq("id", c.tecnico_id)
-      .single();
-    setTecnico(tecnicoData || null);
-
-    const { data: inspData } = await supabase
-      .from("inspecciones")
-      .select("id, fecha, estado")
-      .eq("contrato_id", c.id);
-
-    setInspecciones(inspData || []);
-  }
-
-  async function borrarContrato() {
-    const confirmar = window.confirm(
-      "¿Seguro que quieres borrar este contrato? Esta acción no se puede deshacer."
-    );
-
-    if (!confirmar) return;
-
-    await supabase.from("contratos").delete().eq("id", id);
-
-    navigate("/contratos");
-  }
-
-  async function regenerarPDF() {
-    setMensaje("Regenerando PDF...");
-
-    try {
-      const pdfResponse = await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${id}`
-      );
-      const pdfUrl = await pdfResponse.text();
-
-      await supabase
-        .from("contratos")
-        .update({ pdf_url: pdfUrl })
-        .eq("id", id);
-
-      await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${id}`
-      );
-
-      setMensaje("PDF regenerado correctamente");
-      cargarContrato();
-    } catch (e) {
-      console.error(e);
-      setMensaje("Error regenerando PDF");
-    }
-  }
-
-  async function regenerarInspecciones() {
-    setMensaje("Regenerando inspecciones...");
-
-    try {
-      await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear-inspecciones?id=${id}`
-      );
-
-      setMensaje("Inspecciones regeneradas correctamente");
-      cargarContrato();
-    } catch (e) {
-      console.error(e);
-      setMensaje("Error regenerando inspecciones");
-    }
-  }
-
-  async function renovarContrato() {
-    const confirmar = window.confirm(
-      "¿Renovar contrato? Se creará uno nuevo con la misma modalidad."
-    );
-    if (!confirmar) return;
-
-    const fechaInicioNueva = contrato.fecha_fin;
-    const frecuencia = contrato.frecuencia;
-
-    const fechaFinNueva = new Date(
-      new Date(fechaInicioNueva).getTime() +
-        frecuencia * 24 * 60 * 60 * 1000
-    )
-      .toISOString()
-      .split("T")[0];
-
-    const { data, error } = await supabase
-      .from("contratos")
-      .insert([
-        {
-          cliente_id: contrato.cliente_id,
-          vivienda_id: contrato.vivienda_id,
-          tecnico_id: contrato.tecnico_id,
-          fecha_inicio: fechaInicioNueva,
-          precio: contrato.precio,
-          notas: contrato.notas,
-          frecuencia: contrato.frecuencia,
-          modalidad: contrato.modalidad,
-          estado: "pendiente",
-        },
-      ])
-      .select();
-
     if (error) {
-      setMensaje("Error renovando contrato");
+      setMensaje("Error cargando contrato");
       return;
     }
 
-    const nuevoId = data[0].id;
+    setContrato(data);
+  }
 
-    const pdfResponse = await fetch(
-      `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${nuevoId}`
-    );
-    const pdfUrl = await pdfResponse.text();
+  async function cargarRelacionados() {
+    // Cliente
+    const { data: cli } = await supabase
+      .from("clientes")
+      .select("*")
+      .eq("id", contrato.cliente_id)
+      .single();
+    setCliente(cli || null);
 
+    // Vivienda
+    const { data: viv } = await supabase
+      .from("viviendas")
+      .select("*")
+      .eq("id", contrato.vivienda_id)
+      .single();
+    setVivienda(viv || null);
+
+    // Inspecciones del contrato
+    const { data: insp } = await supabase
+      .from("inspecciones")
+      .select("*")
+      .eq("contrato_id", id)
+      .order("fecha", { ascending: false });
+
+    setInspecciones(insp || []);
+  }
+
+  // ⭐ BORRAR CONTRATO COMPLETO
+  async function eliminarContrato() {
+    const confirmar = window.confirm("¿Seguro que deseas eliminar este contrato?");
+    if (!confirmar) return;
+
+    // 1. Borrar checklist asociado
     await supabase
-      .from("contratos")
-      .update({
-        fecha_fin: fechaFinNueva,
-        pdf_url: pdfUrl,
-      })
-      .eq("id", nuevoId);
+      .from("checklist_inspeccion")
+      .delete()
+      .eq("contrato_id", id);
 
-    navigate(`/contratos/ver/${nuevoId}`);
+    // 2. Borrar inspecciones del contrato
+    await supabase
+      .from("inspecciones")
+      .delete()
+      .eq("contrato_id", id);
+
+    // 3. Borrar contrato
+    const { error } = await supabase
+      .from("contratos")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      setMensaje("Error eliminando contrato");
+      return;
+    }
+
+    alert("Contrato eliminado correctamente");
+    navigate("/contratos");
   }
 
   if (!contrato) {
     return (
       <Menu>
-        <p style={{ padding: "20px", color: "#fff" }}>Cargando contrato...</p>
+        <div
+          style={{
+            height: "100vh",
+            background: "#0a0f1a",
+            color: "#fff",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontSize: "18px",
+            fontFamily: "Inter, sans-serif",
+          }}
+        >
+          Cargando contrato...
+        </div>
       </Menu>
     );
   }
@@ -199,127 +121,89 @@ export default function VerContrato() {
       <div
         style={{
           padding: "20px",
-          background: "rgba(255,255,255,0.05)",
-          borderRadius: "12px",
-          border: "1px solid rgba(255,255,255,0.2)",
+          background: "#0a0f1a",
+          minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
         }}
       >
         <h1
           style={{
-            marginBottom: "20px",
             color: "#4db8ff",
+            marginBottom: "25px",
+            fontSize: "28px",
             fontWeight: "700",
-            fontSize: "24px",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            textAlign: "center",
           }}
         >
           Contrato #{contrato.id}
         </h1>
 
         {mensaje && (
-          <p style={{ marginBottom: "10px", color: "#4db8ff" }}>{mensaje}</p>
-        )}
-
-        {/* Estado */}
-        <p style={{ marginBottom: "10px" }}>
-          <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
-          {contrato.estado || "pendiente"}
-        </p>
-
-        {/* Modalidad */}
-        {contrato.modalidad && (
-          <p style={{ marginBottom: "10px" }}>
-            <strong style={{ color: "#4db8ff" }}>Modalidad:</strong>{" "}
-            {contrato.modalidad}
+          <p
+            style={{
+              marginBottom: "15px",
+              color: "#ff6b6b",
+              fontWeight: "600",
+            }}
+          >
+            {mensaje}
           </p>
         )}
 
-        {/* Firma */}
-        {contrato.firma && (
-          <div style={{ marginBottom: "20px" }}>
-            <strong style={{ color: "#4db8ff" }}>Firma del cliente:</strong>
-            <img
-              src={contrato.firma}
-              alt="Firma del contrato"
-              style={{
-                width: "100%",
-                maxWidth: "400px",
-                display: "block",
-                margin: "20px auto",
-                background: "#fff",
-                padding: "10px",
-                borderRadius: "10px",
-              }}
-            />
-          </div>
-        )}
+        {/* Datos del contrato */}
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "14px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            marginBottom: "25px",
+          }}
+        >
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Modalidad:</strong>{" "}
+            {contrato.modalidad || "Sin modalidad"}
+          </p>
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Precio:</strong>{" "}
+            {contrato.precio ? `${contrato.precio}€` : "Sin precio"}
+          </p>
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Frecuencia:</strong>{" "}
+            {contrato.frecuencia || "Sin frecuencia"}
+          </p>
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
+            {contrato.estado || "Sin estado"}
+          </p>
+        </div>
 
         {/* Cliente */}
-        <Bloque titulo="Cliente asociado">
-          {!cliente ? (
-            <p style={{ opacity: 0.7 }}>No encontrado.</p>
-          ) : (
+        <Bloque titulo="Cliente">
+          {cliente ? (
             <Item
               to={`/clientes/${cliente.id}`}
-              titulo={`${cliente.nombre} — ${cliente.email}`}
+              titulo={`${cliente.nombre} — ${cliente.telefono}`}
             />
+          ) : (
+            <p style={{ opacity: 0.7 }}>Cliente no encontrado.</p>
           )}
         </Bloque>
 
         {/* Vivienda */}
-        <Bloque titulo="Vivienda asociada">
-          {!vivienda ? (
-            <p style={{ opacity: 0.7 }}>No encontrada.</p>
-          ) : (
+        <Bloque titulo="Vivienda">
+          {vivienda ? (
             <Item
               to={`/viviendas/${vivienda.id}`}
-              titulo={`${vivienda.nombre} — ${vivienda.direccion}`}
+              titulo={vivienda.direccion}
             />
-          )}
-        </Bloque>
-
-        {/* Técnico */}
-        <Bloque titulo="Técnico asignado">
-          {!tecnico ? (
-            <p style={{ opacity: 0.7 }}>No asignado.</p>
           ) : (
-            <Item
-              to={`/tecnicos/${tecnico.id}`}
-              titulo={`${tecnico.nombre} — ${tecnico.telefono}`}
-            />
+            <p style={{ opacity: 0.7 }}>Vivienda no encontrada.</p>
           )}
         </Bloque>
-
-        {/* Fecha inicio */}
-        <p style={{ marginBottom: "10px" }}>
-          <strong style={{ color: "#4db8ff" }}>Fecha inicio:</strong>{" "}
-          {contrato.fecha_inicio || "Sin fecha"}
-        </p>
-
-        {/* Fecha fin */}
-        <p style={{ marginBottom: "10px" }}>
-          <strong style={{ color: "#4db8ff" }}>Fecha fin:</strong>{" "}
-          {contrato.fecha_fin || "Sin fecha"}
-        </p>
-
-        {/* Precio */}
-        <p style={{ marginBottom: "10px" }}>
-          <strong style={{ color: "#4db8ff" }}>Precio:</strong>{" "}
-          {contrato.precio ? `${contrato.precio} €` : "Sin precio"}
-        </p>
-
-        {/* Frecuencia */}
-        <p style={{ marginBottom: "10px" }}>
-          <strong style={{ color: "#4db8ff" }}>Frecuencia:</strong>{" "}
-          {contrato.frecuencia ? `${contrato.frecuencia} días` : "Sin frecuencia"}
-        </p>
-
-        {/* Notas */}
-        <p style={{ marginBottom: "10px" }}>
-          <strong style={{ color: "#4db8ff" }}>Notas:</strong>{" "}
-          {contrato.notas || "Sin notas"}
-        </p>
 
         {/* Inspecciones */}
         <Bloque titulo="Inspecciones del contrato">
@@ -336,144 +220,50 @@ export default function VerContrato() {
           )}
         </Bloque>
 
-        {/* PDF */}
-        {contrato.pdf_url ? (
-          <a href={contrato.pdf_url} target="_blank" rel="noopener noreferrer">
-            <button
-              style={{
-                marginTop: "20px",
-                padding: "12px 20px",
-                background: "#4db8ff",
-                borderRadius: "10px",
-                border: "none",
-                color: "#000",
-                fontWeight: "700",
-                cursor: "pointer",
-                width: "100%",
-              }}
-            >
-              Descargar PDF
-            </button>
-          </a>
-        ) : (
-          <p style={{ marginTop: "15px", opacity: 0.8 }}>No hay PDF generado.</p>
-        )}
-
-        {/* Regenerar PDF */}
-        <button
-          onClick={regenerarPDF}
-          style={{
-            marginTop: "20px",
-            padding: "12px 20px",
-            background: "#00c853",
-            borderRadius: "10px",
-            border: "none",
-            color: "#fff",
-            fontWeight: "700",
-            cursor: "pointer",
-            width: "100%",
-          }}
-        >
-          Regenerar PDF
-        </button>
-
-        {/* Regenerar inspecciones */}
-        <button
-          onClick={regenerarInspecciones}
-          style={{
-            marginTop: "20px",
-            padding: "12px 20px",
-            background: "#ff9800",
-            borderRadius: "10px",
-            border: "none",
-            color: "#fff",
-            fontWeight: "700",
-            cursor: "pointer",
-            width: "100%",
-          }}
-        >
-          Regenerar inspecciones
-        </button>
-
-        {/* Renovar contrato */}
-        <button
-          onClick={renovarContrato}
-          style={{
-            marginTop: "20px",
-            padding: "12px 20px",
-            background: "#1e88e5",
-            borderRadius: "10px",
-            border: "none",
-            color: "#fff",
-            fontWeight: "700",
-            cursor: "pointer",
-            width: "100%",
-          }}
-        >
-          Renovar contrato
-        </button>
-
-        {/* Editar */}
-        <Link to={`/contratos/editar/${contrato.id}`}>
+        {/* Botón editar */}
+        <Link to={`/contratos/editar/${id}`}>
           <button
             style={{
-              marginTop: "20px",
-              padding: "12px 20px",
-              background: "#1e90ff",
+              marginBottom: "15px",
+              padding: "14px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
               borderRadius: "10px",
               border: "none",
-              color: "#fff",
               fontWeight: "700",
+              fontSize: "17px",
               cursor: "pointer",
-              width: "100%",
+              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
             }}
           >
             Editar contrato
           </button>
         </Link>
 
-        {/* Firmar contrato */}
-        <Link to={`/cliente/firma/${contrato.id}`}>
-          <button
-            style={{
-              marginTop: "20px",
-              padding: "12px 20px",
-              background: "#00c853",
-              borderRadius: "10px",
-              border: "none",
-              color: "#fff",
-              fontWeight: "700",
-              cursor: "pointer",
-              width: "100%",
-            }}
-          >
-            Firmar contrato
-          </button>
-        </Link>
-
-        {/* BORRAR CONTRATO */}
+        {/* ⭐ BOTÓN NUEVO: BORRAR CONTRATO */}
         <button
-          onClick={borrarContrato}
+          onClick={eliminarContrato}
           style={{
-            marginTop: "20px",
-            padding: "12px 20px",
+            marginTop: "10px",
+            padding: "14px",
+            width: "100%",
             background: "red",
+            color: "#fff",
             borderRadius: "10px",
             border: "none",
-            color: "#fff",
             fontWeight: "700",
+            fontSize: "17px",
             cursor: "pointer",
-            width: "100%",
+            boxShadow: "0 0 10px rgba(255,0,0,0.4)",
           }}
         >
-          Borrar contrato
+          Eliminar contrato
         </button>
       </div>
     </Menu>
   );
 }
-
-/* ---------------- COMPONENTES ---------------- */
 
 function Bloque({ titulo, children }) {
   return (
