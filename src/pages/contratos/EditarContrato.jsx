@@ -65,21 +65,91 @@ export default function EditarContrato() {
   }
 
   async function guardarCambios() {
+    // VALIDACIONES COMPLETAS
+    if (!form.fecha_inicio) {
+      setMensaje("La fecha de inicio es obligatoria");
+      return;
+    }
+    if (!form.precio) {
+      setMensaje("El precio es obligatorio");
+      return;
+    }
+    if (!form.frecuencia) {
+      setMensaje("La frecuencia es obligatoria");
+      return;
+    }
+    if (!form.modalidad) {
+      setMensaje("Selecciona una modalidad");
+      return;
+    }
+    if (!form.tecnico_id) {
+      setMensaje("Selecciona un técnico");
+      return;
+    }
+
+    // 1️⃣ Actualizar contrato
     const { error } = await supabase
       .from("contratos")
       .update({
-        fecha_inicio: form.fecha_inicio || null,
-        precio: form.precio || null,
-        notas: form.notas || null,
-        frecuencia: form.frecuencia || null,
-        tecnico_id: form.tecnico_id || null,
-        modalidad: form.modalidad || null,
+        fecha_inicio: form.fecha_inicio,
+        precio: form.precio,
+        notas: form.notas,
+        frecuencia: form.frecuencia,
+        tecnico_id: form.tecnico_id,
+        modalidad: form.modalidad,
       })
       .eq("id", id);
 
     if (error) {
       setMensaje("Error guardando cambios");
       return;
+    }
+
+    // 2️⃣ Recalcular fecha_fin
+    const fechaInicio = new Date(form.fecha_inicio);
+    const fechaFin = new Date(
+      fechaInicio.getTime() + form.frecuencia * 24 * 60 * 60 * 1000
+    )
+      .toISOString()
+      .split("T")[0];
+
+    await supabase
+      .from("contratos")
+      .update({ fecha_fin: fechaFin })
+      .eq("id", id);
+
+    // 3️⃣ Regenerar PDF actualizado
+    let pdfUrl = null;
+    try {
+      const pdfResponse = await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${id}`
+      );
+      pdfUrl = await pdfResponse.text();
+    } catch (e) {
+      console.error("Error regenerando PDF:", e);
+    }
+
+    await supabase
+      .from("contratos")
+      .update({ pdf_url: pdfUrl })
+      .eq("id", id);
+
+    // 4️⃣ Regenerar inspecciones automáticas
+    try {
+      await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear-inspecciones?id=${id}`
+      );
+    } catch (e) {
+      console.error("Error regenerando inspecciones:", e);
+    }
+
+    // 5️⃣ Enviar email automático al cliente
+    try {
+      await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${id}`
+      );
+    } catch (e) {
+      console.error("Error enviando email:", e);
     }
 
     navigate("/contratos");
