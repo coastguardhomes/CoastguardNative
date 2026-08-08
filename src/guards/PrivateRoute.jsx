@@ -1,10 +1,16 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function PrivateRoute() {
   const { user, loading } = useAuth();
+  const { pathname } = useLocation();
 
-  if (loading) {
+  // ⭐ Rutas públicas que NO deben mostrar overlay
+  const rutasPublicas = ["/login", "/register", "/reset-password", "/update-password"];
+  const esPublica = rutasPublicas.includes(pathname);
+
+  // ⭐ Si está cargando pero es ruta pública → NO mostrar overlay
+  if (loading && !esPublica) {
     return (
       <div
         style={{
@@ -26,7 +32,8 @@ export default function PrivateRoute() {
     );
   }
 
-  if (!user) {
+  // ⭐ Si no hay usuario y NO es ruta pública → login
+  if (!user && !esPublica) {
     return <Navigate to="/login" replace />;
   }
 
