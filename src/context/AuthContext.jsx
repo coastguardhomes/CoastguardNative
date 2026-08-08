@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { App } from "@capacitor/app"; // ⭐ IMPORTANTE
+import { App } from "@capacitor/app";
 
 const AuthContext = createContext();
 
@@ -13,16 +13,25 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ⭐ LOGOUT SOLO AL CERRAR LA APP (NO al minimizar)
+  // ⭐ LOGOUT SOLO AL CERRAR LA APP COMPLETA
   useEffect(() => {
-    const sub = App.addListener("appExit", async () => {
+    // ANDROID: cerrar desde multitarea → dispara backButton
+    const backSub = App.addListener("backButton", async () => {
+      await supabase.auth.signOut();
+      setUser(null);
+      setRole(null);
+    });
+
+    // iOS: cerrar app → dispara appExit
+    const exitSub = App.addListener("appExit", async () => {
       await supabase.auth.signOut();
       setUser(null);
       setRole(null);
     });
 
     return () => {
-      sub.remove();
+      backSub.remove();
+      exitSub.remove();
     };
   }, []);
 
@@ -35,7 +44,7 @@ export function AuthProvider({ children }) {
         setUser(data.session.user);
       }
 
-      setLoading(false); // ⭐ loading SIEMPRE se desactiva
+      setLoading(false);
     }
 
     cargarSesion();
@@ -78,7 +87,7 @@ export function AuthProvider({ children }) {
     cargarRol();
   }, [user]);
 
-  // ⭐ Redirección automática por rol (NO afecta a rutas públicas)
+  // Redirección automática por rol
   useEffect(() => {
     if (loading) return;
 
