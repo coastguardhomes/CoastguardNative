@@ -13,45 +13,20 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ⭐ LOGOUT SOLO AL CERRAR LA APP COMPLETA
+  // ⭐ BOTÓN ATRÁS NORMAL EN TODA LA APP
   useEffect(() => {
-    // ANDROID: cerrar desde multitarea → dispara backButton
-    const backSub = App.addListener("backButton", async () => {
-      // Si NO hay usuario → atrás funciona normal
+    const backSub = App.addListener("backButton", () => {
+      // Si NO hay usuario → permitir atrás (login)
       if (!user) return;
 
-      // Si hay usuario → comprobar si está en la pantalla principal
-      const rutasDashboard = [
-        "/admin/dashboard",
-        "/cliente",
-        "/tecnico",
-      ];
-
-      if (rutasDashboard.includes(pathname)) {
-        // Cerrar la app completamente → logout
-        await supabase.auth.signOut();
-        setUser(null);
-        setRole(null);
-        App.exitApp();
-        return;
-      }
-
-      // Si está en otra ruta protegida → bloquear atrás
-      return;
-    });
-
-    // iOS: cerrar app → dispara appExit
-    const exitSub = App.addListener("appExit", async () => {
-      await supabase.auth.signOut();
-      setUser(null);
-      setRole(null);
+      // Si hay usuario → volver a la pantalla anterior SIEMPRE
+      window.history.back();
     });
 
     return () => {
       backSub.remove();
-      exitSub.remove();
     };
-  }, [user, pathname]);
+  }, [user]);
 
   // Cargar sesión al iniciar la app
   useEffect(() => {
