@@ -16,9 +16,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     async function cargarSesion() {
       const { data } = await supabase.auth.getSession();
+
       if (data?.session?.user) {
         setUser(data.session.user);
       }
+
+      // ⭐ loading SIEMPRE se desactiva
       setLoading(false);
     }
 
@@ -48,8 +51,6 @@ export function AuthProvider({ children }) {
     }
 
     async function cargarRol() {
-      // El rol vive en `profiles`; la tabla `usuarios` no existe y devolvía
-      // 404, así que role se quedaba en null y Menu.jsx no pintaba la barra.
       const { data, error } = await supabase
         .from("profiles")
         .select("rol")
@@ -64,26 +65,20 @@ export function AuthProvider({ children }) {
     cargarRol();
   }, [user]);
 
-  // ⭐ Redirección automática por rol.
-  //
-  // Sólo actúa desde la pantalla de acceso (o la raíz). Antes se ejecutaba
-  // con cada cambio de `user`, y onAuthStateChange entrega un objeto nuevo en
-  // cada refresco de token: eso devolvía al dashboard a mitad de navegación y
-  // dejaba la app atascada en la pantalla inicial.
+  // ⭐ Redirección automática por rol (NO afecta a rutas públicas)
   useEffect(() => {
     if (loading) return;
 
-    const enPantallaDeAcceso = pathname === "/" || pathname === "/login";
+    const rutasPublicas = ["/", "/login", "/register", "/reset-password", "/update-password"];
+    const esPublica = rutasPublicas.includes(pathname);
 
-    // Si no hay usuario → login
-    if (!user) {
+    if (!user && !esPublica) {
       navigate("/login", { replace: true });
       return;
     }
 
-    if (!enPantallaDeAcceso) return;
+    if (!user || !esPublica) return;
 
-    // Si hay usuario → redirigir según rol
     if (role === "admin") {
       navigate("/admin/dashboard", { replace: true });
       return;
