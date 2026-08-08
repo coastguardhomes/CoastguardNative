@@ -19,7 +19,6 @@ export default function EditarContrato() {
   const [tecnicos, setTecnicos] = useState([]);
   const [mensaje, setMensaje] = useState("");
 
-  // 🔥 Modalidades y precios automáticos (igual que CrearContrato.jsx)
   const modalidades = [
     { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
     { id: "premium", nombre: "Premium", precio: 59, frecuencia: 30 },
@@ -54,7 +53,6 @@ export default function EditarContrato() {
     setTecnicos(data || []);
   }
 
-  // 🔥 Auto‑calcular precio y frecuencia según modalidad
   function seleccionarModalidad(modalidadId) {
     const mod = modalidades.find((m) => m.id === modalidadId);
 
