@@ -33,6 +33,12 @@ import NuevoTecnico from "./pages/tecnicos/NuevoTecnico.jsx";
 import EditarTecnico from "./pages/tecnicos/EditarTecnico.jsx";
 import VerTecnico from "./pages/tecnicos/VerTecnico.jsx";
 
+// *** NUEVAS PANTALLAS DEL TÉCNICO ***
+import TecnicoInspeccion from "./pages/tecnicos/TecnicoInspeccion.jsx";
+import TecnicoChecklist from "./pages/tecnicos/TecnicoChecklist.jsx";
+import TecnicoFotos from "./pages/tecnicos/TecnicoFotos.jsx";
+import TecnicoFinalizar from "./pages/tecnicos/TecnicoFinalizar.jsx";
+
 // CONTRATOS
 import Contratos from "./pages/contratos/Contratos.jsx";
 import CrearContrato from "./pages/contratos/CrearContrato.jsx";
@@ -99,6 +105,12 @@ export default function App() {
       {/* ---------------- TÉCNICO ---------------- */}
       <Route path="/tecnico" element={<PrivateRoute />}>
         <Route index element={<TecnicoDashboard />} />
+
+        {/* NUEVAS RUTAS DEL TÉCNICO */}
+        <Route path="inspeccion/:id" element={<TecnicoInspeccion />} />
+        <Route path="inspeccion/:id/checklist" element={<TecnicoChecklist />} />
+        <Route path="inspeccion/:id/fotos" element={<TecnicoFotos />} />
+        <Route path="inspeccion/:id/finalizar" element={<TecnicoFinalizar />} />
       </Route>
 
       {/* ---------------- ÁREA DEL CLIENTE ---------------- */}
