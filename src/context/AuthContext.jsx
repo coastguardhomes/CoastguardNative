@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { App } from "@capacitor/app"; // ⭐ IMPORTANTE
 
 const AuthContext = createContext();
 
@@ -12,6 +13,21 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // ⭐ LOGOUT AUTOMÁTICO AL CERRAR LA APP
+  useEffect(() => {
+    const sub = App.addListener("appStateChange", ({ isActive }) => {
+      if (!isActive) {
+        supabase.auth.signOut();
+        setUser(null);
+        setRole(null);
+      }
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, []);
+
   // Cargar sesión al iniciar la app
   useEffect(() => {
     async function cargarSesion() {
@@ -21,8 +37,7 @@ export function AuthProvider({ children }) {
         setUser(data.session.user);
       }
 
-      // ⭐ loading SIEMPRE se desactiva
-      setLoading(false);
+      setLoading(false); // ⭐ loading SIEMPRE se desactiva
     }
 
     cargarSesion();
@@ -69,7 +84,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (loading) return;
 
-    const rutasPublicas = ["/", "/login", "/register", "/reset-password", "/update-password"];
+    const rutasPublicas = [
+      "/",
+      "/login",
+      "/register",
+      "/reset-password",
+      "/update-password",
+    ];
     const esPublica = rutasPublicas.includes(pathname);
 
     if (!user && !esPublica) {
