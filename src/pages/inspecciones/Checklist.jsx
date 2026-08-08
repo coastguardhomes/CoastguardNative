@@ -15,7 +15,6 @@ export default function Checklist() {
 
   useEffect(() => {
     async function cargarChecklist() {
-      // 1️⃣ Cargar checklist existente
       const { data, error } = await supabase
         .from("checklist_inspeccion")
         .select("*")
@@ -23,16 +22,13 @@ export default function Checklist() {
         .order("id", { ascending: true });
 
       if (error) {
-        console.error("Error cargando checklist:", error);
         setMensaje("Error cargando checklist");
         setLoading(false);
         return;
       }
 
-      // 2️⃣ Si no existe checklist → generarlo automáticamente
       if (!data || data.length === 0) {
         const plantilla = [
-          // 🔐 Seguridad y accesos
           "Puerta principal cerrada correctamente",
           "Cerraduras sin daños",
           "Ventanas cerradas",
@@ -42,8 +38,6 @@ export default function Checklist() {
           "Comprobación de sensores de movimiento",
           "Comprobación de llaves en su lugar",
           "Accesos exteriores revisados (puertas jardín, trastero, garaje)",
-
-          // 💧 Humedades y filtraciones
           "Ausencia de humedades en paredes",
           "Ausencia de humedades en techos",
           "Ausencia de manchas nuevas",
@@ -53,8 +47,6 @@ export default function Checklist() {
           "Ausencia de filtraciones en sótano",
           "Ausencia de condensación en cristales",
           "Ausencia de olores a humedad",
-
-          // 🔌 Electricidad
           "Cuadro eléctrico sin disparos",
           "Luces funcionando correctamente",
           "Interruptores sin daños",
@@ -63,8 +55,6 @@ export default function Checklist() {
           "Aire acondicionado funcionando",
           "Calefacción funcionando",
           "Ausencia de chispazos o ruidos eléctricos",
-
-          // 🚰 Agua y fontanería
           "Grifos funcionando",
           "Presión correcta",
           "Ausencia de fugas visibles",
@@ -74,8 +64,6 @@ export default function Checklist() {
           "Cisterna funcionando",
           "Agua caliente funcionando",
           "Ausencia de malos olores en desagües",
-
-          // 🧼 Limpieza y estado general
           "Ausencia de polvo excesivo",
           "Ausencia de suciedad en suelos",
           "Ausencia de basura",
@@ -85,8 +73,6 @@ export default function Checklist() {
           "Ausencia de roturas visibles",
           "Ausencia de cristales rotos",
           "Ausencia de daños en mobiliario",
-
-          // 🌿 Exterior / Jardín
           "Estado general del jardín",
           "Ramas caídas",
           "Objetos movidos por viento",
@@ -95,8 +81,6 @@ export default function Checklist() {
           "Ausencia de daños en puertas exteriores",
           "Ausencia de daños en pérgolas",
           "Ausencia de daños en toldos",
-
-          // 🏊 Piscina
           "Nivel de agua correcto",
           "Agua sin turbidez",
           "Bomba funcionando",
@@ -105,8 +89,6 @@ export default function Checklist() {
           "Ausencia de fugas visibles",
           "Tapa del motor cerrada",
           "Cuadro eléctrico de piscina sin disparos",
-
-          // 🐜 Plagas
           "Ausencia de hormigas",
           "Ausencia de cucarachas",
           "Ausencia de roedores",
@@ -114,8 +96,6 @@ export default function Checklist() {
           "Ausencia de excrementos de animales",
           "Ausencia de mosquitos acumulados",
           "Ausencia de telarañas excesivas",
-
-          // 🔧 Daños y mantenimiento
           "Ausencia de grietas nuevas",
           "Ausencia de pintura levantada",
           "Ausencia de baldosas sueltas",
@@ -124,8 +104,6 @@ export default function Checklist() {
           "Ausencia de fugas en electrodomésticos",
           "Ausencia de daños por tormenta",
           "Ausencia de daños por viento",
-
-          // 🧾 Preparación para llegada de cliente
           "Aire acondicionado funcionando",
           "Agua caliente funcionando",
           "Limpieza ligera correcta",
@@ -142,16 +120,7 @@ export default function Checklist() {
           completado: false,
         }));
 
-        const { error: errorInsert } = await supabase
-          .from("checklist_inspeccion")
-          .insert(nuevosItems);
-
-        if (errorInsert) {
-          console.error("Error generando checklist:", errorInsert);
-          setMensaje("No se pudo generar el checklist.");
-          setLoading(false);
-          return;
-        }
+        await supabase.from("checklist_inspeccion").insert(nuevosItems);
 
         const { data: dataFinal } = await supabase
           .from("checklist_inspeccion")
@@ -164,7 +133,6 @@ export default function Checklist() {
         setItems(data);
       }
 
-      // 3️⃣ Cargar observaciones
       const { data: inspeccionData } = await supabase
         .from("inspecciones")
         .select("observaciones")
@@ -182,51 +150,76 @@ export default function Checklist() {
   }, [id]);
 
   async function actualizarItem(itemId, completado) {
-    const { error } = await supabase
+    await supabase
       .from("checklist_inspeccion")
       .update({ completado })
       .eq("id", itemId);
-
-    if (error) {
-      console.error("Error actualizando ítem:", error);
-      setMensaje("Error actualizando ítem");
-      return;
-    }
 
     setItems((prev) =>
       prev.map((i) => (i.id === itemId ? { ...i, completado } : i))
     );
   }
 
+  async function tomarFoto() {
+    try {
+      const imageData = await window.navigator.camera.getPicture({
+        quality: 70,
+        destinationType: window.Camera.DestinationType.DATA_URL,
+        sourceType: window.Camera.PictureSourceType.CAMERA,
+      });
+
+      const base64 = `data:image/jpeg;base64,${imageData}`;
+      const res = await fetch(base64);
+      const blob = await res.blob();
+
+      const nombreArchivo = `checklist_${id}_${Date.now()}.jpg`;
+
+      const { error: storageError } = await supabase.storage
+        .from("fotos")
+        .upload(nombreArchivo, blob, {
+          contentType: "image/jpeg",
+        });
+
+      if (storageError) {
+        setMensaje("Error subiendo foto");
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("fotos")
+        .getPublicUrl(nombreArchivo);
+
+      await supabase.from("fotos_inspeccion").insert({
+        inspeccion_id: id,
+        archivo: nombreArchivo,
+        url: urlData.publicUrl,
+        principal: false,
+        tipo: "checklist",
+      });
+
+      setMensaje("Foto añadida al checklist");
+    } catch (e) {
+      setMensaje("Error tomando foto");
+    }
+  }
+
   async function guardarChecklistCompleto() {
     setGuardando(true);
     setMensaje("");
 
-    try {
-      const todoOk = items.length > 0 && items.every((i) => i.completado === true);
+    const todoOk = items.length > 0 && items.every((i) => i.completado === true);
 
-      const { error: updateError } = await supabase
-        .from("inspecciones")
-        .update({
-          observaciones,
-          checklist_completado: todoOk,
-          fecha_checklist: new Date().toISOString(),
-          estado: todoOk ? "checklist_completado" : "checklist_incompleto",
-        })
-        .eq("id", id);
+    await supabase
+      .from("inspecciones")
+      .update({
+        observaciones,
+        checklist_completado: todoOk,
+        fecha_checklist: new Date().toISOString(),
+        estado: todoOk ? "checklist_completado" : "checklist_incompleto",
+      })
+      .eq("id", id);
 
-      if (updateError) {
-        console.error(updateError);
-        setMensaje("Error guardando checklist.");
-      } else {
-        setMensaje("Checklist guardado correctamente.");
-        navigate(`/inspecciones/fotos/${id}`);
-      }
-    } catch (e) {
-      console.error(e);
-      setMensaje("Error guardando checklist.");
-    }
-
+    navigate(`/inspecciones/fotos/${id}`);
     setGuardando(false);
   }
 
@@ -241,7 +234,6 @@ export default function Checklist() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            fontFamily: "Inter, sans-serif",
             fontSize: "18px",
           }}
         >
@@ -259,7 +251,6 @@ export default function Checklist() {
           background: "#0a0f1a",
           minHeight: "100vh",
           color: "#fff",
-          fontFamily: "Inter, sans-serif",
         }}
       >
         <h1
@@ -268,97 +259,85 @@ export default function Checklist() {
             marginBottom: "25px",
             fontSize: "28px",
             fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
           Checklist de Inspección
         </h1>
 
         {mensaje && (
-          <p
-            style={{
-              marginBottom: "15px",
-              color: "#4db8ff",
-              fontWeight: "600",
-            }}
-          >
+          <p style={{ marginBottom: "15px", color: "#4db8ff", fontWeight: "600" }}>
             {mensaje}
           </p>
         )}
 
-        {items.length === 0 ? (
-          <p>No hay ítems en el checklist.</p>
-        ) : (
-          <div>
-            {items.map((item) => (
-              <div
-                key={item.id}
+        {items.map((item) => (
+          <div
+            key={item.id}
+            style={{
+              marginBottom: "15px",
+              background: "rgba(255,255,255,0.05)",
+              padding: "18px",
+              borderRadius: "14px",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+          >
+            <p style={{ marginBottom: "12px", fontSize: "17px", fontWeight: "600" }}>
+              {item.item}
+            </p>
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => actualizarItem(item.id, true)}
                 style={{
-                  marginBottom: "15px",
-                  background: "rgba(255,255,255,0.05)",
-                  padding: "18px",
-                  borderRadius: "14px",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+                  flex: 1,
+                  padding: "12px",
+                  background: item.completado ? "#4db8ff" : "rgba(255,255,255,0.08)",
+                  color: "#fff",
+                  borderRadius: "10px",
+                  border: "none",
+                  fontWeight: "700",
                 }}
               >
-                <p
-                  style={{
-                    marginBottom: "12px",
-                    fontSize: "17px",
-                    fontWeight: "600",
-                  }}
-                >
-                  {item.item}
-                </p>
+                ✓ OK
+              </button>
 
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <button
-                    onClick={() => actualizarItem(item.id, true)}
-                    style={{
-                      flex: 1,
-                      padding: "12px",
-                      background: item.completado
-                        ? "#4db8ff"
-                        : "rgba(255,255,255,0.08)",
-                      color: "#fff",
-                      borderRadius: "10px",
-                      border: "none",
-                      fontWeight: "700",
-                      cursor: "pointer",
-                      boxShadow: item.completado
-                        ? "0 0 10px rgba(0,153,255,0.4)"
-                        : "none",
-                    }}
-                  >
-                    ✓ OK
-                  </button>
-
-                  <button
-                    onClick={() => actualizarItem(item.id, false)}
-                    style={{
-                      flex: 1,
-                      padding: "12px",
-                      background: item.completado
-                        ? "rgba(255,255,255,0.08)"
-                        : "red",
-                      color: "#fff",
-                      borderRadius: "10px",
-                      border: "none",
-                      fontWeight: "700",
-                      cursor: "pointer",
-                      boxShadow: item.completado
-                        ? "none"
-                        : "0 0 10px rgba(255,0,0,0.4)",
-                    }}
-                  >
-                    ✗ KO
-                  </button>
-                </div>
-              </div>
-            ))}
+              <button
+                onClick={() => actualizarItem(item.id, false)}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  background: item.completado ? "rgba(255,255,255,0.08)" : "red",
+                  color: "#fff",
+                  borderRadius: "10px",
+                  border: "none",
+                  fontWeight: "700",
+                }}
+              >
+                ✗ KO
+              </button>
+            </div>
           </div>
-        )}
+        ))}
+
+        {/* ⭐ BOTÓN DE FOTO DENTRO DEL CHECKLIST ⭐ */}
+        <button
+          onClick={tomarFoto}
+          style={{
+            width: "100%",
+            padding: "14px",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "17px",
+            cursor: "pointer",
+            marginTop: "10px",
+            marginBottom: "20px",
+          }}
+        >
+          Tomar foto del checklist
+        </button>
 
         <textarea
           placeholder="Observaciones de la inspección..."
@@ -392,7 +371,6 @@ export default function Checklist() {
             fontSize: "17px",
             cursor: "pointer",
             opacity: guardando ? 0.6 : 1,
-            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
           {guardando ? "Guardando..." : "Guardar checklist completo"}
@@ -421,8 +399,6 @@ export default function Checklist() {
             border: "none",
             fontWeight: "700",
             fontSize: "17px",
-            cursor: "pointer",
-            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
           Fotos
@@ -440,8 +416,6 @@ export default function Checklist() {
             border: "none",
             fontWeight: "700",
             fontSize: "17px",
-            cursor: "pointer",
-            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
           Firma del cliente
@@ -459,8 +433,6 @@ export default function Checklist() {
             border: "none",
             fontWeight: "700",
             fontSize: "17px",
-            cursor: "pointer",
-            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
           Generar PDF
