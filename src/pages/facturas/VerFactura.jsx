@@ -92,6 +92,32 @@ export default function VerFactura() {
     setGenerando(false);
   }
 
+  // ⭐ BORRAR FACTURA COMPLETA
+  async function eliminarFactura() {
+    const confirmar = window.confirm("¿Seguro que deseas eliminar esta factura?");
+    if (!confirmar) return;
+
+    // 1. Borrar líneas de factura
+    await supabase
+      .from("facturas_lineas")
+      .delete()
+      .eq("factura_id", id);
+
+    // 2. Borrar factura
+    const { error } = await supabase
+      .from("facturas")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      setError("Error eliminando factura.");
+      return;
+    }
+
+    alert("Factura eliminada correctamente.");
+    navigate("/facturas");
+  }
+
   if (loading) {
     return (
       <Menu>
@@ -172,6 +198,20 @@ export default function VerFactura() {
 
         <button onClick={() => navigate("/facturas")} style={estilos.botonSec}>
           Volver a facturas
+        </button>
+
+        {/* ⭐ BOTÓN NUEVO: BORRAR FACTURA */}
+        <button
+          onClick={eliminarFactura}
+          style={{
+            ...estilos.botonSec,
+            background: "red",
+            border: "none",
+            fontWeight: 700,
+            marginTop: 10,
+          }}
+        >
+          Eliminar factura
         </button>
       </div>
     </Menu>
