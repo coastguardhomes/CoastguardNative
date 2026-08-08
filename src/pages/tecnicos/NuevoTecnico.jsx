@@ -17,11 +17,28 @@ export default function NuevoTecnico() {
   const [mensaje, setMensaje] = useState("");
 
   async function guardarTecnico() {
-    if (!form.nombre) {
+    // VALIDACIONES COMPLETAS
+    if (!form.nombre.trim()) {
       setMensaje("El nombre es obligatorio");
       return;
     }
 
+    if (!form.telefono.trim()) {
+      setMensaje("El teléfono es obligatorio");
+      return;
+    }
+
+    if (!form.email.trim() || !form.email.includes("@")) {
+      setMensaje("Email inválido");
+      return;
+    }
+
+    if (!form.especialidad.trim()) {
+      setMensaje("La especialidad es obligatoria");
+      return;
+    }
+
+    // 1️⃣ Crear técnico
     const { error } = await supabase.from("tecnicos").insert([
       {
         nombre: form.nombre,
@@ -37,7 +54,20 @@ export default function NuevoTecnico() {
       return;
     }
 
-    navigate("/tecnicos");
+    // 2️⃣ Notificar al admin que hay un técnico nuevo
+    try {
+      await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/notificar-admin-nuevo-tecnico?email=${form.email}`
+      );
+    } catch (e) {
+      console.error("Error notificando al admin:", e);
+    }
+
+    setMensaje("Técnico creado correctamente");
+
+    setTimeout(() => {
+      navigate("/tecnicos");
+    }, 1200);
   }
 
   const inputStyle = {
@@ -128,7 +158,7 @@ export default function NuevoTecnico() {
 
           <label>Activo</label>
           <select
-            value={form.activo}
+            value={form.activo ? "true" : "false"}
             onChange={(e) =>
               setForm({ ...form, activo: e.target.value === "true" })
             }
