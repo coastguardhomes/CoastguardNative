@@ -17,9 +17,27 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     // ANDROID: cerrar desde multitarea → dispara backButton
     const backSub = App.addListener("backButton", async () => {
-      await supabase.auth.signOut();
-      setUser(null);
-      setRole(null);
+      // Si NO hay usuario → atrás funciona normal
+      if (!user) return;
+
+      // Si hay usuario → comprobar si está en la pantalla principal
+      const rutasDashboard = [
+        "/admin/dashboard",
+        "/cliente",
+        "/tecnico",
+      ];
+
+      if (rutasDashboard.includes(pathname)) {
+        // Cerrar la app completamente → logout
+        await supabase.auth.signOut();
+        setUser(null);
+        setRole(null);
+        App.exitApp();
+        return;
+      }
+
+      // Si está en otra ruta protegida → bloquear atrás
+      return;
     });
 
     // iOS: cerrar app → dispara appExit
@@ -33,7 +51,7 @@ export function AuthProvider({ children }) {
       backSub.remove();
       exitSub.remove();
     };
-  }, []);
+  }, [user, pathname]);
 
   // Cargar sesión al iniciar la app
   useEffect(() => {
