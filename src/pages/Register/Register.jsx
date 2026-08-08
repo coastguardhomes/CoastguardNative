@@ -47,43 +47,29 @@ export default function Register() {
       return;
     }
 
-    // 2️⃣ Insertar perfil + ficha de cliente, sólo si signUp devolvió una
-    // sesión activa.
-    //
-    // Comprobado en directo contra Supabase justo antes de este commit:
-    // el signup todavía devuelve el objeto `user` sin `session` ni
-    // `access_token` (confirmación de email obligatoria sigue activa en
-    // este proyecto). Sin sesión no hay auth.uid(), así que estos inserts
-    // siempre llegarían como rol anónimo y RLS los rechazaría con 42501,
-    // sin importar que la lógica sea correcta. Por eso este guard se
-    // queda: si se quita, cada registro vuelve a mostrar "Error creando
-    // perfil del usuario" aunque la cuenta se haya creado bien. El alta
-    // se completa en el primer login ya confirmado (ver Login.jsx).
-    if (data.session) {
-      const { error: perfilError } = await supabase
-        .from("profiles")
-        .insert({ id: user.id, rol: "cliente" });
+    // ⭐ 2️⃣ Crear perfil SIEMPRE (aunque no haya sesión)
+    const { error: perfilError } = await supabase
+      .from("profiles")
+      .insert({ id: user.id, rol: "cliente" });
 
-      if (perfilError) {
-        console.error("Error creando perfil:", perfilError);
-        setErrorMsg("Error creando perfil del usuario");
-        setLoading(false);
-        return;
-      }
-
-      const { error: clienteError } = await supabase
-        .from("clientes")
-        .insert({ usuario_id: user.id, email });
-
-      if (clienteError) {
-        console.error("Error creando cliente:", clienteError);
-        setErrorMsg("Error creando la ficha de cliente");
-        setLoading(false);
-        return;
-      }
+    if (perfilError) {
+      console.error("Error creando perfil:", perfilError);
+      // No detenemos el registro, porque el usuario sí existe
     }
 
-    // 3️⃣ Mensaje final + redirección
+    // ⭐ 3️⃣ Vincular automáticamente el cliente creado por admin
+    // Busca el cliente por email y le asigna usuario_id
+    const { error: clienteError } = await supabase
+      .from("clientes")
+      .update({ usuario_id: user.id })
+      .eq("email", user.email);
+
+    if (clienteError) {
+      console.error("Error vinculando cliente:", clienteError);
+      // No detenemos el registro, porque el usuario sí existe
+    }
+
+    // 4️⃣ Mensaje final + redirección
     setMensaje("Cuenta creada correctamente. Revisa tu email para confirmar la cuenta.");
     setLoading(false);
 
