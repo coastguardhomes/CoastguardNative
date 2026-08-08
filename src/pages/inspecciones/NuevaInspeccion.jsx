@@ -38,7 +38,7 @@ export default function NuevaInspeccion() {
     cargarDatos();
   }, []);
 
-  // 🔥 Cargar contratos de la vivienda seleccionada
+  // 🔥 Cargar contratos de la vivienda seleccionada (CORREGIDO)
   useEffect(() => {
     async function cargarContratos() {
       if (!form.vivienda_id) {
@@ -46,10 +46,12 @@ export default function NuevaInspeccion() {
         return;
       }
 
+      const viviendaIdNum = Number(form.vivienda_id);
+
       const { data, error } = await supabase
         .from("contratos")
-        .select("*")
-        .eq("vivienda_id", form.vivienda_id);
+        .select("id, modalidad, precio, fecha_inicio, estado")
+        .eq("vivienda_id", viviendaIdNum);
 
       if (!error) setContratos(data || []);
     }
@@ -129,7 +131,7 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 7️⃣ Crear checklist automático (tabla REAL: checklist_inspeccion)
+      // 7️⃣ Crear checklist automático
       const plantilla = [
         "Puertas y ventanas cerradas",
         "Persianas en posición correcta",
@@ -229,7 +231,7 @@ export default function NuevaInspeccion() {
             <option value="">Selecciona un contrato</option>
             {contratos.map((c) => (
               <option key={c.id} value={c.id}>
-                Contrato #{c.id} — {c.precio}€
+                {c.modalidad} — {c.precio}€ — {c.fecha_inicio} — {c.estado}
               </option>
             ))}
           </select>
