@@ -51,10 +51,18 @@ export default function VerTecnico() {
     setInspecciones(data || []);
   }
 
+  // ⭐ BORRAR TÉCNICO COMPLETO (incluye inspecciones)
   async function eliminarTecnico() {
     const confirmar = window.confirm("¿Seguro que deseas eliminar este técnico?");
     if (!confirmar) return;
 
+    // 1. Borrar inspecciones del técnico
+    await supabase
+      .from("inspecciones")
+      .delete()
+      .eq("tecnico_id", id);
+
+    // 2. Borrar técnico
     const { error } = await supabase
       .from("tecnicos")
       .delete()
@@ -65,6 +73,7 @@ export default function VerTecnico() {
       return;
     }
 
+    alert("Técnico eliminado correctamente");
     navigate("/tecnicos");
   }
 
@@ -283,6 +292,7 @@ export default function VerTecnico() {
           {tecnico.activo ? "Desactivar técnico" : "Activar técnico"}
         </button>
 
+        {/* ⭐ BOTÓN NUEVO: BORRAR TÉCNICO COMPLETO */}
         <button
           onClick={eliminarTecnico}
           style={{
