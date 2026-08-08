@@ -64,10 +64,40 @@ export default function VerVivienda() {
     setInspecciones(inspeccionesData || []);
   }
 
+  // ⭐ BORRADO COMPLETO DE VIVIENDA
   async function eliminarVivienda() {
     const confirmar = window.confirm("¿Seguro que deseas eliminar esta vivienda?");
     if (!confirmar) return;
 
+    // 1. Borrar inspecciones de la vivienda
+    await supabase
+      .from("inspecciones")
+      .delete()
+      .eq("vivienda_id", id);
+
+    // 2. Obtener contratos de la vivienda
+    const { data: contratosVivienda } = await supabase
+      .from("contratos")
+      .select("id")
+      .eq("vivienda_id", id);
+
+    // 3. Borrar checklist de cada contrato
+    if (contratosVivienda && contratosVivienda.length > 0) {
+      for (const contrato of contratosVivienda) {
+        await supabase
+          .from("checklist_inspeccion")
+          .delete()
+          .eq("contrato_id", contrato.id);
+      }
+    }
+
+    // 4. Borrar contratos de la vivienda
+    await supabase
+      .from("contratos")
+      .delete()
+      .eq("vivienda_id", id);
+
+    // 5. Borrar la vivienda
     const { error } = await supabase
       .from("viviendas")
       .delete()
@@ -78,7 +108,7 @@ export default function VerVivienda() {
       return;
     }
 
-    setMensaje("Vivienda eliminada correctamente");
+    alert("Vivienda eliminada correctamente");
     navigate("/viviendas");
   }
 
