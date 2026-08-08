@@ -11,7 +11,17 @@ export default function Contratos() {
     async function cargarContratos() {
       const { data, error } = await supabase
         .from("contratos")
-        .select("id, cliente_id, vivienda_id, tecnico_id, precio, fecha_inicio, creado_en")
+        .select(`
+          id,
+          cliente_id,
+          vivienda_id,
+          tecnico_id,
+          precio,
+          fecha_inicio,
+          fecha_fin,
+          modalidad,
+          creado_en
+        `)
         .order("creado_en", { ascending: false });
 
       if (!error) setContratos(data || []);
@@ -95,8 +105,18 @@ export default function Contratos() {
                   </p>
 
                   <p style={{ marginBottom: "6px" }}>
+                    <strong style={{ color: "#4db8ff" }}>Modalidad:</strong>{" "}
+                    {c.modalidad || "Sin modalidad"}
+                  </p>
+
+                  <p style={{ marginBottom: "6px" }}>
                     <strong style={{ color: "#4db8ff" }}>Fecha inicio:</strong>{" "}
                     {c.fecha_inicio || "Sin fecha"}
+                  </p>
+
+                  <p style={{ marginBottom: "6px" }}>
+                    <strong style={{ color: "#4db8ff" }}>Fecha fin:</strong>{" "}
+                    {c.fecha_fin || "Sin fecha"}
                   </p>
 
                   <p style={{ marginBottom: "6px" }}>
