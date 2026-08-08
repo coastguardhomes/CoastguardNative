@@ -2,5 +2,27 @@
   "appId": "com.coastguard.mobile",
   "appName": "CoastGuard",
   "webDir": "dist",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    },
+    "App": {
+      "backgroundColor": "#000000",
+      "allowMixedContent": true
+    }
+  },
+
+  "android": {
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": true,
+    "backgroundColor": "#000000",
+    "captureInput": true,
+    "minWebViewVersion": 99
+  },
+
+  "server": {
+    "androidScheme": "https"
+  }
 }
