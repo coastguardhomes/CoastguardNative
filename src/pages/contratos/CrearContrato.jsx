@@ -15,15 +15,18 @@ export default function CrearContrato() {
     vivienda_id: "",
     tecnico_id: "",
     fecha_inicio: "",
+    fecha_fin: "",       // ← NUEVO
     precio: "",
     notas: "",
     frecuencia: "",
     modalidad: "",
+    pdf_url: "",         // ← NUEVO
+    firma: "",           // ← NUEVO
+    firmado_en: "",      // ← NUEVO
   });
 
   const [mensaje, setMensaje] = useState("");
 
-  // 🔥 Modalidades y precios automáticos
   const modalidades = [
     { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
     { id: "premium", nombre: "Premium", precio: 59, frecuencia: 30 },
@@ -52,16 +55,10 @@ export default function CrearContrato() {
     setTecnicos(tecnicosData || []);
   }
 
-  // 🔥 Auto‑filtrar viviendas según cliente
-  //
-  // cliente_id en viviendas es numérico (columna serial) pero el <select>
-  // siempre entrega su value como string, así que "===" nunca coincidía y
-  // la lista de viviendas quedaba vacía para cualquier cliente elegido.
   const viviendasFiltradas = form.cliente_id
     ? viviendas.filter((v) => String(v.cliente_id) === String(form.cliente_id))
     : viviendas;
 
-  // 🔥 Auto‑calcular precio y frecuencia según modalidad
   function seleccionarModalidad(modalidadId) {
     const mod = modalidades.find((m) => m.id === modalidadId);
 
@@ -85,10 +82,14 @@ export default function CrearContrato() {
         vivienda_id: form.vivienda_id,
         tecnico_id: form.tecnico_id,
         fecha_inicio: form.fecha_inicio || null,
+        fecha_fin: form.fecha_fin || null,        // ← NUEVO
         precio: form.precio || null,
         notas: form.notas || null,
         frecuencia: form.frecuencia || null,
         modalidad: form.modalidad || null,
+        pdf_url: form.pdf_url || null,            // ← NUEVO
+        firma: form.firma || null,                // ← NUEVO
+        firmado_en: form.firmado_en || null,      // ← NUEVO
       },
     ]);
 
@@ -221,6 +222,44 @@ export default function CrearContrato() {
             type="date"
             value={form.fecha_inicio}
             onChange={(e) => setForm({ ...form, fecha_inicio: e.target.value })}
+            style={inputStyle}
+          />
+
+          {/* Fecha fin */}
+          <label>Fecha fin:</label>
+          <input
+            type="date"
+            value={form.fecha_fin}
+            onChange={(e) => setForm({ ...form, fecha_fin: e.target.value })}
+            style={inputStyle}
+          />
+
+          {/* PDF */}
+          <label>PDF (URL):</label>
+          <input
+            type="text"
+            value={form.pdf_url}
+            onChange={(e) => setForm({ ...form, pdf_url: e.target.value })}
+            placeholder="https://..."
+            style={inputStyle}
+          />
+
+          {/* Firma */}
+          <label>Firma (URL):</label>
+          <input
+            type="text"
+            value={form.firma}
+            onChange={(e) => setForm({ ...form, firma: e.target.value })}
+            placeholder="https://..."
+            style={inputStyle}
+          />
+
+          {/* Fecha firma */}
+          <label>Fecha de firma:</label>
+          <input
+            type="date"
+            value={form.firmado_en}
+            onChange={(e) => setForm({ ...form, firmado_en: e.target.value })}
             style={inputStyle}
           />
 
