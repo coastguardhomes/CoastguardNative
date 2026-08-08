@@ -67,8 +67,24 @@ export default function CrearContrato() {
   }
 
   async function crearContrato() {
+    // VALIDACIONES COMPLETAS
     if (!form.cliente_id || !form.vivienda_id || !form.tecnico_id) {
       setMensaje("Cliente, vivienda y técnico son obligatorios");
+      return;
+    }
+
+    if (!form.modalidad) {
+      setMensaje("Selecciona una modalidad");
+      return;
+    }
+
+    if (!form.fecha_inicio) {
+      setMensaje("Selecciona la fecha de inicio");
+      return;
+    }
+
+    if (!form.precio || !form.frecuencia) {
+      setMensaje("Precio y frecuencia son obligatorios");
       return;
     }
 
@@ -85,6 +101,7 @@ export default function CrearContrato() {
           notas: form.notas,
           frecuencia: form.frecuencia,
           modalidad: form.modalidad,
+          estado: "pendiente", // estado inicial correcto
         },
       ])
       .select();
@@ -105,7 +122,7 @@ export default function CrearContrato() {
       .toISOString()
       .split("T")[0];
 
-    // 3️⃣ Generar PDF automáticamente
+    // 3️⃣ Generar PDF automáticamente (con modalidad, frecuencia, técnico, notas)
     let pdfUrl = null;
     try {
       const pdfResponse = await fetch(
@@ -121,10 +138,27 @@ export default function CrearContrato() {
       .from("contratos")
       .update({
         fecha_fin: fechaFin,
-        firmado_en: new Date().toISOString().split("T")[0],
         pdf_url: pdfUrl,
       })
       .eq("id", contratoId);
+
+    // 5️⃣ Crear inspecciones automáticas
+    try {
+      await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear-inspecciones?id=${contratoId}`
+      );
+    } catch (e) {
+      console.error("Error creando inspecciones:", e);
+    }
+
+    // 6️⃣ Enviar email automático al cliente
+    try {
+      await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${contratoId}`
+      );
+    } catch (e) {
+      console.error("Error enviando email:", e);
+    }
 
     navigate("/contratos");
   }
