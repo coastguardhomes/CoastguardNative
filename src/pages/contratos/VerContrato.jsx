@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 
 export default function VerContrato() {
   const { id } = useParams();
+  const navigate = useNavigate();
+
   const [contrato, setContrato] = useState(null);
 
-  // NUEVO: datos relacionados
   const [cliente, setCliente] = useState(null);
   const [vivienda, setVivienda] = useState(null);
   const [tecnico, setTecnico] = useState(null);
@@ -20,8 +21,7 @@ export default function VerContrato() {
   async function cargarContrato() {
     const { data, error } = await supabase
       .from("contratos")
-      .select(
-        `
+      .select(`
         id,
         cliente_id,
         vivienda_id,
@@ -30,12 +30,12 @@ export default function VerContrato() {
         notas,
         frecuencia,
         fecha_inicio,
+        fecha_fin,
         pdf_url,
         firma,
         firmado_en,
         modalidad
-      `
-      )
+      `)
       .eq("id", id)
       .single();
 
@@ -46,7 +46,6 @@ export default function VerContrato() {
   }
 
   async function cargarRelacionados(c) {
-    // Cliente
     const { data: clienteData } = await supabase
       .from("clientes")
       .select("id, nombre, email, telefono")
@@ -54,7 +53,6 @@ export default function VerContrato() {
       .single();
     setCliente(clienteData || null);
 
-    // Vivienda
     const { data: viviendaData } = await supabase
       .from("viviendas")
       .select("id, nombre, direccion")
@@ -62,7 +60,6 @@ export default function VerContrato() {
       .single();
     setVivienda(viviendaData || null);
 
-    // Técnico
     const { data: tecnicoData } = await supabase
       .from("tecnicos")
       .select("id, nombre, telefono")
@@ -70,13 +67,24 @@ export default function VerContrato() {
       .single();
     setTecnico(tecnicoData || null);
 
-    // Inspecciones del contrato
     const { data: inspData } = await supabase
       .from("inspecciones")
       .select("id, fecha, estado")
       .eq("contrato_id", c.id);
 
     setInspecciones(inspData || []);
+  }
+
+  async function borrarContrato() {
+    const confirmar = window.confirm(
+      "¿Seguro que quieres borrar este contrato? Esta acción no se puede deshacer."
+    );
+
+    if (!confirmar) return;
+
+    await supabase.from("contratos").delete().eq("id", id);
+
+    navigate("/contratos");
   }
 
   if (!contrato) {
@@ -160,6 +168,12 @@ export default function VerContrato() {
           {contrato.fecha_inicio || "Sin fecha"}
         </p>
 
+        {/* Fecha fin */}
+        <p style={{ marginBottom: "10px" }}>
+          <strong style={{ color: "#4db8ff" }}>Fecha fin:</strong>{" "}
+          {contrato.fecha_fin || "Sin fecha"}
+        </p>
+
         {/* Precio */}
         <p style={{ marginBottom: "10px" }}>
           <strong style={{ color: "#4db8ff" }}>Precio:</strong>{" "}
@@ -184,7 +198,7 @@ export default function VerContrato() {
           {contrato.firmado_en ? contrato.firmado_en : "No firmado"}
         </p>
 
-        {/* Inspecciones del contrato */}
+        {/* Inspecciones */}
         <Bloque titulo="Inspecciones del contrato">
           {inspecciones.length === 0 ? (
             <p style={{ opacity: 0.7 }}>No hay inspecciones.</p>
@@ -201,14 +215,7 @@ export default function VerContrato() {
 
         {/* PDF */}
         {contrato.pdf_url ? (
-          <a
-            href={
-              supabase.storage.from("contratos").getPublicUrl(contrato.pdf_url)
-                .data.publicUrl
-            }
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <a href={contrato.pdf_url} target="_blank" rel="noopener noreferrer">
             <button
               style={{
                 marginTop: "20px",
@@ -247,12 +254,30 @@ export default function VerContrato() {
             Editar contrato
           </button>
         </Link>
+
+        {/* BORRAR CONTRATO */}
+        <button
+          onClick={borrarContrato}
+          style={{
+            marginTop: "20px",
+            padding: "12px 20px",
+            background: "red",
+            borderRadius: "10px",
+            border: "none",
+            color: "#fff",
+            fontWeight: "700",
+            cursor: "pointer",
+            width: "100%",
+          }}
+        >
+          Borrar contrato
+        </button>
       </div>
     </Menu>
   );
 }
 
-/* ---------------- COMPONENTES REUTILIZABLES ---------------- */
+/* ---------------- COMPONENTES ---------------- */
 
 function Bloque({ titulo, children }) {
   return (
