@@ -37,11 +37,27 @@ export default function EditarTecnico() {
   }, [id]);
 
   async function guardarCambios() {
-    if (!form.nombre) {
+    if (!form.nombre.trim()) {
       setMensaje("El nombre es obligatorio");
       return;
     }
 
+    if (!form.telefono.trim()) {
+      setMensaje("El teléfono es obligatorio");
+      return;
+    }
+
+    if (!form.email.trim() || !form.email.includes("@")) {
+      setMensaje("Email inválido");
+      return;
+    }
+
+    if (!form.especialidad.trim()) {
+      setMensaje("La especialidad es obligatoria");
+      return;
+    }
+
+    // Guardar técnico
     const { error } = await supabase
       .from("tecnicos")
       .update({
@@ -58,7 +74,20 @@ export default function EditarTecnico() {
       return;
     }
 
-    navigate("/tecnicos");
+    // Si el técnico se desactiva → inspecciones pendientes quedan sin asignar
+    if (!form.activo) {
+      await supabase
+        .from("inspecciones")
+        .update({ estado: "pendiente_reasignar" })
+        .eq("tecnico_id", id)
+        .eq("estado", "pendiente");
+    }
+
+    setMensaje("Técnico actualizado correctamente");
+
+    setTimeout(() => {
+      navigate("/tecnicos");
+    }, 1200);
   }
 
   const inputStyle = {
@@ -147,7 +176,7 @@ export default function EditarTecnico() {
 
           <label>Activo</label>
           <select
-            value={form.activo}
+            value={form.activo ? "true" : "false"}
             onChange={(e) =>
               setForm({ ...form, activo: e.target.value === "true" })
             }
