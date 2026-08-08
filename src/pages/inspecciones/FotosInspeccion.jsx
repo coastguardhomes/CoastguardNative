@@ -40,52 +40,66 @@ export default function FotosInspeccion() {
     setLoading(false);
   }
 
-  async function subirFoto(e) {
-    const archivo = e.target.files[0];
-    if (!archivo) return;
+  async function subirFoto() {
+    try {
+      // 📸 Abrir cámara REAL del móvil
+      const imageData = await window.navigator.camera.getPicture({
+        quality: 70,
+        destinationType: window.Camera.DestinationType.DATA_URL,
+        sourceType: window.Camera.PictureSourceType.CAMERA,
+      });
 
-    const nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
+      const base64 = `data:image/jpeg;base64,${imageData}`;
+      const res = await fetch(base64);
+      const blob = await res.blob();
 
-    const { error: storageError } = await supabase.storage
-      .from("fotos")
-      .upload(nombreArchivo, archivo);
+      const nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
 
-    if (storageError) {
-      setMensaje("Error subiendo foto");
-      return;
+      const { error: storageError } = await supabase.storage
+        .from("fotos")
+        .upload(nombreArchivo, blob, {
+          contentType: "image/jpeg",
+        });
+
+      if (storageError) {
+        setMensaje("Error subiendo foto");
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("fotos")
+        .getPublicUrl(nombreArchivo);
+
+      const { error: dbError } = await supabase
+        .from("fotos_inspeccion")
+        .insert([
+          {
+            inspeccion_id: id,
+            archivo: nombreArchivo,
+            url: urlData.publicUrl,
+            principal: false,
+          },
+        ]);
+
+      if (dbError) {
+        setMensaje("Error guardando foto en la base de datos");
+        return;
+      }
+
+      await supabase
+        .from("inspecciones")
+        .update({
+          fecha_fotos: new Date().toISOString(),
+          estado: "fotos_completadas",
+        })
+        .eq("id", id);
+
+      setMensaje("Foto subida correctamente");
+      cargarFotos();
+    } catch (e) {
+      console.error(e);
+      setMensaje("Error tomando foto");
     }
-
-    const { data: urlData } = supabase.storage
-      .from("fotos")
-      .getPublicUrl(nombreArchivo);
-
-    const { error: dbError } = await supabase
-      .from("fotos_inspeccion")
-      .insert([
-        {
-          inspeccion_id: id,
-          archivo: nombreArchivo,
-          url: urlData.publicUrl,   // 🔥 GUARDAMOS LA URL PARA EL PDF
-          principal: false,
-        },
-      ]);
-
-    if (dbError) {
-      setMensaje("Error guardando foto en la base de datos");
-      return;
-    }
-
-    // 🔥 Guardar fecha de fotos + estado
-    await supabase
-      .from("inspecciones")
-      .update({
-        fecha_fotos: new Date().toISOString(),
-        estado: "fotos_completadas",
-      })
-      .eq("id", id);
-
-    setMensaje("Foto subida correctamente");
-    cargarFotos();
   }
 
   async function borrarFoto(foto) {
@@ -124,7 +138,6 @@ export default function FotosInspeccion() {
         .update({ principal: true })
         .eq("id", foto.id);
 
-      // 🔥 Guardar foto principal en inspecciones
       await supabase
         .from("inspecciones")
         .update({
@@ -155,10 +168,12 @@ export default function FotosInspeccion() {
 
         {mensaje && <p style={mensajeEstilo}>{mensaje}</p>}
 
-        <label style={botonSubir}>
-          Subir foto
-          <input type="file" accept="image/*" onChange={subirFoto} style={{ display: "none" }} />
-        </label>
+        <button
+          onClick={subirFoto}
+          style={botonSubir}
+        >
+          Tomar foto
+        </button>
 
         {loading ? (
           <p>Cargando fotos...</p>
@@ -197,21 +212,9 @@ export default function FotosInspeccion() {
           </div>
         )}
 
-        {/* 🔥 Botón continuar */}
         <button
           onClick={continuarAFirma}
-          style={{
-            marginTop: "20px",
-            padding: "14px",
-            width: "100%",
-            background: "#4db8ff",
-            color: "#000",
-            borderRadius: "10px",
-            border: "none",
-            fontWeight: "700",
-            fontSize: "17px",
-            cursor: "pointer",
-          }}
+          style={botonContinuar}
         >
           Continuar a firma
         </button>
@@ -245,15 +248,15 @@ const mensajeEstilo = {
 };
 
 const botonSubir = {
-  display: "block",
-  marginBottom: "20px",
+  width: "100%",
+  padding: "14px",
   background: "#4db8ff",
   color: "#000",
-  padding: "14px",
   borderRadius: "10px",
-  textAlign: "center",
+  border: "none",
   fontWeight: "700",
   cursor: "pointer",
+  marginBottom: "20px",
 };
 
 const grid = {
@@ -288,5 +291,18 @@ const botonEliminar = {
   borderRadius: "10px",
   border: "none",
   fontWeight: "700",
+  cursor: "pointer",
+};
+
+const botonContinuar = {
+  marginTop: "20px",
+  padding: "14px",
+  width: "100%",
+  background: "#4db8ff",
+  color: "#000",
+  borderRadius: "10px",
+  border: "none",
+  fontWeight: "700",
+  fontSize: "17px",
   cursor: "pointer",
 };
