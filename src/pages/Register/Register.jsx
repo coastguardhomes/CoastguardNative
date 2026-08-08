@@ -47,18 +47,16 @@ export default function Register() {
       return;
     }
 
-    // ⭐ 2️⃣ Crear perfil SIEMPRE (aunque no haya sesión)
+    // ⭐ 2️⃣ Crear perfil SIEMPRE
     const { error: perfilError } = await supabase
       .from("profiles")
       .insert({ id: user.id, rol: "cliente" });
 
     if (perfilError) {
       console.error("Error creando perfil:", perfilError);
-      // No detenemos el registro, porque el usuario sí existe
     }
 
-    // ⭐ 3️⃣ Vincular automáticamente el cliente creado por admin
-    // Busca el cliente por email y le asigna usuario_id
+    // ⭐ 3️⃣ Vincular cliente existente por email
     const { error: clienteError } = await supabase
       .from("clientes")
       .update({ usuario_id: user.id })
@@ -66,10 +64,29 @@ export default function Register() {
 
     if (clienteError) {
       console.error("Error vinculando cliente:", clienteError);
-      // No detenemos el registro, porque el usuario sí existe
     }
 
-    // 4️⃣ Mensaje final + redirección
+    // ⭐ 4️⃣ Notificar al admin del nuevo técnico (CORREGIDO)
+    try {
+      await fetch(
+        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/notificar_admin_nuevo_tecnico",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": supabase.supabaseKey,
+            "Authorization": `Bearer ${
+              supabase.auth.getSession().data.session.access_token
+            }`,
+          },
+          body: JSON.stringify({ tecnico_id: user.id }),
+        }
+      );
+    } catch (e) {
+      console.error("Error notificando admin:", e);
+    }
+
+    // 5️⃣ Mensaje final + redirección
     setMensaje("Cuenta creada correctamente. Revisa tu email para confirmar la cuenta.");
     setLoading(false);
 
