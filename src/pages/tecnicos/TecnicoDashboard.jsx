@@ -1,8 +1,18 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FaTools, FaHome, FaClipboardList, FaFileContract, FaUser } from "react-icons/fa";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../context/AuthContext.jsx";
+import {
+  FaTools,
+  FaClipboardList,
+  FaCamera,
+  FaCheckCircle,
+} from "react-icons/fa";
 
 export default function TecnicoDashboard() {
+  const { user } = useAuth();
+  const [inspecciones, setInspecciones] = useState([]);
+
   const baseStyle = {
     background: "rgba(255,255,255,0.05)",
     padding: "25px",
@@ -29,6 +39,21 @@ export default function TecnicoDashboard() {
     Object.assign(e.currentTarget.style, baseStyle);
   }
 
+  useEffect(() => {
+    cargarInspecciones();
+  }, [user]);
+
+  async function cargarInspecciones() {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("inspecciones")
+      .select("id, fecha, estado, vivienda_id")
+      .eq("tecnico_id", user.id);
+
+    if (!error) setInspecciones(data || []);
+  }
+
   return (
     <div
       style={{
@@ -52,52 +77,113 @@ export default function TecnicoDashboard() {
         Panel del Técnico
       </h1>
 
+      {/* INSPECCIONES ASIGNADAS */}
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: "20px",
+          background: "rgba(255,255,255,0.05)",
+          padding: "20px",
+          borderRadius: "14px",
+          border: "1px solid rgba(255,255,255,0.1)",
+          marginBottom: "25px",
         }}
       >
-        {/* Inspecciones asignadas */}
-        <Link to="/inspecciones" style={{ textDecoration: "none" }}>
-          <div style={baseStyle} onMouseEnter={applyHover} onMouseLeave={removeHover}>
-            <FaTools size={45} color="#4db8ff" />
-            <h3 style={{ marginTop: "12px", color: "#4db8ff" }}>Inspecciones asignadas</h3>
-          </div>
-        </Link>
+        <h2
+          style={{
+            color: "#4db8ff",
+            marginBottom: "15px",
+            fontSize: "22px",
+            fontWeight: "700",
+          }}
+        >
+          Inspecciones asignadas
+        </h2>
 
-        {/* Viviendas asignadas */}
-        <Link to="/viviendas" style={{ textDecoration: "none" }}>
-          <div style={baseStyle} onMouseEnter={applyHover} onMouseLeave={removeHover}>
-            <FaHome size={45} color="#4db8ff" />
-            <h3 style={{ marginTop: "12px", color: "#4db8ff" }}>Viviendas asignadas</h3>
-          </div>
-        </Link>
+        {inspecciones.length === 0 ? (
+          <p style={{ opacity: 0.7 }}>No tienes inspecciones asignadas.</p>
+        ) : (
+          inspecciones.map((insp) => (
+            <div
+              key={insp.id}
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                padding: "15px",
+                borderRadius: "10px",
+                marginBottom: "12px",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}
+            >
+              <p>
+                <strong>ID:</strong> {insp.id}
+              </p>
+              <p>
+                <strong>Fecha:</strong> {insp.fecha}
+              </p>
+              <p>
+                <strong>Estado:</strong> {insp.estado}
+              </p>
 
-        {/* Tareas pendientes */}
-        <Link to="/inspecciones" style={{ textDecoration: "none" }}>
-          <div style={baseStyle} onMouseEnter={applyHover} onMouseLeave={removeHover}>
-            <FaClipboardList size={45} color="#4db8ff" />
-            <h3 style={{ marginTop: "12px", color: "#4db8ff" }}>Tareas pendientes</h3>
-          </div>
-        </Link>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                  gap: "10px",
+                  marginTop: "10px",
+                }}
+              >
+                {/* Checklist */}
+                <Link
+                  to={`/tecnico/inspeccion/${insp.id}/checklist`}
+                  style={{ textDecoration: "none" }}
+                >
+                  <div
+                    style={baseStyle}
+                    onMouseEnter={applyHover}
+                    onMouseLeave={removeHover}
+                  >
+                    <FaClipboardList size={35} color="#4db8ff" />
+                    <h4 style={{ marginTop: "10px", color: "#4db8ff" }}>
+                      Checklist
+                    </h4>
+                  </div>
+                </Link>
 
-        {/* Documentos */}
-        <Link to="/inspecciones" style={{ textDecoration: "none" }}>
-          <div style={baseStyle} onMouseEnter={applyHover} onMouseLeave={removeHover}>
-            <FaFileContract size={45} color="#4db8ff" />
-            <h3 style={{ marginTop: "12px", color: "#4db8ff" }}>Documentos</h3>
-          </div>
-        </Link>
+                {/* Fotos */}
+                <Link
+                  to={`/tecnico/inspeccion/${insp.id}/fotos`}
+                  style={{ textDecoration: "none" }}
+                >
+                  <div
+                    style={baseStyle}
+                    onMouseEnter={applyHover}
+                    onMouseLeave={removeHover}
+                  >
+                    <FaCamera size={35} color="#4db8ff" />
+                    <h4 style={{ marginTop: "10px", color: "#4db8ff" }}>
+                      Subir fotos
+                    </h4>
+                  </div>
+                </Link>
 
-        {/* Perfil */}
-        <Link to="/ajustes" style={{ textDecoration: "none" }}>
-          <div style={baseStyle} onMouseEnter={applyHover} onMouseLeave={removeHover}>
-            <FaUser size={45} color="#4db8ff" />
-            <h3 style={{ marginTop: "12px", color: "#4db8ff" }}>Mi perfil</h3>
-          </div>
-        </Link>
+                {/* Finalizar */}
+                <Link
+                  to={`/tecnico/inspeccion/${insp.id}/finalizar`}
+                  style={{ textDecoration: "none" }}
+                >
+                  <div
+                    style={baseStyle}
+                    onMouseEnter={applyHover}
+                    onMouseLeave={removeHover}
+                  >
+                    <FaCheckCircle size={35} color="#4db8ff" />
+                    <h4 style={{ marginTop: "10px", color: "#4db8ff" }}>
+                      Finalizar
+                    </h4>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
