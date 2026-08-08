@@ -13,14 +13,12 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ⭐ LOGOUT AUTOMÁTICO AL CERRAR LA APP
+  // ⭐ LOGOUT SOLO AL CERRAR LA APP (NO al minimizar)
   useEffect(() => {
-    const sub = App.addListener("appStateChange", ({ isActive }) => {
-      if (!isActive) {
-        supabase.auth.signOut();
-        setUser(null);
-        setRole(null);
-      }
+    const sub = App.addListener("appExit", async () => {
+      await supabase.auth.signOut();
+      setUser(null);
+      setRole(null);
     });
 
     return () => {
