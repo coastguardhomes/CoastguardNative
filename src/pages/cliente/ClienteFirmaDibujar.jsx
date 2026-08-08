@@ -20,10 +20,6 @@ export default function ClienteFirmaDibujar() {
     async function comprobarContrato() {
       if (!user) return;
 
-      // contratos.cliente_id es bigint y user.id el UUID de auth: nunca
-      // coinciden, así que este check redirigía siempre aunque el
-      // contrato SÍ fuera del cliente. RLS (contratos_select) ya impide
-      // leer contratos de otro cliente, por eso basta con mirar error/data.
       const { data, error } = await supabase
         .from("contratos")
         .select("cliente_id")
@@ -37,6 +33,26 @@ export default function ClienteFirmaDibujar() {
 
     comprobarContrato();
   }, [user, id, navigate]);
+
+  // 🔥 Ajuste RESPONSIVE del canvas
+  const ajustarCanvas = () => {
+    if (!sigCanvas.current) return;
+
+    const canvas = sigCanvas.current.getCanvas();
+    const container = canvas.parentNode;
+
+    // Ajustar al ancho del contenedor
+    canvas.width = container.offsetWidth;
+    canvas.height = 250; // altura fija pero adaptable
+
+    sigCanvas.current.clear();
+  };
+
+  useEffect(() => {
+    ajustarCanvas();
+    window.addEventListener("resize", ajustarCanvas);
+    return () => window.removeEventListener("resize", ajustarCanvas);
+  }, []);
 
   const guardarFirma = async () => {
     const canvas = sigCanvas.current;
@@ -62,11 +78,17 @@ export default function ClienteFirmaDibujar() {
       return;
     }
 
+    const { data: publicUrlData } = supabase.storage
+      .from("firmas")
+      .getPublicUrl(filePath);
+
+    const firmaUrl = publicUrlData.publicUrl;
+
     const { error: updateError } = await supabase
       .from("contratos")
       .update({
-        firma: filePath,
-        fecha_firma: new Date().toISOString(),
+        firma: firmaUrl,
+        firmado_en: new Date().toISOString().split("T")[0],
         estado: "firmado",
       })
       .eq("id", id);
@@ -88,7 +110,7 @@ export default function ClienteFirmaDibujar() {
     <Menu>
       <div
         style={{
-          height: "100%",
+          minHeight: "100vh",
           background: "#0a0f1a",
           padding: "20px",
           color: "#fff",
@@ -119,20 +141,27 @@ export default function ClienteFirmaDibujar() {
             textAlign: "center",
           }}
         >
-          <SignaturePad
-            ref={sigCanvas}
-            penColor="#4db8ff"
-            canvasProps={{
-              width: 320,
-              height: 200,
-              style: {
-                background: "#fff",
-                borderRadius: "10px",
-                border: "2px solid #4db8ff",
-                marginBottom: "20px",
-              },
+          <div
+            style={{
+              width: "100%",
+              background: "#fff",
+              borderRadius: "10px",
+              border: "2px solid #4db8ff",
+              marginBottom: "20px",
             }}
-          />
+          >
+            <SignaturePad
+              ref={sigCanvas}
+              penColor="#4db8ff"
+              canvasProps={{
+                style: {
+                  width: "100%",
+                  height: "250px",
+                  borderRadius: "10px",
+                },
+              }}
+            />
+          </div>
 
           <button
             onClick={guardarFirma}
