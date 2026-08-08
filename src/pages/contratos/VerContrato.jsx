@@ -8,11 +8,11 @@ export default function VerContrato() {
   const navigate = useNavigate();
 
   const [contrato, setContrato] = useState(null);
-
   const [cliente, setCliente] = useState(null);
   const [vivienda, setVivienda] = useState(null);
   const [tecnico, setTecnico] = useState(null);
   const [inspecciones, setInspecciones] = useState([]);
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     cargarContrato();
@@ -88,6 +88,104 @@ export default function VerContrato() {
     navigate("/contratos");
   }
 
+  async function regenerarPDF() {
+    setMensaje("Regenerando PDF...");
+
+    try {
+      const pdfResponse = await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${id}`
+      );
+      const pdfUrl = await pdfResponse.text();
+
+      await supabase
+        .from("contratos")
+        .update({ pdf_url: pdfUrl })
+        .eq("id", id);
+
+      await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${id}`
+      );
+
+      setMensaje("PDF regenerado correctamente");
+      cargarContrato();
+    } catch (e) {
+      console.error(e);
+      setMensaje("Error regenerando PDF");
+    }
+  }
+
+  async function regenerarInspecciones() {
+    setMensaje("Regenerando inspecciones...");
+
+    try {
+      await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear-inspecciones?id=${id}`
+      );
+
+      setMensaje("Inspecciones regeneradas correctamente");
+      cargarContrato();
+    } catch (e) {
+      console.error(e);
+      setMensaje("Error regenerando inspecciones");
+    }
+  }
+
+  async function renovarContrato() {
+    const confirmar = window.confirm(
+      "¿Renovar contrato? Se creará uno nuevo con la misma modalidad."
+    );
+    if (!confirmar) return;
+
+    const fechaInicioNueva = contrato.fecha_fin;
+    const frecuencia = contrato.frecuencia;
+
+    const fechaFinNueva = new Date(
+      new Date(fechaInicioNueva).getTime() +
+        frecuencia * 24 * 60 * 60 * 1000
+    )
+      .toISOString()
+      .split("T")[0];
+
+    const { data, error } = await supabase
+      .from("contratos")
+      .insert([
+        {
+          cliente_id: contrato.cliente_id,
+          vivienda_id: contrato.vivienda_id,
+          tecnico_id: contrato.tecnico_id,
+          fecha_inicio: fechaInicioNueva,
+          precio: contrato.precio,
+          notas: contrato.notas,
+          frecuencia: contrato.frecuencia,
+          modalidad: contrato.modalidad,
+          estado: "pendiente",
+        },
+      ])
+      .select();
+
+    if (error) {
+      setMensaje("Error renovando contrato");
+      return;
+    }
+
+    const nuevoId = data[0].id;
+
+    const pdfResponse = await fetch(
+      `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${nuevoId}`
+    );
+    const pdfUrl = await pdfResponse.text();
+
+    await supabase
+      .from("contratos")
+      .update({
+        fecha_fin: fechaFinNueva,
+        pdf_url: pdfUrl,
+      })
+      .eq("id", nuevoId);
+
+    navigate(`/contratos/ver/${nuevoId}`);
+  }
+
   if (!contrato) {
     return (
       <Menu>
@@ -119,6 +217,10 @@ export default function VerContrato() {
           Contrato #{contrato.id}
         </h1>
 
+        {mensaje && (
+          <p style={{ marginBottom: "10px", color: "#4db8ff" }}>{mensaje}</p>
+        )}
+
         {/* Estado */}
         <p style={{ marginBottom: "10px" }}>
           <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
@@ -131,6 +233,26 @@ export default function VerContrato() {
             <strong style={{ color: "#4db8ff" }}>Modalidad:</strong>{" "}
             {contrato.modalidad}
           </p>
+        )}
+
+        {/* Firma */}
+        {contrato.firma && (
+          <div style={{ marginBottom: "20px" }}>
+            <strong style={{ color: "#4db8ff" }}>Firma del cliente:</strong>
+            <img
+              src={contrato.firma}
+              alt="Firma del contrato"
+              style={{
+                width: "100%",
+                maxWidth: "400px",
+                display: "block",
+                margin: "20px auto",
+                background: "#fff",
+                padding: "10px",
+                borderRadius: "10px",
+              }}
+            />
+          </div>
         )}
 
         {/* Cliente */}
@@ -199,29 +321,6 @@ export default function VerContrato() {
           {contrato.notas || "Sin notas"}
         </p>
 
-        {/* Firma */}
-        <p style={{ marginBottom: "10px" }}>
-          <strong style={{ color: "#4db8ff" }}>Firmado:</strong>{" "}
-          {contrato.firmado_en ? contrato.firmado_en : "No firmado"}
-        </p>
-
-        {/* Mostrar firma */}
-        {contrato.firma && (
-          <img
-            src={contrato.firma}
-            alt="Firma del contrato"
-            style={{
-              width: "100%",
-              maxWidth: "400px",
-              display: "block",
-              margin: "20px auto",
-              background: "#fff",
-              padding: "10px",
-              borderRadius: "10px",
-            }}
-          />
-        )}
-
         {/* Inspecciones */}
         <Bloque titulo="Inspecciones del contrato">
           {inspecciones.length === 0 ? (
@@ -259,6 +358,60 @@ export default function VerContrato() {
         ) : (
           <p style={{ marginTop: "15px", opacity: 0.8 }}>No hay PDF generado.</p>
         )}
+
+        {/* Regenerar PDF */}
+        <button
+          onClick={regenerarPDF}
+          style={{
+            marginTop: "20px",
+            padding: "12px 20px",
+            background: "#00c853",
+            borderRadius: "10px",
+            border: "none",
+            color: "#fff",
+            fontWeight: "700",
+            cursor: "pointer",
+            width: "100%",
+          }}
+        >
+          Regenerar PDF
+        </button>
+
+        {/* Regenerar inspecciones */}
+        <button
+          onClick={regenerarInspecciones}
+          style={{
+            marginTop: "20px",
+            padding: "12px 20px",
+            background: "#ff9800",
+            borderRadius: "10px",
+            border: "none",
+            color: "#fff",
+            fontWeight: "700",
+            cursor: "pointer",
+            width: "100%",
+          }}
+        >
+          Regenerar inspecciones
+        </button>
+
+        {/* Renovar contrato */}
+        <button
+          onClick={renovarContrato}
+          style={{
+            marginTop: "20px",
+            padding: "12px 20px",
+            background: "#1e88e5",
+            borderRadius: "10px",
+            border: "none",
+            color: "#fff",
+            fontWeight: "700",
+            cursor: "pointer",
+            width: "100%",
+          }}
+        >
+          Renovar contrato
+        </button>
 
         {/* Editar */}
         <Link to={`/contratos/editar/${contrato.id}`}>
