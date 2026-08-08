@@ -64,10 +64,46 @@ export default function VerCliente() {
     setFacturas(fac || []);
   }
 
+  // ⭐ BORRAR CLIENTE COMPLETO
   async function eliminarCliente() {
     const confirmar = window.confirm("¿Seguro que deseas eliminar este cliente?");
     if (!confirmar) return;
 
+    // 1. Obtener contratos del cliente
+    const { data: contratosCliente } = await supabase
+      .from("contratos")
+      .select("id")
+      .eq("cliente_id", id);
+
+    // 2. Borrar inspecciones asociadas a esos contratos
+    if (contratosCliente && contratosCliente.length > 0) {
+      for (const contrato of contratosCliente) {
+        await supabase
+          .from("inspecciones")
+          .delete()
+          .eq("contrato_id", contrato.id);
+      }
+    }
+
+    // 3. Borrar contratos del cliente
+    await supabase
+      .from("contratos")
+      .delete()
+      .eq("cliente_id", id);
+
+    // 4. Borrar viviendas del cliente
+    await supabase
+      .from("viviendas")
+      .delete()
+      .eq("cliente_id", id);
+
+    // 5. Borrar facturas del cliente
+    await supabase
+      .from("facturas")
+      .delete()
+      .eq("cliente_id", id);
+
+    // 6. Borrar el cliente
     const { error } = await supabase
       .from("clientes")
       .delete()
@@ -78,6 +114,7 @@ export default function VerCliente() {
       return;
     }
 
+    alert("Cliente eliminado correctamente");
     navigate("/clientes");
   }
 
@@ -216,18 +253,22 @@ export default function VerCliente() {
           </button>
         </Link>
 
-        <button onClick={eliminarCliente} style={{
-          marginTop: "15px",
-          padding: "14px",
-          width: "100%",
-          background: "red",
-          color: "#fff",
-          borderRadius: "10px",
-          border: "none",
-          fontWeight: "700",
-          fontSize: "17px",
-          cursor: "pointer",
-        }}>
+        {/* ⭐ BOTÓN NUEVO: BORRAR CLIENTE COMPLETO */}
+        <button
+          onClick={eliminarCliente}
+          style={{
+            marginTop: "15px",
+            padding: "14px",
+            width: "100%",
+            background: "red",
+            color: "#fff",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "17px",
+            cursor: "pointer",
+          }}
+        >
           Eliminar cliente
         </button>
       </div>
