@@ -101,7 +101,7 @@ export default function CrearContrato() {
           notas: form.notas,
           frecuencia: form.frecuencia,
           modalidad: form.modalidad,
-          estado: "pendiente", // estado inicial correcto
+          estado: "pendiente",
         },
       ])
       .select();
@@ -122,7 +122,7 @@ export default function CrearContrato() {
       .toISOString()
       .split("T")[0];
 
-    // 3️⃣ Generar PDF automáticamente (con modalidad, frecuencia, técnico, notas)
+    // 3️⃣ Generar PDF automáticamente
     let pdfUrl = null;
     try {
       const pdfResponse = await fetch(
@@ -142,10 +142,10 @@ export default function CrearContrato() {
       })
       .eq("id", contratoId);
 
-    // 5️⃣ Crear inspecciones automáticas
+    // 5️⃣ Crear inspecciones automáticas (CORREGIDO)
     try {
       await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear-inspecciones?id=${contratoId}`
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear_inspecciones_programadas?id=${contratoId}`
       );
     } catch (e) {
       console.error("Error creando inspecciones:", e);
