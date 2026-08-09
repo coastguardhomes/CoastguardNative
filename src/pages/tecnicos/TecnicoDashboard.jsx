@@ -15,6 +15,7 @@ export default function TecnicoDashboard() {
   const [tecnico, setTecnico] = useState(null);
   const [inspecciones, setInspecciones] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mensaje, setMensaje] = useState("");
 
   const baseStyle = {
     background: "rgba(255,255,255,0.05)",
@@ -49,7 +50,7 @@ export default function TecnicoDashboard() {
   async function cargarTecnicoYInspecciones() {
     setLoading(true);
 
-    // 1️⃣ Buscar técnico por email
+    // 1️⃣ Buscar técnico REAL por email del usuario autenticado
     const { data: tecnicoData, error: errorTecnico } = await supabase
       .from("tecnicos")
       .select("id, nombre, email")
@@ -57,7 +58,7 @@ export default function TecnicoDashboard() {
       .single();
 
     if (errorTecnico || !tecnicoData) {
-      console.log("No se encontró técnico para este usuario");
+      setMensaje("No se encontró técnico para este usuario.");
       setTecnico(null);
       setInspecciones([]);
       setLoading(false);
@@ -66,17 +67,43 @@ export default function TecnicoDashboard() {
 
     setTecnico(tecnicoData);
 
-    // 2️⃣ Cargar inspecciones asignadas al técnico REAL (UUID)
+    // 2️⃣ Cargar inspecciones asignadas al técnico REAL
     const { data: inspData, error: errorInsp } = await supabase
       .from("inspecciones")
-      .select("id, fecha, estado, vivienda_id")
+      .select("id, fecha, estado, vivienda_id, cliente_id")
       .eq("tecnico_id", tecnicoData.id)
       .order("fecha", { ascending: true });
 
-    if (!errorInsp) {
-      setInspecciones(inspData || []);
+    if (errorInsp) {
+      setMensaje("Error cargando inspecciones.");
+      setLoading(false);
+      return;
     }
 
+    // 3️⃣ Cargar vivienda + cliente para cada inspección
+    const inspeccionesConDatos = await Promise.all(
+      (inspData || []).map(async (i) => {
+        const { data: viv } = await supabase
+          .from("viviendas")
+          .select("direccion, ciudad")
+          .eq("id", i.vivienda_id)
+          .single();
+
+        const { data: cli } = await supabase
+          .from("clientes")
+          .select("nombre, telefono")
+          .eq("id", i.cliente_id)
+          .single();
+
+        return {
+          ...i,
+          vivienda: viv || null,
+          cliente: cli || null,
+        };
+      })
+    );
+
+    setInspecciones(inspeccionesConDatos);
     setLoading(false);
   }
 
@@ -102,6 +129,19 @@ export default function TecnicoDashboard() {
       >
         Panel del Técnico
       </h1>
+
+      {mensaje && (
+        <p
+          style={{
+            marginBottom: "15px",
+            color: "#ff6b6b",
+            fontWeight: "600",
+            textAlign: "center",
+          }}
+        >
+          {mensaje}
+        </p>
+      )}
 
       {/* INFO DEL TÉCNICO */}
       {tecnico && (
@@ -163,13 +203,22 @@ export default function TecnicoDashboard() {
               }}
             >
               <p>
-                <strong>ID:</strong> {insp.id}
-              </p>
-              <p>
                 <strong>Fecha:</strong> {insp.fecha}
               </p>
               <p>
                 <strong>Estado:</strong> {insp.estado}
+              </p>
+              <p>
+                <strong>Vivienda:</strong>{" "}
+                {insp.vivienda
+                  ? `${insp.vivienda.direccion}, ${insp.vivienda.ciudad}`
+                  : insp.vivienda_id}
+              </p>
+              <p>
+                <strong>Cliente:</strong>{" "}
+                {insp.cliente
+                  ? `${insp.cliente.nombre} (${insp.cliente.telefono})`
+                  : insp.cliente_id}
               </p>
 
               <div
