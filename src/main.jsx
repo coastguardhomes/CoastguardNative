@@ -27,12 +27,12 @@ window.onerror = function (msg, url, line, col, error) {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthProvider>
-      <LanguageProvider>
-        <HashRouter>
+    <LanguageProvider>
+      <HashRouter>
+        <AuthProvider>
           <App />
-        </HashRouter>
-      </LanguageProvider>
-    </AuthProvider>
+        </AuthProvider>
+      </HashRouter>
+    </LanguageProvider>
   </React.StrictMode>
 );
