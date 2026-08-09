@@ -11,7 +11,8 @@
     "App": {
       "backgroundColor": "#000000",
       "allowMixedContent": true
-    }
+    },
+    "Camera": {}
   },
 
   "android": {
