@@ -52,6 +52,9 @@ export default function TecnicoDashboard() {
       setTecnico(null);
       setInspecciones([]);
       setLoading(false);
+      <p style={{ color: "yellow", fontSize: "22px", textAlign: "center" }}>
+  VERSION NUEVA DEL PANEL
+</p>
       return;
     }
 
