@@ -1,23 +1,24 @@
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export default function Tecnicos() {
   const [tecnicos, setTecnicos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
-  const navigate = useNavigate();
+  const [procesando, setProcesando] = useState(false);
 
   useEffect(() => {
     cargarTecnicos();
   }, []);
 
   async function cargarTecnicos() {
+    setLoading(true);
+
     const { data, error } = await supabase
       .from("tecnicos")
-      .select("id, nombre, telefono, email, especialidad, activo, created_at")
-      .order("created_at", { ascending: false });
+      .select("id, nombre, telefono, email, especialidad, activo, created_at");
 
     if (error) {
       setMensaje("Error cargando técnicos");
@@ -25,21 +26,57 @@ export default function Tecnicos() {
       return;
     }
 
-    setTecnicos(data || []);
+    // Cargar inspecciones por técnico
+    const { data: inspecciones } = await supabase
+      .from("inspecciones")
+      .select("id, tecnico_id, estado");
+
+    // Añadir conteo de inspecciones
+    const tecnicosConDatos = data.map((t) => {
+      const insp = inspecciones.filter((i) => i.tecnico_id === t.id);
+      const pendientes = insp.filter((i) => i.estado === "pendiente").length;
+
+      return {
+        ...t,
+        total_inspecciones: insp.length,
+        pendientes,
+      };
+    });
+
+    setTecnicos(tecnicosConDatos);
     setLoading(false);
   }
 
   async function borrarTecnico(id) {
     const confirmar = window.confirm(
-      "¿Seguro que quieres borrar este técnico? Esta acción no se puede deshacer."
+      "¿Seguro que quieres borrar este técnico? Si tiene inspecciones asignadas, quedarán sin técnico."
     );
     if (!confirmar) return;
 
+    setProcesando(true);
+
+    // Validar inspecciones asignadas
+    const { data: insp } = await supabase
+      .from("inspecciones")
+      .select("id")
+      .eq("tecnico_id", id);
+
+    if (insp.length > 0) {
+      await supabase
+        .from("inspecciones")
+        .update({ estado: "pendiente_reasignar" })
+        .eq("tecnico_id", id);
+    }
+
     await supabase.from("tecnicos").delete().eq("id", id);
+
+    setProcesando(false);
     cargarTecnicos();
   }
 
   async function cambiarEstado(id, estadoActual) {
+    setProcesando(true);
+
     await supabase
       .from("tecnicos")
       .update({ activo: !estadoActual })
@@ -54,6 +91,7 @@ export default function Tecnicos() {
         .eq("estado", "pendiente");
     }
 
+    setProcesando(false);
     cargarTecnicos();
   }
 
@@ -85,7 +123,7 @@ export default function Tecnicos() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: "#ff6b6b",
               fontWeight: "600",
             }}
           >
@@ -114,7 +152,7 @@ export default function Tecnicos() {
         </Link>
 
         {loading ? (
-          <p style={{ opacity: 0.8 }}>Cargando...</p>
+          <p style={{ opacity: 0.8 }}>Cargando técnicos...</p>
         ) : tecnicos.length === 0 ? (
           <p style={{ opacity: 0.8 }}>No hay técnicos registrados.</p>
         ) : (
@@ -131,7 +169,6 @@ export default function Tecnicos() {
                   boxShadow: "0 0 12px rgba(0,153,255,0.2)",
                 }}
               >
-                {/* Nombre */}
                 <Link
                   to={`/tecnicos/ver/${t.id}`}
                   style={{
@@ -144,23 +181,19 @@ export default function Tecnicos() {
                   {t.nombre}
                 </Link>
 
-                {/* Teléfono */}
                 <p style={{ marginTop: "6px" }}>
                   <strong>Teléfono:</strong> {t.telefono || "Sin teléfono"}
                 </p>
 
-                {/* Email */}
                 <p style={{ marginTop: "6px" }}>
                   <strong>Email:</strong> {t.email || "Sin email"}
                 </p>
 
-                {/* Especialidad */}
                 <p style={{ marginTop: "6px" }}>
                   <strong>Especialidad:</strong>{" "}
                   {t.especialidad || "Sin especialidad"}
                 </p>
 
-                {/* Estado */}
                 <p
                   style={{
                     marginTop: "6px",
@@ -171,12 +204,18 @@ export default function Tecnicos() {
                   {t.activo ? "Activo" : "Inactivo"}
                 </p>
 
-                {/* Fecha creación */}
                 <p style={{ marginTop: "6px", opacity: 0.7 }}>
                   Creado el: {new Date(t.created_at).toLocaleDateString()}
                 </p>
 
-                {/* Botones */}
+                <p style={{ marginTop: "6px", opacity: 0.9 }}>
+                  <strong>Inspecciones:</strong> {t.total_inspecciones}
+                </p>
+
+                <p style={{ marginTop: "6px", opacity: 0.9 }}>
+                  <strong>Pendientes:</strong> {t.pendientes}
+                </p>
+
                 <div
                   style={{
                     marginTop: "15px",
@@ -185,9 +224,9 @@ export default function Tecnicos() {
                     gap: "10px",
                   }}
                 >
-                  {/* Ver técnico */}
                   <Link to={`/tecnicos/ver/${t.id}`}>
                     <button
+                      disabled={procesando}
                       style={{
                         padding: "10px",
                         background: "#1e90ff",
@@ -195,7 +234,7 @@ export default function Tecnicos() {
                         border: "none",
                         color: "#fff",
                         fontWeight: "700",
-                        cursor: "pointer",
+                        cursor: procesando ? "not-allowed" : "pointer",
                         width: "100%",
                       }}
                     >
@@ -203,9 +242,9 @@ export default function Tecnicos() {
                     </button>
                   </Link>
 
-                  {/* Ver inspecciones */}
                   <Link to={`/tecnicos/ver/${t.id}#inspecciones`}>
                     <button
+                      disabled={procesando}
                       style={{
                         padding: "10px",
                         background: "#4db8ff",
@@ -213,7 +252,7 @@ export default function Tecnicos() {
                         border: "none",
                         color: "#000",
                         fontWeight: "700",
-                        cursor: "pointer",
+                        cursor: procesando ? "not-allowed" : "pointer",
                         width: "100%",
                       }}
                     >
@@ -221,9 +260,9 @@ export default function Tecnicos() {
                     </button>
                   </Link>
 
-                  {/* Activar / desactivar */}
                   <button
                     onClick={() => cambiarEstado(t.id, t.activo)}
+                    disabled={procesando}
                     style={{
                       padding: "10px",
                       background: t.activo ? "#ff6b6b" : "#4ade80",
@@ -231,16 +270,16 @@ export default function Tecnicos() {
                       border: "none",
                       color: "#fff",
                       fontWeight: "700",
-                      cursor: "pointer",
+                      cursor: procesando ? "not-allowed" : "pointer",
                       width: "100%",
                     }}
                   >
                     {t.activo ? "Desactivar" : "Activar"}
                   </button>
 
-                  {/* Borrar */}
                   <button
                     onClick={() => borrarTecnico(t.id)}
+                    disabled={procesando}
                     style={{
                       padding: "10px",
                       background: "red",
@@ -248,7 +287,7 @@ export default function Tecnicos() {
                       border: "none",
                       color: "#fff",
                       fontWeight: "700",
-                      cursor: "pointer",
+                      cursor: procesando ? "not-allowed" : "pointer",
                       width: "100%",
                     }}
                   >
