@@ -2,17 +2,60 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useParams, Link } from "react-router-dom";
 import Menu from "../../layouts/Menu";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function TecnicoChecklist() {
   const { id } = useParams(); // ID de la inspección
+  const { user } = useAuth();
+
   const [items, setItems] = useState([]);
+  const [inspeccion, setInspeccion] = useState(null);
   const [mensaje, setMensaje] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     cargarChecklist();
   }, [id]);
 
   async function cargarChecklist() {
+    setLoading(true);
+
+    // 1️⃣ Obtener técnico real por email
+    const { data: tecnico } = await supabase
+      .from("tecnicos")
+      .select("id")
+      .eq("email", user.email)
+      .single();
+
+    if (!tecnico) {
+      setMensaje("No se pudo validar el técnico.");
+      setLoading(false);
+      return;
+    }
+
+    // 2️⃣ Cargar inspección
+    const { data: insp } = await supabase
+      .from("inspecciones")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (!insp) {
+      setMensaje("Inspección no encontrada.");
+      setLoading(false);
+      return;
+    }
+
+    // 3️⃣ Validar que la inspección pertenece al técnico
+    if (insp.tecnico_id !== tecnico.id) {
+      setMensaje("No tienes permiso para ver esta inspección.");
+      setLoading(false);
+      return;
+    }
+
+    setInspeccion(insp);
+
+    // 4️⃣ Cargar checklist
     const { data, error } = await supabase
       .from("checklist_inspeccion")
       .select("id, inspeccion_id, texto, estado")
@@ -21,13 +64,17 @@ export default function TecnicoChecklist() {
 
     if (error) {
       setMensaje("Error cargando checklist");
+      setLoading(false);
       return;
     }
 
     setItems(data || []);
+    setLoading(false);
   }
 
   async function marcarItem(itemId, nuevoEstado) {
+    setMensaje("");
+
     const { error } = await supabase
       .from("checklist_inspeccion")
       .update({ estado: nuevoEstado })
@@ -38,7 +85,6 @@ export default function TecnicoChecklist() {
       return;
     }
 
-    // Actualizar en pantalla
     setItems((prev) =>
       prev.map((i) =>
         i.id === itemId ? { ...i, estado: nuevoEstado } : i
@@ -74,7 +120,7 @@ export default function TecnicoChecklist() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: "#ff6b6b",
               fontWeight: "600",
             }}
           >
@@ -82,7 +128,9 @@ export default function TecnicoChecklist() {
           </p>
         )}
 
-        {items.length === 0 ? (
+        {loading ? (
+          <p style={{ opacity: 0.7 }}>Cargando checklist...</p>
+        ) : items.length === 0 ? (
           <p style={{ opacity: 0.7 }}>No hay ítems en el checklist.</p>
         ) : (
           items.map((item) => (
@@ -104,6 +152,20 @@ export default function TecnicoChecklist() {
                 }}
               >
                 {item.texto}
+              </p>
+
+              <p
+                style={{
+                  marginBottom: "10px",
+                  opacity: 0.7,
+                }}
+              >
+                Estado actual:{" "}
+                {item.estado === "ok"
+                  ? "✔ OK"
+                  : item.estado === "ko"
+                  ? "✖ KO"
+                  : "Pendiente"}
               </p>
 
               <div
