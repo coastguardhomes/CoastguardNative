@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
 export default function FotosInspeccion() {
   const { id } = useParams();
@@ -42,16 +43,15 @@ export default function FotosInspeccion() {
 
   async function subirFoto() {
     try {
-      // 📸 Abrir cámara REAL del móvil
-      const imageData = await window.navigator.camera.getPicture({
+      // 📸 Cámara REAL con Capacitor
+      const image = await Camera.getPhoto({
         quality: 70,
-        destinationType: window.Camera.DestinationType.DATA_URL,
-        sourceType: window.Camera.PictureSourceType.CAMERA,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Camera,
       });
 
-      const base64 = `data:image/jpeg;base64,${imageData}`;
-      const res = await fetch(base64);
-      const blob = await res.blob();
+      const base64 = `data:image/jpeg;base64,${image.base64String}`;
+      const blob = await (await fetch(base64)).blob();
 
       const nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
 
@@ -168,10 +168,7 @@ export default function FotosInspeccion() {
 
         {mensaje && <p style={mensajeEstilo}>{mensaje}</p>}
 
-        <button
-          onClick={subirFoto}
-          style={botonSubir}
-        >
+        <button onClick={subirFoto} style={botonSubir}>
           Tomar foto
         </button>
 
@@ -212,10 +209,7 @@ export default function FotosInspeccion() {
           </div>
         )}
 
-        <button
-          onClick={continuarAFirma}
-          style={botonContinuar}
-        >
+        <button onClick={continuarAFirma} style={botonContinuar}>
           Continuar a firma
         </button>
       </div>
