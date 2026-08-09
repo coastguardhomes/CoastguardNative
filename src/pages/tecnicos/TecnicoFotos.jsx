@@ -2,19 +2,62 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useParams, Link } from "react-router-dom";
 import Menu from "../../layouts/Menu";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function TecnicoFotos() {
-  const { id } = useParams(); // ID de la inspección
+  const { id } = useParams(); // ID inspección
+  const { user } = useAuth();
+
+  const [inspeccion, setInspeccion] = useState(null);
   const [fotos, setFotos] = useState([]);
   const [mensaje, setMensaje] = useState("");
   const [subiendo, setSubiendo] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    cargarFotos();
+    cargarDatos();
   }, [id]);
 
-  async function cargarFotos() {
-    const { data, error } = await supabase
+  async function cargarDatos() {
+    setLoading(true);
+
+    // 1️⃣ Obtener técnico real por email
+    const { data: tecnico } = await supabase
+      .from("tecnicos")
+      .select("id")
+      .eq("email", user.email)
+      .single();
+
+    if (!tecnico) {
+      setMensaje("No se pudo validar el técnico.");
+      setLoading(false);
+      return;
+    }
+
+    // 2️⃣ Cargar inspección
+    const { data: insp } = await supabase
+      .from("inspecciones")
+      .select("id, fecha, estado, tecnico_id")
+      .eq("id", id)
+      .single();
+
+    if (!insp) {
+      setMensaje("Inspección no encontrada.");
+      setLoading(false);
+      return;
+    }
+
+    // 3️⃣ Validar que pertenece al técnico
+    if (insp.tecnico_id !== tecnico.id) {
+      setMensaje("No tienes permiso para ver estas fotos.");
+      setLoading(false);
+      return;
+    }
+
+    setInspeccion(insp);
+
+    // 4️⃣ Cargar fotos
+    const { data: fotosData, error } = await supabase
       .from("fotos_inspeccion")
       .select("id, url")
       .eq("inspeccion_id", id)
@@ -22,10 +65,12 @@ export default function TecnicoFotos() {
 
     if (error) {
       setMensaje("Error cargando fotos");
+      setLoading(false);
       return;
     }
 
-    setFotos(data || []);
+    setFotos(fotosData || []);
+    setLoading(false);
   }
 
   async function subirFoto(e) {
@@ -33,11 +78,12 @@ export default function TecnicoFotos() {
     if (!archivo) return;
 
     setSubiendo(true);
+    setMensaje("");
 
     const nombreArchivo = `inspeccion_${id}_${Date.now()}`;
 
-    // Subir a Supabase Storage
-    const { data: storageData, error: storageError } = await supabase.storage
+    // 1️⃣ Subir a Storage
+    const { error: storageError } = await supabase.storage
       .from("fotos")
       .upload(nombreArchivo, archivo);
 
@@ -47,20 +93,15 @@ export default function TecnicoFotos() {
       return;
     }
 
-    // Obtener URL pública
+    // 2️⃣ Obtener URL pública
     const urlPublica = supabase.storage
       .from("fotos")
       .getPublicUrl(nombreArchivo).data.publicUrl;
 
-    // Guardar en la tabla
+    // 3️⃣ Guardar en la tabla
     const { error: dbError } = await supabase
       .from("fotos_inspeccion")
-      .insert([
-        {
-          inspeccion_id: id,
-          url: urlPublica,
-        },
-      ]);
+      .insert([{ inspeccion_id: id, url: urlPublica }]);
 
     if (dbError) {
       setMensaje("Error guardando foto en la inspección");
@@ -69,7 +110,28 @@ export default function TecnicoFotos() {
     }
 
     setSubiendo(false);
-    cargarFotos();
+    cargarDatos();
+  }
+
+  if (loading) {
+    return (
+      <Menu>
+        <div
+          style={{
+            height: "100vh",
+            background: "#0a0f1a",
+            color: "#fff",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontFamily: "Inter, sans-serif",
+            fontSize: "18px",
+          }}
+        >
+          Cargando fotos...
+        </div>
+      </Menu>
+    );
   }
 
   return (
@@ -100,13 +162,33 @@ export default function TecnicoFotos() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: "#ff6b6b",
               fontWeight: "600",
             }}
           >
             {mensaje}
           </p>
         )}
+
+        {/* Info de inspección */}
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "15px",
+            borderRadius: "12px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            marginBottom: "20px",
+          }}
+        >
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
+            {inspeccion.fecha}
+          </p>
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
+            {inspeccion.estado}
+          </p>
+        </div>
 
         {/* Botón para subir foto */}
         <div style={{ marginBottom: "20px" }}>
@@ -119,7 +201,8 @@ export default function TecnicoFotos() {
               borderRadius: "10px",
               fontWeight: "700",
               textAlign: "center",
-              cursor: "pointer",
+              cursor: subiendo ? "not-allowed" : "pointer",
+              opacity: subiendo ? 0.6 : 1,
             }}
           >
             {subiendo ? "Subiendo..." : "Subir foto"}
@@ -127,6 +210,7 @@ export default function TecnicoFotos() {
               type="file"
               accept="image/*"
               onChange={subirFoto}
+              disabled={subiendo}
               style={{ display: "none" }}
             />
           </label>
