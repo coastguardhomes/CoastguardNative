@@ -40,10 +40,11 @@ export default function TecnicoDashboard() {
   async function cargarTecnicoYInspecciones() {
     setLoading(true);
 
+    // 🔥 Buscar técnico por auth_id (NO por email)
     const { data: tecnicoData, error: errorTecnico } = await supabase
       .from("tecnicos")
       .select("*")
-      .eq("email", user.email)
+      .eq("auth_id", user.id)
       .single();
 
     if (errorTecnico || !tecnicoData) {
@@ -56,6 +57,7 @@ export default function TecnicoDashboard() {
 
     setTecnico(tecnicoData);
 
+    // 🔥 Cargar inspecciones asignadas al técnico
     const { data: inspData, error: errorInsp } = await supabase
       .from("inspecciones")
       .select("*")
@@ -298,7 +300,6 @@ export default function TecnicoDashboard() {
         )}
       </div>
 
-      {/* BOTÓN DE CERRAR SESIÓN */}
       <button
         onClick={async () => {
           await supabase.auth.signOut();
