@@ -251,7 +251,7 @@ export default function TecnicoDashboard() {
                 }}
               >
                 <Link
-                  to={`/inspecciones/${insp.id}/checklist`}
+                  to={`/tecnico/inspeccion/${insp.id}/checklist`}
                   style={{ textDecoration: "none" }}
                 >
                   <div
@@ -267,7 +267,7 @@ export default function TecnicoDashboard() {
                 </Link>
 
                 <Link
-                  to={`/inspecciones/fotos/${insp.id}`}
+                  to={`/tecnico/inspeccion/${insp.id}/fotos`}
                   style={{ textDecoration: "none" }}
                 >
                   <div
@@ -283,7 +283,7 @@ export default function TecnicoDashboard() {
                 </Link>
 
                 <Link
-                  to={`/inspecciones/finalizar/${insp.id}`}
+                  to={`/tecnico/inspeccion/${insp.id}/finalizar`}
                   style={{ textDecoration: "none" }}
                 >
                   <div
