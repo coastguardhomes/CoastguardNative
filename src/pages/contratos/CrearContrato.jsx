@@ -13,7 +13,7 @@ export default function CrearContrato() {
   const [form, setForm] = useState({
     cliente_id: "",
     vivienda_id: "",
-    tecnico_id: "",
+    tecnico_id: "", // UUID real
     fecha_inicio: "",
     precio: "",
     notas: "",
@@ -99,7 +99,7 @@ export default function CrearContrato() {
           cliente_id: form.cliente_id,
           vivienda_id: form.vivienda_id,
 
-          // ⚠️ UUID CORREGIDO
+          // ⚠️ UUID CORRECTO
           tecnico_id: String(form.tecnico_id),
 
           fecha_inicio: form.fecha_inicio,
@@ -109,7 +109,7 @@ export default function CrearContrato() {
           modalidad: form.modalidad,
           estado: "pendiente",
 
-          // CAMPOS QUE TU TABLA SÍ TIENE
+          // CAMPOS AVANZADOS
           firma: null,
           firmado_en: null,
           pdf_url: null,
