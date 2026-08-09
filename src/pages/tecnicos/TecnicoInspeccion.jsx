@@ -2,18 +2,40 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useParams, Link } from "react-router-dom";
 import Menu from "../../layouts/Menu";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function TecnicoInspeccion() {
-  const { id } = useParams(); // ID de la inspección
+  const { id } = useParams(); // ID inspección
+  const { user } = useAuth();
+
   const [inspeccion, setInspeccion] = useState(null);
+  const [vivienda, setVivienda] = useState(null);
+  const [cliente, setCliente] = useState(null);
   const [mensaje, setMensaje] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     cargarInspeccion();
   }, [id]);
 
   async function cargarInspeccion() {
-    const { data, error } = await supabase
+    setLoading(true);
+
+    // 1️⃣ Obtener técnico real por email
+    const { data: tecnico } = await supabase
+      .from("tecnicos")
+      .select("id")
+      .eq("email", user.email)
+      .single();
+
+    if (!tecnico) {
+      setMensaje("No se pudo validar el técnico.");
+      setLoading(false);
+      return;
+    }
+
+    // 2️⃣ Cargar inspección completa
+    const { data: insp } = await supabase
       .from("inspecciones")
       .select(`
         id,
@@ -21,20 +43,49 @@ export default function TecnicoInspeccion() {
         estado,
         vivienda_id,
         cliente_id,
-        notas_tecnico
+        notas_tecnico,
+        tecnico_id
       `)
       .eq("id", id)
       .single();
 
-    if (error) {
-      setMensaje("Error cargando inspección");
+    if (!insp) {
+      setMensaje("Inspección no encontrada.");
+      setLoading(false);
       return;
     }
 
-    setInspeccion(data);
+    // 3️⃣ Validar que pertenece al técnico
+    if (insp.tecnico_id !== tecnico.id) {
+      setMensaje("No tienes permiso para ver esta inspección.");
+      setLoading(false);
+      return;
+    }
+
+    setInspeccion(insp);
+
+    // 4️⃣ Cargar vivienda
+    const { data: viv } = await supabase
+      .from("viviendas")
+      .select("direccion, ciudad")
+      .eq("id", insp.vivienda_id)
+      .single();
+
+    setVivienda(viv || null);
+
+    // 5️⃣ Cargar cliente
+    const { data: cli } = await supabase
+      .from("clientes")
+      .select("nombre, telefono")
+      .eq("id", insp.cliente_id)
+      .single();
+
+    setCliente(cli || null);
+
+    setLoading(false);
   }
 
-  if (!inspeccion) {
+  if (loading) {
     return (
       <Menu>
         <div
@@ -83,7 +134,7 @@ export default function TecnicoInspeccion() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: "#ff6b6b",
               fontWeight: "600",
             }}
           >
@@ -105,17 +156,27 @@ export default function TecnicoInspeccion() {
             <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
             {inspeccion.fecha}
           </p>
+
           <p>
             <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
             {inspeccion.estado}
           </p>
+
           <p>
-            <strong style={{ color: "#4db8ff" }}>Vivienda ID:</strong>{" "}
-            {inspeccion.vivienda_id}
+            <strong style={{ color: "#4db8ff" }}>Vivienda:</strong>{" "}
+            {vivienda
+              ? `${vivienda.direccion}, ${vivienda.ciudad}`
+              : inspeccion.vivienda_id}
           </p>
+
           <p>
-            <strong style={{ color: "#4db8ff" }}>Cliente ID:</strong>{" "}
-            {inspeccion.cliente_id}
+            <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
+            {cliente ? `${cliente.nombre} (${cliente.telefono})` : inspeccion.cliente_id}
+          </p>
+
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Notas del técnico:</strong>{" "}
+            {inspeccion.notas_tecnico || "Sin notas"}
           </p>
         </div>
 
