@@ -1,5 +1,34 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { App as CapacitorApp } from "@capacitor/app";
+import { supabase } from "./lib/supabase";
+
+// 🔥 LOGOUT AUTOMÁTICO AL CERRAR / MINIMIZAR / PAUSAR LA APP
+useEffect(() => {
+  // cerrar sesión al cerrar o minimizar
+  CapacitorApp.addListener("appStateChange", async ({ isActive }) => {
+    if (!isActive) {
+      await supabase.auth.signOut();
+    }
+  });
+
+  // cerrar sesión al poner en pausa
+  CapacitorApp.addListener("pause", async () => {
+    await supabase.auth.signOut();
+  });
+
+  // si vuelve a abrir y no hay sesión → login
+  CapacitorApp.addListener("resume", async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) {
+      window.location.href = "/login";
+    }
+  });
+}, []);
+
+// --------------------------------------------
+// A PARTIR DE AQUÍ TU ARCHIVO EXACTO SIN CAMBIOS
+// --------------------------------------------
 
 import PrivateRoute from "./guards/PrivateRoute.jsx";
 import ClienteRoute from "./pages/cliente/ClienteRoute.jsx";
