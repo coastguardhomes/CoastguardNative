@@ -1,35 +1,79 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
-import { useParams, Link, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
+import { supabase } from "../../lib/supabase";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function TecnicoFinalizar() {
-  const { id } = useParams(); // ID de la inspección
+  const { id } = useParams(); // ID inspección
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [inspeccion, setInspeccion] = useState(null);
   const [notas, setNotas] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     cargarInspeccion();
   }, [id]);
 
   async function cargarInspeccion() {
-    const { data, error } = await supabase
-      .from("inspecciones")
-      .select("id, fecha, estado, notas_tecnico")
-      .eq("id", id)
+    setLoading(true);
+
+    // 1️⃣ Obtener técnico real por email
+    const { data: tecnico } = await supabase
+      .from("tecnicos")
+      .select("id")
+      .eq("email", user.email)
       .single();
 
-    if (error) {
-      setMensaje("Error cargando inspección");
+    if (!tecnico) {
+      setMensaje("No se pudo validar el técnico.");
+      setLoading(false);
       return;
     }
 
-    setInspeccion(data);
-    setNotas(data.notas_tecnico || "");
+    // 2️⃣ Cargar inspección completa
+    const { data: insp, error } = await supabase
+      .from("inspecciones")
+      .select("id, fecha, estado, notas_tecnico, tecnico_id, vivienda_id")
+      .eq("id", id)
+      .single();
+
+    if (error || !insp) {
+      setMensaje("Error cargando inspección");
+      setLoading(false);
+      return;
+    }
+
+    // 3️⃣ Validar que la inspección pertenece al técnico
+    if (insp.tecnico_id !== tecnico.id) {
+      setMensaje("No tienes permiso para finalizar esta inspección.");
+      setLoading(false);
+      return;
+    }
+
+    // 4️⃣ Validar checklist completo
+    const { data: checklist } = await supabase
+      .from("checklist_inspeccion")
+      .select("estado")
+      .eq("inspeccion_id", id);
+
+    const incompletos = checklist.filter(
+      (i) => i.estado !== "ok" && i.estado !== "ko"
+    );
+
+    if (incompletos.length > 0) {
+      setMensaje("Debes completar el checklist antes de finalizar.");
+      setLoading(false);
+      return;
+    }
+
+    setInspeccion(insp);
+    setNotas(insp.notas_tecnico || "");
+    setLoading(false);
   }
 
   async function finalizarInspeccion() {
@@ -40,11 +84,13 @@ export default function TecnicoFinalizar() {
 
     setGuardando(true);
 
+    // 1️⃣ Actualizar inspección
     const { error } = await supabase
       .from("inspecciones")
       .update({
         notas_tecnico: notas,
         estado: "completada_tecnico",
+        fecha_finalizacion: new Date().toISOString(),
       })
       .eq("id", id);
 
@@ -54,13 +100,22 @@ export default function TecnicoFinalizar() {
       return;
     }
 
+    // 2️⃣ Notificar al admin
+    try {
+      await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email-inspeccion-finalizada?id=${id}`
+      );
+    } catch (e) {
+      console.error("Error enviando email:", e);
+    }
+
     setGuardando(false);
 
-    // Volver al dashboard del técnico
-    navigate("/tecnico");
+    // 3️⃣ Volver al dashboard técnico
+    navigate("/tecnico/dashboard");
   }
 
-  if (!inspeccion) {
+  if (loading) {
     return (
       <Menu>
         <div
@@ -109,7 +164,9 @@ export default function TecnicoFinalizar() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#ff6b6b",
+              color: mensaje.includes("permiso")
+                ? "#ff6b6b"
+                : "#ff6b6b",
               fontWeight: "600",
             }}
           >
@@ -161,13 +218,13 @@ export default function TecnicoFinalizar() {
           style={{
             padding: "14px",
             width: "100%",
-            background: "#4ade80",
+            background: guardando ? "#999" : "#4ade80",
             color: "#000",
             borderRadius: "10px",
             border: "none",
             fontWeight: "700",
             fontSize: "17px",
-            cursor: "pointer",
+            cursor: guardando ? "not-allowed" : "pointer",
             marginBottom: "20px",
           }}
         >
