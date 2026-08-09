@@ -353,7 +353,7 @@ export default function Checklist() {
 
         <textarea
           placeholder="Observaciones de la inspección..."
-          value={observervaciones}
+          value={observaciones}
           onChange={(e) => setObservaciones(e.target.value)}
           style={{
             width: "100%",
