@@ -42,7 +42,16 @@ export default function EditarContrato() {
       return;
     }
 
-    if (data) setForm(data);
+    if (data) {
+      setForm({
+        fecha_inicio: data.fecha_inicio || "",
+        precio: data.precio || "",
+        notas: data.notas || "",
+        frecuencia: data.frecuencia || "",
+        tecnico_id: data.tecnico_id || "",
+        modalidad: data.modalidad || "",
+      });
+    }
   }
 
   async function cargarTecnicos() {
@@ -65,27 +74,11 @@ export default function EditarContrato() {
   }
 
   async function guardarCambios() {
-    // VALIDACIONES COMPLETAS
-    if (!form.fecha_inicio) {
-      setMensaje("La fecha de inicio es obligatoria");
-      return;
-    }
-    if (!form.precio) {
-      setMensaje("El precio es obligatorio");
-      return;
-    }
-    if (!form.frecuencia) {
-      setMensaje("La frecuencia es obligatoria");
-      return;
-    }
-    if (!form.modalidad) {
-      setMensaje("Selecciona una modalidad");
-      return;
-    }
-    if (!form.tecnico_id) {
-      setMensaje("Selecciona un técnico");
-      return;
-    }
+    if (!form.fecha_inicio) return setMensaje("La fecha de inicio es obligatoria");
+    if (!form.precio) return setMensaje("El precio es obligatorio");
+    if (!form.frecuencia) return setMensaje("La frecuencia es obligatoria");
+    if (!form.modalidad) return setMensaje("Selecciona una modalidad");
+    if (!form.tecnico_id) return setMensaje("Selecciona un técnico");
 
     // 1️⃣ Actualizar contrato
     const { error } = await supabase
@@ -95,7 +88,7 @@ export default function EditarContrato() {
         precio: form.precio,
         notas: form.notas,
         frecuencia: form.frecuencia,
-        tecnico_id: form.tecnico_id,
+        tecnico_id: String(form.tecnico_id), // UUID CORRECTO
         modalidad: form.modalidad,
       })
       .eq("id", id);
@@ -134,10 +127,10 @@ export default function EditarContrato() {
       .update({ pdf_url: pdfUrl })
       .eq("id", id);
 
-    // 4️⃣ Regenerar inspecciones automáticas
+    // 4️⃣ Regenerar inspecciones automáticas (NOMBRE CORRECTO)
     try {
       await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear-inspecciones?id=${id}`
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear_inspecciones_programadas?id=${id}`
       );
     } catch (e) {
       console.error("Error regenerando inspecciones:", e);
@@ -255,7 +248,9 @@ export default function EditarContrato() {
           <label>Técnico:</label>
           <select
             value={form.tecnico_id || ""}
-            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, tecnico_id: String(e.target.value) })
+            }
             style={inputStyle}
           >
             <option value="">Selecciona técnico</option>
