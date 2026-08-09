@@ -45,7 +45,7 @@ import CrearContrato from "./pages/contratos/CrearContrato.jsx";
 import EditarContrato from "./pages/contratos/EditarContrato.jsx";
 import VerContrato from "./pages/contratos/VerContrato.jsx";
 
-// INSPECCIONES
+// INSPECCIONES (ADMIN)
 import Inspecciones from "./pages/inspecciones/Inspecciones.jsx";
 import NuevaInspeccion from "./pages/inspecciones/NuevaInspeccion.jsx";
 import EditarInspeccion from "./pages/inspecciones/EditarInspeccion.jsx";
@@ -57,8 +57,6 @@ import Checklist from "./pages/inspecciones/Checklist.jsx";
 import Firma from "./pages/inspecciones/Firma.jsx";
 import VerPDFInspeccion from "./pages/inspecciones/VerPDFInspeccion.jsx";
 import VerPDF from "./pages/inspecciones/VerPDF.jsx";
-
-// ⭐ NUEVO IMPORT AÑADIDO ⭐
 import FinalizarInspeccion from "./pages/inspecciones/FinalizarInspeccion.jsx";
 
 // FACTURAS
@@ -109,7 +107,7 @@ export default function App() {
       <Route path="/tecnico" element={<PrivateRoute />}>
         <Route index element={<TecnicoDashboard />} />
 
-        {/* NUEVAS RUTAS DEL TÉCNICO */}
+        {/* RUTAS DEL TÉCNICO (CORRECTAS) */}
         <Route path="inspeccion/:id" element={<TecnicoInspeccion />} />
         <Route path="inspeccion/:id/checklist" element={<TecnicoChecklist />} />
         <Route path="inspeccion/:id/fotos" element={<TecnicoFotos />} />
@@ -173,7 +171,7 @@ export default function App() {
         <Route path="ver/:id" element={<VerContrato />} />
       </Route>
 
-      {/* ---------------- INSPECCIONES ---------------- */}
+      {/* ---------------- INSPECCIONES (ADMIN) ---------------- */}
       <Route path="/inspecciones" element={<PrivateRoute />}>
         <Route index element={<Inspecciones />} />
         <Route path="nueva" element={<NuevaInspeccion />} />
@@ -182,12 +180,13 @@ export default function App() {
         <Route path="detalle/:id" element={<DetalleInspeccion />} />
         <Route path="galeria/:id" element={<GaleriaInspeccion />} />
         <Route path="fotos/:id" element={<FotosInspeccion />} />
-        <Route path=":id/checklist" element={<Checklist />} />
+
+        {/* ❌ RUTA ELIMINADA: ESTA ROMPÍA EL CHECKLIST DEL TÉCNICO */}
+        {/* <Route path=":id/checklist" element={<Checklist />} /> */}
+
         <Route path="firma/:id" element={<Firma />} />
         <Route path="pdf/:id" element={<VerPDFInspeccion />} />
         <Route path="pdf" element={<VerPDF />} />
-
-        {/* ⭐ RUTA FINALIZAR AÑADIDA ⭐ */}
         <Route path="finalizar/:id" element={<FinalizarInspeccion />} />
       </Route>
 
