@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext.jsx";
 import {
-  FaTools,
   FaClipboardList,
   FaCamera,
   FaCheckCircle,
@@ -35,13 +34,8 @@ export default function TecnicoDashboard() {
     boxShadow: "0 0 18px rgba(0,153,255,0.35)",
   };
 
-  function applyHover(e) {
-    Object.assign(e.currentTarget.style, hoverStyle);
-  }
-
-  function removeHover(e) {
-    Object.assign(e.currentTarget.style, baseStyle);
-  }
+  const applyHover = (e) => Object.assign(e.currentTarget.style, hoverStyle);
+  const removeHover = (e) => Object.assign(e.currentTarget.style, baseStyle);
 
   useEffect(() => {
     if (user) cargarTecnicoYInspecciones();
@@ -50,10 +44,10 @@ export default function TecnicoDashboard() {
   async function cargarTecnicoYInspecciones() {
     setLoading(true);
 
-    // 1️⃣ Buscar técnico REAL por email del usuario autenticado
+    // 1️⃣ Buscar técnico por email
     const { data: tecnicoData, error: errorTecnico } = await supabase
       .from("tecnicos")
-      .select("id, nombre, email")
+      .select("*")
       .eq("email", user.email)
       .single();
 
@@ -67,10 +61,10 @@ export default function TecnicoDashboard() {
 
     setTecnico(tecnicoData);
 
-    // 2️⃣ Cargar inspecciones asignadas al técnico REAL
+    // 2️⃣ Cargar inspecciones del técnico (select * para respetar RLS)
     const { data: inspData, error: errorInsp } = await supabase
       .from("inspecciones")
-      .select("id, fecha, estado, vivienda_id, cliente_id")
+      .select("*")
       .eq("tecnico_id", tecnicoData.id)
       .order("fecha", { ascending: true });
 
@@ -80,7 +74,7 @@ export default function TecnicoDashboard() {
       return;
     }
 
-    // 3️⃣ Cargar vivienda + cliente para cada inspección
+    // 3️⃣ Cargar vivienda + cliente
     const inspeccionesConDatos = await Promise.all(
       (inspData || []).map(async (i) => {
         const { data: viv } = await supabase
@@ -165,7 +159,7 @@ export default function TecnicoDashboard() {
         </div>
       )}
 
-      {/* INSPECCIONES ASIGNADAS */}
+      {/* INSPECCIONES */}
       <div
         style={{
           background: "rgba(255,255,255,0.05)",
@@ -203,22 +197,30 @@ export default function TecnicoDashboard() {
               }}
             >
               <p>
-                <strong>Fecha:</strong> {insp.fecha}
+                <strong>Fecha:</strong>{" "}
+                {new Date(insp.fecha).toLocaleDateString()}
               </p>
+
               <p>
                 <strong>Estado:</strong> {insp.estado}
               </p>
+
               <p>
                 <strong>Vivienda:</strong>{" "}
                 {insp.vivienda
                   ? `${insp.vivienda.direccion}, ${insp.vivienda.ciudad}`
                   : insp.vivienda_id}
               </p>
+
               <p>
                 <strong>Cliente:</strong>{" "}
                 {insp.cliente
                   ? `${insp.cliente.nombre} (${insp.cliente.telefono})`
                   : insp.cliente_id}
+              </p>
+
+              <p>
+                <strong>Contrato:</strong> {insp.contrato_id}
               </p>
 
               <div
@@ -229,7 +231,6 @@ export default function TecnicoDashboard() {
                   marginTop: "10px",
                 }}
               >
-                {/* Checklist */}
                 <Link
                   to={`/tecnico/inspeccion/${insp.id}/checklist`}
                   style={{ textDecoration: "none" }}
@@ -246,7 +247,6 @@ export default function TecnicoDashboard() {
                   </div>
                 </Link>
 
-                {/* Fotos */}
                 <Link
                   to={`/tecnico/inspeccion/${insp.id}/fotos`}
                   style={{ textDecoration: "none" }}
@@ -263,7 +263,6 @@ export default function TecnicoDashboard() {
                   </div>
                 </Link>
 
-                {/* Finalizar */}
                 <Link
                   to={`/tecnico/inspeccion/${insp.id}/finalizar`}
                   style={{ textDecoration: "none" }}
