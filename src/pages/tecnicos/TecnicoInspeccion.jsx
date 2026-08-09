@@ -37,15 +37,7 @@ export default function TecnicoInspeccion() {
     // 2️⃣ Cargar inspección completa
     const { data: insp } = await supabase
       .from("inspecciones")
-      .select(`
-        id,
-        fecha,
-        estado,
-        vivienda_id,
-        cliente_id,
-        notas_tecnico,
-        tecnico_id
-      `)
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -73,19 +65,33 @@ export default function TecnicoInspeccion() {
 
     setVivienda(viv || null);
 
-    // 5️⃣ Cargar cliente
-    const { data: cli } = await supabase
-      .from("clientes")
-      .select("nombre, telefono")
-      .eq("id", insp.cliente_id)
-      .single();
+    // 5️⃣ Cargar cliente desde contrato
+    let clienteFinal = null;
 
-    setCliente(cli || null);
+    if (insp.contrato_id) {
+      const { data: contrato } = await supabase
+        .from("contratos")
+        .select("cliente_id")
+        .eq("id", insp.contrato_id)
+        .single();
+
+      if (contrato?.cliente_id) {
+        const { data: cli } = await supabase
+          .from("clientes")
+          .select("nombre, telefono")
+          .eq("id", contrato.cliente_id)
+          .single();
+
+        clienteFinal = cli;
+      }
+    }
+
+    setCliente(clienteFinal);
 
     setLoading(false);
   }
 
-  if (loading) {
+  if (loading || !inspeccion) {
     return (
       <Menu>
         <div
@@ -171,7 +177,9 @@ export default function TecnicoInspeccion() {
 
           <p>
             <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
-            {cliente ? `${cliente.nombre} (${cliente.telefono})` : inspeccion.cliente_id}
+            {cliente
+              ? `${cliente.nombre} (${cliente.telefono})`
+              : "Sin cliente"}
           </p>
 
           <p>
@@ -181,7 +189,7 @@ export default function TecnicoInspeccion() {
         </div>
 
         {/* Botones del técnico */}
-        <Link to={`/tecnico/inspeccion/${id}/checklist`}>
+        <Link to={`/inspecciones/${id}/checklist`}>
           <button
             style={{
               marginBottom: "15px",
@@ -200,7 +208,7 @@ export default function TecnicoInspeccion() {
           </button>
         </Link>
 
-        <Link to={`/tecnico/inspeccion/${id}/fotos`}>
+        <Link to={`/inspecciones/fotos/${id}`}>
           <button
             style={{
               marginBottom: "15px",
@@ -219,7 +227,7 @@ export default function TecnicoInspeccion() {
           </button>
         </Link>
 
-        <Link to={`/tecnico/inspeccion/${id}/finalizar`}>
+        <Link to={`/inspecciones/finalizar/${id}`}>
           <button
             style={{
               marginBottom: "15px",
