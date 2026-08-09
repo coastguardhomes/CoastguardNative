@@ -38,7 +38,7 @@ export default function NuevaInspeccion() {
     cargarDatos();
   }, []);
 
-  // 🔥 Cargar contratos de la vivienda seleccionada (CORREGIDO)
+  // 🔥 Cargar contratos del CLIENTE (corregido)
   useEffect(() => {
     async function cargarContratos() {
       if (!form.vivienda_id) {
@@ -46,18 +46,26 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      const viviendaIdNum = Number(form.vivienda_id);
+      // Obtener la vivienda seleccionada
+      const vivienda = viviendas.find((v) => v.id == form.vivienda_id);
+      if (!vivienda) {
+        setContratos([]);
+        return;
+      }
 
+      const clienteId = vivienda.cliente_id;
+
+      // Cargar contratos del cliente
       const { data, error } = await supabase
         .from("contratos")
         .select("id, modalidad, precio, fecha_inicio, estado")
-        .eq("vivienda_id", viviendaIdNum);
+        .eq("cliente_id", clienteId);
 
       if (!error) setContratos(data || []);
     }
 
     cargarContratos();
-  }, [form.vivienda_id]);
+  }, [form.vivienda_id, viviendas]);
 
   async function crear() {
     setMensaje("");
