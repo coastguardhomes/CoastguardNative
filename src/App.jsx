@@ -58,6 +58,9 @@ import Firma from "./pages/inspecciones/Firma.jsx";
 import VerPDFInspeccion from "./pages/inspecciones/VerPDFInspeccion.jsx";
 import VerPDF from "./pages/inspecciones/VerPDF.jsx";
 
+// ⭐ NUEVO IMPORT AÑADIDO ⭐
+import FinalizarInspeccion from "./pages/inspecciones/FinalizarInspeccion.jsx";
+
 // FACTURAS
 import Facturas from "./pages/facturas/Facturas.jsx";
 import FacturasLista from "./pages/facturas/FacturasLista.jsx";
@@ -73,8 +76,8 @@ import Extras from "./pages/extras/Extras.jsx";
 // ÁREA DEL CLIENTE
 import ClienteContratosLista from "./pages/cliente/ClienteContratosLista.jsx";
 import ClienteContratoVer from "./pages/cliente/ClienteContratoVer.jsx";
-import ClienteFirmaDibujar from "./pages/cliente/ClienteFirmaDibujar.jsx";
 import VerPDFContrato from "./pages/cliente/VerPDFContrato.jsx";
+import ClienteFirmaDibujar from "./pages/cliente/ClienteFirmaDibujar.jsx";
 import PerfilCliente from "./pages/cliente/Perfilcliente.jsx";
 import ClienteInspeccionesLista from "./pages/cliente/ClienteInspeccionesLista.jsx";
 import ClienteInspeccionVer from "./pages/cliente/ClienteInspeccionVer.jsx";
@@ -183,6 +186,9 @@ export default function App() {
         <Route path="firma/:id" element={<Firma />} />
         <Route path="pdf/:id" element={<VerPDFInspeccion />} />
         <Route path="pdf" element={<VerPDF />} />
+
+        {/* ⭐ RUTA FINALIZAR AÑADIDA ⭐ */}
+        <Route path="finalizar/:id" element={<FinalizarInspeccion />} />
       </Route>
 
       {/* ---------------- FACTURAS ---------------- */}
