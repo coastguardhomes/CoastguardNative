@@ -5,7 +5,7 @@ import Menu from "../../layouts/Menu";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function TecnicoChecklist() {
-  const { id } = useParams(); // ID de la inspección
+  const { id } = useParams();
   const { user } = useAuth();
 
   const [items, setItems] = useState([]);
@@ -22,7 +22,6 @@ export default function TecnicoChecklist() {
   async function cargarChecklist() {
     setLoading(true);
 
-    // 1️⃣ Obtener técnico real por email
     const { data: tecnico } = await supabase
       .from("tecnicos")
       .select("id")
@@ -35,7 +34,6 @@ export default function TecnicoChecklist() {
       return;
     }
 
-    // 2️⃣ Cargar inspección completa
     const { data: insp } = await supabase
       .from("inspecciones")
       .select("*")
@@ -48,7 +46,6 @@ export default function TecnicoChecklist() {
       return;
     }
 
-    // 3️⃣ Validar que pertenece al técnico
     if (insp.tecnico_id !== tecnico.id) {
       setMensaje("No tienes permiso para ver esta inspección.");
       setLoading(false);
@@ -57,7 +54,6 @@ export default function TecnicoChecklist() {
 
     setInspeccion(insp);
 
-    // 4️⃣ Cargar vivienda
     const { data: viv } = await supabase
       .from("viviendas")
       .select("direccion, ciudad")
@@ -66,7 +62,6 @@ export default function TecnicoChecklist() {
 
     setVivienda(viv || null);
 
-    // 5️⃣ Cargar cliente desde contrato
     let clienteFinal = null;
 
     if (insp.contrato_id) {
@@ -89,7 +84,6 @@ export default function TecnicoChecklist() {
 
     setCliente(clienteFinal);
 
-    // 6️⃣ Cargar checklist
     const { data, error } = await supabase
       .from("checklist_inspeccion")
       .select("id, inspeccion_id, texto, estado")
@@ -119,14 +113,12 @@ export default function TecnicoChecklist() {
       return;
     }
 
-    // Actualizar en pantalla
     setItems((prev) =>
       prev.map((i) =>
         i.id === itemId ? { ...i, estado: nuevoEstado } : i
       )
     );
 
-    // 7️⃣ Actualizar estado de inspección
     await supabase
       .from("inspecciones")
       .update({
@@ -194,7 +186,6 @@ export default function TecnicoChecklist() {
           </p>
         )}
 
-        {/* Info de inspección */}
         <div
           style={{
             background: "rgba(255,255,255,0.05)",
@@ -218,7 +209,6 @@ export default function TecnicoChecklist() {
           </p>
         </div>
 
-        {/* Checklist */}
         {items.length === 0 ? (
           <p style={{ opacity: 0.7 }}>No hay ítems en el checklist.</p>
         ) : (
@@ -289,8 +279,7 @@ export default function TecnicoChecklist() {
           ))
         )}
 
-        {/* Botones de navegación */}
-        <Link to={`/inspecciones/${id}`}>
+        <Link to={`/tecnico/inspeccion/${id}`}>
           <button
             style={{
               marginTop: "20px",
@@ -309,7 +298,7 @@ export default function TecnicoChecklist() {
           </button>
         </Link>
 
-        <Link to={`/inspecciones/fotos/${id}`}>
+        <Link to={`/tecnico/inspeccion/${id}/fotos`}>
           <button
             style={{
               marginTop: "15px",
@@ -328,7 +317,7 @@ export default function TecnicoChecklist() {
           </button>
         </Link>
 
-        <Link to={`/inspecciones/finalizar/${id}`}>
+        <Link to={`/tecnico/inspeccion/${id}/finalizar`}>
           <button
             style={{
               marginTop: "15px",
