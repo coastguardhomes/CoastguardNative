@@ -23,7 +23,7 @@ export default function TecnicoFotos() {
   async function cargarDatos() {
     setLoading(true);
 
-    // 1️⃣ Obtener técnico real por email
+    // 1️⃣ Validar técnico
     const { data: tecnico } = await supabase
       .from("tecnicos")
       .select("id")
@@ -36,7 +36,7 @@ export default function TecnicoFotos() {
       return;
     }
 
-    // 2️⃣ Cargar inspección completa
+    // 2️⃣ Cargar inspección
     const { data: insp } = await supabase
       .from("inspecciones")
       .select("*")
@@ -58,7 +58,7 @@ export default function TecnicoFotos() {
 
     setInspeccion(insp);
 
-    // 4️⃣ Cargar vivienda
+    // 4️⃣ Vivienda
     const { data: viv } = await supabase
       .from("viviendas")
       .select("direccion, ciudad")
@@ -67,7 +67,7 @@ export default function TecnicoFotos() {
 
     setVivienda(viv || null);
 
-    // 5️⃣ Cargar cliente desde contrato
+    // 5️⃣ Cliente
     let clienteFinal = null;
 
     if (insp.contrato_id) {
@@ -90,7 +90,7 @@ export default function TecnicoFotos() {
 
     setCliente(clienteFinal);
 
-    // 6️⃣ Cargar fotos
+    // 6️⃣ Fotos
     const { data: fotosData } = await supabase
       .from("fotos_inspeccion")
       .select("id, url")
@@ -110,7 +110,7 @@ export default function TecnicoFotos() {
 
     const nombreArchivo = `inspeccion_${id}_${Date.now()}`;
 
-    // 1️⃣ Subir a Storage
+    // Subir a Storage
     const { error: storageError } = await supabase.storage
       .from("fotos")
       .upload(nombreArchivo, archivo);
@@ -121,12 +121,12 @@ export default function TecnicoFotos() {
       return;
     }
 
-    // 2️⃣ Obtener URL pública
+    // URL pública
     const urlPublica = supabase.storage
       .from("fotos")
       .getPublicUrl(nombreArchivo).data.publicUrl;
 
-    // 3️⃣ Guardar en la tabla
+    // Guardar en tabla
     const { error: dbError } = await supabase
       .from("fotos_inspeccion")
       .insert([{ inspeccion_id: id, url: urlPublica }]);
@@ -137,7 +137,7 @@ export default function TecnicoFotos() {
       return;
     }
 
-    // 4️⃣ Actualizar estado de inspección
+    // Actualizar estado
     await supabase
       .from("inspecciones")
       .update({
@@ -207,7 +207,7 @@ export default function TecnicoFotos() {
           </p>
         )}
 
-        {/* Info de inspección */}
+        {/* Info */}
         <div
           style={{
             background: "rgba(255,255,255,0.05)",
@@ -231,7 +231,7 @@ export default function TecnicoFotos() {
           </p>
         </div>
 
-        {/* Botón para subir foto */}
+        {/* Subir foto */}
         <div style={{ marginBottom: "20px" }}>
           <label
             style={{
@@ -257,7 +257,7 @@ export default function TecnicoFotos() {
           </label>
         </div>
 
-        {/* Lista de fotos */}
+        {/* Fotos */}
         {fotos.length === 0 ? (
           <p style={{ opacity: 0.7 }}>No hay fotos subidas.</p>
         ) : (
@@ -285,8 +285,8 @@ export default function TecnicoFotos() {
           ))
         )}
 
-        {/* Botones de navegación */}
-        <Link to={`/inspecciones/${id}/checklist`}>
+        {/* Navegación CORRECTA */}
+        <Link to={`/tecnico/inspeccion/${id}/checklist`}>
           <button
             style={{
               marginTop: "20px",
@@ -305,7 +305,7 @@ export default function TecnicoFotos() {
           </button>
         </Link>
 
-        <Link to={`/inspecciones/finalizar/${id}`}>
+        <Link to={`/tecnico/inspeccion/${id}/finalizar`}>
           <button
             style={{
               marginTop: "15px",
@@ -324,7 +324,7 @@ export default function TecnicoFotos() {
           </button>
         </Link>
 
-        <Link to={`/inspecciones/ver/${id}`}>
+        <Link to={`/tecnico/inspeccion/${id}`}>
           <button
             style={{
               marginTop: "15px",
