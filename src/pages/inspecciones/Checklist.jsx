@@ -15,16 +15,16 @@ export default function Checklist() {
   const [observaciones, setObservaciones] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  // 🔥 Cargar inspección completa (evita error rojo)
+  // Cargar inspección
   useEffect(() => {
     async function cargarInspeccion() {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("inspecciones")
         .select("*")
         .eq("id", id)
         .single();
 
-      if (!error && data) {
+      if (data) {
         setInspeccion(data);
         if (data.observaciones) setObservaciones(data.observaciones);
       }
@@ -33,7 +33,7 @@ export default function Checklist() {
     cargarInspeccion();
   }, [id]);
 
-  // 🔥 Cargar checklist
+  // Cargar checklist
   useEffect(() => {
     async function cargarChecklist() {
       const { data, error } = await supabase
@@ -160,7 +160,7 @@ export default function Checklist() {
     cargarChecklist();
   }, [id]);
 
-  // 🔥 Actualizar OK/KO
+  // Actualizar OK/KO
   async function actualizarItem(itemId, completado) {
     await supabase
       .from("checklist_inspeccion")
@@ -172,7 +172,7 @@ export default function Checklist() {
     );
   }
 
-  // 🔥 Tomar foto con Capacitor (funciona en Android)
+  // Tomar foto
   async function tomarFoto() {
     try {
       const image = await Camera.getPhoto({
@@ -215,7 +215,7 @@ export default function Checklist() {
     }
   }
 
-  // 🔥 Guardar checklist
+  // Guardar checklist
   async function guardarChecklistCompleto() {
     setGuardando(true);
     setMensaje("");
@@ -332,7 +332,6 @@ export default function Checklist() {
           </div>
         ))}
 
-        {/* ⭐ BOTÓN DE FOTO ⭐ */}
         <button
           onClick={tomarFoto}
           style={{
@@ -354,7 +353,7 @@ export default function Checklist() {
 
         <textarea
           placeholder="Observaciones de la inspección..."
-          value={observaciones}
+          value={observervaciones}
           onChange={(e) => setObservaciones(e.target.value)}
           style={{
             width: "100%",
