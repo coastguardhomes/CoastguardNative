@@ -40,7 +40,6 @@ export default function TecnicoDashboard() {
   async function cargarTecnicoYInspecciones() {
     setLoading(true);
 
-    // 🔥 Buscar técnico por auth_id
     const { data: tecnicoData, error: errorTecnico } = await supabase
       .from("tecnicos")
       .select("*")
@@ -57,7 +56,6 @@ export default function TecnicoDashboard() {
 
     setTecnico(tecnicoData);
 
-    // 🔥 Cargar inspecciones asignadas al técnico
     const { data: inspData, error: errorInsp } = await supabase
       .from("inspecciones")
       .select("*")
@@ -117,9 +115,9 @@ export default function TecnicoDashboard() {
       }}
     >
 
-      {/* 🔥 TEXTO AMARILLO PARA SABER SI LA APP USA EL CÓDIGO NUEVO */}
-      <p style={{ color: "yellow", fontSize: "22px", textAlign: "center" }}>
-        VERSION NUEVA DEL PANEL
+      {/* 🔥 MOSTRAR EL USER ID PARA VER SI COINCIDE CON auth_id */}
+      <p style={{ color: "orange", fontSize: "16px", textAlign: "center" }}>
+        USER ID: {user?.id}
       </p>
 
       <h1
@@ -329,4 +327,4 @@ export default function TecnicoDashboard() {
       </button>
     </div>
   );
-}
+        }
