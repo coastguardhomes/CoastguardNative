@@ -10,6 +10,8 @@ export default function TecnicoChecklist() {
 
   const [items, setItems] = useState([]);
   const [inspeccion, setInspeccion] = useState(null);
+  const [vivienda, setVivienda] = useState(null);
+  const [cliente, setCliente] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +35,7 @@ export default function TecnicoChecklist() {
       return;
     }
 
-    // 2️⃣ Cargar inspección
+    // 2️⃣ Cargar inspección completa
     const { data: insp } = await supabase
       .from("inspecciones")
       .select("*")
@@ -46,7 +48,7 @@ export default function TecnicoChecklist() {
       return;
     }
 
-    // 3️⃣ Validar que la inspección pertenece al técnico
+    // 3️⃣ Validar que pertenece al técnico
     if (insp.tecnico_id !== tecnico.id) {
       setMensaje("No tienes permiso para ver esta inspección.");
       setLoading(false);
@@ -55,7 +57,39 @@ export default function TecnicoChecklist() {
 
     setInspeccion(insp);
 
-    // 4️⃣ Cargar checklist
+    // 4️⃣ Cargar vivienda
+    const { data: viv } = await supabase
+      .from("viviendas")
+      .select("direccion, ciudad")
+      .eq("id", insp.vivienda_id)
+      .single();
+
+    setVivienda(viv || null);
+
+    // 5️⃣ Cargar cliente desde contrato
+    let clienteFinal = null;
+
+    if (insp.contrato_id) {
+      const { data: contrato } = await supabase
+        .from("contratos")
+        .select("cliente_id")
+        .eq("id", insp.contrato_id)
+        .single();
+
+      if (contrato?.cliente_id) {
+        const { data: cli } = await supabase
+          .from("clientes")
+          .select("nombre, telefono")
+          .eq("id", contrato.cliente_id)
+          .single();
+
+        clienteFinal = cli;
+      }
+    }
+
+    setCliente(clienteFinal);
+
+    // 6️⃣ Cargar checklist
     const { data, error } = await supabase
       .from("checklist_inspeccion")
       .select("id, inspeccion_id, texto, estado")
@@ -85,10 +119,42 @@ export default function TecnicoChecklist() {
       return;
     }
 
+    // Actualizar en pantalla
     setItems((prev) =>
       prev.map((i) =>
         i.id === itemId ? { ...i, estado: nuevoEstado } : i
       )
+    );
+
+    // 7️⃣ Actualizar estado de inspección
+    await supabase
+      .from("inspecciones")
+      .update({
+        checklist_completado: true,
+        fecha_checklist: new Date().toISOString(),
+        estado: "checklist_completado",
+      })
+      .eq("id", id);
+  }
+
+  if (loading || !inspeccion) {
+    return (
+      <Menu>
+        <div
+          style={{
+            height: "100vh",
+            background: "#0a0f1a",
+            color: "#fff",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontFamily: "Inter, sans-serif",
+            fontSize: "18px",
+          }}
+        >
+          Cargando checklist...
+        </div>
+      </Menu>
     );
   }
 
@@ -128,9 +194,32 @@ export default function TecnicoChecklist() {
           </p>
         )}
 
-        {loading ? (
-          <p style={{ opacity: 0.7 }}>Cargando checklist...</p>
-        ) : items.length === 0 ? (
+        {/* Info de inspección */}
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "15px",
+            borderRadius: "12px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            marginBottom: "20px",
+          }}
+        >
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
+            {inspeccion.fecha}
+          </p>
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
+            {inspeccion.estado}
+          </p>
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
+            {cliente ? `${cliente.nombre} (${cliente.telefono})` : "Sin cliente"}
+          </p>
+        </div>
+
+        {/* Checklist */}
+        {items.length === 0 ? (
           <p style={{ opacity: 0.7 }}>No hay ítems en el checklist.</p>
         ) : (
           items.map((item) => (
@@ -154,12 +243,7 @@ export default function TecnicoChecklist() {
                 {item.texto}
               </p>
 
-              <p
-                style={{
-                  marginBottom: "10px",
-                  opacity: 0.7,
-                }}
-              >
+              <p style={{ marginBottom: "10px", opacity: 0.7 }}>
                 Estado actual:{" "}
                 {item.estado === "ok"
                   ? "✔ OK"
@@ -168,12 +252,7 @@ export default function TecnicoChecklist() {
                   : "Pendiente"}
               </p>
 
-              <div
-                style={{
-                  display: "flex",
-                  gap: "10px",
-                }}
-              >
+              <div style={{ display: "flex", gap: "10px" }}>
                 <button
                   onClick={() => marcarItem(item.id, "ok")}
                   style={{
@@ -211,7 +290,7 @@ export default function TecnicoChecklist() {
         )}
 
         {/* Botones de navegación */}
-        <Link to={`/tecnico/inspeccion/${id}`}>
+        <Link to={`/inspecciones/${id}`}>
           <button
             style={{
               marginTop: "20px",
@@ -230,7 +309,7 @@ export default function TecnicoChecklist() {
           </button>
         </Link>
 
-        <Link to={`/tecnico/inspeccion/${id}/fotos`}>
+        <Link to={`/inspecciones/fotos/${id}`}>
           <button
             style={{
               marginTop: "15px",
@@ -249,7 +328,7 @@ export default function TecnicoChecklist() {
           </button>
         </Link>
 
-        <Link to={`/tecnico/inspeccion/${id}/finalizar`}>
+        <Link to={`/inspecciones/finalizar/${id}`}>
           <button
             style={{
               marginTop: "15px",
