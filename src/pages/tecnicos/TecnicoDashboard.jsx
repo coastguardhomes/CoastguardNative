@@ -57,7 +57,7 @@ export default function TecnicoDashboard() {
 
     setTecnico(tecnicoData);
 
-    // 2️⃣ Cargar inspecciones del técnico (select * para respetar RLS)
+    // 2️⃣ Cargar inspecciones del técnico
     const { data: inspData, error: errorInsp } = await supabase
       .from("inspecciones")
       .select("*")
@@ -70,7 +70,7 @@ export default function TecnicoDashboard() {
       return;
     }
 
-    // 3️⃣ Cargar vivienda + cliente
+    // 3️⃣ Cargar vivienda + contrato + cliente
     const inspeccionesConDatos = await Promise.all(
       (inspData || []).map(async (i) => {
         const { data: viv } = await supabase
@@ -79,16 +79,26 @@ export default function TecnicoDashboard() {
           .eq("id", i.vivienda_id)
           .single();
 
-        const { data: cli } = await supabase
-          .from("clientes")
-          .select("nombre, telefono")
-          .eq("id", i.cliente_id)
+        const { data: contrato } = await supabase
+          .from("contratos")
+          .select("cliente_id")
+          .eq("id", i.contrato_id)
           .single();
+
+        let cliente = null;
+        if (contrato?.cliente_id) {
+          const { data: cli } = await supabase
+            .from("clientes")
+            .select("nombre, telefono")
+            .eq("id", contrato.cliente_id)
+            .single();
+          cliente = cli;
+        }
 
         return {
           ...i,
           vivienda: viv || null,
-          cliente: cli || null,
+          cliente: cliente || null,
         };
       })
     );
@@ -204,6 +214,21 @@ export default function TecnicoDashboard() {
               </p>
 
               <p>
+                <strong>Checklist:</strong>{" "}
+                {insp.checklist_completado ? "✔ Completado" : "✗ Pendiente"}
+              </p>
+
+              <p>
+                <strong>Fotos:</strong>{" "}
+                {insp.fecha_fotos ? "✔ Subidas" : "✗ Pendientes"}
+              </p>
+
+              <p>
+                <strong>Firma:</strong>{" "}
+                {insp.firma_cliente ? "✔ Firmada" : "✗ Pendiente"}
+              </p>
+
+              <p>
                 <strong>Vivienda:</strong>{" "}
                 {insp.vivienda
                   ? `${insp.vivienda.direccion}, ${insp.vivienda.ciudad}`
@@ -214,11 +239,7 @@ export default function TecnicoDashboard() {
                 <strong>Cliente:</strong>{" "}
                 {insp.cliente
                   ? `${insp.cliente.nombre} (${insp.cliente.telefono})`
-                  : insp.cliente_id}
-              </p>
-
-              <p>
-                <strong>Contrato:</strong> {insp.contrato_id || "Sin contrato"}
+                  : "Sin cliente"}
               </p>
 
               <div
@@ -230,7 +251,7 @@ export default function TecnicoDashboard() {
                 }}
               >
                 <Link
-                  to={`/tecnico/inspeccion/${insp.id}/checklist`}
+                  to={`/inspecciones/${insp.id}/checklist`}
                   style={{ textDecoration: "none" }}
                 >
                   <div
@@ -246,7 +267,7 @@ export default function TecnicoDashboard() {
                 </Link>
 
                 <Link
-                  to={`/tecnico/inspeccion/${insp.id}/fotos`}
+                  to={`/inspecciones/fotos/${insp.id}`}
                   style={{ textDecoration: "none" }}
                 >
                   <div
@@ -262,7 +283,7 @@ export default function TecnicoDashboard() {
                 </Link>
 
                 <Link
-                  to={`/tecnico/inspeccion/${insp.id}/finalizar`}
+                  to={`/inspecciones/finalizar/${insp.id}`}
                   style={{ textDecoration: "none" }}
                 >
                   <div
