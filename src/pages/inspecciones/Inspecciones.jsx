@@ -2,13 +2,21 @@ import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { Link } from "react-router-dom";
-import { useUser } from "@supabase/auth-helpers-react";
 
 export default function Inspecciones() {
-  const user = useUser(); // UUID del técnico o admin
+  const [user, setUser] = useState(null);
   const [inspecciones, setInspecciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
+
+  useEffect(() => {
+    async function cargarUsuario() {
+      const { data } = await supabase.auth.getUser();
+      setUser(data?.user || null);
+    }
+
+    cargarUsuario();
+  }, []);
 
   useEffect(() => {
     async function cargarInspecciones() {
@@ -33,7 +41,7 @@ export default function Inspecciones() {
         `)
         .order("id", { ascending: false });
 
-      // 🔥 Si es técnico → filtrar por su UUID
+      // 🔥 Si NO es admin → filtrar por técnico
       if (user.email !== "coastguardhomes2@gmail.com") {
         query = query.eq("tecnico_auth_id", user.id);
       }
@@ -41,7 +49,6 @@ export default function Inspecciones() {
       const { data, error } = await query;
 
       if (error) {
-        console.error("Error cargando inspecciones:", error);
         setMensaje("Error cargando inspecciones");
         setLoading(false);
         return;
@@ -62,7 +69,6 @@ export default function Inspecciones() {
           background: "#0a0f1a",
           minHeight: "100vh",
           color: "#fff",
-          fontFamily: "Inter, sans-serif",
         }}
       >
         <h1
@@ -71,26 +77,18 @@ export default function Inspecciones() {
             fontWeight: "700",
             marginBottom: "25px",
             color: "#4db8ff",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-            textAlign: "center",
           }}
         >
           Inspecciones
         </h1>
 
         {mensaje && (
-          <p
-            style={{
-              marginBottom: "15px",
-              color: "#4db8ff",
-              fontWeight: "600",
-            }}
-          >
+          <p style={{ marginBottom: "15px", color: "#4db8ff", fontWeight: "600" }}>
             {mensaje}
           </p>
         )}
 
-        {/* Solo el admin puede crear inspecciones */}
+        {/* Solo admin */}
         {user?.email === "coastguardhomes2@gmail.com" && (
           <Link to="/inspecciones/nueva">
             <button
@@ -105,7 +103,6 @@ export default function Inspecciones() {
                 fontWeight: "700",
                 fontSize: "17px",
                 cursor: "pointer",
-                boxShadow: "0 0 10px rgba(0,153,255,0.4)",
               }}
             >
               Nueva inspección
@@ -114,9 +111,9 @@ export default function Inspecciones() {
         )}
 
         {loading ? (
-          <p style={{ opacity: 0.8 }}>Cargando inspecciones...</p>
+          <p>Cargando inspecciones...</p>
         ) : inspecciones.length === 0 ? (
-          <p style={{ opacity: 0.8 }}>No hay inspecciones registradas.</p>
+          <p>No hay inspecciones registradas.</p>
         ) : (
           <div>
             {inspecciones.map((i) => (
@@ -128,7 +125,6 @@ export default function Inspecciones() {
                   padding: "18px",
                   borderRadius: "14px",
                   border: "1px solid rgba(255,255,255,0.1)",
-                  boxShadow: "0 0 12px rgba(0,153,255,0.2)",
                 }}
               >
                 <Link
@@ -144,17 +140,17 @@ export default function Inspecciones() {
 
                 <p style={{ opacity: 0.8, marginTop: "10px" }}>
                   <strong style={{ color: "#4db8ff" }}>Dirección:</strong>{" "}
-                  {i.viviendas?.direccion || "Sin dirección"}
+                  {i.viviendas?.direccion}
                 </p>
 
                 <p style={{ opacity: 0.8 }}>
                   <strong style={{ color: "#4db8ff" }}>Localidad:</strong>{" "}
-                  {i.viviendas?.ciudad || "Sin localidad"}
+                  {i.viviendas?.ciudad}
                 </p>
 
                 <p style={{ opacity: 0.8 }}>
                   <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
-                  {i.viviendas?.clientes?.nombre || "Sin cliente"}
+                  {i.viviendas?.clientes?.nombre}
                 </p>
 
                 <p style={{ opacity: 0.8 }}>
