@@ -11,7 +11,10 @@ import {
 
 export default function TecnicoDashboard() {
   const { user } = useAuth();
+
+  const [tecnico, setTecnico] = useState(null);
   const [inspecciones, setInspecciones] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const baseStyle = {
     background: "rgba(255,255,255,0.05)",
@@ -40,18 +43,41 @@ export default function TecnicoDashboard() {
   }
 
   useEffect(() => {
-    cargarInspecciones();
+    if (user) cargarTecnicoYInspecciones();
   }, [user]);
 
-  async function cargarInspecciones() {
-    if (!user) return;
+  async function cargarTecnicoYInspecciones() {
+    setLoading(true);
 
-    const { data, error } = await supabase
+    // 1️⃣ Buscar técnico por email
+    const { data: tecnicoData, error: errorTecnico } = await supabase
+      .from("tecnicos")
+      .select("id, nombre, email")
+      .eq("email", user.email)
+      .single();
+
+    if (errorTecnico || !tecnicoData) {
+      console.log("No se encontró técnico para este usuario");
+      setTecnico(null);
+      setInspecciones([]);
+      setLoading(false);
+      return;
+    }
+
+    setTecnico(tecnicoData);
+
+    // 2️⃣ Cargar inspecciones asignadas al técnico REAL (UUID)
+    const { data: inspData, error: errorInsp } = await supabase
       .from("inspecciones")
       .select("id, fecha, estado, vivienda_id")
-      .eq("tecnico_id", user.id);
+      .eq("tecnico_id", tecnicoData.id)
+      .order("fecha", { ascending: true });
 
-    if (!error) setInspecciones(data || []);
+    if (!errorInsp) {
+      setInspecciones(inspData || []);
+    }
+
+    setLoading(false);
   }
 
   return (
@@ -77,6 +103,28 @@ export default function TecnicoDashboard() {
         Panel del Técnico
       </h1>
 
+      {/* INFO DEL TÉCNICO */}
+      {tecnico && (
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "14px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            marginBottom: "25px",
+          }}
+        >
+          <p style={{ marginBottom: "8px" }}>
+            <strong style={{ color: "#4db8ff" }}>Nombre:</strong>{" "}
+            {tecnico.nombre}
+          </p>
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Email:</strong>{" "}
+            {tecnico.email}
+          </p>
+        </div>
+      )}
+
       {/* INSPECCIONES ASIGNADAS */}
       <div
         style={{
@@ -98,7 +146,9 @@ export default function TecnicoDashboard() {
           Inspecciones asignadas
         </h2>
 
-        {inspecciones.length === 0 ? (
+        {loading ? (
+          <p style={{ opacity: 0.7 }}>Cargando inspecciones...</p>
+        ) : inspecciones.length === 0 ? (
           <p style={{ opacity: 0.7 }}>No tienes inspecciones asignadas.</p>
         ) : (
           inspecciones.map((insp) => (
