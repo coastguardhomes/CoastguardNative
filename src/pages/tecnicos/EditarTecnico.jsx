@@ -16,48 +16,57 @@ export default function EditarTecnico() {
   });
 
   const [mensaje, setMensaje] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
-    async function cargarTecnico() {
-      const { data, error } = await supabase
-        .from("tecnicos")
-        .select("nombre, telefono, email, especialidad, activo")
-        .eq("id", id)
-        .single();
-
-      if (error) {
-        setMensaje("Error cargando técnico");
-        return;
-      }
-
-      setForm(data);
-    }
-
     cargarTecnico();
   }, [id]);
 
+  async function cargarTecnico() {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("tecnicos")
+      .select("nombre, telefono, email, especialidad, activo")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) {
+      setMensaje("Error cargando técnico");
+      setLoading(false);
+      return;
+    }
+
+    setForm(data);
+    setLoading(false);
+  }
+
   async function guardarCambios() {
-    if (!form.nombre.trim()) {
-      setMensaje("El nombre es obligatorio");
-      return;
+    setMensaje("");
+
+    if (!form.nombre.trim()) return setMensaje("El nombre es obligatorio");
+    if (!form.telefono.trim() || form.telefono.length < 6)
+      return setMensaje("Teléfono inválido");
+    if (!form.email.trim() || !form.email.includes("@"))
+      return setMensaje("Email inválido");
+    if (!form.especialidad.trim())
+      return setMensaje("La especialidad es obligatoria");
+
+    setGuardando(true);
+
+    // 1️⃣ Validar email único
+    const { data: emailCheck } = await supabase
+      .from("tecnicos")
+      .select("id")
+      .eq("email", form.email);
+
+    if (emailCheck && emailCheck.length > 0 && emailCheck[0].id !== id) {
+      setGuardando(false);
+      return setMensaje("Este email ya está en uso por otro técnico");
     }
 
-    if (!form.telefono.trim()) {
-      setMensaje("El teléfono es obligatorio");
-      return;
-    }
-
-    if (!form.email.trim() || !form.email.includes("@")) {
-      setMensaje("Email inválido");
-      return;
-    }
-
-    if (!form.especialidad.trim()) {
-      setMensaje("La especialidad es obligatoria");
-      return;
-    }
-
-    // Guardar técnico
+    // 2️⃣ Guardar técnico
     const { error } = await supabase
       .from("tecnicos")
       .update({
@@ -70,11 +79,11 @@ export default function EditarTecnico() {
       .eq("id", id);
 
     if (error) {
-      setMensaje("Error guardando cambios");
-      return;
+      setGuardando(false);
+      return setMensaje("Error guardando cambios");
     }
 
-    // Si el técnico se desactiva → inspecciones pendientes quedan sin asignar
+    // 3️⃣ Si se desactiva → marcar inspecciones pendientes
     if (!form.activo) {
       await supabase
         .from("inspecciones")
@@ -88,6 +97,8 @@ export default function EditarTecnico() {
     setTimeout(() => {
       navigate("/tecnicos");
     }, 1200);
+
+    setGuardando(false);
   }
 
   const inputStyle = {
@@ -127,7 +138,9 @@ export default function EditarTecnico() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: mensaje.includes("correctamente")
+                ? "#4ade80"
+                : "#ff6b6b",
               fontWeight: "600",
             }}
           >
@@ -135,76 +148,81 @@ export default function EditarTecnico() {
           </p>
         )}
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <label>Nombre</label>
-          <input
-            value={form.nombre}
-            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-            style={inputStyle}
-          />
-
-          <label>Teléfono</label>
-          <input
-            value={form.telefono}
-            onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-            style={inputStyle}
-          />
-
-          <label>Email</label>
-          <input
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            style={inputStyle}
-          />
-
-          <label>Especialidad</label>
-          <input
-            value={form.especialidad}
-            onChange={(e) =>
-              setForm({ ...form, especialidad: e.target.value })
-            }
-            style={inputStyle}
-          />
-
-          <label>Activo</label>
-          <select
-            value={form.activo ? "true" : "false"}
-            onChange={(e) =>
-              setForm({ ...form, activo: e.target.value === "true" })
-            }
-            style={inputStyle}
-          >
-            <option value="true">Activo</option>
-            <option value="false">Inactivo</option>
-          </select>
-
-          <button
-            onClick={guardarCambios}
+        {loading ? (
+          <p style={{ opacity: 0.7 }}>Cargando técnico...</p>
+        ) : (
+          <div
             style={{
-              marginTop: "20px",
-              padding: "14px",
-              width: "100%",
-              background: "#4db8ff",
-              color: "#000",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "17px",
-              cursor: "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+              background: "rgba(255,255,255,0.05)",
+              padding: "20px",
+              borderRadius: "14px",
+              border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 0 12px rgba(0,153,255,0.2)",
             }}
           >
-            Guardar cambios
-          </button>
-        </div>
+            <label>Nombre</label>
+            <input
+              value={form.nombre}
+              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              style={inputStyle}
+            />
+
+            <label>Teléfono</label>
+            <input
+              value={form.telefono}
+              onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+              style={inputStyle}
+            />
+
+            <label>Email</label>
+            <input
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              style={inputStyle}
+            />
+
+            <label>Especialidad</label>
+            <input
+              value={form.especialidad}
+              onChange={(e) =>
+                setForm({ ...form, especialidad: e.target.value })
+              }
+              style={inputStyle}
+            />
+
+            <label>Activo</label>
+            <select
+              value={form.activo ? "true" : "false"}
+              onChange={(e) =>
+                setForm({ ...form, activo: e.target.value === "true" })
+              }
+              style={inputStyle}
+            >
+              <option value="true">Activo</option>
+              <option value="false">Inactivo</option>
+            </select>
+
+            <button
+              onClick={guardarCambios}
+              disabled={guardando}
+              style={{
+                marginTop: "20px",
+                padding: "14px",
+                width: "100%",
+                background: guardando ? "#999" : "#4db8ff",
+                color: "#000",
+                borderRadius: "10px",
+                border: "none",
+                fontWeight: "700",
+                fontSize: "17px",
+                cursor: guardando ? "not-allowed" : "pointer",
+                boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+              }}
+            >
+              {guardando ? "Guardando..." : "Guardar cambios"}
+            </button>
+          </div>
+        )}
       </div>
     </Menu>
   );
