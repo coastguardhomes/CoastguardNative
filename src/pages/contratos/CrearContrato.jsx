@@ -42,6 +42,7 @@ export default function CrearContrato() {
       .from("viviendas")
       .select("id, direccion, cliente_id");
 
+    // ⚠️ IMPORTANTE: técnico_id es UUID → hay que traer el UUID real
     const { data: tecnicosData } = await supabase
       .from("tecnicos")
       .select("id, nombre");
@@ -90,14 +91,17 @@ export default function CrearContrato() {
       return;
     }
 
-    // 1️⃣ Crear contrato inicial con TODOS los campos obligatorios
+    // 1️⃣ Crear contrato inicial
     const { data, error } = await supabase
       .from("contratos")
       .insert([
         {
           cliente_id: form.cliente_id,
           vivienda_id: form.vivienda_id,
-          tecnico_id: form.tecnico_id,
+
+          // ⚠️ UUID CORREGIDO
+          tecnico_id: String(form.tecnico_id),
+
           fecha_inicio: form.fecha_inicio,
           precio: form.precio,
           notas: form.notas,
@@ -105,7 +109,7 @@ export default function CrearContrato() {
           modalidad: form.modalidad,
           estado: "pendiente",
 
-          // CAMPOS OBLIGATORIOS QUE FALTABAN
+          // CAMPOS QUE TU TABLA SÍ TIENE
           firma: null,
           firmado_en: null,
           pdf_url: null,
@@ -259,7 +263,9 @@ export default function CrearContrato() {
           <label>Técnico:</label>
           <select
             value={form.tecnico_id}
-            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, tecnico_id: String(e.target.value) })
+            }
             style={inputStyle}
           >
             <option value="">Selecciona técnico</option>
