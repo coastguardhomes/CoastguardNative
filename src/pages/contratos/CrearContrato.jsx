@@ -90,7 +90,7 @@ export default function CrearContrato() {
       return;
     }
 
-    // 1️⃣ Crear contrato inicial
+    // 1️⃣ Crear contrato inicial con TODOS los campos obligatorios
     const { data, error } = await supabase
       .from("contratos")
       .insert([
@@ -104,9 +104,12 @@ export default function CrearContrato() {
           frecuencia: form.frecuencia,
           modalidad: form.modalidad,
           estado: "pendiente",
+
+          // CAMPOS OBLIGATORIOS QUE FALTABAN
           firma: null,
           firmado_en: null,
           pdf_url: null,
+          fecha_fin: null,
         },
       ])
       .select();
