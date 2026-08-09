@@ -2,11 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext.jsx";
-import {
-  FaClipboardList,
-  FaCamera,
-  FaCheckCircle,
-} from "react-icons/fa";
+import { FaClipboardList, FaCamera, FaCheckCircle } from "react-icons/fa";
 
 export default function TecnicoDashboard() {
   const { user } = useAuth();
@@ -44,7 +40,7 @@ export default function TecnicoDashboard() {
   async function cargarTecnicoYInspecciones() {
     setLoading(true);
 
-    // 1️⃣ Buscar técnico por email
+    // 1️⃣ Cargar técnico por email
     const { data: tecnicoData, error: errorTecnico } = await supabase
       .from("tecnicos")
       .select("*")
@@ -198,11 +194,13 @@ export default function TecnicoDashboard() {
             >
               <p>
                 <strong>Fecha:</strong>{" "}
-                {new Date(insp.fecha).toLocaleDateString()}
+                {insp.fecha
+                  ? new Date(insp.fecha).toLocaleDateString()
+                  : "Sin fecha"}
               </p>
 
               <p>
-                <strong>Estado:</strong> {insp.estado}
+                <strong>Estado:</strong> {insp.estado || "Sin estado"}
               </p>
 
               <p>
@@ -220,7 +218,7 @@ export default function TecnicoDashboard() {
               </p>
 
               <p>
-                <strong>Contrato:</strong> {insp.contrato_id}
+                <strong>Contrato:</strong> {insp.contrato_id || "Sin contrato"}
               </p>
 
               <div
