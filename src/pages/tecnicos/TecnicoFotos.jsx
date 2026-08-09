@@ -9,6 +9,8 @@ export default function TecnicoFotos() {
   const { user } = useAuth();
 
   const [inspeccion, setInspeccion] = useState(null);
+  const [vivienda, setVivienda] = useState(null);
+  const [cliente, setCliente] = useState(null);
   const [fotos, setFotos] = useState([]);
   const [mensaje, setMensaje] = useState("");
   const [subiendo, setSubiendo] = useState(false);
@@ -34,10 +36,10 @@ export default function TecnicoFotos() {
       return;
     }
 
-    // 2️⃣ Cargar inspección
+    // 2️⃣ Cargar inspección completa
     const { data: insp } = await supabase
       .from("inspecciones")
-      .select("id, fecha, estado, tecnico_id")
+      .select("*")
       .eq("id", id)
       .single();
 
@@ -56,18 +58,44 @@ export default function TecnicoFotos() {
 
     setInspeccion(insp);
 
-    // 4️⃣ Cargar fotos
-    const { data: fotosData, error } = await supabase
+    // 4️⃣ Cargar vivienda
+    const { data: viv } = await supabase
+      .from("viviendas")
+      .select("direccion, ciudad")
+      .eq("id", insp.vivienda_id)
+      .single();
+
+    setVivienda(viv || null);
+
+    // 5️⃣ Cargar cliente desde contrato
+    let clienteFinal = null;
+
+    if (insp.contrato_id) {
+      const { data: contrato } = await supabase
+        .from("contratos")
+        .select("cliente_id")
+        .eq("id", insp.contrato_id)
+        .single();
+
+      if (contrato?.cliente_id) {
+        const { data: cli } = await supabase
+          .from("clientes")
+          .select("nombre, telefono")
+          .eq("id", contrato.cliente_id)
+          .single();
+
+        clienteFinal = cli;
+      }
+    }
+
+    setCliente(clienteFinal);
+
+    // 6️⃣ Cargar fotos
+    const { data: fotosData } = await supabase
       .from("fotos_inspeccion")
       .select("id, url")
       .eq("inspeccion_id", id)
       .order("id", { ascending: false });
-
-    if (error) {
-      setMensaje("Error cargando fotos");
-      setLoading(false);
-      return;
-    }
 
     setFotos(fotosData || []);
     setLoading(false);
@@ -109,11 +137,20 @@ export default function TecnicoFotos() {
       return;
     }
 
+    // 4️⃣ Actualizar estado de inspección
+    await supabase
+      .from("inspecciones")
+      .update({
+        fecha_fotos: new Date().toISOString(),
+        estado: "fotos_completadas",
+      })
+      .eq("id", id);
+
     setSubiendo(false);
     cargarDatos();
   }
 
-  if (loading) {
+  if (loading || !inspeccion) {
     return (
       <Menu>
         <div
@@ -188,6 +225,10 @@ export default function TecnicoFotos() {
             <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
             {inspeccion.estado}
           </p>
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
+            {cliente ? `${cliente.nombre} (${cliente.telefono})` : "Sin cliente"}
+          </p>
         </div>
 
         {/* Botón para subir foto */}
@@ -245,7 +286,7 @@ export default function TecnicoFotos() {
         )}
 
         {/* Botones de navegación */}
-        <Link to={`/tecnico/inspeccion/${id}/checklist`}>
+        <Link to={`/inspecciones/${id}/checklist`}>
           <button
             style={{
               marginTop: "20px",
@@ -264,7 +305,7 @@ export default function TecnicoFotos() {
           </button>
         </Link>
 
-        <Link to={`/tecnico/inspeccion/${id}/finalizar`}>
+        <Link to={`/inspecciones/finalizar/${id}`}>
           <button
             style={{
               marginTop: "15px",
@@ -283,7 +324,7 @@ export default function TecnicoFotos() {
           </button>
         </Link>
 
-        <Link to={`/tecnico/inspeccion/${id}`}>
+        <Link to={`/inspecciones/ver/${id}`}>
           <button
             style={{
               marginTop: "15px",
