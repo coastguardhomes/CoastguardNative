@@ -2,21 +2,26 @@ import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { Link } from "react-router-dom";
+import { useUser } from "@supabase/auth-helpers-react";
 
 export default function Inspecciones() {
+  const user = useUser(); // UUID del técnico o admin
   const [inspecciones, setInspecciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarInspecciones() {
-      const { data, error } = await supabase
+      if (!user) return;
+
+      let query = supabase
         .from("inspecciones")
         .select(`
           id,
           fecha,
           estado,
           vivienda_id,
+          tecnico_auth_id,
           viviendas (
             direccion,
             ciudad,
@@ -27,6 +32,13 @@ export default function Inspecciones() {
           )
         `)
         .order("id", { ascending: false });
+
+      // 🔥 Si es técnico → filtrar por su UUID
+      if (user.email !== "coastguardhomes2@gmail.com") {
+        query = query.eq("tecnico_auth_id", user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error("Error cargando inspecciones:", error);
@@ -40,7 +52,7 @@ export default function Inspecciones() {
     }
 
     cargarInspecciones();
-  }, []);
+  }, [user]);
 
   return (
     <Menu>
@@ -78,25 +90,28 @@ export default function Inspecciones() {
           </p>
         )}
 
-        <Link to="/inspecciones/nueva">
-          <button
-            style={{
-              marginBottom: "25px",
-              padding: "14px",
-              width: "100%",
-              background: "#4db8ff",
-              color: "#000",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "17px",
-              cursor: "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-            }}
-          >
-            Nueva inspección
-          </button>
-        </Link>
+        {/* Solo el admin puede crear inspecciones */}
+        {user?.email === "coastguardhomes2@gmail.com" && (
+          <Link to="/inspecciones/nueva">
+            <button
+              style={{
+                marginBottom: "25px",
+                padding: "14px",
+                width: "100%",
+                background: "#4db8ff",
+                color: "#000",
+                borderRadius: "10px",
+                border: "none",
+                fontWeight: "700",
+                fontSize: "17px",
+                cursor: "pointer",
+                boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+              }}
+            >
+              Nueva inspección
+            </button>
+          </Link>
+        )}
 
         {loading ? (
           <p style={{ opacity: 0.8 }}>Cargando inspecciones...</p>
