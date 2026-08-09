@@ -10,6 +10,8 @@ export default function VerTecnico() {
   const [tecnico, setTecnico] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [inspecciones, setInspecciones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [procesando, setProcesando] = useState(false);
 
   useEffect(() => {
     cargarTecnico();
@@ -20,18 +22,22 @@ export default function VerTecnico() {
   }, [tecnico]);
 
   async function cargarTecnico() {
+    setLoading(true);
+
     const { data, error } = await supabase
       .from("tecnicos")
       .select("id, nombre, telefono, email, especialidad, activo, created_at")
       .eq("id", id)
       .single();
 
-    if (error) {
+    if (error || !data) {
       setMensaje("Error cargando técnico");
+      setLoading(false);
       return;
     }
 
     setTecnico(data);
+    setLoading(false);
   }
 
   async function cargarInspecciones() {
@@ -48,18 +54,45 @@ export default function VerTecnico() {
       .eq("tecnico_id", id)
       .order("fecha", { ascending: false });
 
-    setInspecciones(data || []);
+    // Cargar vivienda y cliente
+    const inspeccionesConDatos = await Promise.all(
+      (data || []).map(async (i) => {
+        const { data: viv } = await supabase
+          .from("viviendas")
+          .select("direccion, ciudad")
+          .eq("id", i.vivienda_id)
+          .single();
+
+        const { data: cli } = await supabase
+          .from("clientes")
+          .select("nombre, telefono")
+          .eq("id", i.cliente_id)
+          .single();
+
+        return {
+          ...i,
+          vivienda: viv || null,
+          cliente: cli || null,
+        };
+      })
+    );
+
+    setInspecciones(inspeccionesConDatos);
   }
 
-  // ⭐ BORRAR TÉCNICO COMPLETO (incluye inspecciones)
+  // ⭐ ELIMINAR TÉCNICO SIN BORRAR INSPECCIONES
   async function eliminarTecnico() {
-    const confirmar = window.confirm("¿Seguro que deseas eliminar este técnico?");
+    const confirmar = window.confirm(
+      "¿Seguro que deseas eliminar este técnico? Sus inspecciones quedarán pendientes de reasignar."
+    );
     if (!confirmar) return;
 
-    // 1. Borrar inspecciones del técnico
+    setProcesando(true);
+
+    // 1. Reasignar inspecciones
     await supabase
       .from("inspecciones")
-      .delete()
+      .update({ estado: "pendiente_reasignar" })
       .eq("tecnico_id", id);
 
     // 2. Borrar técnico
@@ -67,6 +100,8 @@ export default function VerTecnico() {
       .from("tecnicos")
       .delete()
       .eq("id", id);
+
+    setProcesando(false);
 
     if (error) {
       setMensaje("Error eliminando técnico");
@@ -78,6 +113,8 @@ export default function VerTecnico() {
   }
 
   async function cambiarEstado() {
+    setProcesando(true);
+
     const nuevoEstado = !tecnico.activo;
 
     await supabase
@@ -85,7 +122,6 @@ export default function VerTecnico() {
       .update({ activo: nuevoEstado })
       .eq("id", id);
 
-    // Si se desactiva → inspecciones pendientes quedan sin asignar
     if (!nuevoEstado) {
       await supabase
         .from("inspecciones")
@@ -94,10 +130,11 @@ export default function VerTecnico() {
         .eq("estado", "pendiente");
     }
 
+    setProcesando(false);
     cargarTecnico();
   }
 
-  if (!tecnico) {
+  if (loading) {
     return (
       <Menu>
         <div
@@ -154,7 +191,7 @@ export default function VerTecnico() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: "#ff6b6b",
               fontWeight: "600",
             }}
           >
@@ -203,13 +240,12 @@ export default function VerTecnico() {
               <Item
                 key={i.id}
                 to={`/inspecciones/${i.id}`}
-                titulo={`Inspección del ${i.fecha} — Estado: ${i.estado}`}
+                titulo={`${i.vivienda?.direccion || "Vivienda"} — ${i.estado}`}
               />
             ))
           )}
         </Bloque>
 
-        {/* Inspecciones por estado */}
         <Bloque titulo="Pendientes">
           {pendientes.length === 0 ? (
             <p style={{ opacity: 0.7 }}>No hay inspecciones pendientes.</p>
@@ -218,7 +254,7 @@ export default function VerTecnico() {
               <Item
                 key={i.id}
                 to={`/inspecciones/${i.id}`}
-                titulo={`Inspección del ${i.fecha}`}
+                titulo={`${i.vivienda?.direccion || "Vivienda"} — Pendiente`}
               />
             ))
           )}
@@ -232,7 +268,7 @@ export default function VerTecnico() {
               <Item
                 key={i.id}
                 to={`/inspecciones/${i.id}`}
-                titulo={`Inspección del ${i.fecha}`}
+                titulo={`${i.vivienda?.direccion || "Vivienda"} — Finalizada`}
               />
             ))
           )}
@@ -246,7 +282,7 @@ export default function VerTecnico() {
               <Item
                 key={i.id}
                 to={`/inspecciones/${i.id}`}
-                titulo={`Inspección del ${i.fecha}`}
+                titulo={`${i.vivienda?.direccion || "Vivienda"} — Aceptada`}
               />
             ))
           )}
@@ -255,6 +291,7 @@ export default function VerTecnico() {
         {/* Botones */}
         <Link to={`/tecnicos/editar/${id}`}>
           <button
+            disabled={procesando}
             style={{
               marginBottom: "15px",
               padding: "14px",
@@ -265,7 +302,7 @@ export default function VerTecnico() {
               border: "none",
               fontWeight: "700",
               fontSize: "17px",
-              cursor: "pointer",
+              cursor: procesando ? "not-allowed" : "pointer",
               boxShadow: "0 0 10px rgba(0,153,255,0.4)",
             }}
           >
@@ -275,6 +312,7 @@ export default function VerTecnico() {
 
         <button
           onClick={cambiarEstado}
+          disabled={procesando}
           style={{
             marginBottom: "15px",
             padding: "14px",
@@ -285,16 +323,16 @@ export default function VerTecnico() {
             border: "none",
             fontWeight: "700",
             fontSize: "17px",
-            cursor: "pointer",
+            cursor: procesando ? "not-allowed" : "pointer",
             boxShadow: "0 0 10px rgba(255,0,0,0.4)",
           }}
         >
           {tecnico.activo ? "Desactivar técnico" : "Activar técnico"}
         </button>
 
-        {/* ⭐ BOTÓN NUEVO: BORRAR TÉCNICO COMPLETO */}
         <button
           onClick={eliminarTecnico}
+          disabled={procesando}
           style={{
             marginTop: "10px",
             padding: "14px",
@@ -305,7 +343,7 @@ export default function VerTecnico() {
             border: "none",
             fontWeight: "700",
             fontSize: "17px",
-            cursor: "pointer",
+            cursor: procesando ? "not-allowed" : "pointer",
             boxShadow: "0 0 10px rgba(255,0,0,0.4)",
           }}
         >
