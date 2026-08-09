@@ -20,11 +20,31 @@ export default function Contratos() {
           fecha_inicio,
           fecha_fin,
           modalidad,
+          estado,
+          firma,
           creado_en
         `)
         .order("creado_en", { ascending: false });
 
-      if (!error) setContratos(data || []);
+      if (!error) {
+        // Cargar nombres relacionados
+        const clientes = await supabase.from("clientes").select("id, nombre");
+        const viviendas = await supabase.from("viviendas").select("id, direccion");
+        const tecnicos = await supabase.from("tecnicos").select("id, nombre");
+
+        const contratosConNombres = data.map((c) => ({
+          ...c,
+          cliente_nombre:
+            clientes.data.find((x) => x.id === c.cliente_id)?.nombre || "—",
+          vivienda_direccion:
+            viviendas.data.find((x) => x.id === c.vivienda_id)?.direccion || "—",
+          tecnico_nombre:
+            tecnicos.data.find((x) => x.id === c.tecnico_id)?.nombre || "—",
+        }));
+
+        setContratos(contratosConNombres);
+      }
+
       setLoading(false);
     }
 
@@ -100,43 +120,53 @@ export default function Contratos() {
                     marginBottom: "15px",
                   }}
                 >
-                  <p style={{ marginBottom: "6px" }}>
+                  <p>
                     <strong style={{ color: "#4db8ff" }}>Contrato:</strong> #{c.id}
                   </p>
 
-                  <p style={{ marginBottom: "6px" }}>
+                  <p>
+                    <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
+                    {c.cliente_nombre}
+                  </p>
+
+                  <p>
+                    <strong style={{ color: "#4db8ff" }}>Vivienda:</strong>{" "}
+                    {c.vivienda_direccion}
+                  </p>
+
+                  <p>
+                    <strong style={{ color: "#4db8ff" }}>Técnico:</strong>{" "}
+                    {c.tecnico_nombre}
+                  </p>
+
+                  <p>
                     <strong style={{ color: "#4db8ff" }}>Modalidad:</strong>{" "}
                     {c.modalidad || "Sin modalidad"}
                   </p>
 
-                  <p style={{ marginBottom: "6px" }}>
+                  <p>
                     <strong style={{ color: "#4db8ff" }}>Fecha inicio:</strong>{" "}
                     {c.fecha_inicio || "Sin fecha"}
                   </p>
 
-                  <p style={{ marginBottom: "6px" }}>
+                  <p>
                     <strong style={{ color: "#4db8ff" }}>Fecha fin:</strong>{" "}
                     {c.fecha_fin || "Sin fecha"}
                   </p>
 
-                  <p style={{ marginBottom: "6px" }}>
+                  <p>
                     <strong style={{ color: "#4db8ff" }}>Precio:</strong>{" "}
                     {c.precio ? `${c.precio} €` : "Sin precio"}
                   </p>
 
                   <p>
-                    <strong style={{ color: "#4db8ff" }}>Cliente ID:</strong>{" "}
-                    {c.cliente_id}
+                    <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
+                    {c.estado || "Sin estado"}
                   </p>
 
                   <p>
-                    <strong style={{ color: "#4db8ff" }}>Vivienda ID:</strong>{" "}
-                    {c.vivienda_id}
-                  </p>
-
-                  <p>
-                    <strong style={{ color: "#4db8ff" }}>Técnico ID:</strong>{" "}
-                    {c.tecnico_id}
+                    <strong style={{ color: "#4db8ff" }}>Firmado:</strong>{" "}
+                    {c.firma ? "Sí" : "No"}
                   </p>
                 </div>
               </Link>
