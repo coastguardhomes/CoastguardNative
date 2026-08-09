@@ -2,17 +2,38 @@ import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
 export default function Checklist() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  const [inspeccion, setInspeccion] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [guardando, setGuardando] = useState(false);
 
+  // 🔥 Cargar inspección completa (evita error rojo)
+  useEffect(() => {
+    async function cargarInspeccion() {
+      const { data, error } = await supabase
+        .from("inspecciones")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (!error && data) {
+        setInspeccion(data);
+        if (data.observaciones) setObservaciones(data.observaciones);
+      }
+    }
+
+    cargarInspeccion();
+  }, [id]);
+
+  // 🔥 Cargar checklist
   useEffect(() => {
     async function cargarChecklist() {
       const { data, error } = await supabase
@@ -133,22 +154,13 @@ export default function Checklist() {
         setItems(data);
       }
 
-      const { data: inspeccionData } = await supabase
-        .from("inspecciones")
-        .select("observaciones")
-        .eq("id", id)
-        .single();
-
-      if (inspeccionData?.observaciones) {
-        setObservaciones(inspeccionData.observaciones);
-      }
-
       setLoading(false);
     }
 
     cargarChecklist();
   }, [id]);
 
+  // 🔥 Actualizar OK/KO
   async function actualizarItem(itemId, completado) {
     await supabase
       .from("checklist_inspeccion")
@@ -160,17 +172,17 @@ export default function Checklist() {
     );
   }
 
+  // 🔥 Tomar foto con Capacitor (funciona en Android)
   async function tomarFoto() {
     try {
-      const imageData = await window.navigator.camera.getPicture({
+      const image = await Camera.getPhoto({
         quality: 70,
-        destinationType: window.Camera.DestinationType.DATA_URL,
-        sourceType: window.Camera.PictureSourceType.CAMERA,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Camera,
       });
 
-      const base64 = `data:image/jpeg;base64,${imageData}`;
-      const res = await fetch(base64);
-      const blob = await res.blob();
+      const base64 = `data:image/jpeg;base64,${image.base64String}`;
+      const blob = await (await fetch(base64)).blob();
 
       const nombreArchivo = `checklist_${id}_${Date.now()}.jpg`;
 
@@ -203,6 +215,7 @@ export default function Checklist() {
     }
   }
 
+  // 🔥 Guardar checklist
   async function guardarChecklistCompleto() {
     setGuardando(true);
     setMensaje("");
@@ -223,7 +236,7 @@ export default function Checklist() {
     setGuardando(false);
   }
 
-  if (loading) {
+  if (loading || !inspeccion) {
     return (
       <Menu>
         <div
@@ -319,7 +332,7 @@ export default function Checklist() {
           </div>
         ))}
 
-        {/* ⭐ BOTÓN DE FOTO DENTRO DEL CHECKLIST ⭐ */}
+        {/* ⭐ BOTÓN DE FOTO ⭐ */}
         <button
           onClick={tomarFoto}
           style={{
@@ -336,7 +349,7 @@ export default function Checklist() {
             marginBottom: "20px",
           }}
         >
-          Tomar foto del checklist
+          📸 Tomar foto del checklist
         </button>
 
         <textarea
