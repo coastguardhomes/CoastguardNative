@@ -67,7 +67,9 @@ export default function CrearContrato() {
   }
 
   async function crearContrato() {
-    // VALIDACIONES COMPLETAS
+    setMensaje("");
+
+    // VALIDACIONES
     if (!form.cliente_id || !form.vivienda_id || !form.tecnico_id) {
       setMensaje("Cliente, vivienda y técnico son obligatorios");
       return;
@@ -88,7 +90,7 @@ export default function CrearContrato() {
       return;
     }
 
-    // 1️⃣ Crear contrato básico
+    // 1️⃣ Crear contrato inicial
     const { data, error } = await supabase
       .from("contratos")
       .insert([
@@ -102,19 +104,22 @@ export default function CrearContrato() {
           frecuencia: form.frecuencia,
           modalidad: form.modalidad,
           estado: "pendiente",
+          firma: null,
+          firmado_en: null,
+          pdf_url: null,
         },
       ])
       .select();
 
     if (error) {
-      setMensaje("Error creando contrato");
       console.error(error);
+      setMensaje("Error creando contrato");
       return;
     }
 
     const contratoId = data[0].id;
 
-    // 2️⃣ Calcular fecha_fin automáticamente
+    // 2️⃣ Calcular fecha_fin
     const fechaInicio = new Date(form.fecha_inicio);
     const fechaFin = new Date(
       fechaInicio.getTime() + form.frecuencia * 24 * 60 * 60 * 1000
@@ -122,7 +127,7 @@ export default function CrearContrato() {
       .toISOString()
       .split("T")[0];
 
-    // 3️⃣ Generar PDF automáticamente
+    // 3️⃣ Generar PDF
     let pdfUrl = null;
     try {
       const pdfResponse = await fetch(
@@ -133,7 +138,7 @@ export default function CrearContrato() {
       console.error("Error generando PDF:", e);
     }
 
-    // 4️⃣ Guardar datos automáticos
+    // 4️⃣ Guardar fecha_fin y pdf_url
     await supabase
       .from("contratos")
       .update({
@@ -142,7 +147,7 @@ export default function CrearContrato() {
       })
       .eq("id", contratoId);
 
-    // 5️⃣ Crear inspecciones automáticas (CORREGIDO)
+    // 5️⃣ Crear inspecciones automáticas
     try {
       await fetch(
         `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear_inspecciones_programadas?id=${contratoId}`
@@ -151,7 +156,7 @@ export default function CrearContrato() {
       console.error("Error creando inspecciones:", e);
     }
 
-    // 6️⃣ Enviar email automático al cliente
+    // 6️⃣ Enviar email
     try {
       await fetch(
         `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${contratoId}`
