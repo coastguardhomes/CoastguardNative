@@ -15,30 +15,34 @@ export default function NuevoTecnico() {
   });
 
   const [mensaje, setMensaje] = useState("");
+  const [guardando, setGuardando] = useState(false);
 
   async function guardarTecnico() {
-    // VALIDACIONES COMPLETAS
-    if (!form.nombre.trim()) {
-      setMensaje("El nombre es obligatorio");
-      return;
+    setMensaje("");
+
+    // VALIDACIONES
+    if (!form.nombre.trim()) return setMensaje("El nombre es obligatorio");
+    if (!form.telefono.trim() || form.telefono.length < 6)
+      return setMensaje("Teléfono inválido");
+    if (!form.email.trim() || !form.email.includes("@") || form.email.length < 5)
+      return setMensaje("Email inválido");
+    if (!form.especialidad.trim())
+      return setMensaje("La especialidad es obligatoria");
+
+    setGuardando(true);
+
+    // 1️⃣ Validar email único
+    const { data: emailCheck } = await supabase
+      .from("tecnicos")
+      .select("id")
+      .eq("email", form.email);
+
+    if (emailCheck && emailCheck.length > 0) {
+      setGuardando(false);
+      return setMensaje("Este email ya está en uso por otro técnico");
     }
 
-    if (!form.telefono.trim()) {
-      setMensaje("El teléfono es obligatorio");
-      return;
-    }
-
-    if (!form.email.trim() || !form.email.includes("@")) {
-      setMensaje("Email inválido");
-      return;
-    }
-
-    if (!form.especialidad.trim()) {
-      setMensaje("La especialidad es obligatoria");
-      return;
-    }
-
-    // 1️⃣ Crear técnico
+    // 2️⃣ Crear técnico
     const { error } = await supabase.from("tecnicos").insert([
       {
         nombre: form.nombre,
@@ -50,11 +54,11 @@ export default function NuevoTecnico() {
     ]);
 
     if (error) {
-      setMensaje("Error guardando técnico");
-      return;
+      setGuardando(false);
+      return setMensaje("Error guardando técnico");
     }
 
-    // 2️⃣ Notificar al admin que hay un técnico nuevo
+    // 3️⃣ Notificar al admin
     try {
       await fetch(
         `https://wjomazuymbayceilvfku.supabase.co/functions/v1/notificar-admin-nuevo-tecnico?email=${form.email}`
@@ -68,6 +72,8 @@ export default function NuevoTecnico() {
     setTimeout(() => {
       navigate("/tecnicos");
     }, 1200);
+
+    setGuardando(false);
   }
 
   const inputStyle = {
@@ -108,7 +114,9 @@ export default function NuevoTecnico() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: mensaje.includes("correctamente")
+                ? "#4ade80"
+                : "#ff6b6b",
               fontWeight: "600",
               textAlign: "center",
             }}
@@ -170,21 +178,22 @@ export default function NuevoTecnico() {
 
           <button
             onClick={guardarTecnico}
+            disabled={guardando}
             style={{
               marginTop: "20px",
               padding: "14px",
               width: "100%",
-              background: "#4db8ff",
+              background: guardando ? "#999" : "#4db8ff",
               color: "#000",
               borderRadius: "10px",
               border: "none",
               fontWeight: "700",
               fontSize: "17px",
-              cursor: "pointer",
+              cursor: guardando ? "not-allowed" : "pointer",
               boxShadow: "0 0 10px rgba(0,153,255,0.4)",
             }}
           >
-            Guardar técnico
+            {guardando ? "Guardando..." : "Guardar técnico"}
           </button>
         </div>
       </div>
