@@ -40,7 +40,7 @@ export default function TecnicoDashboard() {
   async function cargarTecnicoYInspecciones() {
     setLoading(true);
 
-    // 🔥 Buscar técnico por auth_id (NO por email)
+    // 🔥 Buscar técnico por auth_id
     const { data: tecnicoData, error: errorTecnico } = await supabase
       .from("tecnicos")
       .select("*")
@@ -52,9 +52,6 @@ export default function TecnicoDashboard() {
       setTecnico(null);
       setInspecciones([]);
       setLoading(false);
-      <p style={{ color: "yellow", fontSize: "22px", textAlign: "center" }}>
-  VERSION NUEVA DEL PANEL
-</p>
       return;
     }
 
@@ -119,6 +116,12 @@ export default function TecnicoDashboard() {
         fontFamily: "Inter, sans-serif",
       }}
     >
+
+      {/* 🔥 TEXTO AMARILLO PARA SABER SI LA APP USA EL CÓDIGO NUEVO */}
+      <p style={{ color: "yellow", fontSize: "22px", textAlign: "center" }}>
+        VERSION NUEVA DEL PANEL
+      </p>
+
       <h1
         style={{
           fontSize: "30px",
