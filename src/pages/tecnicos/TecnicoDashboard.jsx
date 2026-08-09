@@ -40,7 +40,6 @@ export default function TecnicoDashboard() {
   async function cargarTecnicoYInspecciones() {
     setLoading(true);
 
-    // 1️⃣ Cargar técnico por email
     const { data: tecnicoData, error: errorTecnico } = await supabase
       .from("tecnicos")
       .select("*")
@@ -57,7 +56,6 @@ export default function TecnicoDashboard() {
 
     setTecnico(tecnicoData);
 
-    // 2️⃣ Cargar inspecciones del técnico
     const { data: inspData, error: errorInsp } = await supabase
       .from("inspecciones")
       .select("*")
@@ -70,7 +68,6 @@ export default function TecnicoDashboard() {
       return;
     }
 
-    // 3️⃣ Cargar vivienda + contrato + cliente
     const inspeccionesConDatos = await Promise.all(
       (inspData || []).map(async (i) => {
         const { data: viv } = await supabase
@@ -143,7 +140,6 @@ export default function TecnicoDashboard() {
         </p>
       )}
 
-      {/* INFO DEL TÉCNICO */}
       {tecnico && (
         <div
           style={{
@@ -165,7 +161,6 @@ export default function TecnicoDashboard() {
         </div>
       )}
 
-      {/* INSPECCIONES */}
       <div
         style={{
           background: "rgba(255,255,255,0.05)",
@@ -302,6 +297,29 @@ export default function TecnicoDashboard() {
           ))
         )}
       </div>
+
+      {/* BOTÓN DE CERRAR SESIÓN */}
+      <button
+        onClick={async () => {
+          await supabase.auth.signOut();
+          window.location.href = "/login";
+        }}
+        style={{
+          marginTop: "25px",
+          padding: "16px",
+          width: "100%",
+          background: "#ff6b6b",
+          color: "#fff",
+          borderRadius: "12px",
+          border: "none",
+          fontWeight: "700",
+          fontSize: "18px",
+          cursor: "pointer",
+          boxShadow: "0 0 10px rgba(255,0,0,0.4)",
+        }}
+      >
+        Cerrar sesión
+      </button>
     </div>
   );
 }
