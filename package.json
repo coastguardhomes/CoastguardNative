@@ -18,6 +18,9 @@
     "@capacitor/network": "7.0.4",
     "@capacitor/preferences": "7.0.4",
     "@capacitor/splash-screen": "7.0.5",
+
+    "@capacitor/camera": "7.0.0",   // ⭐ AÑADIDO — NECESARIO PARA QUE FUNCIONE EL BOTÓN
+
     "@supabase/supabase-js": "2.108.2",
     "jspdf": "4.2.1",
     "jspdf-autotable": "5.0.8",
