@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import supabase from "../../supabaseClient"; // ← RUTA CORRECTA
+import { supabase } from "../../supabaseClient"; // ← IMPORTACIÓN CORRECTA
 
 export default function TecnicoDashboard() {
   const [viviendas, setViviendas] = useState([]);
