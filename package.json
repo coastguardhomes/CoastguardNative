@@ -11,6 +11,7 @@
   "dependencies": {
     "@capacitor/android": "7.6.6",
     "@capacitor/app": "7.1.2",
+    "@capacitor/camera": "7.0.0",
     "@capacitor/cli": "7.6.6",
     "@capacitor/core": "7.6.6",
     "@capacitor/device": "7.0.5",
@@ -18,7 +19,6 @@
     "@capacitor/network": "7.0.4",
     "@capacitor/preferences": "7.0.4",
     "@capacitor/splash-screen": "7.0.5",
-    "@capacitor/camera": "7.0.0",
     "@supabase/supabase-js": "2.108.2",
     "jspdf": "4.2.1",
     "jspdf-autotable": "5.0.8",
@@ -28,6 +28,7 @@
     "react-icons": "4.12.0",
     "react-router-dom": "6.23.1",
     "react-signature-canvas": "1.1.0-alpha.2",
+    "recharts": "^3.10.1",
     "semver": "7.8.4"
   },
   "devDependencies": {
