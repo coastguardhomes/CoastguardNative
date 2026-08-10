@@ -1,330 +1,279 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../context/AuthContext.jsx";
-import { FaClipboardList, FaCamera, FaCheckCircle } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import supabase from "../supabaseClient";
 
 export default function TecnicoDashboard() {
-  const { user } = useAuth();
-
-  const [tecnico, setTecnico] = useState(null);
-  const [inspecciones, setInspecciones] = useState([]);
+  const [viviendas, setViviendas] = useState([]);
+  const [contratosPendientes, setContratosPendientes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [mensaje, setMensaje] = useState("");
-
-  const baseStyle = {
-    background: "rgba(255,255,255,0.05)",
-    padding: "25px",
-    borderRadius: "14px",
-    border: "1px solid rgba(255,255,255,0.1)",
-    boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    cursor: "pointer",
-    transition: "transform 0.15s ease, box-shadow 0.15s ease",
-  };
-
-  const hoverStyle = {
-    transform: "scale(1.03)",
-    boxShadow: "0 0 18px rgba(0,153,255,0.35)",
-  };
-
-  const applyHover = (e) => Object.assign(e.currentTarget.style, hoverStyle);
-  const removeHover = (e) => Object.assign(e.currentTarget.style, baseStyle);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    if (user) cargarTecnicoYInspecciones();
-  }, [user]);
+    cargarDatos();
+  }, []);
 
-  async function cargarTecnicoYInspecciones() {
+  async function cargarDatos() {
     setLoading(true);
+    setErrorMsg("");
 
-    const { data: tecnicoData, error: errorTecnico } = await supabase
-      .from("tecnicos")
-      .select("*")
-      .eq("auth_id", user.id)
-      .single();
+    try {
+      const { data: viv, error: errViv } = await supabase
+        .from("viviendas")
+        .select("*")
+        .order("id", { ascending: false });
 
-    if (errorTecnico || !tecnicoData) {
-      setMensaje("No se encontró técnico para este usuario.");
-      setTecnico(null);
-      setInspecciones([]);
-      setLoading(false);
-      return;
+      if (errViv) throw errViv;
+
+      const { data: contratos, error: errContratos } = await supabase
+        .from("contratos")
+        .select("*")
+        .eq("estado", "pendiente");
+
+      if (errContratos) throw errContratos;
+
+      setViviendas(viv);
+      setContratosPendientes(contratos);
+    } catch (e) {
+      setErrorMsg("Error cargando datos: " + e.message);
     }
 
-    setTecnico(tecnicoData);
-
-    const { data: inspData, error: errorInsp } = await supabase
-      .from("inspecciones")
-      .select("*")
-      .eq("tecnico_id", tecnicoData.id)
-      .order("fecha", { ascending: true });
-
-    if (errorInsp) {
-      setMensaje("Error cargando inspecciones.");
-      setLoading(false);
-      return;
-    }
-
-    const inspeccionesConDatos = await Promise.all(
-      (inspData || []).map(async (i) => {
-        const { data: viv } = await supabase
-          .from("viviendas")
-          .select("direccion, ciudad")
-          .eq("id", i.vivienda_id)
-          .single();
-
-        const { data: contrato } = await supabase
-          .from("contratos")
-          .select("cliente_id")
-          .eq("id", i.contrato_id)
-          .single();
-
-        let cliente = null;
-        if (contrato?.cliente_id) {
-          const { data: cli } = await supabase
-            .from("clientes")
-            .select("nombre, telefono")
-            .eq("id", contrato.cliente_id)
-            .single();
-          cliente = cli;
-        }
-
-        return {
-          ...i,
-          vivienda: viv || null,
-          cliente: cliente || null,
-        };
-      })
-    );
-
-    setInspecciones(inspeccionesConDatos);
     setLoading(false);
   }
 
+  async function borrarVivienda(id) {
+    setErrorMsg("");
+
+    try {
+      const { error } = await supabase
+        .from("viviendas")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        setErrorMsg(
+          "No se puede borrar la vivienda. Puede tener contratos o inspecciones asociadas."
+        );
+        return;
+      }
+
+      cargarDatos();
+    } catch (e) {
+      setErrorMsg("Error al borrar: " + e.message);
+    }
+  }
+
+  if (loading) return <p style={styles.loading}>Cargando Dashboard...</p>;
+
   return (
-    <div
-      style={{
-        padding: "25px",
-        background: "#0a0f1a",
-        minHeight: "100vh",
-        color: "#fff",
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
+    <div style={styles.layout}>
+      {/* Menú lateral */}
+      <aside style={styles.sidebar}>
+        <h2 style={styles.logo}>CoastGuard</h2>
 
-      {/* 🔥 MOSTRAR EL USER ID PARA VER SI COINCIDE CON auth_id */}
-      <p style={{ color: "orange", fontSize: "16px", textAlign: "center" }}>
-        USER ID: {user?.id}
-      </p>
+        <nav style={styles.nav}>
+          <p style={styles.navItem}>🏠 Panel Técnico</p>
+          <p style={styles.navItem}>📋 Inspecciones</p>
+          <p style={styles.navItem}>🏡 Viviendas</p>
+          <p style={styles.navItem}>📑 Contratos</p>
+          <p style={styles.navItem}>👷 Técnicos</p>
+          <p style={styles.navItem}>⚙️ Ajustes</p>
+        </nav>
+      </aside>
 
-      <h1
-        style={{
-          fontSize: "30px",
-          fontWeight: "700",
-          marginBottom: "25px",
-          color: "#4db8ff",
-          textShadow: "0 0 10px rgba(0,153,255,0.6)",
-          textAlign: "center",
-        }}
-      >
-        Panel del Técnico
-      </h1>
+      {/* Contenido principal */}
+      <main style={styles.container}>
+        <h1 style={styles.title}>Dashboard Técnico</h1>
 
-      {mensaje && (
-        <p
-          style={{
-            marginBottom: "15px",
-            color: "#ff6b6b",
-            fontWeight: "600",
-            textAlign: "center",
-          }}
-        >
-          {mensaje}
-        </p>
-      )}
+        {errorMsg && <p style={styles.error}>{errorMsg}</p>}
 
-      {tecnico && (
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            marginBottom: "25px",
-          }}
-        >
-          <p style={{ marginBottom: "8px" }}>
-            <strong style={{ color: "#4db8ff" }}>Nombre:</strong>{" "}
-            {tecnico.nombre}
-          </p>
-          <p>
-            <strong style={{ color: "#4db8ff" }}>Email:</strong>{" "}
-            {tecnico.email}
-          </p>
+        {/* Tarjetas de estado */}
+        <div style={styles.cards}>
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Viviendas registradas</h3>
+            <p style={styles.cardNumber}>{viviendas.length}</p>
+          </div>
+
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Contratos pendientes</h3>
+            <p style={styles.cardNumber}>{contratosPendientes.length}</p>
+          </div>
+
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Inspecciones hoy</h3>
+            <p style={styles.cardNumber}>3</p>
+          </div>
+
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>Alertas activas</h3>
+            <p style={styles.cardNumber}>0</p>
+          </div>
         </div>
-      )}
 
-      <div
-        style={{
-          background: "rgba(255,255,255,0.05)",
-          padding: "20px",
-          borderRadius: "14px",
-          border: "1px solid rgba(255,255,255,0.1)",
-          marginBottom: "25px",
-        }}
-      >
-        <h2
-          style={{
-            color: "#4db8ff",
-            marginBottom: "15px",
-            fontSize: "22px",
-            fontWeight: "700",
-          }}
-        >
-          Inspecciones asignadas
-        </h2>
+        {/* Lista de viviendas */}
+        <h2 style={styles.subtitle}>Viviendas asignadas</h2>
 
-        {loading ? (
-          <p style={{ opacity: 0.7 }}>Cargando inspecciones...</p>
-        ) : inspecciones.length === 0 ? (
-          <p style={{ opacity: 0.7 }}>No tienes inspecciones asignadas.</p>
-        ) : (
-          inspecciones.map((insp) => (
-            <div
-              key={insp.id}
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                padding: "15px",
-                borderRadius: "10px",
-                marginBottom: "12px",
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}
-            >
-              <p>
-                <strong>Fecha:</strong>{" "}
-                {insp.fecha
-                  ? new Date(insp.fecha).toLocaleDateString()
-                  : "Sin fecha"}
-              </p>
-
-              <p>
-                <strong>Estado:</strong> {insp.estado || "Sin estado"}
-              </p>
-
-              <p>
-                <strong>Checklist:</strong>{" "}
-                {insp.checklist_completado ? "✔ Completado" : "✗ Pendiente"}
-              </p>
-
-              <p>
-                <strong>Fotos:</strong>{" "}
-                {insp.fecha_fotos ? "✔ Subidas" : "✗ Pendientes"}
-              </p>
-
-              <p>
-                <strong>Firma:</strong>{" "}
-                {insp.firma_cliente ? "✔ Firmada" : "✗ Pendiente"}
-              </p>
-
-              <p>
-                <strong>Vivienda:</strong>{" "}
-                {insp.vivienda
-                  ? `${insp.vivienda.direccion}, ${insp.vivienda.ciudad}`
-                  : insp.vivienda_id}
-              </p>
-
-              <p>
-                <strong>Cliente:</strong>{" "}
-                {insp.cliente
-                  ? `${insp.cliente.nombre} (${insp.cliente.telefono})`
-                  : "Sin cliente"}
-              </p>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                  gap: "10px",
-                  marginTop: "10px",
-                }}
-              >
-                <Link
-                  to={`/tecnico/inspeccion/${insp.id}/checklist`}
-                  style={{ textDecoration: "none" }}
-                >
-                  <div
-                    style={baseStyle}
-                    onMouseEnter={applyHover}
-                    onMouseLeave={removeHover}
-                  >
-                    <FaClipboardList size={35} color="#4db8ff" />
-                    <h4 style={{ marginTop: "10px", color: "#4db8ff" }}>
-                      Checklist
-                    </h4>
-                  </div>
-                </Link>
-
-                <Link
-                  to={`/tecnico/inspeccion/${insp.id}/fotos`}
-                  style={{ textDecoration: "none" }}
-                >
-                  <div
-                    style={baseStyle}
-                    onMouseEnter={applyHover}
-                    onMouseLeave={removeHover}
-                  >
-                    <FaCamera size={35} color="#4db8ff" />
-                    <h4 style={{ marginTop: "10px", color: "#4db8ff" }}>
-                      Subir fotos
-                    </h4>
-                  </div>
-                </Link>
-
-                <Link
-                  to={`/tecnico/inspeccion/${insp.id}/finalizar`}
-                  style={{ textDecoration: "none" }}
-                >
-                  <div
-                    style={baseStyle}
-                    onMouseEnter={applyHover}
-                    onMouseLeave={removeHover}
-                  >
-                    <FaCheckCircle size={35} color="#4db8ff" />
-                    <h4 style={{ marginTop: "10px", color: "#4db8ff" }}>
-                      Finalizar
-                    </h4>
-                  </div>
-                </Link>
-              </div>
+        {viviendas.map((v) => (
+          <div key={v.id} style={styles.item}>
+            <div>
+              <strong style={styles.itemTitle}>{v.nombre}</strong>
+              <p style={styles.itemText}>{v.direccion}</p>
             </div>
-          ))
-        )}
-      </div>
 
-      <button
-        onClick={async () => {
-          await supabase.auth.signOut();
-          window.location.href = "/login";
-        }}
-        style={{
-          marginTop: "25px",
-          padding: "16px",
-          width: "100%",
-          background: "#ff6b6b",
-          color: "#fff",
-          borderRadius: "12px",
-          border: "none",
-          fontWeight: "700",
-          fontSize: "18px",
-          cursor: "pointer",
-          boxShadow: "0 0 10px rgba(255,0,0,0.4)",
-        }}
-      >
-        Cerrar sesión
-      </button>
+            <div style={styles.actions}>
+              <button
+                style={styles.btnInspect}
+                onClick={() => alert("Abrir inspección de vivienda " + v.id)}
+              >
+                Inspeccionar
+              </button>
+
+              <button
+                style={styles.btnDelete}
+                onClick={() => borrarVivienda(v.id)}
+              >
+                Borrar
+              </button>
+            </div>
+          </div>
+        ))}
+      </main>
     </div>
   );
-        }
+}
+
+const styles = {
+  layout: {
+    display: "flex",
+    minHeight: "100vh",
+    backgroundColor: "#f5f7fa",
+    fontFamily: "Arial",
+  },
+
+  /* Sidebar */
+  sidebar: {
+    width: "240px",
+    backgroundColor: "#001F3F",
+    color: "#fff",
+    padding: "20px",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "4px 0 10px rgba(0,0,0,0.2)",
+  },
+  logo: {
+    fontSize: "26px",
+    fontWeight: "bold",
+    marginBottom: "30px",
+    color: "#FACC15",
+  },
+  nav: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "15px",
+  },
+  navItem: {
+    fontSize: "16px",
+    cursor: "pointer",
+    padding: "8px 0",
+    borderBottom: "1px solid rgba(255,255,255,0.1)",
+  },
+
+  /* Main content */
+  container: {
+    flex: 1,
+    padding: "30px",
+  },
+  title: {
+    fontSize: "32px",
+    fontWeight: "bold",
+    color: "#001F3F",
+    marginBottom: "20px",
+  },
+  subtitle: {
+    fontSize: "22px",
+    color: "#001F3F",
+    marginTop: "25px",
+    marginBottom: "10px",
+  },
+  loading: {
+    fontSize: "20px",
+    textAlign: "center",
+    marginTop: "40px",
+  },
+  error: {
+    background: "#ffdddd",
+    padding: "12px",
+    borderRadius: "8px",
+    color: "#a00",
+    marginBottom: "15px",
+  },
+
+  /* Cards */
+  cards: {
+    display: "flex",
+    gap: "20px",
+    marginBottom: "25px",
+    flexWrap: "wrap",
+  },
+  card: {
+    background: "#001F3F",
+    color: "#fff",
+    padding: "20px",
+    borderRadius: "12px",
+    width: "200px",
+    textAlign: "center",
+    boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
+    transition: "transform 0.2s",
+  },
+  cardTitle: {
+    fontSize: "16px",
+    marginBottom: "10px",
+  },
+  cardNumber: {
+    fontSize: "30px",
+    fontWeight: "bold",
+    color: "#FACC15",
+  },
+
+  /* Items */
+  item: {
+    background: "#fff",
+    padding: "18px",
+    borderRadius: "12px",
+    marginBottom: "12px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    boxShadow: "0 3px 8px rgba(0,0,0,0.1)",
+  },
+  itemTitle: {
+    fontSize: "18px",
+    color: "#001F3F",
+  },
+  itemText: {
+    fontSize: "14px",
+    color: "#555",
+  },
+
+  /* Buttons */
+  actions: {
+    display: "flex",
+    gap: "10px",
+  },
+  btnInspect: {
+    background: "#FACC15",
+    color: "#001F3F",
+    padding: "10px 14px",
+    borderRadius: "8px",
+    border: "none",
+    fontWeight: "bold",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+  },
+  btnDelete: {
+    background: "#d9534f",
+    color: "#fff",
+    padding: "10px 14px",
+    borderRadius: "8px",
+    border: "none",
+    fontWeight: "bold",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+  },
+};
