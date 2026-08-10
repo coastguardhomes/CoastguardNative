@@ -46,8 +46,8 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // Obtener la vivienda seleccionada
-      const vivienda = viviendas.find((v) => v.id == form.vivienda_id);
+      // Obtener la vivienda seleccionada (UUID correcto)
+      const vivienda = viviendas.find((v) => v.id === form.vivienda_id);
       if (!vivienda) {
         setContratos([]);
         return;
@@ -55,10 +55,10 @@ export default function NuevaInspeccion() {
 
       const clienteId = vivienda.cliente_id;
 
-      // Cargar contratos del cliente
+      // Cargar contratos del cliente (incluye tecnico_id)
       const { data, error } = await supabase
         .from("contratos")
-        .select("id, modalidad, precio, fecha_inicio, estado")
+        .select("id, modalidad, precio, fecha_inicio, estado, tecnico_id")
         .eq("cliente_id", clienteId);
 
       if (!error) setContratos(data || []);
@@ -72,7 +72,7 @@ export default function NuevaInspeccion() {
 
     try {
       // 1️⃣ Obtener vivienda seleccionada
-      const vivienda = viviendas.find((v) => v.id == form.vivienda_id);
+      const vivienda = viviendas.find((v) => v.id === form.vivienda_id);
 
       if (!vivienda) {
         setMensaje("Selecciona una vivienda válida.");
@@ -98,12 +98,12 @@ export default function NuevaInspeccion() {
       // 4️⃣ Técnico automático si existe en contrato
       const { data: contratoData } = await supabase
         .from("contratos")
-        .select("tecnico_id")
+        .select("id, tecnico_id")
         .eq("id", contrato_id)
         .maybeSingle();
 
       const tecnicoFinal =
-        contratoData?.tecnico_id || form.tecnico_id || null;
+        form.tecnico_id || contratoData?.tecnico_id || null;
 
       if (!tecnicoFinal) {
         setMensaje("Selecciona un técnico.");
@@ -135,6 +135,7 @@ export default function NuevaInspeccion() {
         .maybeSingle();
 
       if (error || !insp) {
+        console.error(error);
         setMensaje("Error creando inspección.");
         return;
       }
