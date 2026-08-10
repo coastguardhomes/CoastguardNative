@@ -40,20 +40,41 @@ export default function DashboardTecnico() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
+
   return (
     <div style={styles.container}>
-      {/* CONTENEDOR PRINCIPAL ESTILO HUD PROFESIONAL CON BRILLOS Y SOMBRAS */}
       <div style={styles.dashboardCard}>
         
         {/* ENCABEZADO */}
         <div style={styles.header}>
-          <h2 style={styles.headerTitle}>DASHBOARD TÉCNICO</h2>
-          <div style={styles.brandBadge}>
-            <span style={{ marginRight: '4px' }}>⛵</span> COASTGUARD
+          <div>
+            <div style={styles.brandBadge}>
+              <span>⛵</span> COASTGUARD <span style={{color: '#888', fontWeight: 'normal'}}>| TÉCNICO</span>
+            </div>
+            <h2 style={styles.headerTitle}>Panel de Operaciones</h2>
           </div>
+          <button style={styles.btnLogout} onClick={handleLogout} title="Cerrar Sesión">
+            🚪 Salir
+          </button>
         </div>
 
-        {/* 3 TARJETAS SUPERIORES (Efecto cristal oscuro con borde de luz dorada) */}
+        {/* INDICADOR RÁPIDO DE ESTADO / CONECTIVIDAD */}
+        <div style={styles.syncStatusBar}>
+          <div style={styles.syncIndicator}>
+            <span style={styles.pulseDot}></span> Sincronizado con Supabase
+          </div>
+          <div style={styles.offlineNote}>Modo Seguro Activo</div>
+        </div>
+
+        {/* 3 TARJETAS SUPERIORES */}
         <div style={styles.topCardsGrid}>
           <div style={styles.statCard}>
             <div style={styles.cardIcon}>📋</div>
@@ -74,104 +95,73 @@ export default function DashboardTecnico() {
           </div>
         </div>
 
-        {/* BOTÓN PRINCIPAL DORADO CON BRILLO METÁLICO Y ACCIÓN REAL */}
+        {/* BOTÓN PRINCIPAL DORADO */}
         <button 
           style={styles.mainActionBtn}
-          onClick={() => navigate('/inspecciones/checklist')}
+          onClick={() => navigate('/tecnico/inspeccion/general/checklist')}
         >
-          <span style={{ fontSize: '16px' }}>🔍</span> Inspecciones Diarias & Checklist
+          <span style={{ fontSize: '18px' }}>🔍</span> Iniciar Checklist General / Ruta
         </button>
 
-        {/* SECCIÓN DE GRÁFICOS (Simulación de Panel de Control Técnico) */}
-        <div style={styles.chartsRow}>
-          {/* Gráfico 1 */}
-          <div style={styles.miniChartBox}>
-            <div style={styles.chartHeaderTitle}>Inspecciones <span style={styles.chartSubText}>por Día</span></div>
-            <div style={styles.graphContainer}>
-              <svg viewBox="0 0 100 35" style={styles.svgLine}>
-                <defs>
-                  <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ffd700" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#ffd700" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-                <polygon points="5,30 20,28 35,20 50,22 65,10 80,20 95,12 95,35 5,35" fill="url(#goldGrad)" />
-                <polyline fill="none" stroke="#ffd700" strokeWidth="2.5" points="5,30 20,28 35,20 50,22 65,10 80,20 95,12" />
-                <circle cx="65" cy="10" r="3" fill="#fff" stroke="#ffd700" strokeWidth="2"/>
-              </svg>
-            </div>
-            <div style={styles.daysFooter}>
-              <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
-            </div>
-          </div>
-
-          {/* Gráfico 2 */}
-          <div style={styles.miniChartBox}>
-            <div style={styles.chartHeaderTitle}>Alertas <span style={styles.chartSubText}>por Día</span></div>
-            <div style={styles.barsArea}>
-              <div style={{...styles.bar, height: '35%'}}></div>
-              <div style={{...styles.bar, height: '50%'}}></div>
-              <div style={{...styles.bar, height: '30%'}}></div>
-              <div style={{...styles.bar, height: '75%'}}></div>
-              <div style={{...styles.bar, height: '45%'}}></div>
-              <div style={{...styles.bar, height: '90%'}}></div>
-              <div style={{...styles.bar, height: '25%'}}></div>
-              <div style={{...styles.bar, height: '60%'}}></div>
-            </div>
-            <div style={styles.daysFooter}>
-              <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
-            </div>
-          </div>
-        </div>
-
-        {/* SECCIÓN INFERIOR: ESTADO DE VIVIENDAS Y DONUT 3D */}
-        <div style={styles.statusSection}>
-          <div>
-            <div style={styles.chartHeaderTitle}>Estado de Viviendas</div>
-            <div style={styles.legendRow}><span style={{...styles.statusDot, background: '#27ae60'}}></span> Operativas</div>
-            <div style={styles.legendRow}><span style={{...styles.statusDot, background: '#e74c3c'}}></span> Con Incidencias</div>
-          </div>
-          <div style={styles.donutWrapper}>
-            <div style={styles.donutOuter}>
-              <div style={styles.donutInner}>
-                <span style={styles.donutText}>85%</span>
-              </div>
-            </div>
-            <div style={styles.badge15}>15%</div>
-          </div>
-        </div>
-
-        {/* LISTADO DE INSPECCIONES ASIGNADAS CON CONEXIÓN AL CHECKLIST */}
+        {/* LISTADO DE INSPECCIONES ASIGNADAS */}
         <div style={styles.assignedSection}>
-          <h3 style={styles.assignedTitle}>Inspecciones Asignadas para Hoy</h3>
+          <div style={styles.sectionHeaderFlex}>
+            <h3 style={styles.assignedTitle}>Inspecciones Asignadas para Hoy</h3>
+            <span style={styles.counterBadge}>{inspeccionesDiarias.length} Pendientes</span>
+          </div>
+
           {loading ? (
             <p style={styles.emptyText}>Cargando asignaciones...</p>
           ) : inspeccionesDiarias.length === 0 ? (
             <div style={styles.emptyBox}>
-              <p style={styles.emptyText}>No hay inspecciones pendientes asignadas por el administrador.</p>
+              <p style={styles.emptyText}>No hay inspecciones pendientes asignadas para hoy.</p>
               <button 
                 style={styles.btnDirectChecklist}
-                onClick={() => navigate('/inspecciones/checklist')}
+                onClick={() => navigate('/tecnico/inspeccion/general/checklist')}
               >
-                Abrir Checklist General
+                Abrir Checklist Genérico
               </button>
             </div>
           ) : (
-            inspeccionesDiarias.map((insp) => (
-              <div key={insp.id} style={styles.assignmentItem}>
-                <div>
-                  <div style={{ color: '#ffd700', fontWeight: 'bold' }}>{insp.viviendas?.nombre || 'Vivienda Asignada'}</div>
-                  <div style={{ color: '#aaa', fontSize: '11px' }}>{insp.viviendas?.direccion || 'Sin dirección especificada'}</div>
+            <div style={styles.listScrollContainer}>
+              {inspeccionesDiarias.map((insp) => (
+                <div key={insp.id} style={styles.assignmentItem}>
+                  <div>
+                    <div style={{ color: '#ffd700', fontWeight: 'bold', fontSize: '12px' }}>
+                      {insp.viviendas?.nombre || 'Vivienda Asignada'}
+                    </div>
+                    <div style={{ color: '#aaa', fontSize: '10px', marginTop: '2px' }}>
+                      📍 {insp.viviendas?.direccion || 'Sin dirección especificada'}
+                    </div>
+                  </div>
+                  <button 
+                    style={styles.btnActionItem}
+                    onClick={() => navigate(`/tecnico/inspeccion/${insp.id}/checklist`)}
+                  >
+                    Checklist →
+                  </button>
                 </div>
-                <button 
-                  style={styles.btnActionItem}
-                  onClick={() => navigate(`/inspecciones/checklist?id=${insp.id}`)}
-                >
-                  Realizar Checklist
-                </button>
-              </div>
-            ))
+              ))}
+            </div>
           )}
+        </div>
+
+        {/* SECCIÓN INFERIOR: ACCIONES RÁPIDAS Y EXTRAS (Llena el espacio inferior y aporta gran utilidad) */}
+        <div style={styles.quickActionsGrid}>
+          <div 
+            style={styles.quickActionBox}
+            onClick={() => navigate('/tecnico/inspeccion/general/checklist')}
+          >
+            <span style={styles.quickIcon}>➕</span>
+            <span style={styles.quickLabel}>Reportar Extra</span>
+          </div>
+          <div 
+            style={styles.quickActionBox}
+            onClick={() => alert('Para soporte urgente de ruta, contacte con administración vía teléfono.')}
+          >
+            <span style={styles.quickIcon}>☎️</span>
+            <span style={styles.quickLabel}>Soporte Admin</span>
+          </div>
         </div>
 
       </div>
@@ -179,12 +169,11 @@ export default function DashboardTecnico() {
   );
 }
 
-// ESTILOS PROFESIONALES CON SOMBRAS, LUCES Y ACABADOS METÁLICOS
 const styles = {
   container: {
     backgroundColor: '#04070c',
     minHeight: '100vh',
-    padding: '8px',
+    padding: '10px 6px',
     display: 'flex',
     justifyContent: 'center',
     fontFamily: 'sans-serif',
@@ -194,47 +183,82 @@ const styles = {
     maxWidth: '480px',
     backgroundColor: '#09101d',
     border: '1px solid #c5a03e',
-    borderRadius: '12px',
-    padding: '14px',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(212, 175, 55, 0.15)',
+    borderRadius: '14px',
+    padding: '16px',
+    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(212, 175, 55, 0.1)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     borderBottom: '2px solid #c5a03e',
     paddingBottom: '10px',
-    marginBottom: '14px',
+  },
+  brandBadge: {
+    color: '#ffd700',
+    fontSize: '10px',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    marginBottom: '4px',
   },
   headerTitle: {
-    color: '#ffd700',
-    fontSize: '16px',
+    color: '#fff',
+    fontSize: '18px',
     fontWeight: 'bold',
     margin: 0,
     textShadow: '0 2px 4px rgba(0,0,0,0.5)',
-    letterSpacing: '0.5px',
   },
-  brandBadge: {
-    background: 'linear-gradient(135deg, #111b2e, #070b14)',
-    border: '1px solid #ffd700',
-    color: '#ffd700',
-    padding: '4px 10px',
-    borderRadius: '6px',
+  btnLogout: {
+    background: 'linear-gradient(135deg, #e74c3c, #c0392b)',
+    border: '1px solid #ff7675',
+    color: '#fff',
+    padding: '6px 10px',
+    borderRadius: '8px',
     fontSize: '11px',
     fontWeight: 'bold',
-    boxShadow: '0 2px 5px rgba(0,0,0,0.4)',
+    cursor: 'pointer',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+  },
+  syncStatusBar: {
+    backgroundColor: '#0d1626',
+    border: '1px solid #1e3050',
+    borderRadius: '6px',
+    padding: '6px 10px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: '10px',
+  },
+  syncIndicator: {
+    color: '#2ecc71',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontWeight: 'bold',
+  },
+  pulseDot: {
+    width: '6px',
+    height: '6px',
+    backgroundColor: '#2ecc71',
+    borderRadius: '50%',
+    boxShadow: '0 0 6px #2ecc71',
+  },
+  offlineNote: {
+    color: '#888',
   },
   topCardsGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr 1fr',
     gap: '8px',
-    marginBottom: '14px',
   },
   statCard: {
     background: 'linear-gradient(145deg, #0d1626, #070d17)',
     border: '1px solid #d4af37',
     borderRadius: '8px',
-    padding: '10px 6px',
+    padding: '10px 4px',
     textAlign: 'center',
     boxShadow: 'inset 0 1px 3px rgba(255,215,0,0.2), 0 4px 8px rgba(0,0,0,0.4)',
   },
@@ -242,153 +266,78 @@ const styles = {
     background: 'linear-gradient(145deg, #1a1015, #0d070a)',
     border: '1px solid #e74c3c',
     borderRadius: '8px',
-    padding: '10px 6px',
+    padding: '10px 4px',
     textAlign: 'center',
     boxShadow: 'inset 0 1px 3px rgba(231,76,60,0.3), 0 4px 8px rgba(0,0,0,0.4)',
   },
-  cardIcon: { fontSize: '18px', marginBottom: '2px' },
-  statNumber: { fontSize: '16px', fontWeight: 'bold', color: '#fff', textShadow: '0 1px 2px #000' },
-  statNumberRed: { fontSize: '16px', fontWeight: 'bold', color: '#e74c3c', textShadow: '0 1px 2px #000' },
-  statSub: { fontSize: '8px', color: '#999', display: 'block', fontWeight: 'normal' },
-  statLabel: { fontSize: '10px', color: '#ffd700', marginTop: '2px', fontWeight: '600' },
-  statLabelAlert: { fontSize: '10px', color: '#e74c3c', marginTop: '2px', fontWeight: '600' },
+  cardIcon: { fontSize: '16px', marginBottom: '2px' },
+  statNumber: { fontSize: '15px', fontWeight: 'bold', color: '#fff' },
+  statNumberRed: { fontSize: '15px', fontWeight: 'bold', color: '#e74c3c' },
+  statSub: { fontSize: '7px', color: '#888', display: 'block', fontWeight: 'normal' },
+  statLabel: { fontSize: '9px', color: '#ffd700', marginTop: '2px', fontWeight: '600' },
+  statLabelAlert: { fontSize: '9px', color: '#e74c3c', marginTop: '2px', fontWeight: '600' },
   mainActionBtn: {
     width: '100%',
     background: 'linear-gradient(to bottom, #f3e0aa 0%, #d4af37 50%, #b8860b 100%)',
     color: '#070b12',
     border: '1px solid #fffae6',
-    padding: '14px',
+    padding: '12px',
     borderRadius: '8px',
-    fontSize: '15px',
+    fontSize: '14px',
     fontWeight: 'bold',
     cursor: 'pointer',
-    marginBottom: '14px',
     boxShadow: '0 4px 12px rgba(212, 175, 55, 0.4), inset 0 1px 2px rgba(255,255,255,0.6)',
     textShadow: '0 1px 0 rgba(255,255,255,0.4)',
-  },
-  chartsRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '8px',
-    marginBottom: '12px',
-  },
-  miniChartBox: {
-    background: 'linear-gradient(145deg, #0d1626, #070d17)',
-    border: '1px solid #1e3050',
-    borderRadius: '8px',
-    padding: '10px',
-    boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-  },
-  chartHeaderTitle: {
-    fontSize: '11px',
-    color: '#ffd700',
-    fontWeight: 'bold',
-    marginBottom: '6px',
-  },
-  chartSubText: { color: '#888', fontWeight: 'normal' },
-  graphContainer: { height: '42px', display: 'flex', alignItems: 'center' },
-  svgLine: { width: '100%', height: '38px', overflow: 'visible' },
-  barsArea: {
-    height: '42px',
-    display: 'flex',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingBottom: '2px',
-    borderBottom: '1px solid #1e3050',
-  },
-  bar: {
-    width: '7px',
-    background: 'linear-gradient(to top, #c0392b, #e74c3c)',
-    borderRadius: '3px 3px 0 0',
-    boxShadow: '0 0 6px rgba(231,76,60,0.5)',
-  },
-  daysFooter: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: '8px',
-    color: '#888',
-    marginTop: '4px',
-  },
-  statusSection: {
-    background: 'linear-gradient(145deg, #0d1626, #070d17)',
-    border: '1px solid #1e3050',
-    borderRadius: '8px',
-    padding: '12px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '14px',
-    boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-  },
-  legendRow: { fontSize: '10px', color: '#ccc', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' },
-  statusDot: { width: '8px', height: '8px', borderRadius: '50%', boxShadow: '0 0 4px currentColor' },
-  donutWrapper: {
-    position: 'relative',
-    width: '54px',
-    height: '54px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  donutOuter: {
-    width: '50px',
-    height: '50px',
-    borderRadius: '50%',
-    background: 'conic-gradient(#27ae60 0% 85%, #16263f 85% 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 0 10px rgba(39, 174, 96, 0.4)',
-  },
-  donutInner: {
-    width: '38px',
-    height: '38px',
-    borderRadius: '50%',
-    backgroundColor: '#070d17',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  donutText: { fontSize: '11px', fontWeight: 'bold', color: '#fff' },
-  badge15: {
-    position: 'absolute',
-    top: '-4px',
-    right: '-6px',
-    backgroundColor: '#e74c3c',
-    color: '#fff',
-    fontSize: '9px',
-    padding: '2px 4px',
-    borderRadius: '4px',
-    fontWeight: 'bold',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
   },
   assignedSection: {
     background: 'linear-gradient(145deg, #0d1626, #070d17)',
     border: '1px solid #1e3050',
-    borderRadius: '8px',
+    borderRadius: '10px',
     padding: '12px',
-    boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+    flex: 1,
   },
-  assignedTitle: {
-    fontSize: '12px',
-    color: '#ffd700',
-    marginBottom: '10px',
+  sectionHeaderFlex: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '8px',
     borderBottom: '1px solid #1e3050',
     paddingBottom: '6px',
+  },
+  assignedTitle: {
+    fontSize: '11px',
+    color: '#ffd700',
+    margin: 0,
     fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  counterBadge: {
+    backgroundColor: '#16263f',
+    color: '#ffd700',
+    fontSize: '9px',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    border: '1px solid #d4af37',
+  },
+  listScrollContainer: {
+    maxHeight: '160px',
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
   },
   emptyBox: { textAlign: 'center', padding: '10px 0' },
-  emptyText: { fontSize: '11px', color: '#888', marginBottom: '8px' },
+  emptyText: { fontSize: '11px', color: '#888', marginBottom: '6px' },
   btnDirectChecklist: {
     backgroundColor: '#27ae60',
     color: '#fff',
     border: 'none',
-    padding: '8px 12px',
+    padding: '6px 10px',
     borderRadius: '6px',
-    fontSize: '11px',
+    fontSize: '10px',
     fontWeight: 'bold',
     cursor: 'pointer',
-    boxShadow: '0 2px 6px rgba(39,174,96,0.4)',
   },
   assignmentItem: {
     display: 'flex',
@@ -397,7 +346,6 @@ const styles = {
     backgroundColor: '#111b2e',
     padding: '8px 10px',
     borderRadius: '6px',
-    marginBottom: '6px',
     border: '1px solid #2a3b55',
   },
   btnActionItem: {
@@ -405,10 +353,31 @@ const styles = {
     color: '#fff',
     border: 'none',
     padding: '6px 10px',
-    borderRadius: '4px',
-    fontSize: '11px',
+    borderRadius: '6px',
+    fontSize: '10px',
     fontWeight: 'bold',
     cursor: 'pointer',
     boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+    whiteSpace: 'nowrap',
   },
+  quickActionsGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '8px',
+  },
+  quickActionBox: {
+    background: 'linear-gradient(145deg, #0d1626, #070d17)',
+    border: '1px solid #2a3b55',
+    borderRadius: '8px',
+    padding: '10px',
+    textAlign: 'center',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+  },
+  quickIcon: { fontSize: '14px' },
+  quickLabel: { fontSize: '11px', color: '#ffd700', fontWeight: 'bold' },
 };
