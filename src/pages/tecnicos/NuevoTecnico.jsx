@@ -31,49 +31,60 @@ export default function NuevoTecnico() {
 
     setGuardando(true);
 
-    // 1️⃣ Validar email único
-    const { data: emailCheck } = await supabase
-      .from("tecnicos")
-      .select("id")
-      .eq("email", form.email);
-
-    if (emailCheck && emailCheck.length > 0) {
-      setGuardando(false);
-      return setMensaje("Este email ya está en uso por otro técnico");
-    }
-
-    // 2️⃣ Crear técnico
-    const { error } = await supabase.from("tecnicos").insert([
-      {
-        nombre: form.nombre,
-        telefono: form.telefono,
-        email: form.email,
-        especialidad: form.especialidad,
-        activo: form.activo,
-      },
-    ]);
-
-    if (error) {
-      setGuardando(false);
-      return setMensaje("Error guardando técnico");
-    }
-
-    // 3️⃣ Notificar al admin
     try {
-      await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/notificar-admin-nuevo-tecnico?email=${form.email}`
-      );
-    } catch (e) {
-      console.error("Error notificando al admin:", e);
+      // 1️⃣ Validar email único de forma segura
+      const { data: emailCheck, error: errCheck } = await supabase
+        .from("tecnicos")
+        .select("id")
+        .eq("email", form.email.trim());
+
+      if (errCheck) {
+        console.error("Error comprobando email:", errCheck);
+      }
+
+      if (emailCheck && emailCheck.length > 0) {
+        setGuardando(false);
+        return setMensaje("Este email ya está en uso por otro técnico");
+      }
+
+      // 2️⃣ Crear técnico
+      const { error } = await supabase.from("tecnicos").insert([
+        {
+          nombre: form.nombre.trim(),
+          telefono: form.telefono.trim(),
+          email: form.email.trim(),
+          especialidad: form.especialidad.trim(),
+          activo: form.activo,
+        },
+      ]);
+
+      if (error) {
+        console.error("Error detallado de Supabase:", error);
+        setMensaje(`Error al guardar: ${error.message || error.details}`);
+        setGuardando(false);
+        return;
+      }
+
+      // 3️⃣ Notificar al admin (opcional, protegido ante fallos)
+      try {
+        await fetch(
+          `https://wjomazuymbayceilvfku.supabase.co/functions/v1/notificar-admin-nuevo-tecnico?email=${encodeURIComponent(form.email.trim())}`
+        );
+      } catch (e) {
+        console.error("Error notificando al admin (no crítico):", e);
+      }
+
+      setMensaje("Técnico creado correctamente");
+
+      setTimeout(() => {
+        navigate("/tecnicos");
+      }, 1200);
+    } catch (err) {
+      console.error("Excepción inesperada:", err);
+      setMensaje("Error inesperado al procesar la solicitud.");
+    } finally {
+      setGuardando(false);
     }
-
-    setMensaje("Técnico creado correctamente");
-
-    setTimeout(() => {
-      navigate("/tecnicos");
-    }, 1200);
-
-    setGuardando(false);
   }
 
   const inputStyle = {
@@ -119,6 +130,7 @@ export default function NuevoTecnico() {
                 : "#ff6b6b",
               fontWeight: "600",
               textAlign: "center",
+              wordBreak: "break-word",
             }}
           >
             {mensaje}
@@ -172,8 +184,8 @@ export default function NuevoTecnico() {
             }
             style={inputStyle}
           >
-            <option value="true">Activo</option>
-            <option value="false">Inactivo</option>
+            <option value="true" style={{ background: "#0a0f1a" }}>Activo</option>
+            <option value="false" style={{ background: "#0a0f1a" }}>Inactivo</option>
           </select>
 
           <button
