@@ -12,9 +12,9 @@ export default function NuevaInspeccion() {
   const [mensaje, setMensaje] = useState("");
 
   const [form, setForm] = useState({
-    vivienda_id: "",
-    contrato_id: "",
-    tecnico_id: "",
+    vivienda_id: null,
+    contrato_id: null,
+    tecnico_id: null,
     fecha: "",
     estado: "pendiente",
     notas: "",
@@ -38,7 +38,7 @@ export default function NuevaInspeccion() {
     cargarDatos();
   }, []);
 
-  // 🔥 Cargar contratos del CLIENTE (corregido)
+  // 🔥 Cargar contratos del CLIENTE
   useEffect(() => {
     async function cargarContratos() {
       if (!form.vivienda_id) {
@@ -46,7 +46,6 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // Obtener la vivienda seleccionada (UUID correcto)
       const vivienda = viviendas.find((v) => v.id === form.vivienda_id);
       if (!vivienda) {
         setContratos([]);
@@ -55,7 +54,6 @@ export default function NuevaInspeccion() {
 
       const clienteId = vivienda.cliente_id;
 
-      // Cargar contratos del cliente (incluye tecnico_id)
       const { data, error } = await supabase
         .from("contratos")
         .select("id, modalidad, precio, fecha_inicio, estado, tecnico_id")
@@ -71,7 +69,6 @@ export default function NuevaInspeccion() {
     setMensaje("");
 
     try {
-      // 1️⃣ Obtener vivienda seleccionada
       const vivienda = viviendas.find((v) => v.id === form.vivienda_id);
 
       if (!vivienda) {
@@ -79,7 +76,6 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 2️⃣ Obtener cliente automáticamente
       const cliente_id = vivienda.cliente_id;
 
       if (!cliente_id) {
@@ -87,7 +83,6 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 3️⃣ Contrato seleccionado
       const contrato_id = form.contrato_id;
 
       if (!contrato_id) {
@@ -95,7 +90,6 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 4️⃣ Técnico automático si existe en contrato
       const { data: contratoData } = await supabase
         .from("contratos")
         .select("id, tecnico_id")
@@ -110,13 +104,11 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 5️⃣ Validar fecha
       if (!form.fecha) {
         setMensaje("Selecciona una fecha.");
         return;
       }
 
-      // 6️⃣ Crear inspección completa
       const nuevaInspeccion = {
         vivienda_id: vivienda.id,
         cliente_id,
@@ -140,7 +132,6 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // 7️⃣ Crear checklist automático
       const plantilla = [
         "Puertas y ventanas cerradas",
         "Persianas en posición correcta",
@@ -169,72 +160,33 @@ export default function NuevaInspeccion() {
 
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          background: "#0a0f1a",
-          minHeight: "100vh",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <h1
-          style={{
-            color: "#4db8ff",
-            marginBottom: "25px",
-            fontSize: "28px",
-            fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
+      <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff" }}>
+        <h1 style={{ color: "#4db8ff", marginBottom: "25px", fontSize: "28px", fontWeight: "700" }}>
           Nueva Inspección
         </h1>
 
-        {mensaje && (
-          <p
-            style={{
-              marginBottom: "15px",
-              color: "#4db8ff",
-              fontWeight: "600",
-            }}
-          >
-            {mensaje}
-          </p>
-        )}
+        {mensaje && <p style={{ marginBottom: "15px", color: "#4db8ff", fontWeight: "600" }}>{mensaje}</p>}
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
+        <div style={{ background: "rgba(255,255,255,0.05)", padding: "20px", borderRadius: "14px" }}>
+          
           {/* Vivienda */}
           <label>Vivienda</label>
           <select
-            value={form.vivienda_id}
-            onChange={(e) =>
-              setForm({ ...form, vivienda_id: e.target.value })
-            }
+            value={form.vivienda_id || ""}
+            onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
             style={selectStyle}
           >
             <option value="">Selecciona una vivienda</option>
             {viviendas.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.direccion}
-              </option>
+              <option key={v.id} value={v.id}>{v.direccion}</option>
             ))}
           </select>
 
           {/* Contrato */}
           <label>Contrato</label>
           <select
-            value={form.contrato_id}
-            onChange={(e) =>
-              setForm({ ...form, contrato_id: e.target.value })
-            }
+            value={form.contrato_id || ""}
+            onChange={(e) => setForm({ ...form, contrato_id: e.target.value })}
             style={selectStyle}
           >
             <option value="">Selecciona un contrato</option>
@@ -248,17 +200,13 @@ export default function NuevaInspeccion() {
           {/* Técnico */}
           <label>Técnico</label>
           <select
-            value={form.tecnico_id}
-            onChange={(e) =>
-              setForm({ ...form, tecnico_id: e.target.value })
-            }
+            value={form.tecnico_id || ""}
+            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
             style={selectStyle}
           >
             <option value="">Selecciona un técnico</option>
             {tecnicos.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nombre}
-              </option>
+              <option key={t.id} value={t.id}>{t.nombre}</option>
             ))}
           </select>
 
@@ -276,10 +224,7 @@ export default function NuevaInspeccion() {
           <textarea
             value={form.notas}
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
-            style={{
-              ...selectStyle,
-              minHeight: "100px",
-            }}
+            style={{ ...selectStyle, minHeight: "100px" }}
           />
 
           <button
@@ -295,7 +240,6 @@ export default function NuevaInspeccion() {
               fontWeight: "700",
               fontSize: "17px",
               cursor: "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
             }}
           >
             Crear inspección
