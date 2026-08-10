@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import supabase from "../supabaseClient";
+import supabase from "../../supabaseClient"; // ← RUTA CORRECTA
 
 export default function TecnicoDashboard() {
   const [viviendas, setViviendas] = useState([]);
@@ -65,7 +65,7 @@ export default function TecnicoDashboard() {
 
   return (
     <div style={styles.layout}>
-      {/* Menú lateral */}
+      {/* Sidebar */}
       <aside style={styles.sidebar}>
         <h2 style={styles.logo}>CoastGuard</h2>
 
@@ -79,13 +79,13 @@ export default function TecnicoDashboard() {
         </nav>
       </aside>
 
-      {/* Contenido principal */}
+      {/* Main content */}
       <main style={styles.container}>
         <h1 style={styles.title}>Dashboard Técnico</h1>
 
         {errorMsg && <p style={styles.error}>{errorMsg}</p>}
 
-        {/* Tarjetas de estado */}
+        {/* Cards */}
         <div style={styles.cards}>
           <div style={styles.card}>
             <h3 style={styles.cardTitle}>Viviendas registradas</h3>
@@ -108,7 +108,7 @@ export default function TecnicoDashboard() {
           </div>
         </div>
 
-        {/* Lista de viviendas */}
+        {/* Viviendas */}
         <h2 style={styles.subtitle}>Viviendas asignadas</h2>
 
         {viviendas.map((v) => (
@@ -140,6 +140,7 @@ export default function TecnicoDashboard() {
   );
 }
 
+/* ESTILOS PROFESIONALES COASTGUARD */
 const styles = {
   layout: {
     display: "flex",
