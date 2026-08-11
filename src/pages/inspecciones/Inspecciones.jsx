@@ -30,7 +30,7 @@ export default function Inspecciones() {
             fecha,
             estado,
             vivienda_id,
-            tecnico_auth_id,
+            tecnico_id,
             viviendas (
               direccion,
               ciudad
@@ -38,9 +38,9 @@ export default function Inspecciones() {
           `)
           .order("id", { ascending: false });
 
-        // Si NO es admin → filtrar por técnico
+        // Si NO es admin → filtrar por técnico usando la columna real 'tecnico_id'
         if (user.email !== "coastguardhomes2@gmail.com") {
-          query = query.eq("tecnico_auth_id", user.id);
+          query = query.eq("tecnico_id", user.id);
         }
 
         const { data, error } = await query;
