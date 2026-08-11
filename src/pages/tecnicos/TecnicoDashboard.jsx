@@ -22,15 +22,15 @@ export default function DashboardTecnico() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Cargar inspecciones del técnico (o todas si prefieres depurar)
+      // Búsqueda flexible por UUID o por el correo electrónico del técnico
       const { data: inspecciones, error } = await supabase
         .from('inspecciones')
         .select('*, viviendas(nombre, direccion)')
-        .eq('tecnico_id', user.id);
+        .or(`tecnico_id.eq.${user.id},tecnico_id.eq.${user.email}`);
 
       if (error) throw error;
 
-      // 2. Consultas reales para las tarjetas de estadísticas
+      // Consultas reales para las tarjetas de estadísticas
       const { count: countInspecciones } = await supabase
         .from('inspecciones')
         .select('*', { count: 'exact', head: true });
