@@ -19,14 +19,19 @@ export default function FotosInspeccion() {
 
   async function cargarFotos() {
     setLoading(true);
+    console.log("ID de inspección actual:", id);
+
     const { data, error } = await supabase
       .from("fotos_inspeccion")
       .select("*")
       .eq("inspeccion_id", id)
       .order("id", { ascending: false });
 
+    console.log("Resultado Supabase - Datos:", data);
+    console.log("Resultado Supabase - Error:", error);
+
     if (error) {
-      setMensaje("Error cargando fotos");
+      setMensaje("Error cargando fotos: " + error.message);
       setLoading(false);
       return;
     }
