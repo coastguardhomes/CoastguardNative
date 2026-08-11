@@ -14,21 +14,19 @@ export default function FotosInspeccion() {
   const [fotoGrande, setFotoGrande] = useState(null);
 
   useEffect(() => {
-    cargarFotos();
+    if (id) {
+      cargarFotos();
+    }
   }, [id]);
 
   async function cargarFotos() {
     setLoading(true);
-    console.log("ID de inspección actual:", id);
 
     const { data, error } = await supabase
       .from("fotos_inspeccion")
       .select("*")
-      .eq("inspeccion_id", id)
+      .eq("inspeccion_id", String(id))
       .order("id", { ascending: false });
-
-    console.log("Resultado Supabase - Datos:", data);
-    console.log("Resultado Supabase - Error:", error);
 
     if (error) {
       setMensaje("Error cargando fotos: " + error.message);
@@ -71,7 +69,7 @@ export default function FotosInspeccion() {
         .getPublicUrl(nombreArchivo);
 
       const nuevaFotoObj = {
-        inspeccion_id: id,
+        inspeccion_id: String(id),
         archivo: nombreArchivo,
         url: urlData.publicUrl,
         principal: false,
@@ -96,7 +94,6 @@ export default function FotosInspeccion() {
         })
         .eq("id", id);
 
-      // Actualizamos estado local de inmediato
       setFotos((prev) => [insertedData || nuevaFotoObj, ...prev]);
       setMensaje("¡Foto subida correctamente!");
       setTimeout(() => setMensaje(""), 3000);
@@ -137,7 +134,7 @@ export default function FotosInspeccion() {
       await supabase
         .from("fotos_inspeccion")
         .update({ principal: false })
-        .eq("inspeccion_id", id);
+        .eq("inspeccion_id", String(id));
 
       await supabase
         .from("fotos_inspeccion")
@@ -173,12 +170,10 @@ export default function FotosInspeccion() {
 
         {mensaje && <p style={mensajeEstilo}>{mensaje}</p>}
 
-        {/* 📸 Botón Tomar Foto */}
         <button onClick={subirFoto} style={botonSubir}>
           📸 Tomar foto
         </button>
 
-        {/* Visor de foto en grande */}
         {fotoGrande && (
           <div style={contenedorGrande}>
             <img
@@ -238,7 +233,6 @@ export default function FotosInspeccion() {
           </div>
         )}
 
-        {/* Botones de acción final */}
         <button onClick={continuarAFirma} style={botonContinuar}>
           Continuar a firma
         </button>
@@ -255,7 +249,6 @@ export default function FotosInspeccion() {
 }
 
 /* ---------------- ESTILOS ---------------- */
-
 const contenedor = {
   padding: "20px",
   background: "#0a0f1a",
