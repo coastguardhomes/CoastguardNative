@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
 export default function GaleriaInspeccion() {
   const { id } = useParams();
@@ -28,21 +29,87 @@ export default function GaleriaInspeccion() {
       return;
     }
 
-    setFotos(data);
+    setFotos(data || []);
     setLoading(false);
   };
 
+  // 📸 Subir foto con Capacitor directamente desde la galería
+  async function subirFoto() {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 70,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Camera,
+      });
+
+      if (!image.base64String) return;
+
+      const base64 = `data:image/jpeg;base64,${image.base64String}`;
+      const blob = await (await fetch(base64)).blob();
+
+      const nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
+
+      const { error: storageError } = await supabase.storage
+        .from("fotos")
+        .upload(nombreArchivo, blob, {
+          contentType: "image/jpeg",
+        });
+
+      if (storageError) {
+        setMensaje("Error subiendo foto al almacenamiento");
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("fotos")
+        .getPublicUrl(nombreArchivo);
+
+      const nuevaFotoObj = {
+        inspeccion_id: id,
+        archivo: nombreArchivo,
+        url: urlData.publicUrl,
+        principal: false,
+      };
+
+      const { data: insertedData, error: dbError } = await supabase
+        .from("fotos_inspeccion")
+        .insert([nuevaFotoObj])
+        .select()
+        .single();
+
+      if (dbError) {
+        setMensaje("Error guardando foto en la base de datos");
+        return;
+      }
+
+      await supabase
+        .from("inspecciones")
+        .update({
+          fecha_fotos: new Date().toISOString(),
+          estado: "fotos_completadas",
+        })
+        .eq("id", id);
+
+      // ⚡ Actualizamos estado local al instante
+      setFotos((prev) => [insertedData || nuevaFotoObj, ...prev]);
+      setMensaje("¡Foto subida correctamente!");
+      setTimeout(() => setMensaje(""), 3000);
+
+      cargarFotos();
+    } catch (e) {
+      console.error(e);
+      setMensaje("Cámara cancelada o con error.");
+    }
+  }
+
   const borrarFoto = async (foto) => {
-    const url = foto.url;
-    const path = url.split("/").pop();
+    let path = foto.archivo;
+    if (!path && foto.url) {
+      path = foto.url.split("/").pop();
+    }
 
-    const { error: storageError } = await supabase.storage
-      .from("fotos")
-      .remove([path]);
-
-    if (storageError) {
-      setMensaje("Error borrando foto del almacenamiento");
-      return;
+    if (path) {
+      await supabase.storage.from("fotos").remove([path]);
     }
 
     const { error: dbError } = await supabase
@@ -72,12 +139,27 @@ export default function GaleriaInspeccion() {
         .update({ principal: true })
         .eq("id", foto.id);
 
+      await supabase
+        .from("inspecciones")
+        .update({
+          foto_principal: foto.url,
+        })
+        .eq("id", id);
+
       setMensaje("Foto marcada como principal");
       cargarFotos();
     } catch (e) {
       console.error(e);
       setMensaje("Error marcando foto como principal");
     }
+  }
+
+  function continuarAFirma() {
+    if (fotos.length === 0) {
+      setMensaje("Debes subir al menos una foto antes de continuar.");
+      return;
+    }
+    navigate(`/inspecciones/firma/${id}`);
   }
 
   useEffect(() => {
@@ -99,7 +181,7 @@ export default function GaleriaInspeccion() {
           style={{
             fontSize: "28px",
             fontWeight: "700",
-            marginBottom: "25px",
+            marginBottom: "20px",
             color: "#4db8ff",
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
             textAlign: "center",
@@ -114,11 +196,32 @@ export default function GaleriaInspeccion() {
               marginBottom: "15px",
               color: "#4db8ff",
               fontWeight: "600",
+              textAlign: "center",
             }}
           >
             {mensaje}
           </p>
         )}
+
+        {/* 📸 Botón Tomar Foto */}
+        <button
+          onClick={subirFoto}
+          style={{
+            width: "100%",
+            padding: "14px",
+            background: "#4db8ff",
+            color: "#000",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "16px",
+            cursor: "pointer",
+            marginBottom: "20px",
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+          }}
+        >
+          📸 Tomar foto
+        </button>
 
         {/* 🔥 Foto en grande */}
         {fotoGrande && (
@@ -164,9 +267,11 @@ export default function GaleriaInspeccion() {
         )}
 
         {loading ? (
-          <p>Cargando fotos...</p>
+          <p style={{ textAlign: "center" }}>Cargando fotos...</p>
         ) : fotos.length === 0 ? (
-          <p>No hay fotos registradas.</p>
+          <p style={{ textAlign: "center", color: "#a0aec0", margin: "20px 0" }}>
+            No hay fotos registradas.
+          </p>
         ) : (
           <div
             style={{
@@ -242,21 +347,40 @@ export default function GaleriaInspeccion() {
           </div>
         )}
 
-        {/* 🔥 Botón volver */}
+        {/* 🔥 Botón Continuar a Firma */}
         <button
-          onClick={() => navigate(`/inspecciones/${id}`)}
+          onClick={continuarAFirma}
           style={{
             marginTop: "30px",
             padding: "14px",
             width: "100%",
-            background: "#4db8ff",
+            background: "#4ade80",
             color: "#000",
             borderRadius: "10px",
             border: "none",
             fontWeight: "700",
             fontSize: "17px",
             cursor: "pointer",
-            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+            boxShadow: "0 0 10px rgba(74,222,128,0.4)",
+          }}
+        >
+          Continuar a firma
+        </button>
+
+        {/* 🔥 Botón volver */}
+        <button
+          onClick={() => navigate(`/inspecciones/${id}`)}
+          style={{
+            marginTop: "12px",
+            padding: "14px",
+            width: "100%",
+            background: "transparent",
+            color: "#4db8ff",
+            borderRadius: "10px",
+            border: "1px solid #4db8ff",
+            fontWeight: "700",
+            fontSize: "15px",
+            cursor: "pointer",
           }}
         >
           Volver a la inspección
