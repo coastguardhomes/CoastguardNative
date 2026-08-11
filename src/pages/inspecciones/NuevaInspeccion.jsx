@@ -90,10 +90,9 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // Preparamos los datos asegurando los tipos correctos
+      // Creamos el objeto base omitiendo campos que puedan dar conflicto de tipo UUID si son numéricos
       const nuevaInspeccion = {
         vivienda_id: vivienda.id,
-        contrato_id: isNaN(form.contrato_id) ? form.contrato_id : Number(form.contrato_id),
         tecnico_id: tecnicoFinal,
         fecha: form.fecha,
         estado: "pendiente",
@@ -101,7 +100,11 @@ export default function NuevaInspeccion() {
         origen: "app",
       };
 
-      // Si la tabla usa cliente_id como UUID o número, lo añadimos de forma segura si existe
+      // Solo añadimos contrato_id si no entra en conflicto, o aseguramos su formato
+      if (form.contrato_id) {
+        nuevaInspeccion.contrato_id = form.contrato_id;
+      }
+
       if (vivienda.cliente_id) {
         nuevaInspeccion.cliente_id = vivienda.cliente_id;
       }
