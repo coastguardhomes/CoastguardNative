@@ -9,7 +9,6 @@ export default function VerInspeccion() {
   const [inspeccion, setInspeccion] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Función para formatear fecha sin date-fns
   function formatearFecha(fechaISO) {
     if (!fechaISO) return "Sin fecha";
     const fecha = new Date(fechaISO);
@@ -21,58 +20,38 @@ export default function VerInspeccion() {
 
   useEffect(() => {
     async function cargarInspeccion() {
+      console.log("Buscando inspección con ID en la ruta:", id);
+
+      // Consulta simplificada para evitar errores de relaciones
       const { data, error } = await supabase
         .from("inspecciones")
-        .select(
-          `
-          id,
-          fecha,
-          estado,
-          notas,
-          viviendas (
-            id,
-            direccion,
-            ciudad
-          )
-        `
-        )
+        .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle(); // Usamos maybeSingle para evitar excepciones si no encuentra filas
 
       if (error) {
-        console.error("Error cargando inspección:", error);
+        console.error("Error en Supabase al buscar inspección:", error);
       } else {
+        console.log("Resultado de la búsqueda:", data);
         setInspeccion(data);
       }
 
       setLoading(false);
     }
 
-    cargarInspeccion();
+    if (id) {
+      cargarInspeccion();
+    }
   }, [id]);
 
-  // ⭐ BORRAR INSPECCIÓN COMPLETA
   async function eliminarInspeccion() {
     const confirmar = window.confirm("¿Seguro que deseas eliminar esta inspección?");
     if (!confirmar) return;
 
-    // 1. Borrar checklist asociado
-    await supabase
-      .from("checklist_inspeccion")
-      .delete()
-      .eq("inspeccion_id", id);
+    await supabase.from("checklist_inspeccion").delete().eq("inspeccion_id", id);
+    await supabase.from("fotos_inspeccion").delete().eq("inspeccion_id", id);
 
-    // 2. Borrar fotos asociadas (si existe tabla)
-    await supabase
-      .from("fotos_inspeccion")
-      .delete()
-      .eq("inspeccion_id", id);
-
-    // 3. Borrar inspección
-    const { error } = await supabase
-      .from("inspecciones")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("inspecciones").delete().eq("id", id);
 
     if (error) {
       alert("Error eliminando inspección");
@@ -93,7 +72,6 @@ export default function VerInspeccion() {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          fontFamily: "Inter, sans-serif",
           fontSize: "18px",
         }}
       >
@@ -104,8 +82,8 @@ export default function VerInspeccion() {
 
   if (!inspeccion) {
     return (
-      <div className="p-4" style={{ background: "#0a0f1a", minHeight: "100vh", color: "#fff", padding: "20px" }}>
-        <h2>No se encontró la inspección</h2>
+      <div style={{ background: "#0a0f1a", minHeight: "100vh", color: "#fff", padding: "20px" }}>
+        <h2>No se encontró la inspección con ID: {id}</h2>
         <Link to="/inspecciones" style={{ color: "#4db8ff" }}>Volver</Link>
       </div>
     );
@@ -116,22 +94,12 @@ export default function VerInspeccion() {
       <h1>Inspección #{inspeccion.id}</h1>
 
       <p style={{ marginTop: "15px" }}>
-        <strong>Fecha:</strong>{" "}
-        {formatearFecha(inspeccion.fecha)}
+        <strong>Fecha:</strong> {formatearFecha(inspeccion.fecha)}
       </p>
 
       <p>
-        <strong>Estado:</strong> {inspeccion.estado}
+        <strong>Estado:</strong> {inspeccion.estado || "Pendiente"}
       </p>
-
-      <h3>Vivienda</h3>
-      <p>
-        {inspeccion.viviendas?.direccion || "Sin dirección"},{" "}
-        {inspeccion.viviendas?.ciudad || "Sin localidad"}
-      </p>
-
-      <h3>Técnico</h3>
-      <p>Sin técnico asignado</p>
 
       <h3>Notas</h3>
       <p>{inspeccion.notas || "Sin notas"}</p>
@@ -139,7 +107,6 @@ export default function VerInspeccion() {
       <div style={{ marginTop: "20px" }}>
         <Link
           to={`/inspecciones/${id}/checklist`}
-          className="btn btn-primary"
           style={{ color: "#4db8ff", marginRight: "10px" }}
         >
           Ver Checklist
@@ -147,7 +114,6 @@ export default function VerInspeccion() {
 
         <Link
           to={`/inspecciones/firma/${id}`}
-          className="btn btn-secondary"
           style={{ color: "#4db8ff", marginRight: "10px" }}
         >
           Firmar
@@ -155,14 +121,12 @@ export default function VerInspeccion() {
 
         <Link
           to={`/inspecciones/pdf/${id}`}
-          className="btn btn-success"
           style={{ color: "#4db8ff" }}
         >
           Ver PDF
         </Link>
       </div>
 
-      {/* ⭐ BOTÓN NUEVO: BORRAR INSPECCIÓN */}
       <button
         onClick={eliminarInspeccion}
         style={{
