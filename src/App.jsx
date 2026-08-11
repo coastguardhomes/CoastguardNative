@@ -33,7 +33,7 @@ import NuevoTecnico from "./pages/tecnicos/NuevoTecnico.jsx";
 import EditarTecnico from "./pages/tecnicos/EditarTecnico.jsx";
 import VerTecnico from "./pages/tecnicos/VerTecnico.jsx";
 
-// *** NUEVAS PANTALLAS DEL TÉCNICO ***
+// PANTALLAS DEL TÉCNICO
 import TecnicoInspeccion from "./pages/tecnicos/TecnicoInspeccion.jsx";
 import TecnicoChecklist from "./pages/tecnicos/TecnicoChecklist.jsx";
 import TecnicoFotos from "./pages/tecnicos/TecnicoFotos.jsx";
@@ -53,7 +53,6 @@ import VerInspeccion from "./pages/inspecciones/VerInspeccion.jsx";
 import DetalleInspeccion from "./pages/inspecciones/DetalleInspeccion.jsx";
 import GaleriaInspeccion from "./pages/inspecciones/GaleriaInspeccion.jsx";
 import FotosInspeccion from "./pages/inspecciones/FotosInspeccion.jsx";
-import Checklist from "./pages/inspecciones/Checklist.jsx";
 import Firma from "./pages/inspecciones/Firma.jsx";
 import VerPDFInspeccion from "./pages/inspecciones/VerPDFInspeccion.jsx";
 import VerPDF from "./pages/inspecciones/VerPDF.jsx";
@@ -106,8 +105,6 @@ export default function App() {
       {/* ---------------- TÉCNICO ---------------- */}
       <Route path="/tecnico" element={<PrivateRoute />}>
         <Route index element={<TecnicoDashboard />} />
-
-        {/* RUTAS DEL TÉCNICO (CORRECTAS) */}
         <Route path="inspeccion/:id" element={<TecnicoInspeccion />} />
         <Route path="inspeccion/:id/checklist" element={<TecnicoChecklist />} />
         <Route path="inspeccion/:id/fotos" element={<TecnicoFotos />} />
@@ -180,10 +177,6 @@ export default function App() {
         <Route path="detalle/:id" element={<DetalleInspeccion />} />
         <Route path="galeria/:id" element={<GaleriaInspeccion />} />
         <Route path="fotos/:id" element={<FotosInspeccion />} />
-
-        {/* ❌ RUTA ELIMINADA: ESTA ROMPÍA EL CHECKLIST DEL TÉCNICO */}
-        {/* <Route path=":id/checklist" element={<Checklist />} /> */}
-
         <Route path="firma/:id" element={<Firma />} />
         <Route path="pdf/:id" element={<VerPDFInspeccion />} />
         <Route path="pdf" element={<VerPDF />} />
