@@ -12,6 +12,7 @@ export default function Inspecciones() {
   useEffect(() => {
     async function cargarUsuario() {
       const { data } = await supabase.auth.getUser();
+      console.log("Usuario actual logueado:", data?.user);
       setUser(data?.user || null);
     }
 
@@ -38,8 +39,9 @@ export default function Inspecciones() {
           `)
           .order("id", { ascending: false });
 
-        // Si NO es admin → filtrar por técnico usando la columna real 'tecnico_id'
+        // Si NO es admin → filtrar por técnico
         if (user.email !== "coastguardhomes2@gmail.com") {
+          console.log("Filtrando para técnico con ID:", user.id);
           query = query.eq("tecnico_id", user.id);
         }
 
@@ -47,10 +49,12 @@ export default function Inspecciones() {
 
         if (error) throw error;
 
+        console.log("Inspecciones encontradas para este usuario:", data);
         setInspecciones(data || []);
       } catch (err) {
         console.error("Error detallado:", err.message);
-        // Plan B: Intentar cargar las inspecciones sin relaciones por si falla el join con viviendas
+        
+        // Plan B: Cargar todo sin filtros para ver qué devuelve
         const { data: fallbackData, error: fallbackError } = await supabase
           .from("inspecciones")
           .select("*")
@@ -59,6 +63,7 @@ export default function Inspecciones() {
         if (fallbackError) {
           setMensaje("Error cargando inspecciones");
         } else {
+          console.log("Inspecciones obtenidas por Plan B:", fallbackData);
           setInspecciones(fallbackData || []);
         }
       } finally {
@@ -121,7 +126,7 @@ export default function Inspecciones() {
         {loading ? (
           <p>Cargando inspecciones...</p>
         ) : inspecciones.length === 0 ? (
-          <p>No hay inspecciones registradas.</p>
+          <p>No hay inspecciones registradas o asignadas a este usuario.</p>
         ) : (
           <div>
             {inspecciones.map((i) => (
