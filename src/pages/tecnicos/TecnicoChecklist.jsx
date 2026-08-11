@@ -1,408 +1,382 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../../supabaseClient";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext.jsx";
+import Menu from "../../layouts/Menu";
+import { supabase } from "../../lib/supabase";
+import { useParams, useNavigate } from "react-router-dom";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
 export default function TecnicoChecklist() {
   const { id } = useParams();
-  const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [items, setItems] = useState([]);
   const [inspeccion, setInspeccion] = useState(null);
-  const [vivienda, setVivienda] = useState(null);
-  const [cliente, setCliente] = useState(null);
-  const [mensaje, setMensaje] = useState("");
+  const [viviendaInfo, setViviendaInfo] = useState({ nombre: "Cargando...", direccion: "", cliente: "Sin cliente asignado" });
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mensaje, setMensaje] = useState("");
+  const [observaciones, setObservaciones] = useState("");
+  const [guardando, setGuardando] = useState(false);
 
+  // 1. Cargar inspección y datos de la vivienda/cliente real
   useEffect(() => {
-    if (id && id !== 'general') {
-      cargarChecklist();
-    } else {
-      // Modo genérico por si entran sin ID específico de inspección
-      setLoading(false);
-      setMensaje("Modo checklist genérico activo. Seleccione una inspección válida para guardar registros.");
+    async function cargarDatosInspeccion() {
+      try {
+        const { data: insp, error: inspError } = await supabase
+          .from("inspecciones")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (inspError || !insp) {
+          setMensaje("No se encontró la inspección.");
+          return;
+        }
+
+        setInspeccion(insp);
+        if (insp.observaciones) setObservaciones(insp.observaciones);
+
+        if (insp.vivienda_id) {
+          const { data: viv } = await supabase
+            .from("viviendas")
+            .select("*, clientes(nombre)")
+            .eq("id", insp.vivienda_id)
+            .single();
+
+          if (viv) {
+            setViviendaInfo({
+              nombre: viv.nombre || viv.direccion || "Vivienda",
+              direccion: viv.direccion || "Sin dirección",
+              cliente: viv.clientes?.nombre || viv.cliente || "Cliente asignado",
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Error cargando metadatos:", e);
+      }
     }
+
+    if (id) cargarDatosInspeccion();
   }, [id]);
 
-  async function cargarChecklist() {
-    try {
+  // 2. Cargar o generar los más de 20 ítems del checklist
+  useEffect(() => {
+    async function gestionarChecklist() {
       setLoading(true);
-      setMensaje("");
 
-      if (!user?.email) {
-        setMensaje("No se detectó sesión de usuario activa.");
-        setLoading(false);
-        return;
-      }
-
-      const { data: tecnico, error: errTecnico } = await supabase
-        .from("tecnicos")
-        .select("id")
-        .eq("email", user.email)
-        .maybeSingle();
-
-      // Si no existe en la tabla técnicos pero hay sesión, permitimos pasar o manejamos el error con gracia
-      const tecnicoId = tecnico ? tecnico.id : null;
-
-      const { data: insp, error: errInsp } = await supabase
-        .from("inspecciones")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (errInsp || !insp) {
-        setMensaje("Inspección no encontrada en el sistema.");
-        setLoading(false);
-        return;
-      }
-
-      setInspeccion(insp);
-
-      if (insp.vivienda_id) {
-        const { data: viv } = await supabase
-          .from("viviendas")
-          .select("nombre, direccion, ciudad")
-          .eq("id", insp.vivienda_id)
-          .maybeSingle();
-        setVivienda(viv || null);
-      }
-
-      if (insp.contrato_id) {
-        const { data: contrato } = await supabase
-          .from("contratos")
-          .select("cliente_id")
-          .eq("id", insp.contrato_id)
-          .maybeSingle();
-
-        if (contrato?.cliente_id) {
-          const { data: cli } = await supabase
-            .from("clientes")
-            .select("nombre, telefono")
-            .eq("id", contrato.cliente_id)
-            .maybeSingle();
-          setCliente(cli || null);
-        }
-      }
-
-      const { data: checklistData, error: errChecklist } = await supabase
+      let { data, error } = await supabase
         .from("checklist_inspeccion")
-        .select("id, inspeccion_id, texto, estado")
-        .eq("inspeccion_id", id)
-        .order("id", { ascending: true });
+        .select("*")
+        .eq("inspeccion_id", id);
 
-      if (errChecklist) {
-        console.error("Error al cargar ítems:", errChecklist);
+      if (error) {
+        setMensaje("Error conectando con la tabla checklist_inspeccion");
+        setLoading(false);
+        return;
       }
 
-      setItems(checklistData || []);
-    } catch (e) {
-      console.error("Excepción cargando checklist:", e);
-      setMensaje("Ocurrió un error al cargar los datos.");
-    } finally {
+      // Si está vacío, inyectamos la plantilla completa (más de 20 puntos clave)
+      if (!data || data.length === 0) {
+        const plantillaCompleta = [
+          "Puerta principal cerrada y asegurada correctamente",
+          "Cerraduras y bombines sin daños aparentes",
+          "Ventanas y ventanales cerrados y bloqueados",
+          "Persianas bajadas o en posición de seguridad",
+          "Rejas exteriores sin indicios de fuerza o daños",
+          "Comprobación de sistema de alarma activo",
+          "Sensores de movimiento limpios y operativos",
+          "Comprobación de llaves de repuesto en su lugar",
+          "Accesos exteriores revisados (jardín, trastero, garaje)",
+          "Ausencia total de humedades o filtraciones en paredes",
+          "Ausencia de humedades o manchas en techos",
+          "Cuadro eléctrico principal sin interruptores disparados",
+          "Luces e interruptores funcionando correctamente",
+          "Enchufes sin marcas de quemaduras ni holguras",
+          "Electrodomésticos con suministro eléctrico correcto",
+          "Grifos y llaves de paso funcionando sin goteos",
+          "Presión de agua correcta en red general",
+          "Ausencia de fugas visibles en baños y cocina",
+          "Cisterna de WC funcionando y cargando bien",
+          "Desagües limpios y ausencia de malos olores",
+          "Estado general del jardín y limpieza de exteriores",
+          "Piscina: nivel de agua correcto y bomba operativa",
+          "Ausencia de plagas (insectos, hormigas o roedores)",
+          "Limpieza ligera y ausencia de basura interior",
+          "Estado general del mobiliario y cristales sin roturas"
+        ];
+
+        const nuevosItems = plantillaCompleta.map((texto) => ({
+          inspeccion_id: id,
+          item: texto,
+          completado: false,
+        }));
+
+        const { error: insertError } = await supabase
+          .from("checklist_inspeccion")
+          .insert(nuevosItems);
+
+        if (insertError) {
+          setMensaje("Error al generar la plantilla: " + insertError.message);
+          setLoading(false);
+          return;
+        }
+
+        const { data: dataRecargada } = await supabase
+          .from("checklist_inspeccion")
+          .select("*")
+          .eq("inspeccion_id", id);
+
+        data = dataRecargada || [];
+      }
+
+      setItems(data);
       setLoading(false);
+    }
+
+    if (id) gestionarChecklist();
+  }, [id]);
+
+  // Actualizar OK / KO de un ítem
+  async function actualizarItem(itemId, completado) {
+    setItems((prev) =>
+      prev.map((i) => (i.id === itemId ? { ...i, completado } : i))
+    );
+
+    await supabase
+      .from("checklist_inspeccion")
+      .update({ completado })
+      .eq("id", itemId);
+  }
+
+  // Subir fotos a Supabase Storage
+  async function procesarYSubirImagen(base64String) {
+    try {
+      setMensaje("Subiendo foto...");
+      const base64 = `data:image/jpeg;base64,${base64String}`;
+      const blob = await (await fetch(base64)).blob();
+      const nombreArchivo = `checklist_${id}_${Date.now()}.jpg`;
+
+      const { error: storageError } = await supabase.storage
+        .from("fotos")
+        .upload(nombreArchivo, blob, { contentType: "image/jpeg" });
+
+      if (storageError) {
+        setMensaje("Error al subir archivo: " + storageError.message);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("fotos")
+        .getPublicUrl(nombreArchivo);
+
+      await supabase.from("fotos_inspeccion").insert({
+        inspeccion_id: id,
+        archivo: nombreArchivo,
+        url: urlData.publicUrl,
+        principal: false,
+        tipo: "checklist",
+      });
+
+      setMensaje("¡Foto guardada con éxito!");
+      setTimeout(() => setMensaje(""), 3000);
+    } catch (e) {
+      setMensaje("Excepción al procesar la foto.");
     }
   }
 
-  async function marcarItem(itemId, nuevoEstado) {
-    setMensaje("");
-
-    const { error } = await supabase
-      .from("checklist_inspeccion")
-      .update({ estado: nuevoEstado })
-      .eq("id", itemId);
-
-    if (error) {
-      setMensaje("Error guardando el estado en Supabase");
-      return;
+  // Capturar con Cámara
+  async function tomarFoto() {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 75,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Camera,
+      });
+      if (image.base64String) await procesarYSubirImagen(image.base64String);
+    } catch (e) {
+      setMensaje("Cámara cancelada.");
     }
+  }
 
-    setItems((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, estado: nuevoEstado } : i))
-    );
-
-    if (id && id !== 'general') {
-      await supabase
-        .from("inspecciones")
-        .update({
-          checklist_completado: true,
-          fecha_checklist: new Date().toISOString(),
-          estado: "checklist_completado",
-        })
-        .eq("id", id);
+  // Seleccionar de la Galería
+  async function seleccionarDeGaleria() {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 75,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Photos,
+      });
+      if (image.base64String) await procesarYSubirImagen(image.base64String);
+    } catch (e) {
+      setMensaje("Galería cancelada.");
     }
+  }
+
+  // Guardar y finalizar
+  async function guardarChecklistCompleto() {
+    setGuardando(true);
+    const todoOk = items.length > 0 && items.every((i) => i.completado === true);
+
+    await supabase
+      .from("inspecciones")
+      .update({
+        observaciones,
+        checklist_completado: todoOk,
+        fecha_checklist: new Date().toISOString(),
+        estado: todoOk ? "checklist_completado" : "checklist_incompleto",
+      })
+      .eq("id", id);
+
+    navigate(`/inspecciones/fotos/${id}`);
+    setGuardando(false);
   }
 
   if (loading) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.spinner}></div>
-        <p style={{ color: '#ffd700', fontSize: '14px', marginTop: '10px' }}>Cargando checklist...</p>
-      </div>
+      <Menu>
+        <div style={{ height: "100vh", background: "#04070c", color: "#ffd700", display: "flex", justifyContent: "center", alignItems: "center", fontWeight: "bold" }}>
+          Cargando checklist del técnico...
+        </div>
+      </Menu>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
+    <Menu>
+      <div style={{ padding: "16px", background: "#04070c", minHeight: "100vh", color: "#fff", fontFamily: "sans-serif" }}>
         
-        {/* ENCABEZADO */}
-        <div style={styles.header}>
-          <div>
-            <div style={styles.brandBadge}>⛵ COASTGUARD</div>
-            <h1 style={styles.title}>Checklist de Inspección</h1>
-          </div>
-          <button style={styles.btnBackHeader} onClick={() => navigate(-1)}>
+        {/* CABECERA */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+          <h1 style={{ color: "#ffd700", fontSize: "18px", margin: 0 }}>Checklist Técnico ({items.length} puntos)</h1>
+          <button 
+            onClick={() => navigate(-1)}
+            style={{ background: "#16263f", border: "1px solid #d4af37", color: "#ffd700", padding: "6px 10px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}
+          >
             ← Volver
           </button>
         </div>
 
-        {mensaje && <div style={styles.alertBox}>{mensaje}</div>}
-
-        {/* INFO DE LA VIVIENDA / INSPECCIÓN */}
-        <div style={styles.infoBox}>
-          <p style={styles.infoText}>
-            <strong style={{ color: "#ffd700" }}>Vivienda:</strong> {vivienda?.nombre || 'Inspección en Ruta'}
-          </p>
-          <p style={styles.infoText}>
-            <strong style={{ color: "#ffd700" }}>Dirección:</strong> {vivienda?.direccion || 'No especificada'}
-          </p>
-          <p style={styles.infoText}>
-            <strong style={{ color: "#ffd700" }}>Cliente:</strong> {cliente ? `${cliente.nombre} (${cliente.telefono})` : "Sin cliente asignado"}
-          </p>
+        {/* DATOS DE LA VIVIENDA Y CLIENTE REALES */}
+        <div style={{ background: "#09101d", border: "1px solid #d4af37", borderRadius: "10px", padding: "12px", marginBottom: "15px", fontSize: "13px" }}>
+          <div style={{ marginBottom: "4px" }}>🏠 <strong style={{ color: "#ffd700" }}>Vivienda:</strong> {viviendaInfo.nombre}</div>
+          <div style={{ marginBottom: "4px" }}>📍 <strong style={{ color: "#ffd700" }}>Dirección:</strong> {viviendaInfo.direccion}</div>
+          <div>👤 <strong style={{ color: "#ffd700" }}>Cliente:</strong> {viviendaInfo.cliente}</div>
         </div>
 
-        {/* LISTADO DE ITEMS */}
-        {items.length === 0 ? (
-          <div style={styles.emptyContainer}>
-            <p style={{ color: '#aaa', fontSize: '12px' }}>No hay ítems configurados para este checklist.</p>
-            <button 
-              style={styles.mainBtn}
-              onClick={() => alert('Se puede proceder con el registro manual de incidencias.')}
-            >
-              ➕ Registrar Incidencia Extra
-            </button>
-          </div>
-        ) : (
-          <div style={styles.itemsList}>
-            {items.map((item) => (
-              <div key={item.id} style={styles.itemCard}>
-                <p style={styles.itemText}>{item.texto}</p>
-                <div style={styles.statusRow}>
-                  <span style={{ fontSize: '10px', color: '#888' }}>
-                    Estado: <strong style={{ color: item.estado === 'ok' ? '#2ecc71' : item.estado === 'ko' ? '#e74c3c' : '#ffd700' }}>
-                      {item.estado === 'ok' ? '✔ OK' : item.estado === 'ko' ? '✖ KO' : 'Pendiente'}
-                    </strong>
-                  </span>
-                </div>
-                <div style={styles.btnGroup}>
-                  <button
-                    onClick={() => marcarItem(item.id, "ok")}
-                    style={{
-                      ...styles.btnCheck,
-                      background: item.estado === "ok" ? "#2ecc71" : "#10192d",
-                      borderColor: item.estado === "ok" ? "#2ecc71" : "#2a3b55",
-                    }}
-                  >
-                    ✔ OK
-                  </button>
-                  <button
-                    onClick={() => marcarItem(item.id, "ko")}
-                    style={{
-                      ...styles.btnCheck,
-                      background: item.estado === "ko" ? "#e74c3c" : "#10192d",
-                      borderColor: item.estado === "ko" ? "#e74c3c" : "#2a3b55",
-                    }}
-                  >
-                    ✖ KO
-                  </button>
-                </div>
-              </div>
-            ))}
+        {mensaje && (
+          <div style={{ marginBottom: "12px", padding: "8px", background: "rgba(212,175,55,0.1)", border: "1px solid #ffd700", borderRadius: "6px", color: "#ffd700", fontSize: "12px", fontWeight: "bold" }}>
+            {mensaje}
           </div>
         )}
 
-        {/* BOTONES INFERIORES DE NAVEGACIÓN */}
-        <div style={styles.footerNav}>
-          {id && id !== 'general' && (
-            <>
-              <button 
-                style={styles.navBtnBlue}
-                onClick={() => navigate(`/tecnico/inspeccion/${id}/fotos`)}
-              >
-                📷 Adjuntar Fotos
-              </button>
-              <button 
-                style={styles.navBtnGreen}
-                onClick={() => navigate(`/tecnico/inspeccion/${id}/finalizar`)}
-              >
-                ✅ Finalizar Inspección
-              </button>
-            </>
-          )}
-          <button 
-            style={styles.navBtnGray}
-            onClick={() => navigate('/tecnico/dashboard')}
+        {/* BOTONES MULTIMEDIA (CÁMARA / GALERÍA) */}
+        <div style={{ display: "flex", gap: "8px", marginBottom: "15px" }}>
+          <button
+            onClick={tomarFoto}
+            style={{ flex: 1, padding: "10px", background: "#d4af37", color: "#070b12", borderRadius: "8px", border: "none", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}
           >
-            🏠 Ir al Panel Principal
+            📸 Hacer Foto
+          </button>
+          <button
+            onClick={seleccionarDeGaleria}
+            style={{ flex: 1, padding: "10px", background: "#27ae60", color: "#fff", borderRadius: "8px", border: "none", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}
+          >
+            🖼️ Galería
           </button>
         </div>
 
+        {/* LISTADO DE LOS +20 ÍTEMS */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "15px" }}>
+          {items.map((item, index) => (
+            <div
+              key={item.id || index}
+              style={{
+                background: "#09101d",
+                padding: "12px",
+                borderRadius: "10px",
+                border: "1px solid #1e3050",
+              }}
+            >
+              <p style={{ marginBottom: "8px", fontSize: "13px", fontWeight: "600", color: "#fff" }}>
+                {index + 1}. {item.item}
+              </p>
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  onClick={() => actualizarItem(item.id, true)}
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    background: item.completado ? "#27ae60" : "#111b2e",
+                    color: "#fff",
+                    borderRadius: "6px",
+                    border: "1px solid #27ae60",
+                    fontWeight: "bold",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                  }}
+                >
+                  ✓ OK
+                </button>
+
+                <button
+                  onClick={() => actualizarItem(item.id, false)}
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    background: !item.completado && item.completado !== null ? "#e74c3c" : "#111b2e",
+                    color: "#fff",
+                    borderRadius: "6px",
+                    border: "1px solid #e74c3c",
+                    fontWeight: "bold",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                  }}
+                >
+                  ✗ KO / Pendiente
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* OBSERVACIONES */}
+        <textarea
+          placeholder="Observaciones de la inspección..."
+          value={observaciones}
+          onChange={(e) => setObservaciones(e.target.value)}
+          style={{
+            width: "100%",
+            minHeight: "90px",
+            marginBottom: "15px",
+            padding: "10px",
+            borderRadius: "8px",
+            background: "#09101d",
+            color: "#fff",
+            border: "1px solid #1e3050",
+            fontSize: "13px",
+          }}
+        />
+
+        {/* BOTÓN FINAL DE GUARDADO */}
+        <button
+          onClick={guardarChecklistCompleto}
+          disabled={guardando}
+          style={{
+            width: "100%",
+            padding: "12px",
+            background: "linear-gradient(to bottom, #f3e0aa 0%, #d4af37 50%, #b8860b 100%)",
+            color: "#070b12",
+            borderRadius: "8px",
+            border: "none",
+            fontWeight: "bold",
+            fontSize: "14px",
+            cursor: "pointer",
+            marginBottom: "30px",
+          }}
+        >
+          {guardando ? "Guardando..." : "✅ Guardar y Finalizar Checklist"}
+        </button>
+
       </div>
-    </div>
+    </Menu>
   );
 }
-
-const styles = {
-  loadingContainer: {
-    backgroundColor: '#04070c',
-    height: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    fontFamily: 'sans-serif',
-  },
-  spinner: {
-    width: '32px',
-    height: '32px',
-    border: '3px solid #1e3050',
-    borderTop: '3px solid #ffd700',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-  },
-  container: {
-    backgroundColor: '#04070c',
-    minHeight: '100vh',
-    padding: '10px 6px',
-    display: 'flex',
-    justifyContent: 'center',
-    fontFamily: 'sans-serif',
-  },
-  card: {
-    width: '100%',
-    maxWidth: '480px',
-    backgroundColor: '#09101d',
-    border: '1px solid #c5a03e',
-    borderRadius: '14px',
-    padding: '16px',
-    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.9)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottom: '2px solid #c5a03e',
-    paddingBottom: '8px',
-  },
-  brandBadge: { color: '#ffd700', fontSize: '9px', fontWeight: 'bold' },
-  title: { color: '#fff', fontSize: '16px', margin: '2px 0 0 0', fontWeight: 'bold' },
-  btnBackHeader: {
-    backgroundColor: '#16263f',
-    color: '#ffd700',
-    border: '1px solid #d4af37',
-    padding: '4px 8px',
-    borderRadius: '6px',
-    fontSize: '10px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-  },
-  alertBox: {
-    backgroundColor: 'rgba(231, 76, 60, 0.15)',
-    border: '1px solid #e74c3c',
-    color: '#ff7675',
-    padding: '8px',
-    borderRadius: '6px',
-    fontSize: '11px',
-    textAlign: 'center',
-  },
-  infoBox: {
-    backgroundColor: '#0d1626',
-    border: '1px solid #1e3050',
-    borderRadius: '8px',
-    padding: '10px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  infoText: { margin: 0, fontSize: '11px', color: '#ccc' },
-  emptyContainer: { textAlign: 'center', padding: '20px 0', display: 'flex', flexDirection: 'column', gap: '10px' },
-  mainBtn: {
-    background: 'linear-gradient(to bottom, #f3e0aa 0%, #d4af37 50%, #b8860b 100%)',
-    color: '#070b12',
-    border: 'none',
-    padding: '10px',
-    borderRadius: '8px',
-    fontSize: '12px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-  },
-  itemsList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    maxHeight: '320px',
-    overflowY: 'auto',
-  },
-  itemCard: {
-    backgroundColor: '#0d1626',
-    border: '1px solid #1e3050',
-    borderRadius: '8px',
-    padding: '10px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-  },
-  itemText: { color: '#fff', fontSize: '12px', margin: 0, fontWeight: '600' },
-  statusRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  btnGroup: { display: 'flex', gap: '8px' },
-  btnCheck: {
-    flex: 1,
-    padding: '8px',
-    borderRadius: '6px',
-    border: '1px solid',
-    color: '#fff',
-    fontSize: '11px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-  },
-  footerNav: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    marginTop: '6px',
-  },
-  navBtnBlue: {
-    backgroundColor: '#2980b9',
-    color: '#fff',
-    border: 'none',
-    padding: '10px',
-    borderRadius: '8px',
-    fontSize: '12px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-  },
-  navBtnGreen: {
-    backgroundColor: '#27ae60',
-    color: '#fff',
-    border: 'none',
-    padding: '10px',
-    borderRadius: '8px',
-    fontSize: '12px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-  },
-  navBtnGray: {
-    backgroundColor: '#16263f',
-    color: '#ffd700',
-    border: '1px solid #d4af37',
-    padding: '8px',
-    borderRadius: '8px',
-    fontSize: '11px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-  },
-};
