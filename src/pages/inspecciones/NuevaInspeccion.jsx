@@ -90,7 +90,6 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // Creamos el objeto base omitiendo campos que puedan dar conflicto de tipo UUID si son numéricos
       const nuevaInspeccion = {
         vivienda_id: vivienda.id,
         tecnico_id: tecnicoFinal,
@@ -100,9 +99,11 @@ export default function NuevaInspeccion() {
         origen: "app",
       };
 
-      // Solo añadimos contrato_id si no entra en conflicto, o aseguramos su formato
+      // Convertimos el contrato_id a número entero si es numérico para encajar con la columna de la BD
       if (form.contrato_id) {
-        nuevaInspeccion.contrato_id = form.contrato_id;
+        nuevaInspeccion.contrato_id = isNaN(form.contrato_id) 
+          ? form.contrato_id 
+          : parseInt(form.contrato_id, 10);
       }
 
       if (vivienda.cliente_id) {
