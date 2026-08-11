@@ -11,12 +11,14 @@ export default function FotosInspeccion() {
   const [fotos, setFotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
+  const [fotoGrande, setFotoGrande] = useState(null);
 
   useEffect(() => {
     cargarFotos();
   }, [id]);
 
   async function cargarFotos() {
+    setLoading(true);
     const { data, error } = await supabase
       .from("fotos_inspeccion")
       .select("*")
@@ -29,21 +31,12 @@ export default function FotosInspeccion() {
       return;
     }
 
-    const fotosConURL = data.map((f) => {
-      const { data: urlData } = supabase.storage
-        .from("fotos")
-        .getPublicUrl(f.archivo);
-
-      return { ...f, publicUrl: urlData.publicUrl };
-    });
-
-    setFotos(fotosConURL);
+    setFotos(data || []);
     setLoading(false);
   }
 
   async function subirFoto() {
     try {
-      // 📸 Cámara REAL con Capacitor
       const image = await Camera.getPhoto({
         quality: 70,
         resultType: CameraResultType.Base64,
@@ -64,7 +57,7 @@ export default function FotosInspeccion() {
         });
 
       if (storageError) {
-        setMensaje("Error subiendo foto");
+        setMensaje("Error subiendo foto al almacenamiento");
         return;
       }
 
@@ -76,7 +69,6 @@ export default function FotosInspeccion() {
         inspeccion_id: id,
         archivo: nombreArchivo,
         url: urlData.publicUrl,
-        publicUrl: urlData.publicUrl,
         principal: false,
       };
 
@@ -99,25 +91,26 @@ export default function FotosInspeccion() {
         })
         .eq("id", id);
 
-      // ⚡ Actualizamos el estado local de inmediato
-      setFotos((prev) => [insertedData ? { ...insertedData, publicUrl: urlData.publicUrl } : nuevaFotoObj, ...prev]);
-      setMensaje("Foto subida correctamente");
-      
+      // Actualizamos estado local de inmediato
+      setFotos((prev) => [insertedData || nuevaFotoObj, ...prev]);
+      setMensaje("¡Foto subida correctamente!");
+      setTimeout(() => setMensaje(""), 3000);
+
       cargarFotos();
     } catch (e) {
       console.error(e);
-      setMensaje("Error tomando foto");
+      setMensaje("Cámara cancelada o con error.");
     }
   }
 
   async function borrarFoto(foto) {
-    const { error: storageError } = await supabase.storage
-      .from("fotos")
-      .remove([foto.archivo]);
+    let path = foto.archivo;
+    if (!path && foto.url) {
+      path = foto.url.split("/").pop();
+    }
 
-    if (storageError) {
-      setMensaje("Error borrando foto del almacenamiento");
-      return;
+    if (path) {
+      await supabase.storage.from("fotos").remove([path]);
     }
 
     const { error: dbError } = await supabase
@@ -165,38 +158,61 @@ export default function FotosInspeccion() {
       setMensaje("Debes subir al menos una foto antes de continuar.");
       return;
     }
-
     navigate(`/inspecciones/firma/${id}`);
   }
 
   return (
     <Menu>
       <div style={contenedor}>
-        <h1 style={titulo}>Fotos de la Inspección</h1>
+        <h1 style={titulo}>Galería de Fotos</h1>
 
         {mensaje && <p style={mensajeEstilo}>{mensaje}</p>}
 
+        {/* 📸 Botón Tomar Foto */}
         <button onClick={subirFoto} style={botonSubir}>
-          Tomar foto
+          📸 Tomar foto
         </button>
 
+        {/* Visor de foto en grande */}
+        {fotoGrande && (
+          <div style={contenedorGrande}>
+            <img
+              src={fotoGrande.url}
+              alt="Foto grande"
+              style={imagenGrandeEstilo}
+            />
+            <button
+              onClick={() => setFotoGrande(null)}
+              style={botonCerrarGrande}
+            >
+              Cerrar foto
+            </button>
+          </div>
+        )}
+
         {loading ? (
-          <p>Cargando fotos...</p>
+          <p style={{ textAlign: "center" }}>Cargando fotos...</p>
         ) : fotos.length === 0 ? (
-          <p>No hay fotos registradas.</p>
+          <p style={vacioEstilo}>No hay fotos registradas.</p>
         ) : (
           <div style={grid}>
             {fotos.map((foto) => (
               <div key={foto.id} style={card}>
                 <img
-                  src={foto.publicUrl}
+                  src={foto.url}
                   alt="Foto inspección"
                   style={{
                     width: "100%",
+                    height: "120px",
+                    objectFit: "cover",
                     borderRadius: "10px",
-                    border: foto.principal ? "3px solid #4ade80" : "2px solid #4db8ff",
+                    border: foto.principal
+                      ? "3px solid #4ade80"
+                      : "2px solid #4db8ff",
                     marginBottom: "10px",
+                    cursor: "pointer",
                   }}
+                  onClick={() => setFotoGrande(foto)}
                 />
 
                 <button
@@ -210,15 +226,23 @@ export default function FotosInspeccion() {
                 </button>
 
                 <button onClick={() => borrarFoto(foto)} style={botonEliminar}>
-                  Borrar
+                  Eliminar
                 </button>
               </div>
             ))}
           </div>
         )}
 
+        {/* Botones de acción final */}
         <button onClick={continuarAFirma} style={botonContinuar}>
           Continuar a firma
+        </button>
+
+        <button
+          onClick={() => navigate(`/inspecciones/detalle/${id}`)}
+          style={botonVolver}
+        >
+          Volver a la inspección
         </button>
       </div>
     </Menu>
@@ -238,15 +262,17 @@ const contenedor = {
 const titulo = {
   fontSize: "28px",
   fontWeight: "700",
-  marginBottom: "25px",
+  marginBottom: "20px",
   color: "#4db8ff",
   textAlign: "center",
+  textShadow: "0 0 8px rgba(0,153,255,0.6)",
 };
 
 const mensajeEstilo = {
   marginBottom: "15px",
   color: "#4db8ff",
   fontWeight: "600",
+  textAlign: "center",
 };
 
 const botonSubir = {
@@ -257,14 +283,51 @@ const botonSubir = {
   borderRadius: "10px",
   border: "none",
   fontWeight: "700",
+  fontSize: "16px",
   cursor: "pointer",
   marginBottom: "20px",
+  boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+};
+
+const contenedorGrande = {
+  marginBottom: "25px",
+  textAlign: "center",
+  background: "rgba(255,255,255,0.05)",
+  padding: "20px",
+  borderRadius: "14px",
+  border: "1px solid rgba(255,255,255,0.1)",
+};
+
+const imagenGrandeEstilo = {
+  width: "100%",
+  maxHeight: "400px",
+  objectFit: "contain",
+  borderRadius: "10px",
+  border: "3px solid #4db8ff",
+  marginBottom: "15px",
+};
+
+const botonCerrarGrande = {
+  padding: "12px",
+  background: "#4db8ff",
+  border: "none",
+  borderRadius: "10px",
+  color: "#000",
+  cursor: "pointer",
+  fontWeight: "700",
+  width: "100%",
+};
+
+const vacioEstilo = {
+  textAlign: "center",
+  color: "#a0aec0",
+  margin: "20px 0",
 };
 
 const grid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-  gap: "18px",
+  gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+  gap: "20px",
 };
 
 const card = {
@@ -272,6 +335,8 @@ const card = {
   padding: "12px",
   borderRadius: "14px",
   border: "1px solid rgba(255,255,255,0.1)",
+  boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+  textAlign: "center",
 };
 
 const boton = {
@@ -287,24 +352,39 @@ const boton = {
 
 const botonEliminar = {
   width: "100%",
-  padding: "10px",
-  background: "red",
+  padding: "12px",
+  background: "#ff4444",
   color: "#fff",
   borderRadius: "10px",
   border: "none",
   fontWeight: "700",
   cursor: "pointer",
+  boxShadow: "0 0 10px rgba(255,0,0,0.4)",
 };
 
 const botonContinuar = {
-  marginTop: "20px",
+  marginTop: "30px",
   padding: "14px",
   width: "100%",
-  background: "#4db8ff",
+  background: "#4ade80",
   color: "#000",
   borderRadius: "10px",
   border: "none",
   fontWeight: "700",
   fontSize: "17px",
+  cursor: "pointer",
+  boxShadow: "0 0 10px rgba(74,222,128,0.4)",
+};
+
+const botonVolver = {
+  marginTop: "12px",
+  padding: "14px",
+  width: "100%",
+  background: "transparent",
+  color: "#4db8ff",
+  borderRadius: "10px",
+  border: "1px solid #4db8ff",
+  fontWeight: "700",
+  fontSize: "15px",
   cursor: "pointer",
 };
