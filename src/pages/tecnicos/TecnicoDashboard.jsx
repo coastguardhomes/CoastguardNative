@@ -22,13 +22,34 @@ export default function DashboardTecnico() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Búsqueda flexible por UUID o por el correo electrónico del técnico
-      const { data: inspecciones, error } = await supabase
-        .from('inspecciones')
-        .select('*, viviendas(nombre, direccion)')
-        .or(`tecnico_id.eq.${user.id},tecnico_id.eq.${user.email}`);
+      // 1. Obtener el registro del técnico usando el auth_id vinculado
+      const { data: tecnicoData } = await supabase
+        .from('tecnicos')
+        .select('id')
+        .eq('auth_id', user.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      let inspecciones = [];
+
+      // 2. Si existe el técnico, buscamos sus inspecciones por su ID interno
+      if (tecnicoData) {
+        const { data: inspData, error: inspError } = await supabase
+          .from('inspecciones')
+          .select('*, viviendas(nombre, direccion)')
+          .eq('tecnico_id', tecnicoData.id);
+
+        if (!inspError) {
+          inspecciones = inspData || [];
+        }
+      } else {
+        // Plan de respaldo por si acaso el admin entra con su correo o por ID directo
+        const { data: inspFallback } = await supabase
+          .from('inspecciones')
+          .select('*, viviendas(nombre, direccion)')
+          .or(`tecnico_id.eq.${user.id},tecnico_id.eq.${user.email}`);
+        
+        inspecciones = inspFallback || [];
+      }
 
       // Consultas reales para las tarjetas de estadísticas
       const { count: countInspecciones } = await supabase
@@ -43,9 +64,7 @@ export default function DashboardTecnico() {
         .from('viviendas')
         .select('*', { count: 'exact', head: true });
 
-      if (inspecciones) {
-        setInspeccionesDiarias(inspecciones);
-      }
+      setInspeccionesDiarias(inspecciones);
 
       setStats({
         inspeccionesSemana: countInspecciones || 0,
