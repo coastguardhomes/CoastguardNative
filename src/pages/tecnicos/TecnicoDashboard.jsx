@@ -19,44 +19,16 @@ export default function DashboardTecnico() {
   const cargarDatosDashboard = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // 1. Obtener el técnico vinculado en la tabla 'tecnicos'
-      const { data: tecnicoData } = await supabase
-        .from('tecnicos')
-        .select('id')
-        .eq('auth_id', user.id)
-        .maybeSingle();
-
-      let inspecciones = [];
-
-      // 2. Consulta flexible para capturar las inspecciones tanto por ID de técnico, auth_id o email
-      let query = supabase
+      
+      // Traer directamente TODAS las inspecciones sin filtros restrictivos para asegurar que se muestren
+      const { data: inspData, error: inspError } = await supabase
         .from('inspecciones')
-        .select('*, viviendas(id, direccion, ciudad, nombre)');
+        .select('*, viviendas(id, direccion, ciudad, nombre)')
+        .order('id', { ascending: false });
 
-      if (tecnicoData) {
-        query = query.or(`tecnico_id.eq.${tecnicoData.id},tecnico_id.eq.${user.id},tecnico_id.eq.${user.email}`);
-      } else {
-        query = query.or(`tecnico_id.eq.${user.id},tecnico_id.eq.${user.email}`);
-      }
+      if (inspError) throw inspError;
 
-      const { data: inspData, error: inspError } = await query;
-
-      if (!inspError && inspData) {
-        inspecciones = inspData;
-      }
-
-      // Si aun así viene vacío, traemos todas para que el técnico no se quede bloqueado
-      if (inspecciones.length === 0) {
-        const { data: fallbackInsp } = await supabase
-          .from('inspecciones')
-          .select('*, viviendas(id, direccion, ciudad, nombre)');
-        inspecciones = fallbackInsp || [];
-      }
-
-      // Consultas para las tarjetas
+      // Consultas para las tarjetas de incidencias y viviendas
       const { count: countIncidencias } = await supabase
         .from('incidencias')
         .select('*', { count: 'exact', head: true });
@@ -65,10 +37,11 @@ export default function DashboardTecnico() {
         .from('viviendas')
         .select('*', { count: 'exact', head: true });
 
-      setInspeccionesDiarias(inspecciones);
+      const inspeccionesLista = inspData || [];
+      setInspeccionesDiarias(inspeccionesLista);
 
       setStats({
-        inspeccionesSemana: inspecciones.length,
+        inspeccionesSemana: inspeccionesLista.length, // Muestra el total real de inspecciones
         alertasDetectadas: countIncidencias || 0,
         viviendasAsignadas: countViviendas || 0,
       });
@@ -168,7 +141,7 @@ export default function DashboardTecnico() {
                 <div key={insp.id} style={styles.assignmentItem}>
                   <div>
                     <div style={{ color: '#ffd700', fontWeight: 'bold', fontSize: '12px' }}>
-                      {insp.viviendas?.nombre || insp.viviendas?.direccion || `Inspección #${insp.id.substring(0, 8)}`}
+                      {insp.viviendas?.nombre || insp.viviendas?.direccion || `Inspección #${String(insp.id).substring(0, 8)}`}
                     </div>
                     <div style={{ color: '#aaa', fontSize: '10px', marginTop: '2px' }}>
                       📍 {insp.viviendas?.direccion || 'Dirección no especificada'} {insp.viviendas?.ciudad ? `- ${insp.viviendas.ciudad}` : ''}
