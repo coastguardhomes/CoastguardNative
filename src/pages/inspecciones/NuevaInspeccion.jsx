@@ -90,9 +90,11 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // Enviamos únicamente los campos esenciales y seguros para evitar el conflicto de tipos UUID
+      // Preparamos el objeto completo con todos los campos necesarios
       const nuevaInspeccion = {
         vivienda_id: vivienda.id,
+        cliente_id: vivienda.cliente_id || null,
+        contrato_id: form.contrato_id,
         tecnico_id: tecnicoFinal,
         fecha: form.fecha,
         estado: "pendiente",
