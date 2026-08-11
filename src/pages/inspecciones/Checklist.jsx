@@ -33,17 +33,17 @@ export default function Checklist() {
     cargarInspeccion();
   }, [id]);
 
-  // Cargar checklist
+  // Cargar checklist asegurando la plantilla completa
   useEffect(() => {
     async function cargarChecklist() {
+      setLoading(true);
       const { data, error } = await supabase
         .from("checklist_inspeccion")
         .select("*")
-        .eq("inspeccion_id", id)
-        .order("id", { ascending: true });
+        .eq("inspeccion_id", id);
 
       if (error) {
-        setMensaje("Error cargando checklist");
+        setMensaje("Error cargando checklist de Supabase");
         setLoading(false);
         return;
       }
@@ -141,15 +141,20 @@ export default function Checklist() {
           completado: false,
         }));
 
-        await supabase.from("checklist_inspeccion").insert(nuevosItems);
+        const { error: insertError } = await supabase.from("checklist_inspeccion").insert(nuevosItems);
+        
+        if (insertError) {
+          setMensaje("Error al inicializar la plantilla de ítems.");
+          setLoading(false);
+          return;
+        }
 
         const { data: dataFinal } = await supabase
           .from("checklist_inspeccion")
           .select("*")
-          .eq("inspeccion_id", id)
-          .order("id", { ascending: true });
+          .eq("inspeccion_id", id);
 
-        setItems(dataFinal);
+        setItems(dataFinal || []);
       } else {
         setItems(data);
       }
@@ -162,38 +167,30 @@ export default function Checklist() {
 
   // Actualizar OK/KO
   async function actualizarItem(itemId, completado) {
+    setItems((prev) =>
+      prev.map((i) => (i.id === itemId ? { ...i, completado } : i))
+    );
+
     await supabase
       .from("checklist_inspeccion")
       .update({ completado })
       .eq("id", itemId);
-
-    setItems((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, completado } : i))
-    );
   }
 
-  // Tomar foto
-  async function tomarFoto() {
+  // Procesar y subir imagen a Supabase Storage
+  async function procesarYSubirImagen(base64String) {
     try {
-      const image = await Camera.getPhoto({
-        quality: 70,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Camera,
-      });
-
-      const base64 = `data:image/jpeg;base64,${image.base64String}`;
+      setMensaje("Subiendo foto...");
+      const base64 = `data:image/jpeg;base64,${base64String}`;
       const blob = await (await fetch(base64)).blob();
-
       const nombreArchivo = `checklist_${id}_${Date.now()}.jpg`;
 
       const { error: storageError } = await supabase.storage
         .from("fotos")
-        .upload(nombreArchivo, blob, {
-          contentType: "image/jpeg",
-        });
+        .upload(nombreArchivo, blob, { contentType: "image/jpeg" });
 
       if (storageError) {
-        setMensaje("Error subiendo foto");
+        setMensaje("Error al subir archivo al storage");
         return;
       }
 
@@ -209,13 +206,46 @@ export default function Checklist() {
         tipo: "checklist",
       });
 
-      setMensaje("Foto añadida al checklist");
+      setMensaje("¡Foto guardada correctamente!");
+      setTimeout(() => setMensaje(""), 3000);
     } catch (e) {
-      setMensaje("Error tomando foto");
+      setMensaje("Error procesando la imagen");
     }
   }
 
-  // Guardar checklist
+  // Tomar foto con la Cámara
+  async function tomarFoto() {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 75,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Camera,
+      });
+      if (image.base64String) {
+        await procesarYSubirImagen(image.base64String);
+      }
+    } catch (e) {
+      setMensaje("Cámara cancelada o no disponible");
+    }
+  }
+
+  // Seleccionar foto de la Galería
+  async function seleccionarDeGaleria() {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 75,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Photos,
+      });
+      if (image.base64String) {
+        await procesarYSubirImagen(image.base64String);
+      }
+    } catch (e) {
+      setMensaje("Galería cancelada o no disponible");
+    }
+  }
+
+  // Guardar checklist completo
   async function guardarChecklistCompleto() {
     setGuardando(true);
     setMensaje("");
@@ -250,7 +280,7 @@ export default function Checklist() {
             fontSize: "18px",
           }}
         >
-          Cargando checklist...
+          Cargando checklist completo...
         </div>
       </Menu>
     );
@@ -269,33 +299,69 @@ export default function Checklist() {
         <h1
           style={{
             color: "#4db8ff",
-            marginBottom: "25px",
-            fontSize: "28px",
+            marginBottom: "15px",
+            fontSize: "26px",
             fontWeight: "700",
           }}
         >
-          Checklist de Inspección
+          Checklist de Inspección ({items.length} puntos)
         </h1>
 
         {mensaje && (
-          <p style={{ marginBottom: "15px", color: "#4db8ff", fontWeight: "600" }}>
+          <div style={{ marginBottom: "15px", padding: "10px", background: "rgba(77,184,255,0.1)", border: "1px solid #4db8ff", borderRadius: "8px", color: "#4db8ff", fontWeight: "600" }}>
             {mensaje}
-          </p>
+          </div>
         )}
 
-        {items.map((item) => (
+        {/* BOTONES MULTIMEDIA SUPERIORES */}
+        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+          <button
+            onClick={tomarFoto}
+            style={{
+              flex: 1,
+              padding: "12px",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "15px",
+              cursor: "pointer",
+            }}
+          >
+            📸 Hacer Foto
+          </button>
+          <button
+            onClick={seleccionarDeGaleria}
+            style={{
+              flex: 1,
+              padding: "12px",
+              background: "#2ecc71",
+              color: "#000",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "15px",
+              cursor: "pointer",
+            }}
+          >
+            🖼️ Galería
+          </button>
+        </div>
+
+        {items.map((item, index) => (
           <div
-            key={item.id}
+            key={item.id || index}
             style={{
               marginBottom: "15px",
               background: "rgba(255,255,255,0.05)",
-              padding: "18px",
+              padding: "16px",
               borderRadius: "14px",
               border: "1px solid rgba(255,255,255,0.1)",
             }}
           >
-            <p style={{ marginBottom: "12px", fontSize: "17px", fontWeight: "600" }}>
-              {item.item}
+            <p style={{ marginBottom: "10px", fontSize: "16px", fontWeight: "600" }}>
+              {index + 1}. {item.item}
             </p>
 
             <div style={{ display: "flex", gap: "10px" }}>
@@ -303,12 +369,13 @@ export default function Checklist() {
                 onClick={() => actualizarItem(item.id, true)}
                 style={{
                   flex: 1,
-                  padding: "12px",
-                  background: item.completado ? "#4db8ff" : "rgba(255,255,255,0.08)",
+                  padding: "10px",
+                  background: item.completado ? "#2ecc71" : "rgba(255,255,255,0.08)",
                   color: "#fff",
-                  borderRadius: "10px",
+                  borderRadius: "8px",
                   border: "none",
                   fontWeight: "700",
+                  cursor: "pointer",
                 }}
               >
                 ✓ OK
@@ -318,38 +385,20 @@ export default function Checklist() {
                 onClick={() => actualizarItem(item.id, false)}
                 style={{
                   flex: 1,
-                  padding: "12px",
-                  background: item.completado ? "rgba(255,255,255,0.08)" : "red",
+                  padding: "10px",
+                  background: !item.completado && item.completado !== null ? "#e74c3c" : "rgba(255,215,0,0.15)",
                   color: "#fff",
-                  borderRadius: "10px",
+                  borderRadius: "8px",
                   border: "none",
                   fontWeight: "700",
+                  cursor: "pointer",
                 }}
               >
-                ✗ KO
+                ✗ Pendiente / KO
               </button>
             </div>
           </div>
         ))}
-
-        <button
-          onClick={tomarFoto}
-          style={{
-            width: "100%",
-            padding: "14px",
-            background: "#4db8ff",
-            color: "#000",
-            borderRadius: "10px",
-            border: "none",
-            fontWeight: "700",
-            fontSize: "17px",
-            cursor: "pointer",
-            marginTop: "10px",
-            marginBottom: "20px",
-          }}
-        >
-          📸 Tomar foto del checklist
-        </button>
 
         <textarea
           placeholder="Observaciones de la inspección..."
@@ -358,7 +407,7 @@ export default function Checklist() {
           style={{
             width: "100%",
             minHeight: "120px",
-            marginTop: "20px",
+            marginTop: "15px",
             padding: "12px",
             borderRadius: "10px",
             background: "rgba(255,255,255,0.06)",
@@ -372,7 +421,7 @@ export default function Checklist() {
           onClick={guardarChecklistCompleto}
           disabled={guardando}
           style={{
-            marginTop: "20px",
+            marginTop: "15px",
             padding: "14px",
             width: "100%",
             background: "#4db8ff",
@@ -392,11 +441,11 @@ export default function Checklist() {
           style={{
             marginTop: "30px",
             color: "#4db8ff",
-            fontSize: "24px",
+            fontSize: "22px",
             fontWeight: "700",
           }}
         >
-          Acciones
+          Acciones de Cierre
         </h2>
 
         <button
@@ -405,15 +454,16 @@ export default function Checklist() {
             marginTop: "10px",
             padding: "14px",
             width: "100%",
-            background: "#4db8ff",
-            color: "#000",
+            background: "rgba(255,255,255,0.08)",
+            color: "#fff",
             borderRadius: "10px",
-            border: "none",
+            border: "1px solid rgba(255,255,255,0.2)",
             fontWeight: "700",
-            fontSize: "17px",
+            fontSize: "16px",
+            cursor: "pointer",
           }}
         >
-          Fotos
+          Ver Gestor de Fotos
         </button>
 
         <button
@@ -422,12 +472,13 @@ export default function Checklist() {
             marginTop: "10px",
             padding: "14px",
             width: "100%",
-            background: "#4db8ff",
-            color: "#000",
+            background: "rgba(255,255,255,0.08)",
+            color: "#fff",
             borderRadius: "10px",
-            border: "none",
+            border: "1px solid rgba(255,255,255,0.2)",
             fontWeight: "700",
-            fontSize: "17px",
+            fontSize: "16px",
+            cursor: "pointer",
           }}
         >
           Firma del cliente
@@ -439,12 +490,14 @@ export default function Checklist() {
             marginTop: "10px",
             padding: "14px",
             width: "100%",
-            background: "#4db8ff",
-            color: "#000",
+            background: "rgba(255,255,255,0.08)",
+            color: "#fff",
             borderRadius: "10px",
-            border: "none",
+            border: "1px solid rgba(255,255,255,0.2)",
             fontWeight: "700",
-            fontSize: "17px",
+            fontSize: "16px",
+            cursor: "pointer",
+            marginBottom: "30px",
           }}
         >
           Generar PDF
