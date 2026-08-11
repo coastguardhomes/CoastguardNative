@@ -4,7 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
-export default function TecnicoChecklist() {
+export default function ChecklistUnificado() {
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -57,7 +57,7 @@ export default function TecnicoChecklist() {
     if (id) cargarDatosInspeccion();
   }, [id]);
 
-  // 2. Cargar o generar los más de 20 ítems del checklist
+  // 2. Cargar o generar los más de 20 ítems obligatorios
   useEffect(() => {
     async function gestionarChecklist() {
       setLoading(true);
@@ -73,7 +73,6 @@ export default function TecnicoChecklist() {
         return;
       }
 
-      // Si está vacío, inyectamos la plantilla completa (más de 20 puntos clave)
       if (!data || data.length === 0) {
         const plantillaCompleta = [
           "Puerta principal cerrada y asegurada correctamente",
@@ -114,7 +113,7 @@ export default function TecnicoChecklist() {
           .insert(nuevosItems);
 
         if (insertError) {
-          setMensaje("Error al generar la plantilla: " + insertError.message);
+          setMensaje("Error generando plantilla: " + insertError.message);
           setLoading(false);
           return;
         }
@@ -146,20 +145,33 @@ export default function TecnicoChecklist() {
       .eq("id", itemId);
   }
 
-  // Subir fotos a Supabase Storage
+  // Subida de fotos corregida para evitar errores en Storage
   async function procesarYSubirImagen(base64String) {
     try {
-      setMensaje("Subiendo foto...");
-      const base64 = `data:image/jpeg;base64,${base64String}`;
-      const blob = await (await fetch(base64)).blob();
+      setMensaje("Subiendo foto a Supabase...");
+      
+      // Limpieza del string base64 por seguridad
+      const base64Clean = base64String.includes("base64,") 
+        ? base64String.split("base64,")[1] 
+        : base64String;
+
+      const byteCharacters = atob(base64Clean);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "image/jpeg" });
+
       const nombreArchivo = `checklist_${id}_${Date.now()}.jpg`;
 
       const { error: storageError } = await supabase.storage
         .from("fotos")
-        .upload(nombreArchivo, blob, { contentType: "image/jpeg" });
+        .upload(nombreArchivo, blob, { contentType: "image/jpeg", upsert: true });
 
       if (storageError) {
-        setMensaje("Error al subir archivo: " + storageError.message);
+        setMensaje("Error Storage: " + storageError.message);
+        console.error("Detalle error storage:", storageError);
         return;
       }
 
@@ -178,15 +190,15 @@ export default function TecnicoChecklist() {
       setMensaje("¡Foto guardada con éxito!");
       setTimeout(() => setMensaje(""), 3000);
     } catch (e) {
-      setMensaje("Excepción al procesar la foto.");
+      console.error("Excepción al subir foto:", e);
+      setMensaje("Error crítico al procesar la foto.");
     }
   }
 
-  // Capturar con Cámara
   async function tomarFoto() {
     try {
       const image = await Camera.getPhoto({
-        quality: 75,
+        quality: 70,
         resultType: CameraResultType.Base64,
         source: CameraSource.Camera,
       });
@@ -196,11 +208,10 @@ export default function TecnicoChecklist() {
     }
   }
 
-  // Seleccionar de la Galería
   async function seleccionarDeGaleria() {
     try {
       const image = await Camera.getPhoto({
-        quality: 75,
+        quality: 70,
         resultType: CameraResultType.Base64,
         source: CameraSource.Photos,
       });
@@ -210,7 +221,6 @@ export default function TecnicoChecklist() {
     }
   }
 
-  // Guardar y finalizar
   async function guardarChecklistCompleto() {
     setGuardando(true);
     const todoOk = items.length > 0 && items.every((i) => i.completado === true);
@@ -233,7 +243,7 @@ export default function TecnicoChecklist() {
     return (
       <Menu>
         <div style={{ height: "100vh", background: "#04070c", color: "#ffd700", display: "flex", justifyContent: "center", alignItems: "center", fontWeight: "bold" }}>
-          Cargando checklist del técnico...
+          Cargando puntos del checklist...
         </div>
       </Menu>
     );
@@ -243,7 +253,6 @@ export default function TecnicoChecklist() {
     <Menu>
       <div style={{ padding: "16px", background: "#04070c", minHeight: "100vh", color: "#fff", fontFamily: "sans-serif" }}>
         
-        {/* CABECERA */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
           <h1 style={{ color: "#ffd700", fontSize: "18px", margin: 0 }}>Checklist Técnico ({items.length} puntos)</h1>
           <button 
@@ -254,7 +263,6 @@ export default function TecnicoChecklist() {
           </button>
         </div>
 
-        {/* DATOS DE LA VIVIENDA Y CLIENTE REALES */}
         <div style={{ background: "#09101d", border: "1px solid #d4af37", borderRadius: "10px", padding: "12px", marginBottom: "15px", fontSize: "13px" }}>
           <div style={{ marginBottom: "4px" }}>🏠 <strong style={{ color: "#ffd700" }}>Vivienda:</strong> {viviendaInfo.nombre}</div>
           <div style={{ marginBottom: "4px" }}>📍 <strong style={{ color: "#ffd700" }}>Dirección:</strong> {viviendaInfo.direccion}</div>
@@ -267,7 +275,6 @@ export default function TecnicoChecklist() {
           </div>
         )}
 
-        {/* BOTONES MULTIMEDIA (CÁMARA / GALERÍA) */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "15px" }}>
           <button
             onClick={tomarFoto}
@@ -283,7 +290,6 @@ export default function TecnicoChecklist() {
           </button>
         </div>
 
-        {/* LISTADO DE LOS +20 ÍTEMS */}
         <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "15px" }}>
           {items.map((item, index) => (
             <div
@@ -338,7 +344,6 @@ export default function TecnicoChecklist() {
           ))}
         </div>
 
-        {/* OBSERVACIONES */}
         <textarea
           placeholder="Observaciones de la inspección..."
           value={observaciones}
@@ -356,7 +361,6 @@ export default function TecnicoChecklist() {
           }}
         />
 
-        {/* BOTÓN FINAL DE GUARDADO */}
         <button
           onClick={guardarChecklistCompleto}
           disabled={guardando}
