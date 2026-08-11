@@ -38,7 +38,7 @@ export default function NuevaInspeccion() {
     cargarDatos();
   }, []);
 
-  // 🔥 Cargar contratos del CLIENTE
+  // 🔥 Cargar contratos de la VIVIENDA seleccionada (CORREGIDO)
   useEffect(() => {
     async function cargarContratos() {
       if (!form.vivienda_id) {
@@ -46,30 +46,24 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      const vivienda = viviendas.find((v) => v.id === form.vivienda_id);
-      if (!vivienda) {
-        setContratos([]);
-        return;
-      }
-
-      const clienteId = vivienda.cliente_id;
-
+      // Filtramos directamente por el ID de la vivienda
       const { data, error } = await supabase
         .from("contratos")
         .select("id, modalidad, precio, fecha_inicio, estado, tecnico_id")
-        .eq("cliente_id", clienteId);
+        .eq("vivienda_id", form.vivienda_id);
 
       if (!error) setContratos(data || []);
+      else console.error("Error cargando contratos:", error);
     }
 
     cargarContratos();
-  }, [form.vivienda_id, viviendas]);
+  }, [form.vivienda_id]);
 
   async function crear() {
     setMensaje("");
 
     try {
-      const vivienda = viviendas.find((v) => v.id === form.vivienda_id);
+      const vivienda = viviendas.find((v) => v.id == form.vivienda_id);
 
       if (!vivienda) {
         setMensaje("Selecciona una vivienda válida.");
@@ -78,14 +72,7 @@ export default function NuevaInspeccion() {
 
       const cliente_id = vivienda.cliente_id;
 
-      if (!cliente_id) {
-        setMensaje("La vivienda no tiene cliente asignado.");
-        return;
-      }
-
-      const contrato_id = form.contrato_id;
-
-      if (!contrato_id) {
+      if (!form.contrato_id) {
         setMensaje("Selecciona un contrato.");
         return;
       }
@@ -93,11 +80,10 @@ export default function NuevaInspeccion() {
       const { data: contratoData } = await supabase
         .from("contratos")
         .select("id, tecnico_id")
-        .eq("id", contrato_id)
+        .eq("id", form.contrato_id)
         .maybeSingle();
 
-      const tecnicoFinal =
-        form.tecnico_id || contratoData?.tecnico_id || null;
+      const tecnicoFinal = form.tecnico_id || contratoData?.tecnico_id || null;
 
       if (!tecnicoFinal) {
         setMensaje("Selecciona un técnico.");
@@ -112,7 +98,7 @@ export default function NuevaInspeccion() {
       const nuevaInspeccion = {
         vivienda_id: vivienda.id,
         cliente_id,
-        contrato_id,
+        contrato_id: form.contrato_id,
         tecnico_id: tecnicoFinal,
         fecha: form.fecha,
         estado: "pendiente",
@@ -169,7 +155,6 @@ export default function NuevaInspeccion() {
 
         <div style={{ background: "rgba(255,255,255,0.05)", padding: "20px", borderRadius: "14px" }}>
           
-          {/* Vivienda */}
           <label>Vivienda</label>
           <select
             value={form.vivienda_id || ""}
@@ -182,7 +167,6 @@ export default function NuevaInspeccion() {
             ))}
           </select>
 
-          {/* Contrato */}
           <label>Contrato</label>
           <select
             value={form.contrato_id || ""}
@@ -197,7 +181,6 @@ export default function NuevaInspeccion() {
             ))}
           </select>
 
-          {/* Técnico */}
           <label>Técnico</label>
           <select
             value={form.tecnico_id || ""}
@@ -210,7 +193,6 @@ export default function NuevaInspeccion() {
             ))}
           </select>
 
-          {/* Fecha */}
           <label>Fecha</label>
           <input
             type="date"
@@ -219,7 +201,6 @@ export default function NuevaInspeccion() {
             style={selectStyle}
           />
 
-          {/* Notas */}
           <label>Notas</label>
           <textarea
             value={form.notas}
