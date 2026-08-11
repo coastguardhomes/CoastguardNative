@@ -5,9 +5,9 @@ import { supabase } from '../../supabaseClient';
 export default function DashboardTecnico() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
-    inspeccionesSemana: 32,
-    alertasDetectadas: 8,
-    viviendasAsignadas: 120,
+    inspeccionesSemana: 0,
+    alertasDetectadas: 0,
+    viviendasAsignadas: 0,
   });
   const [inspeccionesDiarias, setInspeccionesDiarias] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,17 +22,37 @@ export default function DashboardTecnico() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // 1. Cargar inspecciones del técnico (o todas si prefieres depurar)
       const { data: inspecciones, error } = await supabase
         .from('inspecciones')
         .select('*, viviendas(nombre, direccion)')
         .eq('tecnico_id', user.id);
 
       if (error) throw error;
-      
-      if (inspecciones && inspecciones.length > 0) {
+
+      // 2. Consultas reales para las tarjetas de estadísticas
+      const { count: countInspecciones } = await supabase
+        .from('inspecciones')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: countIncidencias } = await supabase
+        .from('incidencias')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: countViviendas } = await supabase
+        .from('viviendas')
+        .select('*', { count: 'exact', head: true });
+
+      if (inspecciones) {
         setInspeccionesDiarias(inspecciones);
-        setStats(prev => ({ ...prev, inspeccionesSemana: inspecciones.length }));
       }
+
+      setStats({
+        inspeccionesSemana: countInspecciones || 0,
+        alertasDetectadas: countIncidencias || 0,
+        viviendasAsignadas: countViviendas || 0,
+      });
+
     } catch (error) {
       console.error('Error al cargar datos:', error);
     } finally {
@@ -74,23 +94,23 @@ export default function DashboardTecnico() {
           <div style={styles.offlineNote}>Modo Seguro Activo</div>
         </div>
 
-        {/* 3 TARJETAS SUPERIORES */}
+        {/* 3 TARJETAS SUPERIORES CON DATOS REALES */}
         <div style={styles.topCardsGrid}>
           <div style={styles.statCard}>
             <div style={styles.cardIcon}>📋</div>
-            <div style={styles.statNumber}>32 <span style={styles.statSub}>esta semana</span></div>
+            <div style={styles.statNumber}>{stats.inspeccionesSemana} <span style={styles.statSub}>total</span></div>
             <div style={styles.statLabel}>Inspecciones</div>
           </div>
 
           <div style={styles.alertCard}>
             <div style={styles.cardIcon}>⚠️</div>
-            <div style={styles.statNumberRed}>8 <span style={styles.statSub}>incidencias</span></div>
+            <div style={styles.statNumberRed}>{stats.alertasDetectadas} <span style={styles.statSub}>incidencias</span></div>
             <div style={styles.statLabelAlert}>Alertas</div>
           </div>
 
           <div style={styles.statCard}>
             <div style={styles.cardIcon}>🏠</div>
-            <div style={styles.statNumber}>120 <span style={styles.statSub}>asignadas</span></div>
+            <div style={styles.statNumber}>{stats.viviendasAsignadas} <span style={styles.statSub}>registradas</span></div>
             <div style={styles.statLabel}>Viviendas</div>
           </div>
         </div>
@@ -106,7 +126,7 @@ export default function DashboardTecnico() {
         {/* LISTADO DE INSPECCIONES ASIGNADAS */}
         <div style={styles.assignedSection}>
           <div style={styles.sectionHeaderFlex}>
-            <h3 style={styles.assignedTitle}>Inspecciones Asignadas para Hoy</h3>
+            <h3 style={styles.assignedTitle}>Inspecciones Asignadas</h3>
             <span style={styles.counterBadge}>{inspeccionesDiarias.length} Pendientes</span>
           </div>
 
@@ -114,7 +134,7 @@ export default function DashboardTecnico() {
             <p style={styles.emptyText}>Cargando asignaciones...</p>
           ) : inspeccionesDiarias.length === 0 ? (
             <div style={styles.emptyBox}>
-              <p style={styles.emptyText}>No hay inspecciones pendientes asignadas para hoy.</p>
+              <p style={styles.emptyText}>No hay inspecciones asignadas a tu usuario.</p>
               <button 
                 style={styles.btnDirectChecklist}
                 onClick={() => navigate('/tecnico/inspeccion/general/checklist')}
@@ -146,7 +166,7 @@ export default function DashboardTecnico() {
           )}
         </div>
 
-        {/* SECCIÓN INFERIOR: ACCIONES RÁPIDAS Y EXTRAS (Llena el espacio inferior y aporta gran utilidad) */}
+        {/* SECCIÓN INFERIOR */}
         <div style={styles.quickActionsGrid}>
           <div 
             style={styles.quickActionBox}
