@@ -90,6 +90,7 @@ export default function NuevaInspeccion() {
         return;
       }
 
+      // Enviamos únicamente los campos esenciales y seguros para evitar el conflicto de tipos UUID
       const nuevaInspeccion = {
         vivienda_id: vivienda.id,
         tecnico_id: tecnicoFinal,
@@ -98,17 +99,6 @@ export default function NuevaInspeccion() {
         notas: form.notas,
         origen: "app",
       };
-
-      // Convertimos el contrato_id a número entero si es numérico para encajar con la columna de la BD
-      if (form.contrato_id) {
-        nuevaInspeccion.contrato_id = isNaN(form.contrato_id) 
-          ? form.contrato_id 
-          : parseInt(form.contrato_id, 10);
-      }
-
-      if (vivienda.cliente_id) {
-        nuevaInspeccion.cliente_id = vivienda.cliente_id;
-      }
 
       const { data: insp, error } = await supabase
         .from("inspecciones")
