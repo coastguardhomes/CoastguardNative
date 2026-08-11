@@ -20,7 +20,6 @@ export default function NuevaInspeccion() {
     notas: "",
   });
 
-  // 🔥 Cargar viviendas y técnicos reales
   useEffect(() => {
     async function cargarDatos() {
       const { data: viv } = await supabase
@@ -38,7 +37,6 @@ export default function NuevaInspeccion() {
     cargarDatos();
   }, []);
 
-  // 🔥 Cargar contratos de la VIVIENDA seleccionada (CORREGIDO)
   useEffect(() => {
     async function cargarContratos() {
       if (!form.vivienda_id) {
@@ -46,7 +44,6 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // Filtramos directamente por el ID de la vivienda
       const { data, error } = await supabase
         .from("contratos")
         .select("id, modalidad, precio, fecha_inicio, estado, tecnico_id")
@@ -69,8 +66,6 @@ export default function NuevaInspeccion() {
         setMensaje("Selecciona una vivienda válida.");
         return;
       }
-
-      const cliente_id = vivienda.cliente_id;
 
       if (!form.contrato_id) {
         setMensaje("Selecciona un contrato.");
@@ -97,7 +92,7 @@ export default function NuevaInspeccion() {
 
       const nuevaInspeccion = {
         vivienda_id: vivienda.id,
-        cliente_id,
+        cliente_id: vivienda.cliente_id,
         contrato_id: form.contrato_id,
         tecnico_id: tecnicoFinal,
         fecha: form.fecha,
@@ -112,9 +107,14 @@ export default function NuevaInspeccion() {
         .select()
         .maybeSingle();
 
-      if (error || !insp) {
-        console.error(error);
-        setMensaje("Error creando inspección.");
+      if (error) {
+        console.error("Error detallado Supabase:", error);
+        setMensaje(`Error Supabase: ${error.message} - ${error.details || ""}`);
+        return;
+      }
+
+      if (!insp) {
+        setMensaje("Error: No se pudo obtener el ID de la inspección creada.");
         return;
       }
 
@@ -140,7 +140,7 @@ export default function NuevaInspeccion() {
       navigate(`/inspecciones/${insp.id}`);
     } catch (e) {
       console.error(e);
-      setMensaje("Error inesperado creando inspección.");
+      setMensaje(`Error inesperado: ${e.message}`);
     }
   }
 
@@ -151,78 +151,34 @@ export default function NuevaInspeccion() {
           Nueva Inspección
         </h1>
 
-        {mensaje && <p style={{ marginBottom: "15px", color: "#4db8ff", fontWeight: "600" }}>{mensaje}</p>}
+        {mensaje && <p style={{ marginBottom: "15px", color: "#ff6b6b", fontWeight: "600" }}>{mensaje}</p>}
 
         <div style={{ background: "rgba(255,255,255,0.05)", padding: "20px", borderRadius: "14px" }}>
-          
           <label>Vivienda</label>
-          <select
-            value={form.vivienda_id || ""}
-            onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
-            style={selectStyle}
-          >
+          <select value={form.vivienda_id || ""} onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })} style={selectStyle}>
             <option value="">Selecciona una vivienda</option>
-            {viviendas.map((v) => (
-              <option key={v.id} value={v.id}>{v.direccion}</option>
-            ))}
+            {viviendas.map((v) => (<option key={v.id} value={v.id}>{v.direccion}</option>))}
           </select>
 
           <label>Contrato</label>
-          <select
-            value={form.contrato_id || ""}
-            onChange={(e) => setForm({ ...form, contrato_id: e.target.value })}
-            style={selectStyle}
-          >
+          <select value={form.contrato_id || ""} onChange={(e) => setForm({ ...form, contrato_id: e.target.value })} style={selectStyle}>
             <option value="">Selecciona un contrato</option>
-            {contratos.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.modalidad} — {c.precio}€ — {c.fecha_inicio} — {c.estado}
-              </option>
-            ))}
+            {contratos.map((c) => (<option key={c.id} value={c.id}>{c.modalidad} — {c.precio}€ — {c.fecha_inicio} — {c.estado}</option>))}
           </select>
 
           <label>Técnico</label>
-          <select
-            value={form.tecnico_id || ""}
-            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
-            style={selectStyle}
-          >
+          <select value={form.tecnico_id || ""} onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })} style={selectStyle}>
             <option value="">Selecciona un técnico</option>
-            {tecnicos.map((t) => (
-              <option key={t.id} value={t.id}>{t.nombre}</option>
-            ))}
+            {tecnicos.map((t) => (<option key={t.id} value={t.id}>{t.nombre}</option>))}
           </select>
 
           <label>Fecha</label>
-          <input
-            type="date"
-            value={form.fecha}
-            onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-            style={selectStyle}
-          />
+          <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} style={selectStyle} />
 
           <label>Notas</label>
-          <textarea
-            value={form.notas}
-            onChange={(e) => setForm({ ...form, notas: e.target.value })}
-            style={{ ...selectStyle, minHeight: "100px" }}
-          />
+          <textarea value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} style={{ ...selectStyle, minHeight: "100px" }} />
 
-          <button
-            onClick={crear}
-            style={{
-              marginTop: "20px",
-              padding: "14px",
-              width: "100%",
-              background: "#4db8ff",
-              color: "#000",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "17px",
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={crear} style={{ marginTop: "20px", padding: "14px", width: "100%", background: "#4db8ff", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "17px", cursor: "pointer" }}>
             Crear inspección
           </button>
         </div>
@@ -231,12 +187,4 @@ export default function NuevaInspeccion() {
   );
 }
 
-const selectStyle = {
-  padding: "12px",
-  width: "100%",
-  marginBottom: "15px",
-  borderRadius: "10px",
-  border: "1px solid rgba(255,255,255,0.2)",
-  background: "rgba(255,255,255,0.08)",
-  color: "#fff",
-};
+const selectStyle = { padding: "12px", width: "100%", marginBottom: "15px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff" };
