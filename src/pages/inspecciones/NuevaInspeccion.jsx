@@ -12,9 +12,9 @@ export default function NuevaInspeccion() {
   const [mensaje, setMensaje] = useState("");
 
   const [form, setForm] = useState({
-    vivienda_id: null,
-    contrato_id: null,
-    tecnico_id: null,
+    vivienda_id: "",
+    contrato_id: "",
+    tecnico_id: "",
     fecha: "",
     estado: "pendiente",
     notas: "",
@@ -60,7 +60,7 @@ export default function NuevaInspeccion() {
     setMensaje("");
 
     try {
-      const vivienda = viviendas.find((v) => v.id == form.vivienda_id);
+      const vivienda = viviendas.find((v) => String(v.id) === String(form.vivienda_id));
 
       if (!vivienda) {
         setMensaje("Selecciona una vivienda válida.");
@@ -90,16 +90,21 @@ export default function NuevaInspeccion() {
         return;
       }
 
+      // Preparamos los datos asegurando los tipos correctos
       const nuevaInspeccion = {
         vivienda_id: vivienda.id,
-        cliente_id: vivienda.cliente_id,
-        contrato_id: form.contrato_id,
+        contrato_id: isNaN(form.contrato_id) ? form.contrato_id : Number(form.contrato_id),
         tecnico_id: tecnicoFinal,
         fecha: form.fecha,
         estado: "pendiente",
         notas: form.notas,
         origen: "app",
       };
+
+      // Si la tabla usa cliente_id como UUID o número, lo añadimos de forma segura si existe
+      if (vivienda.cliente_id) {
+        nuevaInspeccion.cliente_id = vivienda.cliente_id;
+      }
 
       const { data: insp, error } = await supabase
         .from("inspecciones")
@@ -109,7 +114,7 @@ export default function NuevaInspeccion() {
 
       if (error) {
         console.error("Error detallado Supabase:", error);
-        setMensaje(`Error Supabase: ${error.message} - ${error.details || ""}`);
+        setMensaje(`Error Supabase: ${error.message}`);
         return;
       }
 
@@ -155,19 +160,19 @@ export default function NuevaInspeccion() {
 
         <div style={{ background: "rgba(255,255,255,0.05)", padding: "20px", borderRadius: "14px" }}>
           <label>Vivienda</label>
-          <select value={form.vivienda_id || ""} onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })} style={selectStyle}>
+          <select value={form.vivienda_id} onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })} style={selectStyle}>
             <option value="">Selecciona una vivienda</option>
             {viviendas.map((v) => (<option key={v.id} value={v.id}>{v.direccion}</option>))}
           </select>
 
           <label>Contrato</label>
-          <select value={form.contrato_id || ""} onChange={(e) => setForm({ ...form, contrato_id: e.target.value })} style={selectStyle}>
+          <select value={form.contrato_id} onChange={(e) => setForm({ ...form, contrato_id: e.target.value })} style={selectStyle}>
             <option value="">Selecciona un contrato</option>
             {contratos.map((c) => (<option key={c.id} value={c.id}>{c.modalidad} — {c.precio}€ — {c.fecha_inicio} — {c.estado}</option>))}
           </select>
 
           <label>Técnico</label>
-          <select value={form.tecnico_id || ""} onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })} style={selectStyle}>
+          <select value={form.tecnico_id} onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })} style={selectStyle}>
             <option value="">Selecciona un técnico</option>
             {tecnicos.map((t) => (<option key={t.id} value={t.id}>{t.nombre}</option>))}
           </select>
