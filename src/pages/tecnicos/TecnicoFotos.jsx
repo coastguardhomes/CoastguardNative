@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function TecnicoFotos() {
   const { id } = useParams(); // ID inspección
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [inspeccion, setInspeccion] = useState(null);
   const [vivienda, setVivienda] = useState(null);
@@ -150,6 +151,30 @@ export default function TecnicoFotos() {
     cargarDatos();
   }
 
+  // NUEVA FUNCIÓN: Envía la inspección directamente al Administrador
+  async function finalizarYEnviarRevision() {
+    setLoading(true);
+    setMensaje("");
+
+    const { error } = await supabase
+      .from("inspecciones")
+      .update({
+        estado: "pendiente_revision",
+      })
+      .eq("id", id);
+
+    if (error) {
+      setMensaje("Error al enviar a revisión: " + error.message);
+      setLoading(false);
+      return;
+    }
+
+    setMensaje("¡Inspección enviada al administrador correctamente!");
+    setTimeout(() => {
+      navigate("/tecnico");
+    }, 1500);
+  }
+
   if (loading || !inspeccion) {
     return (
       <Menu>
@@ -199,8 +224,9 @@ export default function TecnicoFotos() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#ff6b6b",
+              color: mensaje.includes("correctamente") ? "#4ade80" : "#ff6b6b",
               fontWeight: "600",
+              textAlign: "center",
             }}
           >
             {mensaje}
@@ -259,7 +285,7 @@ export default function TecnicoFotos() {
 
         {/* Fotos */}
         {fotos.length === 0 ? (
-          <p style={{ opacity: 0.7 }}>No hay fotos subidas.</p>
+          <p style={{ opacity: 0.7, textAlign: "center" }}>No hay fotos subidas.</p>
         ) : (
           fotos.map((f) => (
             <div
@@ -285,7 +311,7 @@ export default function TecnicoFotos() {
           ))
         )}
 
-        {/* Navegación CORRECTA */}
+        {/* Navegación a Checklist */}
         <Link to={`/tecnico/inspeccion/${id}/checklist`}>
           <button
             style={{
@@ -305,24 +331,24 @@ export default function TecnicoFotos() {
           </button>
         </Link>
 
-        <Link to={`/tecnico/inspeccion/${id}/finalizar`}>
-          <button
-            style={{
-              marginTop: "15px",
-              padding: "14px",
-              width: "100%",
-              background: "#4ade80",
-              color: "#000",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "17px",
-              cursor: "pointer",
-            }}
-          >
-            Finalizar inspección
-          </button>
-        </Link>
+        {/* Botón Finalizar que envía al Administrador */}
+        <button
+          onClick={finalizarYEnviarRevision}
+          style={{
+            marginTop: "15px",
+            padding: "14px",
+            width: "100%",
+            background: "#4ade80",
+            color: "#000",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "17px",
+            cursor: "pointer",
+          }}
+        >
+          Finalizar y enviar al administrador
+        </button>
 
         <Link to={`/tecnico/inspeccion/${id}`}>
           <button
@@ -330,10 +356,10 @@ export default function TecnicoFotos() {
               marginTop: "15px",
               padding: "14px",
               width: "100%",
-              background: "#1e90ff",
-              color: "#fff",
+              background: "transparent",
+              color: "#4db8ff",
               borderRadius: "10px",
-              border: "none",
+              border: "1px solid #4db8ff",
               fontWeight: "700",
               fontSize: "17px",
               cursor: "pointer",
