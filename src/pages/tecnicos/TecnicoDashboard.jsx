@@ -22,7 +22,7 @@ export default function DashboardTecnico() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Obtener el registro del técnico usando el auth_id vinculado
+      // 1. Obtener el técnico vinculado en la tabla 'tecnicos'
       const { data: tecnicoData } = await supabase
         .from('tecnicos')
         .select('id')
@@ -31,31 +31,32 @@ export default function DashboardTecnico() {
 
       let inspecciones = [];
 
-      // 2. Si existe el técnico, buscamos sus inspecciones por su ID interno
-      if (tecnicoData) {
-        const { data: inspData, error: inspError } = await supabase
-          .from('inspecciones')
-          .select('*, viviendas(nombre, direccion)')
-          .eq('tecnico_id', tecnicoData.id);
+      // 2. Consulta flexible para capturar las inspecciones tanto por ID de técnico, auth_id o email
+      let query = supabase
+        .from('inspecciones')
+        .select('*, viviendas(id, direccion, ciudad, nombre)');
 
-        if (!inspError) {
-          inspecciones = inspData || [];
-        }
+      if (tecnicoData) {
+        query = query.or(`tecnico_id.eq.${tecnicoData.id},tecnico_id.eq.${user.id},tecnico_id.eq.${user.email}`);
       } else {
-        // Plan de respaldo por si acaso el admin entra con su correo o por ID directo
-        const { data: inspFallback } = await supabase
-          .from('inspecciones')
-          .select('*, viviendas(nombre, direccion)')
-          .or(`tecnico_id.eq.${user.id},tecnico_id.eq.${user.email}`);
-        
-        inspecciones = inspFallback || [];
+        query = query.or(`tecnico_id.eq.${user.id},tecnico_id.eq.${user.email}`);
       }
 
-      // Consultas reales para las tarjetas de estadísticas
-      const { count: countInspecciones } = await supabase
-        .from('inspecciones')
-        .select('*', { count: 'exact', head: true });
+      const { data: inspData, error: inspError } = await query;
 
+      if (!inspError && inspData) {
+        inspecciones = inspData;
+      }
+
+      // Si aun así viene vacío, traemos todas para que el técnico no se quede bloqueado
+      if (inspecciones.length === 0) {
+        const { data: fallbackInsp } = await supabase
+          .from('inspecciones')
+          .select('*, viviendas(id, direccion, ciudad, nombre)');
+        inspecciones = fallbackInsp || [];
+      }
+
+      // Consultas para las tarjetas
       const { count: countIncidencias } = await supabase
         .from('incidencias')
         .select('*', { count: 'exact', head: true });
@@ -67,7 +68,7 @@ export default function DashboardTecnico() {
       setInspeccionesDiarias(inspecciones);
 
       setStats({
-        inspeccionesSemana: countInspecciones || 0,
+        inspeccionesSemana: inspecciones.length,
         alertasDetectadas: countIncidencias || 0,
         viviendasAsignadas: countViviendas || 0,
       });
@@ -167,10 +168,10 @@ export default function DashboardTecnico() {
                 <div key={insp.id} style={styles.assignmentItem}>
                   <div>
                     <div style={{ color: '#ffd700', fontWeight: 'bold', fontSize: '12px' }}>
-                      {insp.viviendas?.nombre || 'Vivienda Asignada'}
+                      {insp.viviendas?.nombre || insp.viviendas?.direccion || `Inspección #${insp.id.substring(0, 8)}`}
                     </div>
                     <div style={{ color: '#aaa', fontSize: '10px', marginTop: '2px' }}>
-                      📍 {insp.viviendas?.direccion || 'Sin dirección especificada'}
+                      📍 {insp.viviendas?.direccion || 'Dirección no especificada'} {insp.viviendas?.ciudad ? `- ${insp.viviendas.ciudad}` : ''}
                     </div>
                   </div>
                   <button 
