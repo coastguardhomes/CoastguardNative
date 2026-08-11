@@ -22,40 +22,48 @@ export default function Inspecciones() {
     async function cargarInspecciones() {
       if (!user) return;
 
-      let query = supabase
-        .from("inspecciones")
-        .select(`
-          id,
-          fecha,
-          estado,
-          vivienda_id,
-          tecnico_auth_id,
-          viviendas (
-            direccion,
-            ciudad,
-            cliente_id,
-            clientes (
-              nombre
+      try {
+        let query = supabase
+          .from("inspecciones")
+          .select(`
+            id,
+            fecha,
+            estado,
+            vivienda_id,
+            tecnico_auth_id,
+            viviendas (
+              direccion,
+              ciudad
             )
-          )
-        `)
-        .order("id", { ascending: false });
+          `)
+          .order("id", { ascending: false });
 
-      // 🔥 Si NO es admin → filtrar por técnico
-      if (user.email !== "coastguardhomes2@gmail.com") {
-        query = query.eq("tecnico_auth_id", user.id);
-      }
+        // Si NO es admin → filtrar por técnico
+        if (user.email !== "coastguardhomes2@gmail.com") {
+          query = query.eq("tecnico_auth_id", user.id);
+        }
 
-      const { data, error } = await query;
+        const { data, error } = await query;
 
-      if (error) {
-        setMensaje("Error cargando inspecciones");
+        if (error) throw error;
+
+        setInspecciones(data || []);
+      } catch (err) {
+        console.error("Error detallado:", err.message);
+        // Plan B: Intentar cargar las inspecciones sin relaciones por si falla el join con viviendas
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from("inspecciones")
+          .select("*")
+          .order("id", { ascending: false });
+
+        if (fallbackError) {
+          setMensaje("Error cargando inspecciones");
+        } else {
+          setInspecciones(fallbackData || []);
+        }
+      } finally {
         setLoading(false);
-        return;
       }
-
-      setInspecciones(data || []);
-      setLoading(false);
     }
 
     cargarInspecciones();
@@ -140,17 +148,12 @@ export default function Inspecciones() {
 
                 <p style={{ opacity: 0.8, marginTop: "10px" }}>
                   <strong style={{ color: "#4db8ff" }}>Dirección:</strong>{" "}
-                  {i.viviendas?.direccion}
+                  {i.viviendas?.direccion || "No especificada"}
                 </p>
 
                 <p style={{ opacity: 0.8 }}>
                   <strong style={{ color: "#4db8ff" }}>Localidad:</strong>{" "}
-                  {i.viviendas?.ciudad}
-                </p>
-
-                <p style={{ opacity: 0.8 }}>
-                  <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
-                  {i.viviendas?.clientes?.nombre}
+                  {i.viviendas?.ciudad || "No especificada"}
                 </p>
 
                 <p style={{ opacity: 0.8 }}>
