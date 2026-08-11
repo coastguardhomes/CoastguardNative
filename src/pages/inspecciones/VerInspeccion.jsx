@@ -11,6 +11,7 @@ export default function VerInspeccion() {
 
   // Función para formatear fecha sin date-fns
   function formatearFecha(fechaISO) {
+    if (!fechaISO) return "Sin fecha";
     const fecha = new Date(fechaISO);
     const dia = String(fecha.getDate()).padStart(2, "0");
     const mes = String(fecha.getMonth() + 1).padStart(2, "0");
@@ -32,10 +33,6 @@ export default function VerInspeccion() {
             id,
             direccion,
             ciudad
-          ),
-          tecnicos (
-            id,
-            nombre
           )
         `
         )
@@ -107,18 +104,18 @@ export default function VerInspeccion() {
 
   if (!inspeccion) {
     return (
-      <div className="p-4">
+      <div className="p-4" style={{ background: "#0a0f1a", minHeight: "100vh", color: "#fff", padding: "20px" }}>
         <h2>No se encontró la inspección</h2>
-        <Link to="/inspecciones">Volver</Link>
+        <Link to="/inspecciones" style={{ color: "#4db8ff" }}>Volver</Link>
       </div>
     );
   }
 
   return (
-    <div className="p-4">
+    <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff" }}>
       <h1>Inspección #{inspeccion.id}</h1>
 
-      <p>
+      <p style={{ marginTop: "15px" }}>
         <strong>Fecha:</strong>{" "}
         {formatearFecha(inspeccion.fecha)}
       </p>
@@ -134,7 +131,7 @@ export default function VerInspeccion() {
       </p>
 
       <h3>Técnico</h3>
-      <p>{inspeccion.tecnicos?.nombre || "Sin técnico asignado"}</p>
+      <p>Sin técnico asignado</p>
 
       <h3>Notas</h3>
       <p>{inspeccion.notas || "Sin notas"}</p>
@@ -143,6 +140,7 @@ export default function VerInspeccion() {
         <Link
           to={`/inspecciones/${id}/checklist`}
           className="btn btn-primary"
+          style={{ color: "#4db8ff", marginRight: "10px" }}
         >
           Ver Checklist
         </Link>
@@ -150,7 +148,7 @@ export default function VerInspeccion() {
         <Link
           to={`/inspecciones/firma/${id}`}
           className="btn btn-secondary"
-          style={{ marginLeft: "10px" }}
+          style={{ color: "#4db8ff", marginRight: "10px" }}
         >
           Firmar
         </Link>
@@ -158,7 +156,7 @@ export default function VerInspeccion() {
         <Link
           to={`/inspecciones/pdf/${id}`}
           className="btn btn-success"
-          style={{ marginLeft: "10px" }}
+          style={{ color: "#4db8ff" }}
         >
           Ver PDF
         </Link>
