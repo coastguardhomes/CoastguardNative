@@ -3,10 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
-// Importamos el componente de menú que debe estar siempre visible
-import MenuLayout from "../../layouts/MenuLayout.jsx"; 
+import Menu from "../../layouts/Menu.jsx";
 
-// --- Estilos Tácticos (Reutilizables) ---
+// Estética táctica CoastGuard HOMES (Dorados, Azul Marino y Blancos con relieve)
 const COLOR_DORADO = "#e0b034";
 const COLOR_BRILLO = "rgba(224, 176, 52, 0.5)";
 const FONDO_TARJETA = "linear-gradient(145deg, #0f172a 0%, #090d16 100%)";
@@ -19,7 +18,6 @@ export default function ClienteDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Estados para los resúmenes (datos reales)
   const [cliente, setCliente] = useState(null);
   const [numContratos, setNumContratos] = useState(0);
   const [numInspecciones, setNumInspecciones] = useState(0);
@@ -30,7 +28,6 @@ export default function ClienteDashboard() {
     async function cargarDatos() {
       if (!user) return;
 
-      // 1. Cargar datos del cliente
       const { data: clienteData } = await supabase
         .from("clientes")
         .select("*")
@@ -39,8 +36,6 @@ export default function ClienteDashboard() {
 
       if (clienteData) {
         setCliente(clienteData);
-        
-        // 2. Consultas en paralelo para los contadores (usando el ID del cliente)
         const clienteId = clienteData.id;
 
         const [
@@ -63,7 +58,6 @@ export default function ClienteDashboard() {
     cargarDatos();
   }, [user]);
 
-  // Configuración de las tarjetas de resumen
   const tarjetasResumen = [
     { titulo: "Mis Contratos", valor: numContratos, icono: "📄", ruta: "/cliente/contratos" },
     { titulo: "Mis Inspecciones", valor: numInspecciones, icono: "📋", ruta: "/cliente/inspecciones" },
@@ -72,62 +66,90 @@ export default function ClienteDashboard() {
 
   if (loading) {
     return (
-      <MenuLayout> {/* El layout envuelve el contenido de carga */}
+      <Menu>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: COLOR_DORADO, background: FONDO_PRINCIPAL, fontFamily: "Inter" }}>
           <h3 style={{ textShadow: `0 0 8px ${COLOR_BRILLO}` }}>{t("clienteDashboardCargando")}</h3>
         </div>
-      </MenuLayout>
+      </Menu>
     );
   }
 
   return (
-    <MenuLayout> {/* El layout envuelve el contenido principal */}
+    <Menu>
       <div
         style={{
           width: "100%",
-          minHeight: "90vh", // Un poco menos para dejar espacio al menú fijo
+          minHeight: "90vh",
           background: FONDO_PRINCIPAL,
           padding: "16px",
           fontFamily: "Inter, sans-serif",
           color: "#fff",
           boxSizing: "border-box",
-          paddingBottom: "80px", // Espacio extra para el menú inferior fijo
+          paddingBottom: "80px",
         }}
       >
-        {/* Cabecera Estilo Panel de Mandos */}
+        {/* Cabecera Oficial CoastGuard HOMES (Exacta al logotipo) */}
         <div
           style={{
             background: "linear-gradient(180deg, #0d1527 0%, #080e1a 100%)",
             border: BORDE_DORADO,
             borderRadius: "16px",
-            padding: "16px 20px",
+            padding: "20px",
             marginBottom: "20px",
             boxShadow: SOMBRA_PROFUNDA,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            textAlign: "center",
           }}
         >
-          <div>
-            <h1
+          {/* Escudo / Icono de Referencia */}
+          <div style={{ fontSize: "28px", marginBottom: "6px", filter: `drop-shadow(0 0 8px ${COLOR_BRILLO})` }}>
+            🛡️⚓
+          </div>
+
+          {/* Nombre con tipografía combinada idéntica al logo */}
+          <div style={{ lineHeight: "1.1", marginBottom: "6px" }}>
+            <span
               style={{
-                fontSize: "18px",
+                fontSize: "22px",
                 fontWeight: "800",
-                margin: "0 0 2px 0",
-                color: COLOR_DORADO,
-                letterSpacing: "1px",
-                textTransform: "uppercase",
-                textShadow: `0 0 8px ${COLOR_BRILLO}`,
+                color: "#ffffff",
+                letterSpacing: "0.5px",
+                textShadow: "0 2px 4px rgba(0,0,0,0.8)",
+                fontFamily: "serif",
               }}
             >
-              PANEL DEL CLIENTE
-            </h1>
-            <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0, fontWeight: "600" }}>
-              Bienvenido, {cliente?.nombre}
-            </p>
+              CoastGuard
+            </span>
           </div>
-          {/* Logo de la compañía (pequeño detalle) */}
-          <div style={{ color: COLOR_DORADO, fontSize: '20px' }}>⚓</div>
+
+          {/* Subtítulo HOMES con líneas doradas a los lados */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "10px",
+              marginTop: "4px",
+            }}
+          >
+            <div style={{ height: "1px", width: "35px", background: COLOR_DORADO }} />
+            <span
+              style={{
+                fontSize: "12px",
+                fontWeight: "700",
+                color: COLOR_DORADO,
+                letterSpacing: "3px",
+                textTransform: "uppercase",
+                textShadow: `0 0 6px ${COLOR_BRILLO}`,
+              }}
+            >
+              HOMES
+            </span>
+            <div style={{ height: "1px", width: "35px", background: COLOR_DORADO }} />
+          </div>
+
+          <div style={{ color: "#94a3b8", fontSize: "12px", marginTop: "12px", fontWeight: "500" }}>
+            Panel de Control • <span style={{ color: COLOR_DORADO }}>{cliente?.nombre}</span>
+          </div>
         </div>
 
         {/* Título de sección */}
@@ -135,7 +157,7 @@ export default function ClienteDashboard() {
           Resumen de Actividad
         </h2>
 
-        {/* Grid de Tarjetas de Resumen (Estilo Táctico) */}
+        {/* Grid de Tarjetas de Resumen */}
         <div
           style={{
             display: "grid",
@@ -188,7 +210,7 @@ export default function ClienteDashboard() {
           ))}
         </div>
 
-        {/* Acceso Rápido al Perfil (Sustituyendo la lista anterior) */}
+        {/* Acceso Rápido al Perfil */}
         <div
             onClick={() => navigate("/cliente/perfil")}
             style={{
@@ -202,8 +224,6 @@ export default function ClienteDashboard() {
                 justifyContent: "space-between",
                 cursor: "pointer",
             }}
-            onMouseOver={(e) => e.currentTarget.style.borderColor = COLOR_DORADO}
-            onMouseOut={(e) => e.currentTarget.style.borderColor = COLOR_DORADO}
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ fontSize: '20px', color: COLOR_DORADO, background: 'rgba(224, 176, 52, 0.1)', padding: '8px', borderRadius: '10px' }}>👤</div>
@@ -216,6 +236,6 @@ export default function ClienteDashboard() {
         </div>
 
       </div>
-    </MenuLayout>
+    </Menu>
   );
 }
