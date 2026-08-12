@@ -150,7 +150,6 @@ export default function ChecklistUnificado() {
     try {
       setMensaje("Subiendo foto a Supabase...");
       
-      // Limpieza del string base64 por seguridad
       const base64Clean = base64String.includes("base64,") 
         ? base64String.split("base64,")[1] 
         : base64String;
