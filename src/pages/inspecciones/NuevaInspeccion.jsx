@@ -90,7 +90,6 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      // Preparamos el objeto completo con todos los campos necesarios
       const nuevaInspeccion = {
         vivienda_id: vivienda.id,
         cliente_id: vivienda.cliente_id || null,
@@ -119,20 +118,39 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      const plantilla = [
-        "Puertas y ventanas cerradas",
-        "Persianas en posición correcta",
-        "Ausencia de humedades",
-        "Estado general de la vivienda",
-        "Revisión de electrodomésticos",
-        "Comprobación de fugas",
+      // 🔥 Plantilla completa unificada de más de 20 puntos técnicos
+      const plantillaCompleta = [
+        "Puerta principal cerrada y asegurada correctamente",
+        "Cerraduras y bombines sin daños aparentes",
+        "Ventanas y ventanales cerrados y bloqueados",
+        "Persianas bajadas o en posición de seguridad",
+        "Rejas exteriores sin indicios de fuerza o daños",
+        "Comprobación de sistema de alarma activo",
+        "Sensores de movimiento limpios y operativos",
+        "Comprobación de llaves de repuesto en su lugar",
+        "Accesos exteriores revisados (jardín, trastero, garaje)",
+        "Ausencia total de humedades o filtraciones en paredes",
+        "Ausencia de humedades o manchas en techos",
+        "Cuadro eléctrico principal sin interruptores disparados",
+        "Luces e interruptores funcionando correctamente",
+        "Enchufes sin marcas de quemaduras ni holguras",
+        "Electrodomésticos con suministro eléctrico correcto",
+        "Grifos y llaves de paso funcionando sin goteos",
+        "Presión de agua correcta en red general",
+        "Ausencia de fugas visibles en baños y cocina",
+        "Cisterna de WC funcionando y cargando bien",
+        "Desagües limpios y ausencia de malos olores",
+        "Estado general del jardín y limpieza de exteriores",
+        "Piscina: nivel de agua correcto y bomba operativa",
+        "Ausencia de plagas (insectos, hormigas o roedores)",
+        "Limpieza ligera y ausencia de basura interior",
+        "Estado general del mobiliario y cristales sin roturas"
       ];
 
-      const checklistItems = plantilla.map((texto) => ({
+      const checklistItems = plantillaCompleta.map((texto) => ({
         inspeccion_id: insp.id,
         item: texto,
         completado: false,
-        observaciones: "",
       }));
 
       await supabase.from("checklist_inspeccion").insert(checklistItems);
