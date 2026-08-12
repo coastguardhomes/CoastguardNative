@@ -24,7 +24,7 @@ export default function GaleriaInspeccion() {
       .order("id", { ascending: false });
 
     if (error) {
-      setMensaje("Error cargando fotos");
+      setMensaje("Error cargando fotos: " + error.message);
       setLoading(false);
       return;
     }
@@ -33,30 +33,32 @@ export default function GaleriaInspeccion() {
     setLoading(false);
   };
 
-  // 📸 Subir foto con Capacitor directamente desde la galería
-  async function subirFoto() {
+  // 📸 Subir foto (Cámara o Galería)
+  async function subirFoto(fuente) {
     try {
       const image = await Camera.getPhoto({
         quality: 70,
         resultType: CameraResultType.Base64,
-        source: CameraSource.Camera,
+        source: fuente,
       });
 
       if (!image.base64String) return;
 
+      setMensaje("Subiendo foto...");
+
       const base64 = `data:image/jpeg;base64,${image.base64String}`;
       const blob = await (await fetch(base64)).blob();
-
       const nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
 
       const { error: storageError } = await supabase.storage
         .from("fotos")
         .upload(nombreArchivo, blob, {
           contentType: "image/jpeg",
+          upsert: true,
         });
 
       if (storageError) {
-        setMensaje("Error subiendo foto al almacenamiento");
+        setMensaje("Error subiendo foto al almacenamiento: " + storageError.message);
         return;
       }
 
@@ -69,6 +71,7 @@ export default function GaleriaInspeccion() {
         archivo: nombreArchivo,
         url: urlData.publicUrl,
         principal: false,
+        tipo: "galeria",
       };
 
       const { data: insertedData, error: dbError } = await supabase
@@ -78,7 +81,7 @@ export default function GaleriaInspeccion() {
         .single();
 
       if (dbError) {
-        setMensaje("Error guardando foto en la base de datos");
+        setMensaje("Error guardando foto en la base de datos: " + dbError.message);
         return;
       }
 
@@ -90,15 +93,13 @@ export default function GaleriaInspeccion() {
         })
         .eq("id", id);
 
-      // ⚡ Actualizamos estado local al instante
+      // ⚡ Actualización fluida sin pantalla de carga
       setFotos((prev) => [insertedData || nuevaFotoObj, ...prev]);
       setMensaje("¡Foto subida correctamente!");
       setTimeout(() => setMensaje(""), 3000);
-
-      cargarFotos();
     } catch (e) {
       console.error(e);
-      setMensaje("Cámara cancelada o con error.");
+      setMensaje("Acción cancelada o con error.");
     }
   }
 
@@ -122,11 +123,12 @@ export default function GaleriaInspeccion() {
       return;
     }
 
+    setFotos((prev) => prev.filter((f) => f.id !== foto.id));
     setMensaje("Foto eliminada correctamente");
-    cargarFotos();
+    setTimeout(() => setMensaje(""), 2000);
   };
 
-  // 🔥 Marcar foto como principal (para PDF)
+  // 🔥 Marcar foto como principal
   async function marcarPrincipal(foto) {
     try {
       await supabase
@@ -146,8 +148,15 @@ export default function GaleriaInspeccion() {
         })
         .eq("id", id);
 
+      setFotos((prev) =>
+        prev.map((f) => ({
+          ...f,
+          principal: f.id === foto.id,
+        }))
+      );
+
       setMensaje("Foto marcada como principal");
-      cargarFotos();
+      setTimeout(() => setMensaje(""), 2000);
     } catch (e) {
       console.error(e);
       setMensaje("Error marcando foto como principal");
@@ -200,7 +209,7 @@ export default function GaleriaInspeccion() {
       >
         <h1
           style={{
-            fontSize: "28px",
+            fontSize: "24px",
             fontWeight: "700",
             marginBottom: "20px",
             color: "#4db8ff",
@@ -215,7 +224,7 @@ export default function GaleriaInspeccion() {
           <p
             style={{
               marginBottom: "15px",
-              color: mensaje.includes("correctamente") ? "#4ade80" : "#4db8ff",
+              color: mensaje.includes("correctamente") || mensaje.includes("principal") ? "#4ade80" : "#4db8ff",
               fontWeight: "600",
               textAlign: "center",
             }}
@@ -224,25 +233,41 @@ export default function GaleriaInspeccion() {
           </p>
         )}
 
-        {/* 📸 Botón Tomar Foto */}
-        <button
-          onClick={subirFoto}
-          style={{
-            width: "100%",
-            padding: "14px",
-            background: "#4db8ff",
-            color: "#000",
-            borderRadius: "10px",
-            border: "none",
-            fontWeight: "700",
-            fontSize: "16px",
-            cursor: "pointer",
-            marginBottom: "20px",
-            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-          }}
-        >
-          📸 Tomar foto
-        </button>
+        {/* 📸 Botones Tomar / Seleccionar Foto */}
+        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+          <button
+            onClick={() => subirFoto(CameraSource.Camera)}
+            style={{
+              flex: 1,
+              padding: "14px",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "15px",
+              cursor: "pointer",
+            }}
+          >
+            📸 Hacer Foto
+          </button>
+          <button
+            onClick={() => subirFoto(CameraSource.Photos)}
+            style={{
+              flex: 1,
+              padding: "14px",
+              background: "#27ae60",
+              color: "#fff",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "15px",
+              cursor: "pointer",
+            }}
+          >
+            🖼️ Galería
+          </button>
+        </div>
 
         {/* 🔥 Foto en grande */}
         {fotoGrande && (
@@ -291,7 +316,7 @@ export default function GaleriaInspeccion() {
           <p style={{ textAlign: "center" }}>Cargando fotos...</p>
         ) : fotos.length === 0 ? (
           <p style={{ textAlign: "center", color: "#a0aec0", margin: "20px 0" }}>
-            No hay fotos registradas.
+            No hay fotos registradas para esta inspección.
           </p>
         ) : (
           <div
@@ -358,7 +383,6 @@ export default function GaleriaInspeccion() {
                     cursor: "pointer",
                     width: "100%",
                     fontWeight: "700",
-                    boxShadow: "0 0 10px rgba(255,0,0,0.4)",
                   }}
                 >
                   Eliminar
@@ -390,7 +414,7 @@ export default function GaleriaInspeccion() {
 
         {/* 🔥 Botón volver */}
         <button
-          onClick={() => navigate(`/inspecciones/${id}`)}
+          onClick={() => navigate(-1)}
           style={{
             marginTop: "12px",
             padding: "14px",
@@ -404,7 +428,7 @@ export default function GaleriaInspeccion() {
             cursor: "pointer",
           }}
         >
-          Volver a la inspección
+          ← Volver
         </button>
       </div>
     </Menu>
