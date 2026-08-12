@@ -14,14 +14,16 @@ export default function DetalleInspeccion() {
   const [fotos, setFotos] = useState([]);
   const [firma, setFirma] = useState(null);
 
-  // 🔥 NUEVOS ESTADOS
+  // Estados relacionados
   const [cliente, setCliente] = useState(null);
   const [vivienda, setVivienda] = useState(null);
   const [tecnico, setTecnico] = useState(null);
   const [contrato, setContrato] = useState(null);
+  const [checklist, setChecklist] = useState([]);
 
   const [cargando, setCargando] = useState(true);
   const [generando, setGenerando] = useState(false);
+  const [aprobando, setAprobando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
@@ -56,38 +58,48 @@ export default function DetalleInspeccion() {
       setVivienda(viv);
 
       // 3️⃣ Cargar cliente
-      if (viv?.cliente_id) {
+      if (viv?.cliente_id || insp.cliente_id) {
+        const clienteId = viv?.cliente_id || insp.cliente_id;
         const { data: cli } = await supabase
           .from("clientes")
           .select("*")
-          .eq("id", viv.cliente_id)
+          .eq("id", clienteId)
           .maybeSingle();
 
         setCliente(cli);
       }
 
       // 4️⃣ Cargar técnico
-      const { data: tec } = await supabase
-        .from("tecnicos")
-        .select("*")
-        .eq("id", insp.tecnico_id)
-        .maybeSingle();
-
-      setTecnico(tec);
+      if (insp.tecnico_id) {
+        const { data: tec } = await supabase
+          .from("tecnicos")
+          .select("*")
+          .eq("id", insp.tecnico_id)
+          .maybeSingle();
+        setTecnico(tec);
+      }
 
       // 5️⃣ Cargar contrato
-      const { data: cont } = await supabase
-        .from("contratos")
+      if (insp.contrato_id) {
+        const { data: cont } = await supabase
+          .from("contratos")
+          .select("*")
+          .eq("id", insp.contrato_id)
+          .maybeSingle();
+        setContrato(cont);
+      }
+
+      // 6️⃣ Cargar checklist para auditoría del admin
+      const { data: chk } = await supabase
+        .from("checklist_inspeccion")
         .select("*")
-        .eq("id", insp.contrato_id)
-        .maybeSingle();
+        .eq("inspeccion_id", id);
+      setChecklist(chk || []);
 
-      setContrato(cont);
-
-      // 6️⃣ Cargar fotos
+      // 7️⃣ Cargar fotos
       setFotos(await cargarFotosInspeccion(id));
 
-      // 7️⃣ Cargar firma
+      // 8️⃣ Cargar firma
       const { data: firmas } = await supabase
         .from("firmas_inspeccion")
         .select("url")
@@ -118,6 +130,31 @@ export default function DetalleInspeccion() {
     } catch {
       return null;
     }
+  }
+
+  // ⭐ ACCIÓN DE APROBACIÓN DEL ADMIN
+  async function aprobarInspeccionAdmin() {
+    setAprobando(true);
+    setMensaje("");
+    setError("");
+
+    const { error: updateError } = await supabase
+      .from("inspecciones")
+      .update({
+        estado: "completada_admin",
+        fecha_aprobacion_admin: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (updateError) {
+      setError("No se pudo aprobar la inspección: " + updateError.message);
+      setAprobando(false);
+      return;
+    }
+
+    setInspeccion((prev) => ({ ...prev, estado: "completada_admin" }));
+    setMensaje("¡Inspección aprobada con éxito! Ya se puede generar el PDF para el cliente.");
+    setAprobando(false);
   }
 
   async function generarInforme() {
@@ -157,44 +194,69 @@ export default function DetalleInspeccion() {
     );
   }
 
+  const estaAprobada = inspeccion.estado === "completada_admin";
+
   return (
     <Menu>
       <div style={estilos.pagina}>
-        <h2 style={estilos.titulo}>Inspección #{inspeccion.id}</h2>
+        <h2 style={estilos.titulo}>Revisión de Inspección #{inspeccion.id}</h2>
 
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
         {error && <p style={estilos.error}>{error}</p>}
 
-        {/* 🔥 TARJETA COMPLETA */}
-        <div style={estilos.tarjeta}>
-          <Dato clave="Fecha" valor={String(inspeccion.fecha || "").slice(0, 10)} />
-          <Dato clave="Estado" valor={inspeccion.estado} />
+        {/* 🛡️ PANEL DE CONTROL Y APROBACIÓN DEL ADMIN */}
+        <div style={estilos.tarjetaAdmin}>
+          <h3 style={{ color: "#4db8ff", marginBottom: "10px", fontSize: "18px" }}>
+            Panel de Validación del Administrador
+          </h3>
+          <p style={{ fontSize: "14.5px", marginBottom: "12px" }}>
+            Estado actual: <strong style={{ color: estaAprobada ? "#4ade80" : "#ffcc00" }}>{inspeccion.estado}</strong>
+          </p>
 
-          {/* Cliente */}
-          <Dato clave="Cliente" valor={cliente?.nombre} />
-          <Dato clave="Teléfono" valor={cliente?.telefono} />
-
-          {/* Vivienda */}
-          <Dato clave="Vivienda" valor={vivienda?.direccion} />
-          <Dato clave="Localidad" valor={vivienda?.ciudad} />
-
-          {/* Técnico */}
-          <Dato clave="Técnico" valor={tecnico?.nombre} />
-
-          {/* Contrato */}
-          <Dato clave="Contrato" valor={contrato?.modalidad} />
-          <Dato clave="Precio" valor={contrato?.precio} />
-
-          {/* Otros */}
-          <Dato clave="Fotos" valor={fotos.length} />
-          <Dato clave="Firma" valor={firma ? "capturada" : "pendiente"} />
-          {inspeccion.notas && <Dato clave="Notas" valor={inspeccion.notas} />}
+          {!estaAprobada ? (
+            <button
+              onClick={aprobarInspeccionAdmin}
+              disabled={aprobando}
+              style={{
+                ...estilos.boton,
+                background: "#4ade80",
+                color: "#000",
+                marginBottom: 0,
+                opacity: aprobando ? 0.6 : 1,
+              }}
+            >
+              {aprobando ? "Aprobando..." : "✅ Aprobar trabajo del técnico"}
+            </button>
+          ) : (
+            <p style={{ color: "#4ade80", fontWeight: "700", fontSize: "14px" }}>
+              ✔ Trabajo aprobado y validado para envío al cliente.
+            </p>
+          )}
         </div>
 
+        {/* 🔥 TARJETA DATOS GENERALES */}
+        <div style={estilos.tarjeta}>
+          <Dato clave="Fecha" valor={String(inspeccion.fecha || "").slice(0, 10)} />
+          <Dato clave="Cliente" valor={cliente?.nombre} />
+          <Dato clave="Teléfono" valor={cliente?.telefono} />
+          <Dato clave="Vivienda" valor={vivienda?.direccion} />
+          <Dato clave="Localidad" valor={vivienda?.ciudad} />
+          <Dato clave="Técnico" valor={tecnico?.nombre} />
+          <Dato clave="Contrato" valor={contrato?.modalidad} />
+          <Dato clave="Fotos subidas" valor={fotos.length} />
+          <Dato clave="Checklist ítems" valor={`${checklist.filter(i => i.completado).length} / ${checklist.length} OK`} />
+          <Dato clave="Firma" valor={firma ? "Capturada" : "Pendiente"} />
+          {inspeccion.observaciones && <Dato clave="Notas del técnico" valor={inspeccion.observaciones} />}
+        </div>
+
+        {/* ACCIÓN PDF (Solo disponible si el admin aprobó o si se desea forzar) */}
         <button
           onClick={generarInforme}
           disabled={generando}
-          style={{ ...estilos.boton, opacity: generando ? 0.6 : 1 }}
+          style={{
+            ...estilos.boton,
+            opacity: generando ? 0.6 : 1,
+          }}
         >
           {generando ? "Generando informe..." : "Generar informe PDF"}
         </button>
@@ -204,7 +266,7 @@ export default function DetalleInspeccion() {
             onClick={() => navigate(`/inspecciones/pdf/${inspeccion.id}`)}
             style={estilos.botonSec}
           >
-            Ver informe PDF
+            Ver informe PDF guardado
           </button>
         )}
 
@@ -213,19 +275,19 @@ export default function DetalleInspeccion() {
             onClick={() => navigate(`/inspecciones/fotos/${inspeccion.id}`)}
             style={estilos.botonSec}
           >
-            Fotos ({fotos.length})
+            Ver Fotos ({fotos.length})
           </button>
           <button
             onClick={() => navigate(`/inspecciones/checklist/${inspeccion.id}`)}
             style={estilos.botonSec}
           >
-            Checklist
+            Ver Checklist
           </button>
           <button
             onClick={() => navigate(`/inspecciones/firma/${inspeccion.id}`)}
             style={estilos.botonSec}
           >
-            Firma
+            Ver Firma
           </button>
         </div>
       </div>
@@ -234,7 +296,7 @@ export default function DetalleInspeccion() {
 }
 
 function Dato({ clave, valor }) {
-  if (!valor) return null;
+  if (valor === undefined || valor === null || valor === "") return null;
   return (
     <div style={estilos.fila}>
       <span style={estilos.clave}>{clave}</span>
@@ -269,6 +331,13 @@ const estilos = {
     fontSize: 28,
     fontWeight: 700,
     textShadow: "0 0 8px rgba(0,153,255,0.6)",
+  },
+  tarjetaAdmin: {
+    background: "rgba(77,184,255,0.08)",
+    padding: 16,
+    borderRadius: 14,
+    border: "1px solid rgba(77,184,255,0.3)",
+    marginBottom: 18,
   },
   tarjeta: {
     background: "rgba(255,255,255,0.05)",
