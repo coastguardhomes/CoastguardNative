@@ -3,246 +3,219 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+// Importamos el componente de menú que debe estar siempre visible
+import MenuLayout from "../../layouts/MenuLayout.jsx"; 
 
-// Estética táctica CoastGuard (Dorados y Azul Marino Profundo)
+// --- Estilos Tácticos (Reutilizables) ---
 const COLOR_DORADO = "#e0b034";
-const COLOR_BRILLO = "rgba(224, 176, 52, 0.4)";
-const FONDO_PRINCIPAL = "#070b14";
+const COLOR_BRILLO = "rgba(224, 176, 52, 0.5)";
 const FONDO_TARJETA = "linear-gradient(145deg, #0f172a 0%, #090d16 100%)";
+const FONDO_PRINCIPAL = "#05080f";
 const BORDE_DORADO = `1px solid ${COLOR_DORADO}`;
 const SOMBRA_PROFUNDA = "0 8px 20px rgba(0, 0, 0, 0.6)";
 
 export default function ClienteDashboard() {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
+  // Estados para los resúmenes (datos reales)
   const [cliente, setCliente] = useState(null);
+  const [numContratos, setNumContratos] = useState(0);
+  const [numInspecciones, setNumInspecciones] = useState(0);
+  const [numFacturasPendientes, setNumFacturasPendientes] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function cargarCliente() {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+    async function cargarDatos() {
+      if (!user) return;
 
-      const { data: clienteData, error } = await supabase
+      // 1. Cargar datos del cliente
+      const { data: clienteData } = await supabase
         .from("clientes")
         .select("*")
         .eq("usuario_id", user.id)
         .single();
 
-      if (!error) {
+      if (clienteData) {
         setCliente(clienteData);
-      }
+        
+        // 2. Consultas en paralelo para los contadores (usando el ID del cliente)
+        const clienteId = clienteData.id;
 
+        const [
+          { count: countContratos },
+          { count: countInspecciones },
+          { count: countFacturas }
+        ] = await Promise.all([
+          supabase.from("contratos").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
+          supabase.from("inspecciones").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
+          supabase.from("facturas").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId).eq("estado", "pendiente")
+        ]);
+
+        setNumContratos(countContratos || 0);
+        setNumInspecciones(countInspecciones || 0);
+        setNumFacturasPendientes(countFacturas || 0);
+      }
       setLoading(false);
     }
 
-    cargarCliente();
+    cargarDatos();
   }, [user]);
+
+  // Configuración de las tarjetas de resumen
+  const tarjetasResumen = [
+    { titulo: "Mis Contratos", valor: numContratos, icono: "📄", ruta: "/cliente/contratos" },
+    { titulo: "Mis Inspecciones", valor: numInspecciones, icono: "📋", ruta: "/cliente/inspecciones" },
+    { titulo: "Facturas Pendientes", valor: numFacturasPendientes, icono: "💳", ruta: "/cliente/facturas", alerta: numFacturasPendientes > 0 }
+  ];
 
   if (loading) {
     return (
-      <div style={{ padding: "40px", textAlign: "center", color: COLOR_DORADO, background: FONDO_PRINCIPAL, minHeight: "100vh", fontFamily: "Inter, sans-serif" }}>
-        <h3 style={{ textShadow: `0 0 8px ${COLOR_BRILLO}` }}>{t("clienteDashboardCargando")}</h3>
-      </div>
-    );
-  }
-
-  if (!cliente) {
-    return (
-      <div style={{ padding: "40px", textAlign: "center", color: "#fff", background: FONDO_PRINCIPAL, minHeight: "100vh", fontFamily: "Inter, sans-serif" }}>
-        <h3>{t("clienteDashboardNoEncontrado")}</h3>
-      </div>
+      <MenuLayout> {/* El layout envuelve el contenido de carga */}
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: COLOR_DORADO, background: FONDO_PRINCIPAL, fontFamily: "Inter" }}>
+          <h3 style={{ textShadow: `0 0 8px ${COLOR_BRILLO}` }}>{t("clienteDashboardCargando")}</h3>
+        </div>
+      </MenuLayout>
     );
   }
 
   return (
-    <div
-      style={{
-        background: FONDO_PRINCIPAL,
-        minHeight: "100vh",
-        padding: "20px",
-        color: "#fff",
-        fontFamily: "Inter, sans-serif",
-        boxSizing: "border-box",
-      }}
-    >
-      {/* Cabecera del Dashboard */}
+    <MenuLayout> {/* El layout envuelve el contenido principal */}
       <div
         style={{
-          background: "linear-gradient(90deg, #0d1626 0%, #142036 100%)",
-          border: BORDE_DORADO,
-          borderRadius: "14px",
-          padding: "16px 20px",
-          marginBottom: "20px",
-          boxShadow: SOMBRA_PROFUNDA,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          width: "100%",
+          minHeight: "90vh", // Un poco menos para dejar espacio al menú fijo
+          background: FONDO_PRINCIPAL,
+          padding: "16px",
+          fontFamily: "Inter, sans-serif",
+          color: "#fff",
+          boxSizing: "border-box",
+          paddingBottom: "80px", // Espacio extra para el menú inferior fijo
         }}
       >
-        <div>
-          <h2
-            style={{
-              color: COLOR_DORADO,
-              margin: "0 0 4px 0",
-              fontSize: "18px",
-              fontWeight: "700",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              textShadow: `0 0 8px ${COLOR_BRILLO}`,
-            }}
-          >
-            {t("clienteDashboardTitulo")}
-          </h2>
-          <p style={{ color: "#94a3b8", fontSize: "13px", margin: 0 }}>
-            {cliente.nombre}
-          </p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: COLOR_DORADO }}>
-          <span style={{ fontSize: '18px' }}>⚓</span>
-          <span style={{ fontSize: '12px', fontWeight: '800', letterSpacing: '1px', textShadow: `0 0 6px ${COLOR_BRILLO}` }}>COASTGUARD</span>
-        </div>
-      </div>
-
-      {/* Tarjeta de Información del Cliente */}
-      <div
-        style={{
-          background: FONDO_TARJETA,
-          border: BORDE_DORADO,
-          padding: "18px",
-          borderRadius: "14px",
-          marginBottom: "20px",
-          boxShadow: SOMBRA_PROFUNDA,
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+        {/* Cabecera Estilo Panel de Mandos */}
         <div
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "3px",
-            background: `linear-gradient(90deg, transparent, ${COLOR_DORADO}, transparent)`,
+            background: "linear-gradient(180deg, #0d1527 0%, #080e1a 100%)",
+            border: BORDE_DORADO,
+            borderRadius: "16px",
+            padding: "16px 20px",
+            marginBottom: "20px",
+            boxShadow: SOMBRA_PROFUNDA,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
-        />
-        <Linea clave={t("clienteDashboardNombre")} valor={cliente.nombre} />
-        <Linea clave={t("clienteDashboardEmail")} valor={cliente.email} />
-        <Linea clave={t("clienteDashboardTelefono")} valor={cliente.telefono} />
-        {cliente.direccion && (
-          <Linea clave={t("clienteContratoDireccion")} valor={cliente.direccion} />
-        )}
+        >
+          <div>
+            <h1
+              style={{
+                fontSize: "18px",
+                fontWeight: "800",
+                margin: "0 0 2px 0",
+                color: COLOR_DORADO,
+                letterSpacing: "1px",
+                textTransform: "uppercase",
+                textShadow: `0 0 8px ${COLOR_BRILLO}`,
+              }}
+            >
+              PANEL DEL CLIENTE
+            </h1>
+            <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0, fontWeight: "600" }}>
+              Bienvenido, {cliente?.nombre}
+            </p>
+          </div>
+          {/* Logo de la compañía (pequeño detalle) */}
+          <div style={{ color: COLOR_DORADO, fontSize: '20px' }}>⚓</div>
+        </div>
+
+        {/* Título de sección */}
+        <h2 style={{ fontSize: "14px", color: "#e2e8f0", marginBottom: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          Resumen de Actividad
+        </h2>
+
+        {/* Grid de Tarjetas de Resumen (Estilo Táctico) */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+            gap: "12px",
+            marginBottom: "24px",
+          }}
+        >
+          {tarjetasResumen.map((item) => (
+            <div
+              key={item.titulo}
+              onClick={() => navigate(item.ruta)}
+              style={{
+                background: FONDO_TARJETA,
+                borderRadius: "14px",
+                padding: "16px",
+                border: item.alerta ? `1px solid #ef4444` : BORDE_DORADO,
+                boxShadow: SOMBRA_PROFUNDA,
+                cursor: "pointer",
+                transition: "transform 0.2s",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                minHeight: "110px"
+              }}
+              onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-3px)"}
+              onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <span style={{ fontSize: "11px", fontWeight: "700", color: item.alerta ? "#ef4444" : "#cbd5e1", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  {item.titulo}
+                </span>
+                <span style={{ fontSize: "16px", color: item.alerta ? "#ef4444" : COLOR_DORADO }}>{item.icono}</span>
+              </div>
+              
+              <div style={{ marginTop: "16px" }}>
+                <span
+                  style={{
+                    fontSize: "32px",
+                    fontWeight: "900",
+                    color: item.alerta ? "#ef4444" : COLOR_DORADO,
+                    textShadow: item.alerta ? "none" : `0 0 10px ${COLOR_BRILLO}`,
+                    letterSpacing: "-1px",
+                  }}
+                >
+                  {item.valor}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Acceso Rápido al Perfil (Sustituyendo la lista anterior) */}
+        <div
+            onClick={() => navigate("/cliente/perfil")}
+            style={{
+                background: FONDO_TARJETA,
+                borderRadius: "14px",
+                padding: "14px 16px",
+                border: BORDE_DORADO,
+                boxShadow: SOMBRA_PROFUNDA,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                cursor: "pointer",
+            }}
+            onMouseOver={(e) => e.currentTarget.style.borderColor = COLOR_DORADO}
+            onMouseOut={(e) => e.currentTarget.style.borderColor = COLOR_DORADO}
+        >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ fontSize: '20px', color: COLOR_DORADO, background: 'rgba(224, 176, 52, 0.1)', padding: '8px', borderRadius: '10px' }}>👤</div>
+                <div>
+                    <div style={{ fontSize: "13px", fontWeight: "700", color: "#e2e8f0", textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mi Perfil</div>
+                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>Actualizar datos y contraseña</div>
+                </div>
+            </div>
+            <div style={{ fontSize: '14px', color: COLOR_DORADO }}>→</div>
+        </div>
+
       </div>
-
-      {/* Botones de Navegación con Estilo Táctico y Efectos */}
-      <button
-        onClick={() => navigate("/cliente/contratos")}
-        style={estilosCliente.boton}
-        onMouseOver={(e) => {
-          e.currentTarget.style.boxShadow = `0 0 15px ${COLOR_BRILLO}`;
-          e.currentTarget.style.transform = "translateY(-2px)";
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.boxShadow = "none";
-          e.currentTarget.style.transform = "translateY(0)";
-        }}
-      >
-        {t("clienteListaTitulo")}
-      </button>
-
-      <button
-        onClick={() => navigate("/cliente/perfil")}
-        style={estilosCliente.botonSec}
-        onMouseOver={(e) => {
-          e.currentTarget.style.borderColor = COLOR_DORADO;
-          e.currentTarget.style.color = COLOR_DORADO;
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.borderColor = "rgba(224, 176, 52, 0.3)";
-          e.currentTarget.style.color = "#fff";
-        }}
-      >
-        {t("clientePerfilTitulo")}
-      </button>
-
-      <button
-        onClick={logout}
-        style={estilosCliente.botonLogout}
-      >
-        {t("logout")}
-      </button>
-    </div>
+    </MenuLayout>
   );
 }
-
-function Linea({ clave, valor }) {
-  if (!valor) return null;
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 12,
-        padding: "8px 0",
-        borderBottom: "1px solid rgba(224, 176, 52, 0.15)",
-      }}
-    >
-      <span style={{ color: "#94a3b8", fontSize: "13px" }}>{clave}</span>
-      <span style={{ fontWeight: 600, fontSize: "14px", textAlign: "right", color: "#e2e8f0" }}>
-        {valor}
-      </span>
-    </div>
-  );
-}
-
-const estilosCliente = {
-  boton: {
-    width: "100%",
-    background: `linear-gradient(135deg, #e0b034 0%, #b88d22 100%)`,
-    color: "#070b14",
-    padding: "14px",
-    border: "none",
-    borderRadius: "10px",
-    fontWeight: 700,
-    fontSize: "15px",
-    cursor: "pointer",
-    marginBottom: "12px",
-    boxShadow: "0 4px 12px rgba(224, 176, 52, 0.3)",
-    transition: "all 0.2s ease",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  },
-  botonSec: {
-    width: "100%",
-    background: "linear-gradient(145deg, #0f172a 0%, #090d16 100%)",
-    color: "#fff",
-    padding: "13px",
-    border: "1px solid rgba(224, 176, 52, 0.3)",
-    borderRadius: "10px",
-    fontWeight: 600,
-    fontSize: "14px",
-    cursor: "pointer",
-    marginBottom: "12px",
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
-    transition: "all 0.2s ease",
-  },
-  botonLogout: {
-    width: "100%",
-    background: "transparent",
-    color: "#ef4444",
-    padding: "12px",
-    border: "1px solid rgba(239, 68, 68, 0.5)",
-    borderRadius: "10px",
-    fontWeight: 600,
-    fontSize: "14px",
-    cursor: "pointer",
-    marginBottom: "10px",
-    boxShadow: "0 0 10px rgba(239, 68, 68, 0.15)",
-    transition: "all 0.2s ease",
-  },
-};
