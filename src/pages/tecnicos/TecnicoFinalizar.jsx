@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function TecnicoFinalizar() {
@@ -61,7 +61,7 @@ export default function TecnicoFinalizar() {
       .select("estado")
       .eq("inspeccion_id", id);
 
-    const incompletos = checklist.filter(
+    const incompletos = (checklist || []).filter(
       (i) => i.estado !== "ok" && i.estado !== "ko"
     );
 
@@ -111,8 +111,8 @@ export default function TecnicoFinalizar() {
 
     setGuardando(false);
 
-    // 3️⃣ Volver al dashboard técnico
-    navigate("/tecnico/dashboard");
+    // 3️⃣ Volver al dashboard técnico correcto
+    navigate("/tecnico");
   }
 
   if (loading) {
@@ -164,9 +164,7 @@ export default function TecnicoFinalizar() {
           <p
             style={{
               marginBottom: "15px",
-              color: mensaje.includes("permiso")
-                ? "#ff6b6b"
-                : "#ff6b6b",
+              color: "#ff6b6b",
               fontWeight: "600",
             }}
           >
@@ -186,11 +184,11 @@ export default function TecnicoFinalizar() {
         >
           <p>
             <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
-            {inspeccion.fecha}
+            {inspeccion?.fecha}
           </p>
           <p>
             <strong style={{ color: "#4db8ff" }}>Estado actual:</strong>{" "}
-            {inspeccion.estado}
+            {inspeccion?.estado}
           </p>
         </div>
 
