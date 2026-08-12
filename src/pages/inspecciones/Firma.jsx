@@ -35,10 +35,6 @@ export default function Firma() {
     cargarFirma();
   }, [id]);
 
-  // offsetX/offsetY sólo existen en eventos de ratón. En el móvil el trazo
-  // se dibuja con eventos táctiles, y su posición hay que calcularla a mano
-  // a partir de getBoundingClientRect(): por eso el firmado salía
-  // descentrado en el teléfono aunque funcionaba bien con ratón.
   function obtenerPosicion(e) {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -94,10 +90,24 @@ export default function Firma() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // 🔥 Validar que hay firma dibujada
+    // Validar que hay firma dibujada (comprobando si hay píxeles distintos del fondo blanco/transparente)
     const ctx = canvas.getContext("2d");
     const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    const hayFirma = pixels.some((p) => p !== 255);
+    
+    // Verificamos si algún píxel no es totalmente blanco (alfa o color)
+    let hayFirma = false;
+    for (let i = 3; i < pixels.length; i += 4) {
+      if (pixels[i] > 0) { // si el canal alpha tiene opacidad
+        // Revisar si no es blanco puro (255, 255, 255)
+        const r = pixels[i - 3];
+        const g = pixels[i - 2];
+        const b = pixels[i - 1];
+        if (r < 250 || g < 250 || b < 250) {
+          hayFirma = true;
+          break;
+        }
+      }
+    }
 
     if (!hayFirma) {
       setMensaje("Debes dibujar la firma antes de guardar.");
@@ -122,7 +132,7 @@ export default function Firma() {
       .upload(nombreArchivo, blob, { upsert: true });
 
     if (errorSubida) {
-      setMensaje("Error guardando firma");
+      setMensaje("Error guardando firma: " + errorSubida.message);
       return;
     }
 
@@ -141,22 +151,21 @@ export default function Firma() {
 
     setFirmaGuardada(urlData.publicUrl);
 
-    // 🔥 Guardar firma en inspecciones (para PDF)
+    // Guardar URL de firma en inspecciones
     await supabase
       .from("inspecciones")
       .update({
         firma_url: urlData.publicUrl,
         fecha_firma: new Date().toISOString(),
-        estado: "firma_completada",
       })
       .eq("id", id);
 
-    setMensaje("Firma guardada correctamente");
+    setMensaje("Firma guardada correctamente ✔");
 
-    // 🔥 Avanzar automáticamente al PDF
+    // Redirigir de vuelta al detalle de inspección para mantener el flujo intacto
     setTimeout(() => {
-      navigate(`/inspecciones/pdf/${id}`);
-    }, 800);
+      navigate(`/inspecciones/${id}`);
+    }, 1000);
   }
 
   return (
@@ -184,15 +193,22 @@ export default function Firma() {
         </h1>
 
         {mensaje && (
-          <p
+          <div
             style={{
-              marginBottom: "15px",
-              color: "#4db8ff",
+              marginBottom: "20px",
+              padding: "12px",
+              background: mensaje.includes("correctamente")
+                ? "rgba(74, 222, 128, 0.15)"
+                : "rgba(255, 107, 107, 0.15)",
+              border: `1px solid ${mensaje.includes("correctamente") ? "#4ade80" : "#ff6b6b"}`,
+              borderRadius: "10px",
+              color: mensaje.includes("correctamente") ? "#4ade80" : "#ff6b6b",
               fontWeight: "600",
+              textAlign: "center",
             }}
           >
             {mensaje}
-          </p>
+          </div>
         )}
 
         {firmaGuardada && (
@@ -288,6 +304,22 @@ export default function Firma() {
             </button>
           </div>
         </div>
+
+        <button
+          onClick={() => navigate(`/inspecciones/${id}`)}
+          style={{
+            padding: "12px",
+            width: "100%",
+            background: "rgba(255,255,255,0.06)",
+            color: "#fff",
+            borderRadius: "10px",
+            border: "1px solid rgba(255,255,255,0.18)",
+            fontWeight: "600",
+            cursor: "pointer",
+          }}
+        >
+          Volver al detalle de la inspección
+        </button>
       </div>
     </Menu>
   );
