@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { useParams, useNavigate } from "res-router-dom"; // Corregido el import nativo abajo
+import { useParams, useNavigate } from "react-router-dom";
 
 export default function FinalizarInspeccion() {
   const { id } = useParams();
