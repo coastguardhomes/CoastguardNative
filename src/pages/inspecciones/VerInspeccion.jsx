@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import Menu from "../../layouts/Menu";
 
 export default function VerInspeccion() {
   const { id } = useParams();
@@ -20,19 +21,15 @@ export default function VerInspeccion() {
 
   useEffect(() => {
     async function cargarInspeccion() {
-      console.log("Buscando inspección con ID en la ruta:", id);
-
-      // Consulta simplificada para evitar errores de relaciones
       const { data, error } = await supabase
         .from("inspecciones")
         .select("*")
         .eq("id", id)
-        .maybeSingle(); // Usamos maybeSingle para evitar excepciones si no encuentra filas
+        .maybeSingle();
 
       if (error) {
         console.error("Error en Supabase al buscar inspección:", error);
       } else {
-        console.log("Resultado de la búsqueda:", data);
         setInspeccion(data);
       }
 
@@ -64,86 +61,110 @@ export default function VerInspeccion() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          height: "100vh",
-          background: "#0a0f1a",
-          color: "#fff",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          fontSize: "18px",
-        }}
-      >
-        Cargando inspección…
-      </div>
+      <Menu>
+        <div
+          style={{
+            height: "100vh",
+            background: "#0a0f1a",
+            color: "#fff",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontSize: "18px",
+          }}
+        >
+          Cargando inspección…
+        </div>
+      </Menu>
     );
   }
 
   if (!inspeccion) {
     return (
-      <div style={{ background: "#0a0f1a", minHeight: "100vh", color: "#fff", padding: "20px" }}>
-        <h2>No se encontró la inspección con ID: {id}</h2>
-        <Link to="/inspecciones" style={{ color: "#4db8ff" }}>Volver</Link>
-      </div>
+      <Menu>
+        <div style={{ background: "#0a0f1a", minHeight: "100vh", color: "#fff", padding: "20px" }}>
+          <h2>No se encontró la inspección con ID: {id}</h2>
+          <Link to="/inspecciones" style={{ color: "#4db8ff" }}>Volver</Link>
+        </div>
+      </Menu>
     );
   }
 
   return (
-    <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff" }}>
-      <h1>Inspección #{inspeccion.id}</h1>
+    <Menu>
+      <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff" }}>
+        <h1 style={{ color: "#4db8ff", marginBottom: "15px" }}>Inspección #{inspeccion.id}</h1>
 
-      <p style={{ marginTop: "15px" }}>
-        <strong>Fecha:</strong> {formatearFecha(inspeccion.fecha)}
-      </p>
+        <p style={{ marginTop: "15px", opacity: 0.9 }}>
+          <strong>Fecha:</strong> {formatearFecha(inspeccion.fecha)}
+        </p>
 
-      <p>
-        <strong>Estado:</strong> {inspeccion.estado || "Pendiente"}
-      </p>
+        <p style={{ opacity: 0.9 }}>
+          <strong>Estado:</strong> {inspeccion.estado || "Pendiente"}
+        </p>
 
-      <h3>Notas</h3>
-      <p>{inspeccion.notas || "Sin notas"}</p>
+        <h3 style={{ marginTop: "20px", color: "#ffd700" }}>Notas</h3>
+        <p style={{ opacity: 0.8, marginBottom: "20px" }}>{inspeccion.notas || "Sin notas"}</p>
 
-      <div style={{ marginTop: "20px" }}>
-        <Link
-          to={`/inspecciones/${id}/checklist`}
-          style={{ color: "#4db8ff", marginRight: "10px" }}
+        <div style={{ display: "flex", gap: "15px", flexWrap: "wrap", marginTop: "20px" }}>
+          <Link
+            to={`/inspecciones/checklist/${id}`}
+            style={{ color: "#4db8ff", fontWeight: "bold", textDecoration: "none" }}
+          >
+            📋 Ir al Checklist
+          </Link>
+
+          <Link
+            to={`/inspecciones/fotos/${id}`}
+            style={{ color: "#4db8ff", fontWeight: "bold", textDecoration: "none" }}
+          >
+            🖼️ Ver Galería de Fotos
+          </Link>
+
+          <Link
+            to={`/inspecciones/pdf/${id}`}
+            style={{ color: "#4db8ff", fontWeight: "bold", textDecoration: "none" }}
+          >
+            📄 Ver PDF
+          </Link>
+        </div>
+
+        <button
+          onClick={eliminarInspeccion}
+          style={{
+            marginTop: "30px",
+            padding: "14px",
+            width: "100%",
+            background: "#e74c3c",
+            color: "#fff",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "17px",
+            cursor: "pointer",
+          }}
         >
-          Ver Checklist
-        </Link>
+          Eliminar inspección
+        </button>
 
-        <Link
-          to={`/inspecciones/firma/${id}`}
-          style={{ color: "#4db8ff", marginRight: "10px" }}
+        <button
+          onClick={() => navigate("/inspecciones")}
+          style={{
+            marginTop: "12px",
+            padding: "14px",
+            width: "100%",
+            background: "transparent",
+            color: "#4db8ff",
+            borderRadius: "10px",
+            border: "1px solid #4db8ff",
+            fontWeight: "700",
+            fontSize: "15px",
+            cursor: "pointer",
+          }}
         >
-          Firmar
-        </Link>
-
-        <Link
-          to={`/inspecciones/pdf/${id}`}
-          style={{ color: "#4db8ff" }}
-        >
-          Ver PDF
-        </Link>
+          ← Volver al listado
+        </button>
       </div>
-
-      <button
-        onClick={eliminarInspeccion}
-        style={{
-          marginTop: "20px",
-          padding: "14px",
-          width: "100%",
-          background: "red",
-          color: "#fff",
-          borderRadius: "10px",
-          border: "none",
-          fontWeight: "700",
-          fontSize: "17px",
-          cursor: "pointer",
-        }}
-      >
-        Eliminar inspección
-      </button>
-    </div>
+    </Menu>
   );
 }
