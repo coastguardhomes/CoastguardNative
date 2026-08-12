@@ -1,272 +1,130 @@
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { useParams, useNavigate } from "react-router-dom";
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { useParams, useNavigate, Link } from "react-router-dom";
 
-export default function Checklist() {
+export default function AdminDetalleInspeccion() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [inspeccion, setInspeccion] = useState(null);
-  const [items, setItems] = useState([]);
+  const [tecnico, setTecnico] = useState(null);
+  const [vivienda, setVivienda] = useState(null);
+  const [cliente, setCliente] = useState(null);
+  const [checklist, setChecklist] = useState([]);
+  const [fotos, setFotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
-  const [observaciones, setObservaciones] = useState("");
-  const [guardando, setGuardando] = useState(false);
+  const [procesando, setProcesando] = useState(false);
 
-  // Cargar inspección
   useEffect(() => {
-    async function cargarInspeccion() {
-      const { data } = await supabase
-        .from("inspecciones")
-        .select("*")
-        .eq("id", id)
+    cargarDatosInspeccion();
+  }, [id]);
+
+  async function cargarDatosInspeccion() {
+    setLoading(true);
+
+    // 1️⃣ Cargar inspección
+    const { data: insp, error } = await supabase
+      .from("inspecciones")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !insp) {
+      setMensaje("No se pudo cargar la inspección.");
+      setLoading(false);
+      return;
+    }
+    setInspeccion(insp);
+
+    // 2️⃣ Cargar técnico asignado
+    if (insp.tecnico_id) {
+      const { data: tec } = await supabase
+        .from("tecnicos")
+        .select("nombre, telefono, email")
+        .eq("id", insp.tecnico_id)
+        .single();
+      setTecnico(tec || null);
+    }
+
+    // 3️⃣ Cargar vivienda
+    if (insp.vivienda_id) {
+      const { data: viv } = await supabase
+        .from("viviendas")
+        .select("direccion, ciudad")
+        .eq("id", insp.vivienda_id)
+        .single();
+      setVivienda(viv || null);
+    }
+
+    // 4️⃣ Cargar cliente (vía contrato o directo)
+    if (insp.contrato_id) {
+      const { data: contrato } = await supabase
+        .from("contratos")
+        .select("cliente_id")
+        .eq("id", insp.contrato_id)
         .single();
 
-      if (data) {
-        setInspeccion(data);
-        if (data.observaciones) setObservaciones(data.observaciones);
+      if (contrato?.cliente_id) {
+        const { data: cli } = await supabase
+          .from("clientes")
+          .select("nombre, telefono, email")
+          .eq("id", contrato.cliente_id)
+          .single();
+        setCliente(cli || null);
       }
+    } else if (insp.cliente_id) {
+      const { data: cli } = await supabase
+        .from("clientes")
+        .select("nombre, telefono, email")
+        .eq("id", insp.cliente_id)
+        .single();
+      setCliente(cli || null);
     }
 
-    cargarInspeccion();
-  }, [id]);
-
-  // Cargar checklist asegurando la plantilla completa
-  useEffect(() => {
-    async function cargarChecklist() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("checklist_inspeccion")
-        .select("*")
-        .eq("inspeccion_id", id);
-
-      if (error) {
-        setMensaje("Error cargando checklist de Supabase");
-        setLoading(false);
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        const plantilla = [
-          "Puerta principal cerrada correctamente",
-          "Cerraduras sin daños",
-          "Ventanas cerradas",
-          "Persianas bajadas o en posición correcta",
-          "Rejas sin daños",
-          "Comprobación de alarma (si existe)",
-          "Comprobación de sensores de movimiento",
-          "Comprobación de llaves en su lugar",
-          "Accesos exteriores revisados (puertas jardín, trastero, garaje)",
-          "Ausencia de humedades en paredes",
-          "Ausencia de humedades en techos",
-          "Ausencia de manchas nuevas",
-          "Ausencia de filtraciones en ventanas",
-          "Ausencia de filtraciones en puertas",
-          "Ausencia de filtraciones en terraza",
-          "Ausencia de filtraciones en sótano",
-          "Ausencia de condensación en cristales",
-          "Ausencia de olores a humedad",
-          "Cuadro eléctrico sin disparos",
-          "Luces funcionando correctamente",
-          "Interruptores sin daños",
-          "Enchufes sin quemaduras",
-          "Electrodomésticos con corriente",
-          "Aire acondicionado funcionando",
-          "Calefacción funcionando",
-          "Ausencia de chispazos o ruidos eléctricos",
-          "Grifos funcionando",
-          "Presión correcta",
-          "Ausencia de fugas visibles",
-          "Ausencia de fugas en baños",
-          "Ausencia de fugas en cocina",
-          "Ausencia de fugas en calentador",
-          "Cisterna funcionando",
-          "Agua caliente funcionando",
-          "Ausencia de malos olores en desagües",
-          "Ausencia de polvo excesivo",
-          "Ausencia de suciedad en suelos",
-          "Ausencia de basura",
-          "Ausencia de objetos fuera de lugar",
-          "Ausencia de insectos muertos",
-          "Ausencia de manchas nuevas",
-          "Ausencia de roturas visibles",
-          "Ausencia de cristales rotos",
-          "Ausencia de daños en mobiliario",
-          "Estado general del jardín",
-          "Ramas caídas",
-          "Objetos movidos por viento",
-          "Mobiliario exterior en su sitio",
-          "Ausencia de daños en vallas",
-          "Ausencia de daños en puertas exteriores",
-          "Ausencia de daños en pérgolas",
-          "Ausencia de daños en toldos",
-          "Nivel de agua correcto",
-          "Agua sin turbidez",
-          "Bomba funcionando",
-          "Skimmer limpio",
-          "Ausencia de objetos en piscina",
-          "Ausencia de fugas visibles",
-          "Tapa del motor cerrada",
-          "Cuadro eléctrico de piscina sin disparos",
-          "Ausencia de hormigas",
-          "Ausencia de cucarachas",
-          "Ausencia de roedores",
-          "Ausencia de nidos de insectos",
-          "Ausencia de excrementos de animales",
-          "Ausencia de mosquitos acumulados",
-          "Ausencia de telarañas excesivas",
-          "Ausencia de grietas nuevas",
-          "Ausencia de pintura levantada",
-          "Ausencia de baldosas sueltas",
-          "Ausencia de puertas descolgadas",
-          "Ausencia de muebles rotos",
-          "Ausencia de fugas en electrodomésticos",
-          "Ausencia de daños por tormenta",
-          "Ausencia de daños por viento",
-          "Aire acondicionado funcionando",
-          "Agua caliente funcionando",
-          "Limpieza ligera correcta",
-          "Baño revisado",
-          "Cocina revisada",
-          "Camas revisadas",
-          "Terraza revisada",
-          "Fotos finales tomadas"
-        ];
-
-        const nuevosItems = plantilla.map((texto) => ({
-          inspeccion_id: id,
-          item: texto,
-          completado: false,
-        }));
-
-        const { error: insertError } = await supabase.from("checklist_inspeccion").insert(nuevosItems);
-        
-        if (insertError) {
-          setMensaje("Error al inicializar la plantilla de ítems.");
-          setLoading(false);
-          return;
-        }
-
-        const { data: dataFinal } = await supabase
-          .from("checklist_inspeccion")
-          .select("*")
-          .eq("inspeccion_id", id);
-
-        setItems(dataFinal || []);
-      } else {
-        setItems(data);
-      }
-
-      setLoading(false);
-    }
-
-    cargarChecklist();
-  }, [id]);
-
-  // Actualizar OK/KO
-  async function actualizarItem(itemId, completado) {
-    setItems((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, completado } : i))
-    );
-
-    await supabase
+    // 5️⃣ Cargar checklist del técnico
+    const { data: chk } = await supabase
       .from("checklist_inspeccion")
-      .update({ completado })
-      .eq("id", itemId);
+      .select("*")
+      .eq("inspeccion_id", id);
+    setChecklist(chk || []);
+
+    // 6️⃣ Cargar fotos de la inspección
+    const { data: fts } = await supabase
+      .from("fotos_inspeccion")
+      .select("*")
+      .eq("inspeccion_id", id);
+    setFotos(fts || []);
+
+    setLoading(false);
   }
 
-  // Procesar y subir imagen a Supabase Storage
-  async function procesarYSubirImagen(base64String) {
-    try {
-      setMensaje("Subiendo foto...");
-      const base64 = `data:image/jpeg;base64,${base64String}`;
-      const blob = await (await fetch(base64)).blob();
-      const nombreArchivo = `checklist_${id}_${Date.now()}.jpg`;
-
-      const { error: storageError } = await supabase.storage
-        .from("fotos")
-        .upload(nombreArchivo, blob, { contentType: "image/jpeg" });
-
-      if (storageError) {
-        setMensaje("Error al subir archivo al storage");
-        return;
-      }
-
-      const { data: urlData } = supabase.storage
-        .from("fotos")
-        .getPublicUrl(nombreArchivo);
-
-      await supabase.from("fotos_inspeccion").insert({
-        inspeccion_id: id,
-        archivo: nombreArchivo,
-        url: urlData.publicUrl,
-        principal: false,
-        tipo: "checklist",
-      });
-
-      setMensaje("¡Foto guardada correctamente!");
-      setTimeout(() => setMensaje(""), 3000);
-    } catch (e) {
-      setMensaje("Error procesando la imagen");
-    }
-  }
-
-  // Tomar foto con la Cámara
-  async function tomarFoto() {
-    try {
-      const image = await Camera.getPhoto({
-        quality: 75,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Camera,
-      });
-      if (image.base64String) {
-        await procesarYSubirImagen(image.base64String);
-      }
-    } catch (e) {
-      setMensaje("Cámara cancelada o no disponible");
-    }
-  }
-
-  // Seleccionar foto de la Galería
-  async function seleccionarDeGaleria() {
-    try {
-      const image = await Camera.getPhoto({
-        quality: 75,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Photos,
-      });
-      if (image.base64String) {
-        await procesarYSubirImagen(image.base64String);
-      }
-    } catch (e) {
-      setMensaje("Galería cancelada o no disponible");
-    }
-  }
-
-  // Guardar checklist completo
-  async function guardarChecklistCompleto() {
-    setGuardando(true);
+  // ⭐ ACCIÓN DEL ADMIN: Aprobar trabajo del técnico
+  async function aprobarInspeccionAdmin() {
+    setProcesando(true);
     setMensaje("");
 
-    const todoOk = items.length > 0 && items.every((i) => i.completado === true);
-
-    await supabase
+    const { error } = await supabase
       .from("inspecciones")
       .update({
-        observaciones,
-        checklist_completado: todoOk,
-        fecha_checklist: new Date().toISOString(),
-        estado: todoOk ? "checklist_completado" : "checklist_incompleto",
+        estado: "completada_admin",
+        fecha_aprobacion_admin: new Date().toISOString(),
       })
       .eq("id", id);
 
-    navigate(`/inspecciones/fotos/${id}`);
-    setGuardando(false);
+    if (error) {
+      setMensaje("Error al aprobar la inspección: " + error.message);
+      setProcesando(false);
+      return;
+    }
+
+    setMensaje("¡Inspección aprobada con éxito! Lista para el cliente.");
+    setProcesando(false);
+    cargarDatosInspeccion();
   }
 
-  if (loading || !inspeccion) {
+  if (loading) {
     return (
       <Menu>
         <div
@@ -277,10 +135,11 @@ export default function Checklist() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
+            fontFamily: "Inter, sans-serif",
             fontSize: "18px",
           }}
         >
-          Cargando checklist completo...
+          Cargando revisión del administrador...
         </div>
       </Menu>
     );
@@ -294,214 +153,268 @@ export default function Checklist() {
           background: "#0a0f1a",
           minHeight: "100vh",
           color: "#fff",
+          fontFamily: "Inter, sans-serif",
         }}
       >
         <h1
           style={{
             color: "#4db8ff",
-            marginBottom: "15px",
+            marginBottom: "20px",
             fontSize: "26px",
             fontWeight: "700",
+            textAlign: "center",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          Checklist de Inspección ({items.length} puntos)
+          Revisión Admin — Inspección #{inspeccion.id}
         </h1>
 
         {mensaje && (
-          <div style={{ marginBottom: "15px", padding: "10px", background: "rgba(77,184,255,0.1)", border: "1px solid #4db8ff", borderRadius: "8px", color: "#4db8ff", fontWeight: "600" }}>
+          <div
+            style={{
+              marginBottom: "20px",
+              padding: "12px",
+              background: mensaje.includes("éxito")
+                ? "rgba(74, 222, 128, 0.15)"
+                : "rgba(255, 107, 107, 0.15)",
+              border: `1px solid ${mensaje.includes("éxito") ? "#4ade80" : "#ff6b6b"}`,
+              borderRadius: "10px",
+              color: mensaje.includes("éxito") ? "#4ade80" : "#ff6b6b",
+              fontWeight: "600",
+              textAlign: "center",
+            }}
+          >
             {mensaje}
           </div>
         )}
 
-        {/* BOTONES MULTIMEDIA SUPERIORES */}
-        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+        {/* ESTADO ACTUAL Y BOTÓN DE APROBACIÓN */}
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "14px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            marginBottom: "25px",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          }}
+        >
+          <p style={{ fontSize: "16px", marginBottom: "10px" }}>
+            <strong style={{ color: "#4db8ff" }}>Estado del Proceso:</strong>{" "}
+            <span
+              style={{
+                padding: "4px 10px",
+                borderRadius: "6px",
+                background:
+                  inspeccion.estado === "completada_admin"
+                    ? "#4ade80"
+                    : "#ffcc00",
+                color: "#000",
+                fontWeight: "700",
+                fontSize: "14px",
+              }}
+            >
+              {inspeccion.estado}
+            </span>
+          </p>
+
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Técnico a cargo:</strong>{" "}
+            {tecnico ? `${tecnico.nombre} (${tecnico.telefono || tecno.email})` : "Sin asignar"}
+          </p>
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Vivienda:</strong>{" "}
+            {vivienda ? `${vivienda.direccion}, ${vivienda.ciudad}` : "No especificada"}
+          </p>
+          <p>
+            <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
+            {cliente ? `${cliente.nombre} (${cliente.telefono || cliente.email})` : "Sin cliente asociado"}
+          </p>
+
+          <div style={{ marginTop: "15px" }}>
+            <strong style={{ color: "#4db8ff" }}>Notas del técnico:</strong>
+            <p
+              style={{
+                marginTop: "5px",
+                padding: "10px",
+                background: "rgba(0,0,0,0.3)",
+                borderRadius: "8px",
+                fontStyle: "italic",
+              }}
+            >
+              {inspeccion.notas_tecnico || "El técnico no dejó notas adicionales."}
+            </p>
+          </div>
+
+          {/* BOTÓN DE VALIDACIÓN DE ADMIN */}
+          {inspeccion.estado !== "completada_admin" ? (
+            <button
+              onClick={aprobarInspeccionAdmin}
+              disabled={procesando}
+              style={{
+                marginTop: "20px",
+                padding: "14px",
+                width: "100%",
+                background: "#4ade80",
+                color: "#000",
+                borderRadius: "10px",
+                border: "none",
+                fontWeight: "700",
+                fontSize: "17px",
+                cursor: procesando ? "not-allowed" : "pointer",
+                boxShadow: "0 0 10px rgba(74,222,128,0.4)",
+              }}
+            >
+              {procesando ? "Aprobando..." : "✅ Aprobar trabajo y habilitar para cliente"}
+            </button>
+          ) : (
+            <div
+              style={{
+                marginTop: "20px",
+                padding: "12px",
+                background: "rgba(74, 222, 128, 0.2)",
+                border: "1px solid #4ade80",
+                borderRadius: "10px",
+                textAlign: "center",
+                color: "#4ade80",
+                fontWeight: "700",
+              }}
+            >
+              ✔ Inspección aprobada por el administrador.
+            </div>
+          )}
+        </div>
+
+        {/* CHECKLIST REALIZADO POR EL TÉCNICO */}
+        <div style={{ marginBottom: "25px" }}>
+          <h2 style={{ color: "#4db8ff", fontSize: "20px", marginBottom: "12px" }}>
+            Checklist Realizado ({checklist.length} puntos)
+          </h2>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              padding: "15px",
+              borderRadius: "12px",
+              border: "1px solid rgba(255,255,255,0.08)",
+              maxHeight: "300px",
+              overflowY: "auto",
+            }}
+          >
+            {checklist.length === 0 ? (
+              <p style={{ opacity: 0.7 }}>No hay elementos en el checklist.</p>
+            ) : (
+              checklist.map((item, index) => (
+                <div
+                  key={item.id || index}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "8px 0",
+                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <span style={{ fontSize: "14px" }}>
+                    {index + 1}. {item.item || item.pregunta}
+                  </span>
+                  <span
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      background:
+                        item.estado === "ok" || item.completado === true
+                          ? "#2ecc71"
+                          : "#e74c3c",
+                      color: "#fff",
+                    }}
+                  >
+                    {item.estado ? item.estado.toUpperCase() : item.completado ? "OK" : "KO"}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* FOTOS SUBIDAS POR EL TÉCNICO */}
+        <div style={{ marginBottom: "25px" }}>
+          <h2 style={{ color: "#4db8ff", fontSize: "20px", marginBottom: "12px" }}>
+            Evidencias Fotográficas ({fotos.length})
+          </h2>
+          {fotos.length === 0 ? (
+            <p style={{ opacity: 0.7 }}>No hay fotos registradas.</p>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                gap: "10px",
+              }}
+            >
+              {fotos.map((foto) => (
+                <div
+                  key={foto.id}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    padding: "8px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <img
+                    src={foto.url}
+                    alt="Evidencia"
+                    style={{
+                      width: "100%",
+                      height: "120px",
+                      objectFit: "cover",
+                      borderRadius: "8px",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ACCIONES DE CIERRE / PDF / CLIENTE */}
+        <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
           <button
-            onClick={tomarFoto}
+            onClick={() => navigate(`/inspecciones/pdf/${id}`)}
             style={{
               flex: 1,
-              padding: "12px",
+              padding: "14px",
               background: "#4db8ff",
               color: "#000",
               borderRadius: "10px",
               border: "none",
               fontWeight: "700",
-              fontSize: "15px",
+              fontSize: "16px",
               cursor: "pointer",
             }}
           >
-            📸 Hacer Foto
+            📄 Generar / Ver PDF
           </button>
+
           <button
-            onClick={seleccionarDeGaleria}
+            onClick={() => navigate("/inspecciones")}
             style={{
               flex: 1,
-              padding: "12px",
-              background: "#2ecc71",
-              color: "#000",
+              padding: "14px",
+              background: "rgba(255,255,255,0.08)",
+              color: "#fff",
               borderRadius: "10px",
-              border: "none",
+              border: "1px solid rgba(255,255,255,0.2)",
               fontWeight: "700",
-              fontSize: "15px",
+              fontSize: "16px",
               cursor: "pointer",
             }}
           >
-            🖼️ Galería
+            Volver al listado
           </button>
         </div>
-
-        {items.map((item, index) => (
-          <div
-            key={item.id || index}
-            style={{
-              marginBottom: "15px",
-              background: "rgba(255,255,255,0.05)",
-              padding: "16px",
-              borderRadius: "14px",
-              border: "1px solid rgba(255,255,255,0.1)",
-            }}
-          >
-            <p style={{ marginBottom: "10px", fontSize: "16px", fontWeight: "600" }}>
-              {index + 1}. {item.item}
-            </p>
-
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button
-                onClick={() => actualizarItem(item.id, true)}
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  background: item.completado ? "#2ecc71" : "rgba(255,255,255,0.08)",
-                  color: "#fff",
-                  borderRadius: "8px",
-                  border: "none",
-                  fontWeight: "700",
-                  cursor: "pointer",
-                }}
-              >
-                ✓ OK
-              </button>
-
-              <button
-                onClick={() => actualizarItem(item.id, false)}
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  background: !item.completado && item.completado !== null ? "#e74c3c" : "rgba(255,215,0,0.15)",
-                  color: "#fff",
-                  borderRadius: "8px",
-                  border: "none",
-                  fontWeight: "700",
-                  cursor: "pointer",
-                }}
-              >
-                ✗ Pendiente / KO
-              </button>
-            </div>
-          </div>
-        ))}
-
-        <textarea
-          placeholder="Observaciones de la inspección..."
-          value={observaciones}
-          onChange={(e) => setObservaciones(e.target.value)}
-          style={{
-            width: "100%",
-            minHeight: "120px",
-            marginTop: "15px",
-            padding: "12px",
-            borderRadius: "10px",
-            background: "rgba(255,255,255,0.06)",
-            color: "#fff",
-            border: "1px solid rgba(255,255,255,0.18)",
-            fontSize: "15px",
-          }}
-        />
-
-        <button
-          onClick={guardarChecklistCompleto}
-          disabled={guardando}
-          style={{
-            marginTop: "15px",
-            padding: "14px",
-            width: "100%",
-            background: "#4db8ff",
-            color: "#000",
-            borderRadius: "10px",
-            border: "none",
-            fontWeight: "700",
-            fontSize: "17px",
-            cursor: "pointer",
-            opacity: guardando ? 0.6 : 1,
-          }}
-        >
-          {guardando ? "Guardando..." : "Guardar checklist completo"}
-        </button>
-
-        <h2
-          style={{
-            marginTop: "30px",
-            color: "#4db8ff",
-            fontSize: "22px",
-            fontWeight: "700",
-          }}
-        >
-          Acciones de Cierre
-        </h2>
-
-        <button
-          onClick={() => navigate(`/inspecciones/fotos/${id}`)}
-          style={{
-            marginTop: "10px",
-            padding: "14px",
-            width: "100%",
-            background: "rgba(255,255,255,0.08)",
-            color: "#fff",
-            borderRadius: "10px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            fontWeight: "700",
-            fontSize: "16px",
-            cursor: "pointer",
-          }}
-        >
-          Ver Gestor de Fotos
-        </button>
-
-        <button
-          onClick={() => navigate(`/inspecciones/firma/${id}`)}
-          style={{
-            marginTop: "10px",
-            padding: "14px",
-            width: "100%",
-            background: "rgba(255,255,255,0.08)",
-            color: "#fff",
-            borderRadius: "10px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            fontWeight: "700",
-            fontSize: "16px",
-            cursor: "pointer",
-          }}
-        >
-          Firma del cliente
-        </button>
-
-        <button
-          onClick={() => navigate(`/inspecciones/pdf/${id}`)}
-          style={{
-            marginTop: "10px",
-            padding: "14px",
-            width: "100%",
-            background: "rgba(255,255,255,0.08)",
-            color: "#fff",
-            borderRadius: "10px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            fontWeight: "700",
-            fontSize: "16px",
-            cursor: "pointer",
-            marginBottom: "30px",
-          }}
-        >
-          Generar PDF
-        </button>
       </div>
     </Menu>
   );
