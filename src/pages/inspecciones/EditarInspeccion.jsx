@@ -25,12 +25,18 @@ export default function EditarInspeccion() {
         .eq("id", id)
         .single();
 
-      if (error) {
+      if (error || !data) {
         setMensaje("Error cargando inspección");
         return;
       }
 
-      setForm(data);
+      setForm({
+        vivienda_id: data.vivienda_id || "",
+        tecnico_id: data.tecnico_id || "",
+        fecha: data.fecha ? String(data.fecha).slice(0, 10) : "",
+        estado: data.estado || "",
+        notas: data.notas || "",
+      });
     }
 
     cargarInspeccion();
@@ -95,7 +101,7 @@ export default function EditarInspeccion() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          <label>ID Vivienda</label>
+          <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: "#9fb3c8" }}>ID Vivienda</label>
           <input
             value={form.vivienda_id}
             onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
@@ -110,7 +116,7 @@ export default function EditarInspeccion() {
             }}
           />
 
-          <label>ID Técnico</label>
+          <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: "#9fb3c8" }}>ID Técnico</label>
           <input
             value={form.tecnico_id}
             onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
@@ -125,7 +131,7 @@ export default function EditarInspeccion() {
             }}
           />
 
-          <label>Fecha</label>
+          <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: "#9fb3c8" }}>Fecha</label>
           <input
             type="date"
             value={form.fecha}
@@ -141,7 +147,7 @@ export default function EditarInspeccion() {
             }}
           />
 
-          <label>Estado</label>
+          <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: "#9fb3c8" }}>Estado</label>
           <input
             value={form.estado}
             onChange={(e) => setForm({ ...form, estado: e.target.value })}
@@ -156,7 +162,7 @@ export default function EditarInspeccion() {
             }}
           />
 
-          <label>Notas</label>
+          <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: "#9fb3c8" }}>Notas</label>
           <textarea
             value={form.notas}
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
