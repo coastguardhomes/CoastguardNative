@@ -14,23 +14,21 @@ export default function FotosInspeccion() {
   const [fotoGrande, setFotoGrande] = useState(null);
 
   useEffect(() => {
-    cargarTodasLasFotos();
+    cargarFotosInspeccion();
   }, [id]);
 
-  async function cargarTodasLasFotos() {
+  async function cargarFotosInspeccion() {
     setLoading(true);
 
-    // TRUCO: Traemos TODAS las fotos de la tabla sin filtrar por ID para comprobar si se muestran
+    // 🔥 Filtrado estricto por el ID de la inspección actual
     const { data, error } = await supabase
       .from("fotos_inspeccion")
       .select("*")
+      .eq("inspeccion_id", String(id))
       .order("id", { ascending: false });
 
-    console.log("Todas las fotos en la tabla:", data);
-    console.log("Error si lo hay:", error);
-
     if (error) {
-      setMensaje("Error: " + error.message);
+      setMensaje("Error cargando fotos: " + error.message);
       setLoading(false);
       return;
     }
@@ -53,26 +51,38 @@ export default function FotosInspeccion() {
       const blob = await (await fetch(base64)).blob();
       const nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
 
-      await supabase.storage.from("fotos").upload(nombreArchivo, blob, {
+      const { error: storageError } = await supabase.storage.from("fotos").upload(nombreArchivo, blob, {
         contentType: "image/jpeg",
+        upsert: true,
       });
+
+      if (storageError) {
+        setMensaje("Error al subir a storage: " + storageError.message);
+        return;
+      }
 
       const { data: urlData } = supabase.storage
         .from("fotos")
         .getPublicUrl(nombreArchivo);
 
-      await supabase.from("fotos_inspeccion").insert([
+      const { error: insertError } = await supabase.from("fotos_inspeccion").insert([
         {
           inspeccion_id: String(id),
           archivo: nombreArchivo,
           url: urlData.publicUrl,
           principal: false,
+          tipo: "inspeccion",
         },
       ]);
 
-      setMensaje("¡Foto subida con éxito!");
+      if (insertError) {
+        setMensaje("Error guardando registro: " + insertError.message);
+        return;
+      }
+
+      setMensaje("¡Foto subida con éxito! ✔");
       setTimeout(() => setMensaje(""), 3000);
-      cargarTodasLasFotos();
+      cargarFotosInspeccion();
     } catch (e) {
       console.error(e);
       setMensaje("Cámara cancelada o con error.");
@@ -80,20 +90,24 @@ export default function FotosInspeccion() {
   }
 
   async function borrarFoto(foto) {
-    await supabase.from("fotos_inspeccion").delete().eq("id", foto.id);
-    cargarTodasLasFotos();
+    const { error } = await supabase.from("fotos_inspeccion").delete().eq("id", foto.id);
+    if (error) {
+      setMensaje("Error al eliminar foto");
+      return;
+    }
+    cargarFotosInspeccion();
   }
 
   async function marcarPrincipal(foto) {
     await supabase.from("fotos_inspeccion").update({ principal: false }).eq("inspeccion_id", String(id));
     await supabase.from("fotos_inspeccion").update({ principal: true }).eq("id", foto.id);
-    cargarTodasLasFotos();
+    cargarFotosInspeccion();
   }
 
   return (
     <Menu>
       <div style={contenedor}>
-        <h1 style={titulo}>Galería de Fotos (Modo Diagnóstico)</h1>
+        <h1 style={titulo}>Galería de Fotos de la Inspección</h1>
 
         {mensaje && <p style={mensajeEstilo}>{mensaje}</p>}
 
@@ -111,9 +125,9 @@ export default function FotosInspeccion() {
         )}
 
         {loading ? (
-          <p style={{ textAlign: "center" }}>Cargando...</p>
+          <p style={{ textAlign: "center" }}>Cargando fotos...</p>
         ) : fotos.length === 0 ? (
-          <p style={vacioEstilo}>La tabla fotos_inspeccion está completamente vacía.</p>
+          <p style={vacioEstilo}>No hay fotos registradas para esta inspección todavía.</p>
         ) : (
           <div style={grid}>
             {fotos.map((foto) => (
@@ -132,9 +146,6 @@ export default function FotosInspeccion() {
                   }}
                   onClick={() => setFotoGrande(foto)}
                 />
-                <p style={{ fontSize: "11px", color: "#aaa", marginBottom: "5px" }}>
-                  Inspección ID: {foto.inspeccion_id}
-                </p>
                 <button
                   onClick={() => marcarPrincipal(foto)}
                   style={{ ...boton, background: foto.principal ? "#4ade80" : "#4db8ff" }}
@@ -150,10 +161,10 @@ export default function FotosInspeccion() {
         )}
 
         <button onClick={() => navigate(`/inspecciones/firma/${id}`)} style={botonContinuar}>
-          Continuar a firma
+          Continuar a firma ➔
         </button>
 
-        <button onClick={() => navigate(`/inspecciones/detalle/${id}`)} style={botonVolver}>
+        <button onClick={() => navigate(`/inspecciones/${id}`)} style={botonVolver}>
           Volver a la inspección
         </button>
       </div>
