@@ -154,12 +154,33 @@ export default function GaleriaInspeccion() {
     }
   }
 
-  function continuarAFirma() {
+  // 🔥 Finalizar y enviar al administrador
+  async function finalizarYEnviarRevision() {
     if (fotos.length === 0) {
-      setMensaje("Debes subir al menos una foto antes de continuar.");
+      setMensaje("Debes subir al menos una foto antes de finalizar.");
       return;
     }
-    navigate(`/inspecciones/firma/${id}`);
+
+    setLoading(true);
+    setMensaje("");
+
+    const { error } = await supabase
+      .from("inspecciones")
+      .update({
+        estado: "pendiente_revision",
+      })
+      .eq("id", id);
+
+    if (error) {
+      setMensaje("Error al enviar a revisión: " + error.message);
+      setLoading(false);
+      return;
+    }
+
+    setMensaje("¡Inspección enviada al administrador correctamente!");
+    setTimeout(() => {
+      navigate("/tecnico");
+    }, 1500);
   }
 
   useEffect(() => {
@@ -194,7 +215,7 @@ export default function GaleriaInspeccion() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: mensaje.includes("correctamente") ? "#4ade80" : "#4db8ff",
               fontWeight: "600",
               textAlign: "center",
             }}
@@ -347,9 +368,9 @@ export default function GaleriaInspeccion() {
           </div>
         )}
 
-        {/* 🔥 Botón Continuar a Firma */}
+        {/* 🔥 Botón Enviar al Administrador */}
         <button
-          onClick={continuarAFirma}
+          onClick={finalizarYEnviarRevision}
           style={{
             marginTop: "30px",
             padding: "14px",
@@ -364,7 +385,7 @@ export default function GaleriaInspeccion() {
             boxShadow: "0 0 10px rgba(74,222,128,0.4)",
           }}
         >
-          Continuar a firma
+          Finalizar y enviar al administrador
         </button>
 
         {/* 🔥 Botón volver */}
