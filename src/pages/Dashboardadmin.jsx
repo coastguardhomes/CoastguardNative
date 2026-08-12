@@ -14,14 +14,16 @@ const TARJETAS = [
 
 export default function AdminDashboard() {
   const [conteos, setConteos] = useState({});
+  const [datosGrafica, setDatosGrafica] = useState([0, 0, 0, 0, 0, 0, 0]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
     let cancelado = false;
 
-    async function cargar() {
+    async function cargarDatos() {
       const resultado = {};
 
+      // 1. Cargar conteos de tarjetas
       await Promise.all(
         TARJETAS.map(async ({ clave }) => {
           const { count, error } = await supabase
@@ -31,17 +33,55 @@ export default function AdminDashboard() {
         })
       );
 
+      // 2. Cargar inspecciones reales para la gráfica de la semana (Lunes a Domingo)
+      // Buscamos las inspecciones y su fecha (asumiendo columna 'created_at' o 'fecha')
+      const { data: inspeccionesData, error: errorInsp } = await supabase
+        .from("inspecciones")
+        .select("created_at, fecha");
+
+      const conteoDias = [0, 0, 0, 0, 0, 0, 0]; // Lun, Mar, Mié, Jue, Vie, Sáb, Dom
+
+      if (!errorInsp && inspeccionesData) {
+        inspeccionesData.forEach((item) => {
+          const fechaStr = item.fecha || item.created_at;
+          if (fechaStr) {
+            const d = new Date(fechaStr);
+            let dia = d.getDay(); // 0 es Domingo, 1 es Lunes...
+            // Ajustar para que 0 sea Lunes y 6 sea Domingo
+            dia = dia === 0 ? 6 : dia - 1;
+            if (dia >= 0 && dia < 7) {
+              conteoDias[dia]++;
+            }
+          }
+        });
+      }
+
       if (!cancelado) {
         setConteos(resultado);
+        setDatosGrafica(conteoDias);
         setCargando(false);
       }
     }
 
-    cargar();
+    cargarDatos();
     return () => {
       cancelado = true;
     };
   }, []);
+
+  // Calcular el valor máximo para escalar la gráfica de forma dinámica (mínimo 10 para que luzca bien)
+  const maxValor = Math.max(10, ...datosGrafica);
+  const alturaSVG = 90;
+  const anchoSVG = 300;
+
+  // Mapear los puntos de los 7 días a coordenadas SVG exactas
+  const puntosCoordenadas = datosGrafica.map((valor, index) => {
+    const x = 35 + (index * (anchoSVG - 45)) / 6;
+    const y = alturaSVG - (valor / maxValor) * (alturaSVG - 15) - 10;
+    return { x, y, valor };
+  });
+
+  const stringPuntos = puntosCoordenadas.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
     <Menu>
@@ -169,7 +209,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Sección de Gráficas Estilo Panel Táctico (Inspirado en la referencia) */}
+        {/* Gráfica Real IDÉNTICA a la Referencia (Con Eje Numérico Izquierdo) */}
         <div
           style={{
             background: "linear-gradient(145deg, #0b1220 0%, #060913 100%)",
@@ -180,12 +220,13 @@ export default function AdminDashboard() {
             marginBottom: "20px",
           }}
         >
+          {/* Cabecera de la Gráfica */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: "12px",
+              marginBottom: "10px",
               borderBottom: "1px solid rgba(234, 179, 8, 0.2)",
               paddingBottom: "8px",
             }}
@@ -195,39 +236,96 @@ export default function AdminDashboard() {
                 fontSize: "12px",
                 fontWeight: "700",
                 color: "#eab308",
-                letterSpacing: "1px",
+                letterSpacing: "0.5px",
                 textTransform: "uppercase",
               }}
             >
-              🔍 Actividad Diaria
+              🔍 Inspecciones por Día
             </span>
             <span style={{ fontSize: "10px", color: "#94a3b8" }}>Semanal</span>
           </div>
 
-          {/* Gráfica de Líneas simulando la referencia */}
-          <div style={{ height: "100px", position: "relative", display: "flex", alignItems: "flex-end", paddingBottom: "15px" }}>
-            {/* Líneas horizontales de guía de fondo */}
-            <div style={{ position: "absolute", width: "100%", height: "1px", background: "rgba(234, 179, 8, 0.1)", top: "0%" }}></div>
-            <div style={{ position: "absolute", width: "100%", height: "1px", background: "rgba(234, 179, 8, 0.1)", top: "50%" }}></div>
-            <div style={{ position: "absolute", width: "100%", height: "1px", background: "rgba(234, 179, 8, 0.1)", top: "100%" }}></div>
+          <div style={{ display: "flex", position: "relative", height: "105px" }}>
+            {/* Eje Numérico Izquierdo (0, 3, 6, 10 estilo imagen de referencia) */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                fontSize: "9px",
+                color: "#64748b",
+                paddingRight: "6px",
+                textAlign: "right",
+                width: "16px",
+                height: "85px",
+              }}
+            >
+              <span>{maxValor}</span>
+              <span>{Math.round(maxValor * 0.66)}</span>
+              <span>{Math.round(maxValor * 0.33)}</span>
+              <span>0</span>
+            </div>
 
-            {/* Puntos y trazo simulado de la gráfica */}
-            <svg style={{ position: "absolute", width: "100%", height: "85px", overflow: "visible" }}>
-              <polyline
-                fill="none"
-                stroke="#eab308"
-                strokeWidth="2.5"
-                points="15,65 70,50 125,58 180,30 235,45 290,20 345,35"
-              />
-              {/* Puntos brillantes */}
-              {[[15, 65], [70, 50], [125, 58], [180, 30], [235, 45], [290, 20], [345, 35]].map(([cx, cy], idx) => (
-                <circle key={idx} cx={cx} cy={cy} r="3.5" fill="#eab308" stroke="#05080f" strokeWidth="1.5" />
-              ))}
-            </svg>
+            {/* Contenedor del Gráfico SVG */}
+            <div style={{ flex: 1, position: "relative", height: "90px" }}>
+              {/* Líneas de guía horizontales de fondo */}
+              <div style={{ position: "absolute", width: "100%", height: "1px", background: "rgba(234, 179, 8, 0.12)", top: "0%" }}></div>
+              <div style={{ position: "absolute", width: "100%", height: "1px", background: "rgba(234, 179, 8, 0.08)", top: "33%" }}></div>
+              <div style={{ position: "absolute", width: "100%", height: "1px", background: "rgba(234, 179, 8, 0.08)", top: "66%" }}></div>
+              <div style={{ position: "absolute", width: "100%", height: "1px", background: "rgba(234, 179, 8, 0.12)", top: "100%" }}></div>
+
+              <svg style={{ width: "100%", height: "95px", overflow: "visible" }} viewBox={`0 0 ${anchoSVG} ${alturaSVG}`}>
+                {/* Línea principal dorada */}
+                <polyline
+                  fill="none"
+                  stroke="#eab308"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points={stringPuntos}
+                />
+                {/* Puntos brillantes con sombra y valor flotante */}
+                {puntosCoordenadas.map((p, idx) => (
+                  <g key={idx}>
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r="4"
+                      fill="#eab308"
+                      stroke="#05080f"
+                      strokeWidth="1.5"
+                      style={{ filter: "drop-shadow(0 0 4px #eab308)" }}
+                    />
+                    {p.valor > 0 && (
+                      <text
+                        x={p.x}
+                        y={p.y - 8}
+                        fill="#eab308"
+                        fontSize="8"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {p.valor}
+                      </text>
+                    )}
+                  </g>
+                ))}
+              </svg>
+            </div>
           </div>
 
-          {/* Leyenda de días */}
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#64748b", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "6px" }}>
+          {/* Leyenda de Días */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "9px",
+              color: "#94a3b8",
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              paddingTop: "6px",
+              paddingLeft: "22px",
+            }}
+          >
             <span>Lun</span>
             <span>Mar</span>
             <span>Mié</span>
