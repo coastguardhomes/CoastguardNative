@@ -1,373 +1,271 @@
 import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import Menu from "../../layouts/Menu";
-import { useAuth } from "../../context/AuthContext.jsx";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
 export default function TecnicoFotos() {
-  const { id } = useParams(); // ID inspección
-  const { user } = useAuth();
+  const { id } = useParams();
   const navigate = useNavigate();
-
-  const [inspeccion, setInspeccion] = useState(null);
-  const [vivienda, setVivienda] = useState(null);
-  const [cliente, setCliente] = useState(null);
   const [fotos, setFotos] = useState([]);
-  const [mensaje, setMensaje] = useState("");
-  const [subiendo, setSubiendo] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [subiendo, setSubiendo] = useState(false);
 
   useEffect(() => {
-    cargarDatos();
+    cargarFotos();
   }, [id]);
 
-  async function cargarDatos() {
+  async function cargarFotos() {
     setLoading(true);
-
-    // 1️⃣ Validar técnico
-    const { data: tecnico } = await supabase
-      .from("tecnicos")
-      .select("id")
-      .eq("email", user.email)
-      .single();
-
-    if (!tecnico) {
-      setMensaje("No se pudo validar el técnico.");
-      setLoading(false);
-      return;
-    }
-
-    // 2️⃣ Cargar inspección
-    const { data: insp } = await supabase
-      .from("inspecciones")
+    const { data, error } = await supabase
+      .from("inspeccion_fotos")
       .select("*")
-      .eq("id", id)
-      .single();
+      .eq("inspeccion_id", id);
 
-    if (!insp) {
-      setMensaje("Inspección no encontrada.");
-      setLoading(false);
-      return;
+    if (error) {
+      console.error("Error al cargar fotos:", error);
+    } else {
+      setFotos(data || []);
     }
-
-    // 3️⃣ Validar que pertenece al técnico
-    if (insp.tecnico_id !== tecnico.id) {
-      setMensaje("No tienes permiso para ver estas fotos.");
-      setLoading(false);
-      return;
-    }
-
-    setInspeccion(insp);
-
-    // 4️⃣ Vivienda
-    const { data: viv } = await supabase
-      .from("viviendas")
-      .select("direccion, ciudad")
-      .eq("id", insp.vivienda_id)
-      .single();
-
-    setVivienda(viv || null);
-
-    // 5️⃣ Cliente
-    let clienteFinal = null;
-
-    if (insp.contrato_id) {
-      const { data: contrato } = await supabase
-        .from("contratos")
-        .select("cliente_id")
-        .eq("id", insp.contrato_id)
-        .single();
-
-      if (contrato?.cliente_id) {
-        const { data: cli } = await supabase
-          .from("clientes")
-          .select("nombre, telefono")
-          .eq("id", contrato.cliente_id)
-          .single();
-
-        clienteFinal = cli;
-      }
-    }
-
-    setCliente(clienteFinal);
-
-    // 6️⃣ Fotos
-    const { data: fotosData } = await supabase
-      .from("fotos_inspeccion")
-      .select("id, url")
-      .eq("inspeccion_id", id)
-      .order("id", { ascending: false });
-
-    setFotos(fotosData || []);
     setLoading(false);
   }
 
-  async function subirFoto(e) {
-    const archivo = e.target.files[0];
-    if (!archivo) return;
+  async function tomarFoto(sourceType) {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 80,
+        allowEditing: false,
+        resultType: CameraResultType.Base64,
+        source: sourceType, // CameraSource.Camera o CameraSource.Photos
+      });
 
-    setSubiendo(true);
-    setMensaje("");
+      setSubiendo(true);
 
-    const nombreArchivo = `inspeccion_${id}_${Date.now()}`;
+      const byteCharacters = atob(image.base64String);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: `image/${image.format}` });
 
-    // Subir a Storage
-    const { error: storageError } = await supabase.storage
-      .from("fotos")
-      .upload(nombreArchivo, archivo);
+      const fileName = `inspeccion_${id}_${Date.now()}.${image.format}`;
+      const filePath = `fotos/${fileName}`;
 
-    if (storageError) {
-      setMensaje("Error subiendo foto");
+      const { error: uploadError } = await supabase.storage
+        .from("inspecciones")
+        .upload(filePath, blob);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("inspecciones")
+        .getPublicUrl(filePath);
+
+      const { error: dbError } = await supabase.from("inspeccion_fotos").insert([
+        {
+          inspeccion_id: id,
+          foto_url: publicUrlData.publicUrl,
+        },
+      ]);
+
+      if (dbError) {
+        throw dbError;
+      }
+
+      cargarFotos();
+    } catch (error) {
+      console.error("Error al capturar/subir la foto:", error);
+    } finally {
       setSubiendo(false);
-      return;
     }
-
-    // URL pública
-    const urlPublica = supabase.storage
-      .from("fotos")
-      .getPublicUrl(nombreArchivo).data.publicUrl;
-
-    // Guardar en tabla
-    const { error: dbError } = await supabase
-      .from("fotos_inspeccion")
-      .insert([{ inspeccion_id: id, url: urlPublica }]);
-
-    if (dbError) {
-      setMensaje("Error guardando foto en la inspección");
-      setSubiendo(false);
-      return;
-    }
-
-    // Actualizar estado
-    await supabase
-      .from("inspecciones")
-      .update({
-        fecha_fotos: new Date().toISOString(),
-        estado: "fotos_completadas",
-      })
-      .eq("id", id);
-
-    setSubiendo(false);
-    cargarDatos();
   }
 
-  async function finalizarYEnviarRevision() {
-    setLoading(true);
-    setMensaje("");
-
+  async function eliminarFoto(fotoId) {
     const { error } = await supabase
-      .from("inspecciones")
-      .update({
-        estado: "pendiente_revision",
-      })
-      .eq("id", id);
+      .from("inspeccion_fotos")
+      .delete()
+      .eq("id", fotoId);
 
     if (error) {
-      setMensaje("Error al enviar a revisión: " + error.message);
-      setLoading(false);
-      return;
+      console.error("Error al eliminar foto:", error);
+    } else {
+      cargarFotos();
     }
-
-    setMensaje("¡Inspección enviada al administrador correctamente!");
-    setTimeout(() => {
-      navigate("/tecnico");
-    }, 1500);
-  }
-
-  if (loading || !inspeccion) {
-    return (
-      <Menu>
-        <div
-          style={{
-            height: "100vh",
-            background: "#0a0f1a",
-            color: "#fff",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            fontFamily: "Inter, sans-serif",
-            fontSize: "18px",
-          }}
-        >
-          Cargando fotos...
-        </div>
-      </Menu>
-    );
   }
 
   return (
-    <Menu>
-      <div
+    <div
+      style={{
+        padding: "20px",
+        background: "#0a0f1a",
+        minHeight: "100vh",
+        color: "#fff",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <h1
         style={{
-          padding: "20px",
-          background: "#0a0f1a",
-          minHeight: "100vh",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
+          fontSize: "24px",
+          fontWeight: "700",
+          marginBottom: "20px",
+          color: "#4db8ff",
+          textAlign: "center",
+          textShadow: "0 0 8px rgba(0,153,255,0.6)",
         }}
       >
-        <h1
-          style={{
-            color: "#4db8ff",
-            marginBottom: "25px",
-            fontSize: "26px",
-            fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-            textAlign: "center",
-          }}
-        >
-          Fotos de la inspección
-        </h1>
+        Galería de Fotos de la Inspección
+      </h1>
 
-        {mensaje && (
-          <p
-            style={{
-              marginBottom: "15px",
-              color: mensaje.includes("correctamente") ? "#4ade80" : "#ff6b6b",
-              fontWeight: "600",
-              textAlign: "center",
-            }}
-          >
-            {mensaje}
-          </p>
-        )}
-
-        {/* Info */}
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "15px",
-            borderRadius: "12px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            marginBottom: "20px",
-          }}
-        >
-          <p>
-            <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
-            {inspeccion.fecha}
-          </p>
-          <p>
-            <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
-            {inspeccion.estado}
-          </p>
-          <p>
-            <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
-            {cliente ? `${cliente.nombre} (${cliente.telefono})` : "Sin cliente"}
-          </p>
-        </div>
-
-        {/* Subir foto */}
-        <div style={{ marginBottom: "20px" }}>
-          <label
-            style={{
-              display: "block",
-              padding: "14px",
-              background: "#4db8ff",
-              color: "#000",
-              borderRadius: "10px",
-              fontWeight: "700",
-              textAlign: "center",
-              cursor: subiendo ? "not-allowed" : "pointer",
-              opacity: subiendo ? 0.6 : 1,
-            }}
-          >
-            {subiendo ? "Subiendo..." : "Subir foto"}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={subirFoto}
-              disabled={subiendo}
-              style={{ display: "none" }}
-            />
-          </label>
-        </div>
-
-        {/* Fotos */}
-        {fotos.length === 0 ? (
-          <p style={{ opacity: 0.7, textAlign: "center" }}>No hay fotos subidas.</p>
-        ) : (
-          fotos.map((f) => (
-            <div
-              key={f.id}
-              style={{
-                marginBottom: "15px",
-                background: "rgba(255,255,255,0.05)",
-                padding: "12px",
-                borderRadius: "12px",
-                border: "1px solid rgba(255,255,255,0.1)",
-              }}
-            >
-              <img
-                src={f.url}
-                alt="Foto inspección"
-                style={{
-                  width: "100%",
-                  borderRadius: "10px",
-                  marginBottom: "10px",
-                }}
-              />
-            </div>
-          ))
-        )}
-
-        {/* Navegación a Checklist */}
-        <Link to={`/tecnico/inspeccion/${id}/checklist`}>
-          <button
-            style={{
-              marginTop: "20px",
-              padding: "14px",
-              width: "100%",
-              background: "#4db8ff",
-              color: "#000",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "17px",
-              cursor: "pointer",
-            }}
-          >
-            Checklist
-          </button>
-        </Link>
-
-        {/* Botón Finalizar que envía al Administrador */}
+      {/* Botones de acción unificados (Cámara y Galería) */}
+      <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
         <button
-          onClick={finalizarYEnviarRevision}
+          onClick={() => tomarFoto(CameraSource.Camera)}
+          disabled={subiendo}
           style={{
-            marginTop: "15px",
+            flex: 1,
             padding: "14px",
-            width: "100%",
-            background: "#4ade80",
+            background: "#4db8ff",
             color: "#000",
             borderRadius: "10px",
             border: "none",
             fontWeight: "700",
-            fontSize: "17px",
+            fontSize: "15px",
             cursor: "pointer",
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
-          Finalizar y enviar al administrador
+          {subiendo ? "Subiendo..." : "📸 Tomar foto"}
         </button>
 
-        <Link to={`/tecnico/inspeccion/${id}`}>
-          <button
-            style={{
-              marginTop: "15px",
-              padding: "14px",
-              width: "100%",
-              background: "transparent",
-              color: "#4db8ff",
-              borderRadius: "10px",
-              border: "1px solid #4db8ff",
-              fontWeight: "700",
-              fontSize: "17px",
-              cursor: "pointer",
-            }}
-          >
-            Volver a inspección
-          </button>
-        </Link>
+        <button
+          onClick={() => tomarFoto(CameraSource.Photos)}
+          disabled={subiendo}
+          style={{
+            flex: 1,
+            padding: "14px",
+            background: "#38bdf8",
+            color: "#000",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "15px",
+            cursor: "pointer",
+            boxShadow: "0 0 10px rgba(56,189,248,0.4)",
+          }}
+        >
+          {subiendo ? "Subiendo..." : "🖼️ Galería"}
+        </button>
       </div>
-    </Menu>
+
+      {loading ? (
+        <p style={{ textAlign: "center", opacity: 0.8 }}>Cargando fotos...</p>
+      ) : fotos.length === 0 ? (
+        <p
+          style={{
+            textAlign: "center",
+            opacity: 0.7,
+            margin: "30px 0",
+            fontSize: "15px",
+          }}
+        >
+          No hay fotos registradas para esta inspección todavía.
+        </p>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "12px",
+            marginBottom: "25px",
+          }}
+        >
+          {fotos.map((f) => (
+            <div
+              key={f.id}
+              style={{
+                position: "relative",
+                background: "rgba(255,255,255,0.05)",
+                borderRadius: "12px",
+                border: "1px solid rgba(255,255,255,0.1)",
+                overflow: "hidden",
+                boxShadow: "0 0 8px rgba(0,153,255,0.2)",
+              }}
+            >
+              <img
+                src={f.foto_url}
+                alt="Inspección"
+                style={{
+                  width: "100%",
+                  height: "130px",
+                  objectFit: "cover",
+                }}
+              />
+              <button
+                onClick={() => eliminarFoto(f.id)}
+                style={{
+                  position: "absolute",
+                  top: "6px",
+                  right: "6px",
+                  background: "rgba(239, 68, 68, 0.9)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: "28px",
+                  height: "28px",
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Botón correcto para finalizar y enviar al administrador */}
+      <button
+        onClick={() => navigate(`/tecnico/inspeccion/${id}/finalizar`)}
+        style={{
+          marginTop: "10px",
+          padding: "14px",
+          width: "100%",
+          background: "#4ade80",
+          color: "#000",
+          borderRadius: "10px",
+          border: "none",
+          fontWeight: "700",
+          fontSize: "17px",
+          cursor: "pointer",
+          boxShadow: "0 0 10px rgba(74,222,128,0.4)",
+        }}
+      >
+        Finalizar e enviar al administrador →
+      </button>
+
+      <button
+        onClick={() => navigate(`/tecnico/inspeccion/${id}`)}
+        style={{
+          marginTop: "12px",
+          padding: "14px",
+          width: "100%",
+          background: "transparent",
+          color: "#4db8ff",
+          borderRadius: "10px",
+          border: "1px solid #4db8ff",
+          fontWeight: "700",
+          fontSize: "15px",
+          cursor: "pointer",
+        }}
+      >
+        Volver a la inspección
+      </button>
+    </div>
   );
 }
