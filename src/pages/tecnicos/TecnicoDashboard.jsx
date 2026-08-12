@@ -169,6 +169,11 @@ export default function DashboardTecnico() {
           )}
         </div>
 
+        {/* Identificador de Build para forzar actualización */}
+        <div style={{ textAlign: 'center', marginTop: '10px', opacity: 0.3, fontSize: '10px', color: '#fff' }}>
+          Build v1.0.1 - {new Date().toLocaleDateString()}
+        </div>
+
       </div>
     </div>
   );
