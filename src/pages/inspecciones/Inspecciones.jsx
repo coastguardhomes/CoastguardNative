@@ -12,7 +12,6 @@ export default function Inspecciones() {
   useEffect(() => {
     async function cargarUsuario() {
       const { data } = await supabase.auth.getUser();
-      console.log("Usuario actual logueado:", data?.user);
       setUser(data?.user || null);
     }
 
@@ -41,7 +40,6 @@ export default function Inspecciones() {
 
         // Si NO es admin → filtrar por técnico
         if (user.email !== "coastguardhomes2@gmail.com") {
-          console.log("Filtrando para técnico con ID:", user.id);
           query = query.eq("tecnico_id", user.id);
         }
 
@@ -49,7 +47,6 @@ export default function Inspecciones() {
 
         if (error) throw error;
 
-        console.log("Inspecciones encontradas para este usuario:", data);
         setInspecciones(data || []);
       } catch (err) {
         console.error("Error detallado:", err.message);
@@ -63,7 +60,6 @@ export default function Inspecciones() {
         if (fallbackError) {
           setMensaje("Error cargando inspecciones");
         } else {
-          console.log("Inspecciones obtenidas por Plan B:", fallbackData);
           setInspecciones(fallbackData || []);
         }
       } finally {
@@ -140,8 +136,9 @@ export default function Inspecciones() {
                   border: "1px solid rgba(255,255,255,0.1)",
                 }}
               >
+                {/* 🛠️ Ruta corregida para enlazar de forma coherente con el detalle/checklist de la inspección */}
                 <Link
-                  to={`/inspecciones/ver/${i.id}`}
+                  to={`/inspecciones/${i.id}`}
                   style={{
                     color: "#4db8ff",
                     fontWeight: "700",
