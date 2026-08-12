@@ -151,7 +151,6 @@ export default function TecnicoFotos() {
     cargarDatos();
   }
 
-  // NUEVA FUNCIÓN: Envía la inspección directamente al Administrador
   async function finalizarYEnviarRevision() {
     setLoading(true);
     setMensaje("");
