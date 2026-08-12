@@ -207,6 +207,22 @@ export default function GaleriaInspeccion() {
           fontFamily: "Inter, sans-serif",
         }}
       >
+        {/* 🔥 Frase informativa en la parte superior */}
+        <div
+          style={{
+            background: "rgba(77, 184, 255, 0.1)",
+            border: "1px solid rgba(77, 184, 255, 0.3)",
+            padding: "12px 16px",
+            borderRadius: "10px",
+            marginBottom: "20px",
+            textAlign: "center",
+          }}
+        >
+          <p style={{ margin: 0, fontSize: "14px", color: "#4db8ff", fontWeight: "600" }}>
+            📸 Panel de Técnico: Adjunta las evidencias fotográficas y selecciona la foto principal de la inspección.
+          </p>
+        </div>
+
         <h1
           style={{
             fontSize: "24px",
@@ -217,7 +233,7 @@ export default function GaleriaInspeccion() {
             textAlign: "center",
           }}
         >
-          Galería de Fotos
+          Galería de Fotos #{id}
         </h1>
 
         {mensaje && (
