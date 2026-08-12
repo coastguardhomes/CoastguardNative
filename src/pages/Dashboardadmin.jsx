@@ -49,22 +49,22 @@ export default function AdminDashboard() {
         style={{
           width: "100%",
           minHeight: "100vh",
-          background: "linear-gradient(135deg, #070b14 0%, #0d1626 100%)",
-          padding: "24px 20px",
+          background: "#05080f",
+          padding: "16px",
           fontFamily: "'Inter', sans-serif",
           color: "#fff",
           boxSizing: "border-box",
         }}
       >
-        {/* Encabezado Estilo Premium Dorado/Azul */}
+        {/* Cabecera Principal Estilo Panel de Mandos */}
         <div
           style={{
-            background: "linear-gradient(90deg, rgba(13, 22, 38, 0.9) 0%, rgba(20, 32, 54, 0.9) 100%)",
-            border: "1px solid rgba(224, 176, 52, 0.3)",
+            background: "linear-gradient(180deg, #0d1527 0%, #080e1a 100%)",
+            border: "1px solid rgba(234, 179, 8, 0.4)",
             borderRadius: "14px",
-            padding: "18px 20px",
-            marginBottom: "24px",
-            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(224, 176, 52, 0.1)",
+            padding: "14px 16px",
+            marginBottom: "16px",
+            boxShadow: "0 0 15px rgba(234, 179, 8, 0.15), inset 0 0 10px rgba(234, 179, 8, 0.05)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -73,86 +73,74 @@ export default function AdminDashboard() {
           <div>
             <h1
               style={{
-                fontSize: "20px",
-                fontWeight: "700",
-                margin: "0 0 4px 0",
-                color: "#e0b034",
-                letterSpacing: "0.5px",
+                fontSize: "16px",
+                fontWeight: "800",
+                margin: "0 0 2px 0",
+                color: "#eab308",
+                letterSpacing: "1px",
                 textTransform: "uppercase",
-                textShadow: "0 0 10px rgba(224, 176, 52, 0.4)",
+                textShadow: "0 0 8px rgba(234, 179, 8, 0.5)",
               }}
             >
-              Panel de Control
+              PANEL DE CONTROL
             </h1>
-            <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0 }}>
+            <p style={{ color: "#94a3b8", fontSize: "11px", margin: 0, fontWeight: "500" }}>
               Métricas generales y gestión de CoastGuard.
             </p>
           </div>
           <div
             style={{
-              background: "rgba(224, 176, 52, 0.1)",
-              border: "1px solid rgba(224, 176, 52, 0.4)",
-              borderRadius: "10px",
-              padding: "8px 12px",
-              color: "#e0b034",
-              fontSize: "12px",
-              fontWeight: "600",
-              letterSpacing: "1px",
+              background: "transparent",
+              border: "1px solid rgba(234, 179, 8, 0.6)",
+              borderRadius: "8px",
+              padding: "4px 10px",
+              color: "#eab308",
+              fontSize: "10px",
+              fontWeight: "700",
+              letterSpacing: "1.5px",
+              boxShadow: "0 0 8px rgba(234, 179, 8, 0.2)",
             }}
           >
             ADMIN
           </div>
         </div>
 
-        {/* Grid de Tarjetas Estilo Lujo (Azul Marino y Bordes Dorados) */}
+        {/* Grid de Tarjetas Compactas de 2 Columnas */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-            gap: "16px",
-            marginBottom: "30px",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "10px",
+            marginBottom: "16px",
           }}
         >
           {TARJETAS.map(({ clave, etiqueta, ruta, icono }) => (
             <Link key={clave} to={ruta} style={{ textDecoration: "none" }}>
               <div
                 style={{
-                  background: "linear-gradient(145deg, #0f172a 0%, #090d16 100%)",
-                  borderRadius: "14px",
-                  padding: "18px",
-                  border: "1px solid rgba(224, 176, 52, 0.25)",
-                  boxShadow: "0 6px 16px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
+                  background: "linear-gradient(145deg, #0b1220 0%, #060913 100%)",
+                  borderRadius: "12px",
+                  padding: "12px 14px",
+                  border: "1px solid rgba(234, 179, 8, 0.35)",
+                  boxShadow: "0 6px 16px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(234, 179, 8, 0.06)",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
-                  minHeight: "110px",
+                  minHeight: "85px",
                   boxSizing: "border-box",
                   position: "relative",
-                  overflow: "hidden",
                 }}
               >
-                {/* Detalle decorativo dorado superior */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: "2px",
-                    background: "linear-gradient(90deg, transparent, rgba(224, 176, 52, 0.6), transparent)",
-                  }}
-                />
-
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <span style={{ fontSize: "13px", fontWeight: "600", color: "#cbd5e1" }}>
+                  <span style={{ fontSize: "12px", fontWeight: "600", color: "#e2e8f0" }}>
                     {etiqueta}
                   </span>
                   <span
                     style={{
-                      fontSize: "15px",
-                      background: "rgba(224, 176, 52, 0.08)",
-                      border: "1px solid rgba(224, 176, 52, 0.2)",
-                      padding: "6px 8px",
+                      fontSize: "12px",
+                      background: "rgba(15, 23, 42, 0.8)",
+                      border: "1px solid rgba(234, 179, 8, 0.3)",
+                      padding: "4px 6px",
                       borderRadius: "8px",
                       display: "inline-flex",
                       alignItems: "center",
@@ -166,10 +154,10 @@ export default function AdminDashboard() {
                 <div>
                   <span
                     style={{
-                      fontSize: "28px",
-                      fontWeight: "700",
-                      color: "#e0b034",
-                      textShadow: "0 0 10px rgba(224, 176, 52, 0.3)",
+                      fontSize: "22px",
+                      fontWeight: "800",
+                      color: "#eab308",
+                      textShadow: "0 0 10px rgba(234, 179, 8, 0.6)",
                       letterSpacing: "-0.5px",
                     }}
                   >
@@ -181,59 +169,72 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Sección de Accesos Rápidos Estilo Dorado */}
+        {/* Sección de Gráficas Estilo Panel Táctico (Inspirado en la referencia) */}
         <div
           style={{
-            background: "linear-gradient(145deg, #0d1626 0%, #070b14 100%)",
+            background: "linear-gradient(145deg, #0b1220 0%, #060913 100%)",
             borderRadius: "14px",
-            padding: "20px",
-            border: "1px solid rgba(224, 176, 52, 0.25)",
-            boxShadow: "0 6px 16px rgba(0, 0, 0, 0.4)",
+            padding: "14px",
+            border: "1px solid rgba(234, 179, 8, 0.35)",
+            boxShadow: "0 8px 20px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(234, 179, 8, 0.08)",
+            marginBottom: "20px",
           }}
         >
-          <h2
+          <div
             style={{
-              fontSize: "15px",
-              fontWeight: "600",
-              color: "#e0b034",
-              margin: "0 0 14px 0",
-              letterSpacing: "0.5px",
-              textTransform: "uppercase",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "12px",
+              borderBottom: "1px solid rgba(234, 179, 8, 0.2)",
+              paddingBottom: "8px",
             }}
           >
-            Acciones Rápidas
-          </h2>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <Link
-              to="/inspecciones"
+            <span
               style={{
-                textDecoration: "none",
-                padding: "10px 16px",
-                borderRadius: "10px",
-                background: "rgba(224, 176, 52, 0.1)",
-                border: "1px solid rgba(224, 176, 52, 0.3)",
-                color: "#e0b034",
-                fontSize: "13px",
-                fontWeight: "600",
+                fontSize: "12px",
+                fontWeight: "700",
+                color: "#eab308",
+                letterSpacing: "1px",
+                textTransform: "uppercase",
               }}
             >
-              📋 Ver Inspecciones
-            </Link>
-            <Link
-              to="/tecnicos"
-              style={{
-                textDecoration: "none",
-                padding: "10px 16px",
-                borderRadius: "10px",
-                background: "rgba(224, 176, 52, 0.1)",
-                border: "1px solid rgba(224, 176, 52, 0.3)",
-                color: "#e0b034",
-                fontSize: "13px",
-                fontWeight: "600",
-              }}
-            >
-              🛠️ Gestionar Técnicos
-            </Link>
+              🔍 Actividad Diaria
+            </span>
+            <span style={{ fontSize: "10px", color: "#94a3b8" }}>Semanal</span>
+          </div>
+
+          {/* Gráfica de Líneas simulando la referencia */}
+          <div style={{ height: "100px", position: "relative", display: "flex", alignItems: "flex-end", paddingBottom: "15px" }}>
+            {/* Líneas horizontales de guía de fondo */}
+            <div style={{ position: "absolute", width: "100%", height: "1px", background: "rgba(234, 179, 8, 0.1)", top: "0%" }}></div>
+            <div style={{ position: "absolute", width: "100%", height: "1px", background: "rgba(234, 179, 8, 0.1)", top: "50%" }}></div>
+            <div style={{ position: "absolute", width: "100%", height: "1px", background: "rgba(234, 179, 8, 0.1)", top: "100%" }}></div>
+
+            {/* Puntos y trazo simulado de la gráfica */}
+            <svg style={{ position: "absolute", width: "100%", height: "85px", overflow: "visible" }}>
+              <polyline
+                fill="none"
+                stroke="#eab308"
+                strokeWidth="2.5"
+                points="15,65 70,50 125,58 180,30 235,45 290,20 345,35"
+              />
+              {/* Puntos brillantes */}
+              {[[15, 65], [70, 50], [125, 58], [180, 30], [235, 45], [290, 20], [345, 35]].map(([cx, cy], idx) => (
+                <circle key={idx} cx={cx} cy={cy} r="3.5" fill="#eab308" stroke="#05080f" strokeWidth="1.5" />
+              ))}
+            </svg>
+          </div>
+
+          {/* Leyenda de días */}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#64748b", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "6px" }}>
+            <span>Lun</span>
+            <span>Mar</span>
+            <span>Mié</span>
+            <span>Jue</span>
+            <span>Vie</span>
+            <span>Sáb</span>
+            <span>Dom</span>
           </div>
         </div>
       </div>
