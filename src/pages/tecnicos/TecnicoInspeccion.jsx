@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
+import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useParams, Link } from "react-router-dom";
-import Menu from "../../layouts/Menu";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function TecnicoInspeccion() {
@@ -87,7 +87,6 @@ export default function TecnicoInspeccion() {
     }
 
     setCliente(clienteFinal);
-
     setLoading(false);
   }
 
@@ -188,8 +187,8 @@ export default function TecnicoInspeccion() {
           </p>
         </div>
 
-        {/* Botones del técnico */}
-        <Link to={`/inspecciones/${id}/checklist`}>
+        {/* Botones del técnico corregidos */}
+        <Link to={`/tecnico/inspeccion/${id}/checklist`}>
           <button
             style={{
               marginBottom: "15px",
@@ -208,7 +207,7 @@ export default function TecnicoInspeccion() {
           </button>
         </Link>
 
-        <Link to={`/inspecciones/fotos/${id}`}>
+        <Link to={`/tecnico/inspeccion/${id}/fotos`}>
           <button
             style={{
               marginBottom: "15px",
@@ -227,7 +226,7 @@ export default function TecnicoInspeccion() {
           </button>
         </Link>
 
-        <Link to={`/inspecciones/finalizar/${id}`}>
+        <Link to={`/tecnico/inspeccion/${id}/finalizar`}>
           <button
             style={{
               marginBottom: "15px",
