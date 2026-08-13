@@ -8,16 +8,13 @@ import { useAuth } from "../../context/AuthContext.jsx";
 export default function ClienteContratosLista() {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { user } = useAuth();   // ← NECESARIO
+  const { user } = useAuth();
   const [contratos, setContratos] = useState([]);
 
   const cargarContratos = async () => {
     if (!user) return;
 
-    // clientes.id/contratos.cliente_id son bigint y user.id es el UUID de
-    // auth: nunca coinciden. RLS ya limita "contratos" a las viviendas del
-    // cliente logueado (ver contratos_select), así que basta con no
-    // filtrar aquí; para el perfil hay que resolverlo por usuario_id.
+    // 1. Cargamos todos los contratos (RLS debería filtrar solo los del cliente)
     const { data: contratosData, error: contratosError } = await supabase
       .from("contratos")
       .select("*")
@@ -25,24 +22,24 @@ export default function ClienteContratosLista() {
 
     if (contratosError) {
       console.error("Error cargando contratos:", contratosError);
+      setContratos([]);
       return;
     }
 
-    const { data: clienteData, error: clienteError } = await supabase
+    // 2. Cargamos el perfil de cliente sin usar .single() para evitar bloqueos
+    const { data: clienteData } = await supabase
       .from("clientes")
       .select("*")
-      .eq("usuario_id", user.id)
-      .single();
+      .eq("usuario_id", user.id);
 
-    if (clienteError) {
-      console.error("Error cargando cliente:", clienteError);
-      return;
-    }
+    // Si encontramos al cliente, tomamos sus datos, si no, dejamos valores por defecto
+    const cliente = clienteData && clienteData.length > 0 ? clienteData[0] : null;
 
-    const contratosConCliente = contratosData.map((contrato) => ({
+    // 3. Mapeamos los datos
+    const contratosConCliente = (contratosData || []).map((contrato) => ({
       ...contrato,
-      clienteNombre: clienteData.nombre,
-      clienteDireccion: clienteData.direccion,
+      clienteNombre: cliente ? cliente.nombre : "Cliente",
+      clienteDireccion: cliente ? cliente.direccion : "Dirección no disponible",
     }));
 
     setContratos(contratosConCliente);
@@ -57,10 +54,12 @@ export default function ClienteContratosLista() {
       <div
         style={{
           height: "100%",
+          minHeight: "100vh",
           background: "#0a0f1a",
           padding: "20px",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
+          paddingBottom: "80px"
         }}
       >
         <h2
