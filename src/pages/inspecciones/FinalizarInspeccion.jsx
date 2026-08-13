@@ -10,6 +10,7 @@ export default function FinalizarInspeccion() {
   const [inspeccion, setInspeccion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
+  const [esError, setEsError] = useState(false);
   const [procesando, setProcesando] = useState(false);
 
   useEffect(() => {
@@ -27,11 +28,13 @@ export default function FinalizarInspeccion() {
 
       if (error || !data) {
         setMensaje("No se encontró la inspección.");
+        setEsError(true);
       } else {
         setInspeccion(data);
       }
     } catch {
       setMensaje("Error de conexión.");
+      setEsError(true);
     } finally {
       setLoading(false);
     }
@@ -39,11 +42,12 @@ export default function FinalizarInspeccion() {
 
   async function aprobarInspeccion() {
     setProcesando(true);
-    setMensaje("Aprobando, generando PDF y enviando notificación...");
+    setMensaje("Aprobando inspección...");
+    setEsError(false);
 
     try {
-      // 1. Cambiar estado a aprobada y guardar fecha
-      const { error } = await supabase
+      // 1. Cambiar estado a aprobada
+      const { error: updateErr } = await supabase
         .from("inspecciones")
         .update({
           estado: "aprobada",
@@ -51,23 +55,43 @@ export default function FinalizarInspeccion() {
         })
         .eq("id", String(id));
 
-      if (error) throw error;
+      if (updateErr) throw updateErr;
 
-      // 2. Disparar Edge Functions para PDF y Email al cliente
+      // 2. Ejecutar funciones de Supabase para PDF y Email
+      let pdfOk = false;
+      let emailOk = false;
+
       try {
-        await supabase.functions.invoke("pdf-inspeccion", { body: { inspeccion_id: id } });
-        await supabase.functions.invoke("enviar-email", { body: { inspeccion_id: id, tipo: "inspeccion_aprobada" } });
-      } catch (fErr) {
-        console.warn("Aviso en funciones Edge:", fErr);
+        const resPdf = await supabase.functions.invoke("pdf-inspeccion", { body: { inspeccion_id: id } });
+        if (!resPdf.error) pdfOk = true;
+      } catch (e) {
+        console.error("Error al invocar pdf-inspeccion:", e);
       }
 
-      setMensaje("¡Inspección aprobada, PDF generado y email enviado con éxito! ✔");
+      try {
+        const resEmail = await supabase.functions.invoke("enviar-email", { body: { inspeccion_id: id, tipo: "inspeccion_aprobada" } });
+        if (!resEmail.error) emailOk = true;
+      } catch (e) {
+        console.error("Error al invocar enviar-email:", e);
+      }
+
+      // 3. Feedback real al administrador
+      if (pdfOk && emailOk) {
+        setMensaje("¡Inspección aprobada, PDF generado y email enviado con éxito! ✔");
+      } else if (!pdfOk && !emailOk) {
+        setMensaje("Inspección aprobada en BD, pero falló la generación de PDF y el envío de Email (Revisa las Edge Functions de Supabase).");
+        setEsError(true);
+      } else {
+        setMensaje("Inspección aprobada. Revisa los servicios de correo/PDF.");
+      }
 
       setTimeout(() => {
         navigate("/inspecciones");
-      }, 1800);
+      }, 2500);
+
     } catch (e) {
       setMensaje("Error al aprobar: " + e.message);
+      setEsError(true);
       setProcesando(false);
     }
   }
@@ -90,7 +114,7 @@ export default function FinalizarInspeccion() {
         </h1>
 
         {mensaje && (
-          <div style={{ marginBottom: "20px", padding: "12px", background: "rgba(0,153,255,0.15)", border: "1px solid #4db8ff", borderRadius: "10px", color: "#4db8ff", textAlign: "center" }}>
+          <div style={{ marginBottom: "20px", padding: "12px", background: esError ? "rgba(255,107,107,0.15)" : "rgba(0,153,255,0.15)", border: `1px solid ${esError ? "#ff6b6b" : "#4db8ff"}`, borderRadius: "10px", color: esError ? "#ff6b6b" : "#4db8ff", textAlign: "center", fontSize: "14px" }}>
             {mensaje}
           </div>
         )}
