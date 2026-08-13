@@ -134,13 +134,27 @@ export default function CrearContrato() {
       .toISOString()
       .split("T")[0];
 
+    // Obtenemos la sesión actual para autorizar las peticiones a las Edge Functions
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session ? session.access_token : "";
+
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {})
+    };
+
     // 3️⃣ Generar PDF
     let pdfUrl = null;
     try {
       const pdfResponse = await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${contratoId}`
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${contratoId}`,
+        { headers }
       );
-      pdfUrl = await pdfResponse.text();
+      if (pdfResponse.ok) {
+        pdfUrl = await pdfResponse.text();
+      } else {
+        console.error("Error en respuesta de PDF:", await pdfResponse.text());
+      }
     } catch (e) {
       console.error("Error generando PDF:", e);
     }
@@ -157,7 +171,8 @@ export default function CrearContrato() {
     // 5️⃣ Crear inspecciones automáticas
     try {
       await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear_inspecciones_programadas?id=${contratoId}`
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear_inspecciones_programadas?id=${contratoId}`,
+        { headers }
       );
     } catch (e) {
       console.error("Error creando inspecciones:", e);
@@ -166,13 +181,17 @@ export default function CrearContrato() {
     // 6️⃣ Enviar email
     try {
       await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${contratoId}`
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${contratoId}`,
+        { headers }
       );
     } catch (e) {
       console.error("Error enviando email:", e);
     }
 
-    navigate("/contratos");
+    setMensaje("¡Contrato creado, PDF generado y correo enviado con éxito!");
+    setTimeout(() => {
+      navigate("/contratos");
+    }, 1500);
   }
 
   const inputStyle = {
