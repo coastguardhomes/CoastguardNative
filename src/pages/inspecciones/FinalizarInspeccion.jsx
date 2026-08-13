@@ -43,7 +43,6 @@ export default function FinalizarInspeccion() {
     }
   }
 
-  // 🔥 Acción del Admin: Aprobar inspección
   async function aprobarInspeccion() {
     setProcesando(true);
     setMensaje("");
@@ -66,7 +65,7 @@ export default function FinalizarInspeccion() {
       setMensaje("¡Inspección aprobada y cerrada con éxito! ✔");
 
       setTimeout(() => {
-        navigate("/inspecciones"); // Redirige al panel general de inspecciones del admin
+        navigate("/inspecciones");
       }, 1500);
     } catch (e) {
       setMensaje("Error procesando la aprobación.");
@@ -97,7 +96,7 @@ export default function FinalizarInspeccion() {
           </div>
         )}
 
-        {inspeccion && (
+        {inspeccion ? (
           <>
             <div style={{ background: "rgba(255,255,255,0.05)", padding: "20px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 0 12px rgba(0,153,255,0.2)", marginBottom: "25px" }}>
               <p style={{ marginBottom: "12px", fontSize: "15px" }}>
@@ -113,18 +112,27 @@ export default function FinalizarInspeccion() {
 
               <p style={{ marginBottom: "12px", fontSize: "15px" }}>
                 <strong style={{ color: "#4db8ff" }}>Notas del técnico:</strong>{" "}
-                {inspeccion.notas_tecnico || inspeccion.observaciones || "El técnico no incluyó notas adicionales."}
+                {inspeccion.notas_tecnico || inspeccion.observaciones || "El técnico no dejó notas escritas."}
               </p>
             </div>
 
             <button
               onClick={aprobarInspeccion}
               disabled={procesando}
-              style={{ padding: "14px", width: "100%", background: "#4ade80", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "16px", cursor: procesando ? "not-allowed" : "pointer", boxShadow: "0 0 10px rgba(74,222,128,0.4)", opacity: procesando ? 0.6 : 1 }}
+              style={{ padding: "14px", width: "100%", background: "#4ade80", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "16px", cursor: procesando ? "not-allowed" : "pointer", boxShadow: "0 0 10px rgba(74,222,128,0.4)", opacity: procesando ? 0.6 : 1, marginBottom: "15px" }}
             >
               {procesando ? "Aprobando..." : "✔ Aprobar y Dar por Finalizada"}
             </button>
+
+            <button
+              onClick={() => navigate("/inspecciones")}
+              style={{ padding: "12px", width: "100%", background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "#ccc", borderRadius: "10px", fontSize: "15px", cursor: "pointer" }}
+            >
+              Volver a la lista
+            </button>
           </>
+        ) : (
+          !mensaje && <div style={{ textAlign: "center", opacity: 0.7 }}>No hay datos para mostrar.</div>
         )}
       </div>
     </Menu>
