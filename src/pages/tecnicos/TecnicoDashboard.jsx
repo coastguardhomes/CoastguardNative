@@ -22,10 +22,12 @@ export default function DashboardTecnico() {
       setLoading(true);
       setDebugLog('Conectando a Supabase...');
 
-      // 1. Probar consulta directa a inspecciones
+      // 1. Cargar SOLO inspecciones pendientes (excluyendo finalizadas/completadas)
       const { data: inspData, error: inspError } = await supabase
         .from('inspecciones')
-        .select('*');
+        .select('*')
+        .not('estado', 'in', '("completada_admin","finalizada","completada","aprobada")')
+        .order('fecha', { ascending: false });
 
       if (inspError) {
         setDebugLog(`Error en inspecciones: ${inspError.message}`);
@@ -33,20 +35,43 @@ export default function DashboardTecnico() {
         return;
       }
 
-      setDebugLog(`Inspecciones leídas: ${inspData ? inspData.length : 0}`);
-      const inspeccionesLista = inspData || [];
+      const rawLista = inspData || [];
+
+      // 2. Obtener direcciones reales de las viviendas asociadas
+      const viviendaIds = [...new Set(rawLista.map((i) => i.vivienda_id).filter(Boolean))];
+      let viviendasMap = {};
+
+      if (viviendaIds.length > 0) {
+        const { data: vivData } = await supabase
+          .from('viviendas')
+          .select('id, direccion')
+          .in('id', viviendaIds);
+
+        if (vivData) {
+          vivData.forEach((v) => {
+            viviendasMap[v.id] = v.direccion;
+          });
+        }
+      }
+
+      // 3. Formatear la lista adjuntando la dirección
+      const inspeccionesLista = rawLista.map((insp) => ({
+        ...insp,
+        direccion: viviendasMap[insp.vivienda_id] || insp.direccion || `Vivienda #${insp.vivienda_id || 'Sin asignar'}`,
+      }));
+
       setInspeccionesDiarias(inspeccionesLista);
 
-      // 2. Contar viviendas
+      // 4. Contar viviendas registradas
       const { count: countViviendas, error: errViv } = await supabase
         .from('viviendas')
         .select('*', { count: 'exact', head: true });
 
       if (errViv) {
-        setDebugLog(prev => prev + ` | Error viviendas: ${errViv.message}`);
+        setDebugLog((prev) => prev + ` | Error viviendas: ${errViv.message}`);
       }
 
-      // 3. Contar incidencias
+      // 5. Contar incidencias/alertas
       const { count: countIncidencias } = await supabase
         .from('incidencias')
         .select('*', { count: 'exact', head: true });
@@ -83,7 +108,7 @@ export default function DashboardTecnico() {
         <div style={styles.header}>
           <div>
             <div style={styles.brandBadge}>
-              <span>⛵</span> COASTGUARD <span style={{color: '#888', fontWeight: 'normal'}}>| TÉCNICO</span>
+              <span>⛵</span> COASTGUARD <span style={{ color: '#888', fontWeight: 'normal' }}>| TÉCNICO</span>
             </div>
             <h2 style={styles.headerTitle}>Panel de Operaciones</h2>
           </div>
@@ -92,16 +117,16 @@ export default function DashboardTecnico() {
           </button>
         </div>
 
-        {/* CAJA DE DEBUGEO VISUAL (Para ver qué pasa en pantalla) */}
+        {/* CAJA DE DEBUGEO VISUAL */}
         <div style={styles.debugBox}>
-          <span style={{color: '#ffd700', fontWeight: 'bold'}}>Estado de Red:</span> {debugLog}
+          <span style={{ color: '#ffd700', fontWeight: 'bold' }}>Estado de Red:</span> {debugLog}
         </div>
 
         {/* 3 TARJETAS SUPERIORES */}
         <div style={styles.topCardsGrid}>
           <div style={styles.statCard}>
             <div style={styles.cardIcon}>📋</div>
-            <div style={styles.statNumber}>{stats.inspeccionesSemana} <span style={styles.statSub}>total</span></div>
+            <div style={styles.statNumber}>{stats.inspeccionesSemana} <span style={styles.statSub}>pendientes</span></div>
             <div style={styles.statLabel}>Inspecciones</div>
           </div>
 
@@ -137,7 +162,7 @@ export default function DashboardTecnico() {
             <p style={styles.emptyText}>Cargando asignaciones...</p>
           ) : inspeccionesDiarias.length === 0 ? (
             <div style={styles.emptyBox}>
-              <p style={styles.emptyText}>No hay inspecciones en la base de datos o la tabla está vacía.</p>
+              <p style={styles.emptyText}>No hay inspecciones pendientes asignadas.</p>
               <button 
                 style={styles.btnDirectChecklist}
                 onClick={() => navigate('/tecnico/inspeccion/general/checklist')}
@@ -153,8 +178,8 @@ export default function DashboardTecnico() {
                     <div style={{ color: '#ffd700', fontWeight: 'bold', fontSize: '12px' }}>
                       Inspección #{String(insp.id).substring(0, 8)}
                     </div>
-                    <div style={{ color: '#aaa', fontSize: '10px', marginTop: '2px' }}>
-                      🆔 ID de Vivienda: {insp.vivienda_id || 'Sin asignar'}
+                    <div style={{ color: '#aaa', fontSize: '11px', marginTop: '3px' }}>
+                      📍 {insp.direccion}
                     </div>
                   </div>
                   <button 
@@ -169,9 +194,9 @@ export default function DashboardTecnico() {
           )}
         </div>
 
-        {/* Identificador de Build para forzar actualización */}
+        {/* Identificador de Build */}
         <div style={{ textAlign: 'center', marginTop: '10px', opacity: 0.3, fontSize: '10px', color: '#fff' }}>
-          Build v1.0.1 - {new Date().toLocaleDateString()}
+          Build v1.0.2 - {new Date().toLocaleDateString()}
         </div>
 
       </div>
@@ -246,10 +271,10 @@ const styles = {
   sectionHeaderFlex: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', borderBottom: '1px solid #1e3050', paddingBottom: '6px' },
   assignedTitle: { fontSize: '11px', color: '#ffd700', margin: 0, fontWeight: 'bold', textTransform: 'uppercase' },
   counterBadge: { backgroundColor: '#16263f', color: '#ffd700', fontSize: '9px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #d4af37' },
-  listScrollContainer: { maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' },
+  listScrollContainer: { maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' },
   emptyBox: { textAlign: 'center', padding: '10px 0' },
   emptyText: { fontSize: '11px', color: '#888', marginBottom: '6px' },
   btnDirectChecklist: { backgroundColor: '#27ae60', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' },
-  assignmentItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111b2e', padding: '8px 10px', borderRadius: '6px', border: '1px solid #2a3b55' },
+  assignmentItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111b2e', padding: '10px 12px', borderRadius: '6px', border: '1px solid #2a3b55' },
   btnActionItem: { backgroundColor: '#27ae60', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' },
 };
