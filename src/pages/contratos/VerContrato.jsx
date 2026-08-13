@@ -13,6 +13,7 @@ export default function VerContrato() {
   const [vivienda, setVivienda] = useState(null);
   const [tecnico, setTecnico] = useState(null);
   const [inspecciones, setInspecciones] = useState([]);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
 
   useEffect(() => {
     cargarContrato();
@@ -70,6 +71,52 @@ export default function VerContrato() {
       .order("fecha", { ascending: false });
 
     setInspecciones(insp || []);
+  }
+
+  async function manejarPdf() {
+    if (contrato.pdf_url) {
+      window.open(contrato.pdf_url, "_blank");
+      return;
+    }
+
+    // Si no tiene PDF, lo generamos al vuelo
+    setGenerandoPdf(true);
+    setMensaje("Generando PDF del contrato...");
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session ? session.access_token : "";
+
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {})
+      };
+
+      const pdfResponse = await fetch(
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${id}`,
+        { headers }
+      );
+
+      if (pdfResponse.ok) {
+        const pdfUrl = await pdfResponse.text();
+        
+        await supabase
+          .from("contratos")
+          .update({ pdf_url: pdfUrl })
+          .eq("id", id);
+
+        setContrato({ ...contrato, pdf_url: pdfUrl });
+        setMensaje("");
+        window.open(pdfUrl, "_blank");
+      } else {
+        setMensaje("Error al generar el PDF en el servidor.");
+      }
+    } catch (e) {
+      console.error(e);
+      setMensaje("Error de conexión al generar el PDF.");
+    } finally {
+      setGenerandoPdf(false);
+    }
   }
 
   async function eliminarContrato() {
@@ -139,7 +186,7 @@ export default function VerContrato() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#ff6b6b",
+              color: "#4db8ff",
               fontWeight: "600",
             }}
           >
@@ -156,25 +203,23 @@ export default function VerContrato() {
           <p><strong style={{ color: "#4db8ff" }}>Fecha fin:</strong> {contrato.fecha_fin || "Sin fecha"}</p>
           <p><strong style={{ color: "#4db8ff" }}>Estado:</strong> {contrato.estado || "Sin estado"}</p>
 
-          {contrato.pdf_url && (
-            <a
-              href={contrato.pdf_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "inline-block",
-                marginTop: "10px",
-                padding: "10px",
-                background: "#4db8ff",
-                color: "#000",
-                borderRadius: "8px",
-                fontWeight: "700",
-                textDecoration: "none",
-              }}
-            >
-              Ver PDF del contrato
-            </a>
-          )}
+          <button
+            onClick={manejarPdf}
+            disabled={generandoPdf}
+            style={{
+              display: "inline-block",
+              marginTop: "10px",
+              padding: "12px 16px",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "8px",
+              fontWeight: "700",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            {generandoPdf ? "Generando PDF..." : contrato.pdf_url ? "Ver PDF del contrato" : "Generar / Ver PDF"}
+          </button>
         </Bloque>
 
         {/* Técnico */}
