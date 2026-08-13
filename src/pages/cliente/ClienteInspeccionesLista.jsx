@@ -28,7 +28,7 @@ export default function ClienteInspeccionesLista() {
         setErrorMsg(null);
 
         // 1. Obtener ID del cliente (por usuario_id o directo por id)
-        let { data: clienteData, error: errCliente } = await supabase
+        let { data: clienteData } = await supabase
           .from("clientes")
           .select("id")
           .eq("usuario_id", user.id)
@@ -49,19 +49,23 @@ export default function ClienteInspeccionesLista() {
           return;
         }
 
-        // 2. Cargar inspecciones asociadas al cliente_id
+        // 2. Cargar inspecciones trayendo datos relacionales completos de la vivienda (direccion, ciudad, localidad, alias)
         const { data: dataInspecciones, error: errInspecciones } = await supabase
           .from("inspecciones")
           .select(`
             *,
-            viviendas ( direccion, alias )
+            viviendas (
+              direccion,
+              ciudad,
+              localidad,
+              alias
+            )
           `)
           .eq("cliente_id", clienteData.id)
           .order("created_at", { ascending: false });
 
         if (errInspecciones) {
           console.error("Error Supabase Inspecciones:", errInspecciones);
-          // Si falla con la relación de viviendas, intentamos consulta simple sin relación
           const { data: dataSimple, error: errSimple } = await supabase
             .from("inspecciones")
             .select("*")
@@ -101,7 +105,7 @@ export default function ClienteInspeccionesLista() {
         {/* Cabecera */}
         <div style={{ textAlign: "center", marginBottom: "20px" }}>
           <h1 style={{ fontSize: "22px", fontWeight: "800", ...TEXTO_DORADO_BRILLO, margin: 0 }}>
-            MIS INSPECCIONES
+            INSPECCIONES
           </h1>
         </div>
 
@@ -129,45 +133,61 @@ export default function ClienteInspeccionesLista() {
         {/* Tarjetas de Inspección */}
         {!loading && !errorMsg && inspecciones.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {inspecciones.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => navigate(`/cliente/inspeccion/${item.id}`)}
-                style={{
-                  background: FONDO_TARJETA,
-                  border: BORDE_DORADO,
-                  borderRadius: "12px",
-                  padding: "14px",
-                  cursor: "pointer",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <span style={{ fontSize: "13px", fontWeight: "700", color: "#e2e8f0" }}>
-                    {item.viviendas?.alias || item.viviendas?.direccion || `Inspección #${item.id.substring(0, 6)}`}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: "800",
-                      padding: "3px 8px",
-                      borderRadius: "12px",
-                      textTransform: "uppercase",
-                      background: item.estado === "completada" || item.estado === "finalizada" ? "rgba(16, 185, 129, 0.2)" : "rgba(224, 176, 52, 0.2)",
-                      color: item.estado === "completada" || item.estado === "finalizada" ? "#10b981" : COLOR_DORADO,
-                      border: `1px solid ${item.estado === "completada" || item.estado === "finalizada" ? "#10b981" : COLOR_DORADO}`
-                    }}
-                  >
-                    {item.estado || "Pendiente"}
-                  </span>
-                </div>
+            {inspecciones.map((item) => {
+              // Resoluciones de fallback para dirección y localidad
+              const direccionReal = item.viviendas?.direccion || item.viviendas?.alias || item.direccion || "No especificada";
+              const localidadReal = item.viviendas?.ciudad || item.viviendas?.localidad || item.localidad || "No especificada";
 
-                <div style={{ fontSize: "11px", color: "#94a3b8", display: "flex", justifyContent: "space-between" }}>
-                  <span>Fecha: {item.created_at ? new Date(item.created_at).toLocaleDateString("es-ES") : "N/A"}</span>
-                  <span style={{ color: COLOR_DORADO }}>Ver detalle →</span>
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => navigate(`/cliente/inspeccion/${item.id}`)}
+                  style={{
+                    background: FONDO_TARJETA,
+                    border: BORDE_DORADO,
+                    borderRadius: "12px",
+                    padding: "14px",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
+                  }}
+                >
+                  <div style={{ marginBottom: "8px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "12px", fontWeight: "700", color: "#4db8ff" }}>
+                        Inspección #{String(item.id).substring(0, 8)}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          fontWeight: "800",
+                          padding: "3px 8px",
+                          borderRadius: "12px",
+                          textTransform: "uppercase",
+                          background: item.estado === "completada" || item.estado === "finalizada" || item.estado === "aprobada" ? "rgba(16, 185, 129, 0.2)" : "rgba(224, 176, 52, 0.2)",
+                          color: item.estado === "completada" || item.estado === "finalizada" || item.estado === "aprobada" ? "#10b981" : COLOR_DORADO,
+                          border: `1px solid ${item.estado === "completada" || item.estado === "finalizada" || item.estado === "aprobada" ? "#10b981" : COLOR_DORADO}`
+                        }}
+                      >
+                        {item.estado || "Pendiente"}
+                      </span>
+                    </div>
+
+                    {/* Dirección y Localidad extraídas relacionalmente de 'viviendas' */}
+                    <div style={{ marginTop: "6px", fontSize: "13px", color: "#e2e8f0" }}>
+                      <strong>Dirección:</strong> {direccionReal}
+                    </div>
+                    <div style={{ marginTop: "2px", fontSize: "12px", color: "#94a3b8" }}>
+                      <strong>Localidad:</strong> {localidadReal}
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: "11px", color: "#64748b", display: "flex", justifyContent: "space-between", marginTop: "10px" }}>
+                    <span>Fecha: {item.fecha || (item.created_at ? new Date(item.created_at).toLocaleDateString("es-ES") : "N/A")}</span>
+                    <span style={{ color: COLOR_DORADO, fontWeight: "600" }}>Ver detalle →</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
