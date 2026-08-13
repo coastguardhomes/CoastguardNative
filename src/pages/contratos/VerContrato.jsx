@@ -79,7 +79,6 @@ export default function VerContrato() {
       return;
     }
 
-    // Si no tiene PDF, lo generamos al vuelo
     setGenerandoPdf(true);
     setMensaje("Generando PDF del contrato...");
 
@@ -87,33 +86,34 @@ export default function VerContrato() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session ? session.access_token : "";
 
-      const headers = {
-        "Content-Type": "application/json",
-        ...(token ? { "Authorization": `Bearer ${token}` } : {})
-      };
-
       const pdfResponse = await fetch(
         `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${id}`,
-        { headers }
+        {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        }
       );
 
+      const respuestaTexto = await pdfResponse.text();
+
       if (pdfResponse.ok) {
-        const pdfUrl = await pdfResponse.text();
-        
         await supabase
           .from("contratos")
-          .update({ pdf_url: pdfUrl })
+          .update({ pdf_url: respuestaTexto })
           .eq("id", id);
 
-        setContrato({ ...contrato, pdf_url: pdfUrl });
+        setContrato({ ...contrato, pdf_url: respuestaTexto });
         setMensaje("");
-        window.open(pdfUrl, "_blank");
+        window.open(respuestaTexto, "_blank");
       } else {
-        setMensaje("Error al generar el PDF en el servidor.");
+        setMensaje(`Error del servidor: ${respuestaTexto || pdfResponse.statusText}`);
       }
     } catch (e) {
       console.error(e);
-      setMensaje("Error de conexión al generar el PDF.");
+      setMensaje(`Fallo de red: ${e.message}`);
     } finally {
       setGenerandoPdf(false);
     }
@@ -186,7 +186,7 @@ export default function VerContrato() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: "#ff6b6b",
               fontWeight: "600",
             }}
           >
