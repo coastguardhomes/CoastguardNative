@@ -11,6 +11,7 @@ export default function ClienteInspeccionVer() {
   const [fotos, setFotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  const [fotoModal, setFotoModal] = useState(null); // Estado para abrir la foto a pantalla completa
 
   useEffect(() => {
     if (id) cargarDetalles();
@@ -52,7 +53,6 @@ export default function ClienteInspeccionVer() {
         if (fotosCargadas && fotosCargadas.length > 0) {
           setFotos(fotosCargadas);
         } else {
-          // Fallback consulta directa
           const { data: fotosData } = await supabase
             .from("fotos")
             .select("*")
@@ -75,17 +75,16 @@ export default function ClienteInspeccionVer() {
     }
   }
 
-  // Función auxiliar para obtener siempre una URL de imagen válida
+  // Función para normalizar cualquier formato de URL de fotos
   function obtenerUrlPublica(foto) {
-    const rawUrl = foto.url_foto || foto.url || foto.path || foto.foto_url || "";
+    if (!foto) return "";
+    const rawUrl = typeof foto === "string" ? foto : (foto.url_foto || foto.url || foto.path || foto.foto_url || "");
     if (!rawUrl) return "";
     
-    // Si ya es una URL web completa (http... o https...)
     if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
       return rawUrl;
     }
     
-    // Si es una ruta interna de Supabase Storage, generamos la URL pública
     const { data } = supabase.storage.from("fotos").getPublicUrl(rawUrl);
     return data?.publicUrl || rawUrl;
   }
@@ -157,13 +156,17 @@ export default function ClienteInspeccionVer() {
                   {fotos.map((foto, idx) => {
                     const imgUrl = obtenerUrlPublica(foto);
                     return (
-                      <a key={idx} href={imgUrl} target="_blank" rel="noreferrer">
+                      <div
+                        key={idx}
+                        onClick={() => imgUrl && setFotoModal(imgUrl)}
+                        style={{ cursor: "pointer", borderRadius: "8px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.2)" }}
+                      >
                         <img
                           src={imgUrl}
                           alt={`Foto ${idx + 1}`}
-                          style={{ width: "100%", height: "90px", objectFit: "cover", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.2)" }}
+                          style={{ width: "100%", height: "90px", objectFit: "cover", display: "block" }}
                         />
-                      </a>
+                      </div>
                     );
                   })}
                 </div>
@@ -183,6 +186,53 @@ export default function ClienteInspeccionVer() {
               </div>
             )}
           </>
+        )}
+
+        {/* Modal / Visor de la foto ampliada */}
+        {fotoModal && (
+          <div
+            onClick={() => setFotoModal(null)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.9)",
+              zIndex: 9999,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: "20px",
+            }}
+          >
+            <div style={{ position: "relative", maxWidth: "100%", maxHeight: "90vh", textAlign: "center" }}>
+              <button
+                onClick={() => setFotoModal(null)}
+                style={{
+                  position: "absolute",
+                  top: "-45px",
+                  right: "0px",
+                  background: "rgba(255,255,255,0.2)",
+                  border: "none",
+                  color: "#fff",
+                  padding: "6px 14px",
+                  borderRadius: "20px",
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                ✕ Cerrar
+              </button>
+              <img
+                src={fotoModal}
+                alt="Foto ampliada"
+                style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: "10px", objectFit: "contain", boxShadow: "0 0 20px rgba(0,0,0,0.8)" }}
+              />
+            </div>
+          </div>
         )}
       </div>
     </Menu>
