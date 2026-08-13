@@ -49,7 +49,7 @@ export default function ClienteInspeccionesLista() {
           return;
         }
 
-        // 2. Cargar inspecciones trayendo datos relacionales completos de la vivienda (direccion, ciudad, localidad, alias)
+        // 2. Cargar inspecciones trayendo datos relacionales completos de viviendas
         const { data: dataInspecciones, error: errInspecciones } = await supabase
           .from("inspecciones")
           .select(`
@@ -105,18 +105,18 @@ export default function ClienteInspeccionesLista() {
         {/* Cabecera */}
         <div style={{ textAlign: "center", marginBottom: "20px" }}>
           <h1 style={{ fontSize: "22px", fontWeight: "800", ...TEXTO_DORADO_BRILLO, margin: 0 }}>
-            INSPECCIONES
+            MIS INSPECCIONES
           </h1>
         </div>
 
-        {/* Carga */}
+        {/* Estado de Carga */}
         {loading && (
           <div style={{ textAlign: "center", padding: "40px 0", color: COLOR_DORADO }}>
             <p>Cargando lista de inspecciones...</p>
           </div>
         )}
 
-        {/* Error */}
+        {/* Mensaje de Error */}
         {!loading && errorMsg && (
           <div style={{ textAlign: "center", padding: "30px 15px", background: "rgba(239, 68, 68, 0.1)", border: "1px solid #ef4444", borderRadius: "12px", margin: "10px 0" }}>
             <p style={{ color: "#ef4444", fontWeight: "700", margin: 0 }}>{errorMsg}</p>
@@ -130,13 +130,24 @@ export default function ClienteInspeccionesLista() {
           </div>
         )}
 
-        {/* Tarjetas de Inspección */}
+        {/* Lista de Inspecciones con Título Profesional */}
         {!loading && !errorMsg && inspecciones.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {inspecciones.map((item) => {
-              // Resoluciones de fallback para dirección y localidad
-              const direccionReal = item.viviendas?.direccion || item.viviendas?.alias || item.direccion || "No especificada";
+            {inspecciones.map((item, index) => {
+              const direccionReal = item.viviendas?.direccion || item.viviendas?.alias || item.direccion;
               const localidadReal = item.viviendas?.ciudad || item.viviendas?.localidad || item.localidad || "No especificada";
+              
+              // Formatear fecha para el título (DD/MM/AAAA)
+              const fechaObj = item.fecha ? new Date(item.fecha) : (item.created_at ? new Date(item.created_at) : null);
+              const fechaFormateada = fechaObj ? fechaObj.toLocaleDateString("es-ES") : "Sin fecha";
+
+              // Numeración ordinal correlativa limpia (Nº 01, Nº 02...)
+              const numeroCorrelativo = String(inspecciones.length - index).padStart(2, '0');
+              
+              // Título limpio y profesional
+              const tituloProfesional = direccionReal 
+                ? `Inspección - ${direccionReal} (${fechaFormateada})` 
+                : `Inspección Nº ${numeroCorrelativo} (${fechaFormateada})`;
 
               return (
                 <div
@@ -152,10 +163,14 @@ export default function ClienteInspeccionesLista() {
                   }}
                 >
                   <div style={{ marginBottom: "8px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "12px", fontWeight: "700", color: "#4db8ff" }}>
-                        Inspección #{String(item.id).substring(0, 8)}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+                      
+                      {/* TÍTULO SIN UUID CÓDIGO FEOS */}
+                      <span style={{ fontSize: "14px", fontWeight: "700", color: "#4db8ff", lineHeight: "1.3" }}>
+                        {tituloProfesional}
                       </span>
+
+                      {/* BADGE DE ESTADO */}
                       <span
                         style={{
                           fontSize: "10px",
@@ -163,6 +178,7 @@ export default function ClienteInspeccionesLista() {
                           padding: "3px 8px",
                           borderRadius: "12px",
                           textTransform: "uppercase",
+                          whiteSpace: "nowrap",
                           background: item.estado === "completada" || item.estado === "finalizada" || item.estado === "aprobada" ? "rgba(16, 185, 129, 0.2)" : "rgba(224, 176, 52, 0.2)",
                           color: item.estado === "completada" || item.estado === "finalizada" || item.estado === "aprobada" ? "#10b981" : COLOR_DORADO,
                           border: `1px solid ${item.estado === "completada" || item.estado === "finalizada" || item.estado === "aprobada" ? "#10b981" : COLOR_DORADO}`
@@ -172,17 +188,17 @@ export default function ClienteInspeccionesLista() {
                       </span>
                     </div>
 
-                    {/* Dirección y Localidad extraídas relacionalmente de 'viviendas' */}
-                    <div style={{ marginTop: "6px", fontSize: "13px", color: "#e2e8f0" }}>
-                      <strong>Dirección:</strong> {direccionReal}
+                    {/* DATOS DE DIRECCIÓN Y LOCALIDAD */}
+                    <div style={{ marginTop: "8px", fontSize: "13px", color: "#e2e8f0" }}>
+                      <strong>Dirección:</strong> {direccionReal || "No especificada"}
                     </div>
                     <div style={{ marginTop: "2px", fontSize: "12px", color: "#94a3b8" }}>
                       <strong>Localidad:</strong> {localidadReal}
                     </div>
                   </div>
 
-                  <div style={{ fontSize: "11px", color: "#64748b", display: "flex", justifyContent: "space-between", marginTop: "10px" }}>
-                    <span>Fecha: {item.fecha || (item.created_at ? new Date(item.created_at).toLocaleDateString("es-ES") : "N/A")}</span>
+                  <div style={{ fontSize: "11px", color: "#64748b", display: "flex", justifyContent: "space-between", marginTop: "10px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "8px" }}>
+                    <span>Fecha: {fechaFormateada}</span>
                     <span style={{ color: COLOR_DORADO, fontWeight: "600" }}>Ver detalle →</span>
                   </div>
                 </div>
