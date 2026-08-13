@@ -17,9 +17,7 @@ export default function TecnicoFinalizar() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (id) {
-      cargarInspeccion();
-    }
+    if (id) cargarInspeccion();
   }, [id, user]);
 
   async function cargarInspeccion() {
@@ -41,7 +39,7 @@ export default function TecnicoFinalizar() {
 
       setInspeccion(insp);
       setNotas(insp.notas_tecnico || insp.observaciones || "");
-    } catch (e) {
+    } catch {
       setMensaje("Error de conexión al cargar la inspección.");
     } finally {
       setLoading(false);
@@ -76,23 +74,14 @@ export default function TecnicoFinalizar() {
         return;
       }
 
-      // Intentar ejecutar funciones adicionales (PDF / Email) sin bloquear el flujo si fallan
-      try {
-        await supabase.functions.invoke("pdf-inspeccion", { body: { inspeccion_id: id } });
-        await supabase.functions.invoke("enviar-email", { body: { inspeccion_id: id, tipo: "inspeccion_finalizada" } });
-      } catch (errFunc) {
-        console.warn("Aviso en Edge Functions:", errFunc);
-      }
-
       setExito(true);
-      setMensaje("¡Inspección finalizada con éxito! Redirigiendo al panel...");
+      setMensaje("¡Inspección enviada a revisión con éxito! Redirigiendo...");
 
-      // Pausa de 1.5 segundos para que el usuario vea el mensaje de éxito
       setTimeout(() => {
         navigate("/tecnico");
       }, 1500);
 
-    } catch (e) {
+    } catch {
       setMensaje("Error crítico al finalizar la inspección.");
       setExito(false);
       setGuardando(false);
@@ -102,7 +91,7 @@ export default function TecnicoFinalizar() {
   if (loading) {
     return (
       <Menu>
-        <div style={{ height: "100vh", background: "#0a0f1a", color: "#4db8ff", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "18px", fontFamily: "Inter, sans-serif", fontWeight: "bold" }}>
+        <div style={{ height: "100vh", background: "#0a0f1a", color: "#4db8ff", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "18px", fontWeight: "bold" }}>
           Cargando inspección...
         </div>
       </Menu>
@@ -112,7 +101,7 @@ export default function TecnicoFinalizar() {
   return (
     <Menu>
       <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif", paddingBottom: "80px" }}>
-        <h1 style={{ color: "#4db8ff", marginBottom: "20px", fontSize: "26px", fontWeight: "700", textShadow: "0 0 8px rgba(0,153,255,0.6)", textAlign: "center" }}>
+        <h1 style={{ color: "#4db8ff", marginBottom: "20px", fontSize: "26px", fontWeight: "700", textAlign: "center" }}>
           Finalizar inspección
         </h1>
 
@@ -123,7 +112,7 @@ export default function TecnicoFinalizar() {
         )}
 
         {inspeccion && (
-          <div style={{ background: "rgba(255,255,255,0.05)", padding: "18px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 0 12px rgba(0,153,255,0.2)", marginBottom: "20px" }}>
+          <div style={{ background: "rgba(255,255,255,0.05)", padding: "18px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "20px" }}>
             <p style={{ marginBottom: "8px" }}>
               <strong style={{ color: "#4db8ff" }}>Fecha:</strong> {inspeccion.fecha ? String(inspeccion.fecha).slice(0, 10) : "Sin fecha"}
             </p>
@@ -148,7 +137,7 @@ export default function TecnicoFinalizar() {
           disabled={guardando || exito}
           style={{ padding: "14px", width: "100%", background: exito ? "#10b981" : guardando ? "#666" : "#4ade80", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "16px", cursor: (guardando || exito) ? "not-allowed" : "pointer", marginBottom: "15px" }}
         >
-          {guardando ? "Guardando e informando..." : exito ? "✔ Finalizada" : "Finalizar inspección"}
+          {guardando ? "Guardando..." : exito ? "✔ Finalizada" : "Finalizar inspección"}
         </button>
 
         <Link to={`/tecnico/inspeccion/${id}/checklist`} style={{ textDecoration: "none" }}>
