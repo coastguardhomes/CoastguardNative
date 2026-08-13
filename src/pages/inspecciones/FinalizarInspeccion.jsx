@@ -12,29 +12,41 @@ export default function FinalizarInspeccion() {
   const [mensaje, setMensaje] = useState("");
   const [procesando, setProcesando] = useState(false);
 
-  // 🔥 Cargar inspección completa
+  // 1️⃣ Cargar inspección
   useEffect(() => {
-    async function cargarInspeccion() {
+    if (id) {
+      cargarInspeccion();
+    }
+  }, [id]);
+
+  async function cargarInspeccion() {
+    setLoading(true);
+    setMensaje("");
+
+    try {
       const { data, error } = await supabase
         .from("inspecciones")
         .select("*")
-        .eq("id", id)
+        .eq("id", String(id))
         .single();
 
-      if (error || !data) {
-        setMensaje("Error cargando inspección");
-        setLoading(false);
-        return;
+      if (error) {
+        console.error("Error al obtener inspección:", error);
+        setMensaje(`Error cargando inspección: ${error.message}`);
+      } else if (!data) {
+        setMensaje("No se encontró la inspección solicitada.");
+      } else {
+        setInspeccion(data);
       }
-
-      setInspeccion(data);
+    } catch (err) {
+      console.error("Error inesperado:", err);
+      setMensaje("Error inesperado al conectar con el servidor.");
+    } finally {
       setLoading(false);
     }
+  }
 
-    cargarInspeccion();
-  }, [id]);
-
-  // 🔥 Finalizar inspección (Marca el checklist y el estado para revisión del admin)
+  // 2️⃣ Finalizar inspección (Cambia estado a revisión del admin)
   async function finalizar() {
     setProcesando(true);
     setMensaje("");
@@ -46,9 +58,10 @@ export default function FinalizarInspeccion() {
           estado: "pendiente_aprobacion",
           fecha_finalizacion: new Date().toISOString(),
         })
-        .eq("id", id);
+        .eq("id", String(id));
 
       if (error) {
+        console.error("Error al finalizar:", error);
         setMensaje("Error al finalizar la inspección: " + error.message);
         setProcesando(false);
         return;
@@ -60,26 +73,29 @@ export default function FinalizarInspeccion() {
         navigate("/panel-tecnico");
       }, 1500);
     } catch (e) {
-      setMensaje("Error finalizando inspección");
+      console.error("Error inesperado en finalizar:", e);
+      setMensaje("Error crítico procesando la finalización.");
       setProcesando(false);
     }
   }
 
-  if (loading || !inspeccion) {
+  if (loading) {
     return (
       <Menu>
         <div
           style={{
             height: "100vh",
             background: "#0a0f1a",
-            color: "#fff",
+            color: "#4db8ff",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             fontSize: "18px",
+            fontFamily: "Inter, sans-serif",
+            fontWeight: "bold",
           }}
         >
-          Cargando inspección...
+          Cargando datos de la inspección...
         </div>
       </Menu>
     );
@@ -94,15 +110,17 @@ export default function FinalizarInspeccion() {
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
+          paddingBottom: "80px",
         }}
       >
         <h1
           style={{
             color: "#4db8ff",
             marginBottom: "25px",
-            fontSize: "28px",
+            fontSize: "26px",
             fontWeight: "700",
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            textAlign: "center",
           }}
         >
           Finalizar Inspección
@@ -120,64 +138,76 @@ export default function FinalizarInspeccion() {
               borderRadius: "10px",
               color: mensaje.includes("éxito") ? "#4ade80" : "#ff6b6b",
               fontWeight: "600",
+              textAlign: "center",
             }}
           >
             {mensaje}
           </div>
         )}
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-            marginBottom: "25px",
-          }}
-        >
-          <p style={{ marginBottom: "12px", fontSize: "16px" }}>
-            <strong style={{ color: "#4db8ff" }}>Fecha:</strong> {String(inspeccion.fecha || "").slice(0, 10)}
-          </p>
+        {inspeccion ? (
+          <>
+            <div
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                padding: "20px",
+                borderRadius: "14px",
+                border: "1px solid rgba(255,255,255,0.1)",
+                boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+                marginBottom: "25px",
+              }}
+            >
+              <p style={{ marginBottom: "12px", fontSize: "15px" }}>
+                <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
+                {inspeccion.fecha ? String(inspeccion.fecha).slice(0, 10) : "Sin fecha"}
+              </p>
 
-          <p style={{ marginBottom: "12px", fontSize: "16px" }}>
-            <strong style={{ color: "#4db8ff" }}>Estado actual:</strong>{" "}
-            <span style={{ padding: "3px 8px", background: "rgba(255,255,255,0.1)", borderRadius: "6px" }}>
-              {inspeccion.estado}
-            </span>
-          </p>
+              <p style={{ marginBottom: "12px", fontSize: "15px" }}>
+                <strong style={{ color: "#4db8ff" }}>Estado actual:</strong>{" "}
+                <span style={{ padding: "3px 8px", background: "rgba(255,255,255,0.1)", borderRadius: "6px" }}>
+                  {inspeccion.estado}
+                </span>
+              </p>
 
-          <p style={{ marginBottom: "12px", fontSize: "16px" }}>
-            <strong style={{ color: "#4db8ff" }}>Checklist:</strong>{" "}
-            {inspeccion.checklist_completado ? "Completado ✔" : "Revisar ítems ✗"}
-          </p>
+              <p style={{ marginBottom: "12px", fontSize: "15px" }}>
+                <strong style={{ color: "#4db8ff" }}>Checklist:</strong>{" "}
+                {inspeccion.checklist_completado ? "Completado ✔" : "Revisar ítems ✗"}
+              </p>
 
-          <p style={{ marginBottom: "12px", fontSize: "16px" }}>
-            <strong style={{ color: "#4db8ff" }}>Notas del técnico:</strong>{" "}
-            {inspeccion.observaciones || inspeccion.notas || "Sin observaciones adicionales"}
-          </p>
-        </div>
+              <p style={{ marginBottom: "12px", fontSize: "15px" }}>
+                <strong style={{ color: "#4db8ff" }}>Notas del técnico:</strong>{" "}
+                {inspeccion.observaciones || inspeccion.notas || "Sin observaciones adicionales"}
+              </p>
+            </div>
 
-        <button
-          onClick={finalizar}
-          disabled={procesando}
-          style={{
-            marginTop: "10px",
-            padding: "14px",
-            width: "100%",
-            background: "#4ade80",
-            color: "#000",
-            borderRadius: "10px",
-            border: "none",
-            fontWeight: "700",
-            fontSize: "17px",
-            cursor: procesando ? "not-allowed" : "pointer",
-            boxShadow: "0 0 10px rgba(74,222,128,0.4)",
-            opacity: procesando ? 0.6 : 1,
-          }}
-        >
-          {procesando ? "Enviando al administrador..." : "🚀 Enviar al administrador para aprobación"}
-        </button>
+            <button
+              onClick={finalizar}
+              disabled={procesando}
+              style={{
+                marginTop: "10px",
+                padding: "14px",
+                width: "100%",
+                background: "#4ade80",
+                color: "#000",
+                borderRadius: "10px",
+                border: "none",
+                fontWeight: "700",
+                fontSize: "16px",
+                cursor: procesando ? "not-allowed" : "pointer",
+                boxShadow: "0 0 10px rgba(74,222,128,0.4)",
+                opacity: procesando ? 0.6 : 1,
+              }}
+            >
+              {procesando ? "Enviando al administrador..." : "🚀 Enviar al administrador para aprobación"}
+            </button>
+          </>
+        ) : (
+          !mensaje && (
+            <div style={{ textAlign: "center", opacity: 0.7, marginTop: "20px" }}>
+              No hay datos para mostrar.
+            </div>
+          )
+        )}
       </div>
     </Menu>
   );
