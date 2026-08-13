@@ -9,7 +9,11 @@ export default function ChecklistUnificado() {
   const navigate = useNavigate();
 
   const [inspeccion, setInspeccion] = useState(null);
-  const [viviendaInfo, setViviendaInfo] = useState({ nombre: "Cargando...", direccion: "", cliente: "Sin cliente asignado" });
+  const [viviendaInfo, setViviendaInfo] = useState({
+    nombre: "Cargando...",
+    direccion: "",
+    cliente: "Sin cliente asignado",
+  });
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
@@ -57,7 +61,7 @@ export default function ChecklistUnificado() {
     if (id) cargarDatosInspeccion();
   }, [id]);
 
-  // 2. Cargar o generar los más de 20 ítems obligatorios
+  // 2. Cargar o generar los ítems del checklist
   useEffect(() => {
     async function gestionarChecklist() {
       setLoading(true);
@@ -65,9 +69,10 @@ export default function ChecklistUnificado() {
       let { data, error } = await supabase
         .from("checklist_inspeccion")
         .select("*")
-        .eq("inspeccion_id", id);
+        .eq("inspeccion_id", String(id));
 
       if (error) {
+        console.error("Error checklist:", error);
         setMensaje("Error conectando con la tabla checklist_inspeccion");
         setLoading(false);
         return;
@@ -99,11 +104,11 @@ export default function ChecklistUnificado() {
           "Piscina: nivel de agua correcto y bomba operativa",
           "Ausencia de plagas (insectos, hormigas o roedores)",
           "Limpieza ligera y ausencia de basura interior",
-          "Estado general del mobiliario y cristales sin roturas"
+          "Estado general del mobiliario y cristales sin roturas",
         ];
 
         const nuevosItems = plantillaCompleta.map((texto) => ({
-          inspeccion_id: id,
+          inspeccion_id: String(id),
           item: texto,
           completado: false,
         }));
@@ -121,7 +126,7 @@ export default function ChecklistUnificado() {
         const { data: dataRecargada } = await supabase
           .from("checklist_inspeccion")
           .select("*")
-          .eq("inspeccion_id", id);
+          .eq("inspeccion_id", String(id));
 
         data = dataRecargada || [];
       }
@@ -145,13 +150,13 @@ export default function ChecklistUnificado() {
       .eq("id", itemId);
   }
 
-  // Subida de fotos corregida para evitar errores en Storage
+  // Subida de fotos integrada
   async function procesarYSubirImagen(base64String) {
     try {
-      setMensaje("Subiendo foto a Supabase...");
-      
-      const base64Clean = base64String.includes("base64,") 
-        ? base64String.split("base64,")[1] 
+      setMensaje("Subiendo foto...");
+
+      const base64Clean = base64String.includes("base64,")
+        ? base64String.split("base64,")[1]
         : base64String;
 
       const byteCharacters = atob(base64Clean);
@@ -170,7 +175,6 @@ export default function ChecklistUnificado() {
 
       if (storageError) {
         setMensaje("Error Storage: " + storageError.message);
-        console.error("Detalle error storage:", storageError);
         return;
       }
 
@@ -178,13 +182,18 @@ export default function ChecklistUnificado() {
         .from("fotos")
         .getPublicUrl(nombreArchivo);
 
-      await supabase.from("fotos_inspeccion").insert({
-        inspeccion_id: id,
+      const { error: insertError } = await supabase.from("fotos_inspeccion").insert({
+        inspeccion_id: String(id),
         archivo: nombreArchivo,
         url: urlData.publicUrl,
         principal: false,
         tipo: "checklist",
       });
+
+      if (insertError) {
+        setMensaje("Error al registrar foto en BD: " + insertError.message);
+        return;
+      }
 
       setMensaje("¡Foto guardada con éxito!");
       setTimeout(() => setMensaje(""), 3000);
@@ -220,11 +229,12 @@ export default function ChecklistUnificado() {
     }
   }
 
+  // CORREGIDO: Redirección post-guardado correcta
   async function guardarChecklistCompleto() {
     setGuardando(true);
     const todoOk = items.length > 0 && items.every((i) => i.completado === true);
 
-    await supabase
+    const { error } = await supabase
       .from("inspecciones")
       .update({
         observaciones,
@@ -232,16 +242,34 @@ export default function ChecklistUnificado() {
         fecha_checklist: new Date().toISOString(),
         estado: todoOk ? "checklist_completado" : "checklist_incompleto",
       })
-      .eq("id", id);
+      .eq("id", String(id));
 
-    navigate(`/inspecciones/fotos/${id}`);
+    if (error) {
+      setMensaje("Error al guardar inspección: " + error.message);
+      setGuardando(false);
+      return;
+    }
+
     setGuardando(false);
+    
+    // Redirección corregida al detalle principal de la inspección
+    navigate(`/tecnico/inspeccion/${id}`);
   }
 
   if (loading) {
     return (
       <Menu>
-        <div style={{ height: "100vh", background: "#04070c", color: "#ffd700", display: "flex", justifyContent: "center", alignItems: "center", fontWeight: "bold" }}>
+        <div
+          style={{
+            height: "100vh",
+            background: "#04070c",
+            color: "#ffd700",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontWeight: "bold",
+          }}
+        >
           Cargando puntos del checklist...
         </div>
       </Menu>
@@ -250,26 +278,80 @@ export default function ChecklistUnificado() {
 
   return (
     <Menu>
-      <div style={{ padding: "16px", background: "#04070c", minHeight: "100vh", color: "#fff", fontFamily: "sans-serif" }}>
-        
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-          <h1 style={{ color: "#ffd700", fontSize: "18px", margin: 0 }}>Checklist Técnico ({items.length} puntos)</h1>
-          <button 
-            onClick={() => navigate(-1)}
-            style={{ background: "#16263f", border: "1px solid #d4af37", color: "#ffd700", padding: "6px 10px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}
+      <div
+        style={{
+          padding: "16px",
+          background: "#04070c",
+          minHeight: "100vh",
+          color: "#fff",
+          fontFamily: "sans-serif",
+          paddingBottom: "100px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "15px",
+          }}
+        >
+          <h1 style={{ color: "#ffd700", fontSize: "18px", margin: 0 }}>
+            Checklist Técnico ({items.length} puntos)
+          </h1>
+          <button
+            onClick={() => navigate(`/tecnico/inspeccion/${id}`)}
+            style={{
+              background: "#16263f",
+              border: "1px solid #d4af37",
+              color: "#ffd700",
+              padding: "6px 10px",
+              borderRadius: "6px",
+              fontWeight: "bold",
+              cursor: "pointer",
+            }}
           >
             ← Volver
           </button>
         </div>
 
-        <div style={{ background: "#09101d", border: "1px solid #d4af37", borderRadius: "10px", padding: "12px", marginBottom: "15px", fontSize: "13px" }}>
-          <div style={{ marginBottom: "4px" }}>🏠 <strong style={{ color: "#ffd700" }}>Vivienda:</strong> {viviendaInfo.nombre}</div>
-          <div style={{ marginBottom: "4px" }}>📍 <strong style={{ color: "#ffd700" }}>Dirección:</strong> {viviendaInfo.direccion}</div>
-          <div>👤 <strong style={{ color: "#ffd700" }}>Cliente:</strong> {viviendaInfo.cliente}</div>
+        <div
+          style={{
+            background: "#09101d",
+            border: "1px solid #d4af37",
+            borderRadius: "10px",
+            padding: "12px",
+            marginBottom: "15px",
+            fontSize: "13px",
+          }}
+        >
+          <div style={{ marginBottom: "4px" }}>
+            🏠 <strong style={{ color: "#ffd700" }}>Vivienda:</strong>{" "}
+            {viviendaInfo.nombre}
+          </div>
+          <div style={{ marginBottom: "4px" }}>
+            📍 <strong style={{ color: "#ffd700" }}>Dirección:</strong>{" "}
+            {viviendaInfo.direccion}
+          </div>
+          <div>
+            👤 <strong style={{ color: "#ffd700" }}>Cliente:</strong>{" "}
+            {viviendaInfo.cliente}
+          </div>
         </div>
 
         {mensaje && (
-          <div style={{ marginBottom: "12px", padding: "8px", background: "rgba(212,175,55,0.1)", border: "1px solid #ffd700", borderRadius: "6px", color: "#ffd700", fontSize: "12px", fontWeight: "bold" }}>
+          <div
+            style={{
+              marginBottom: "12px",
+              padding: "8px",
+              background: "rgba(212,175,55,0.1)",
+              border: "1px solid #ffd700",
+              borderRadius: "6px",
+              color: "#ffd700",
+              fontSize: "12px",
+              fontWeight: "bold",
+            }}
+          >
             {mensaje}
           </div>
         )}
@@ -277,19 +359,46 @@ export default function ChecklistUnificado() {
         <div style={{ display: "flex", gap: "8px", marginBottom: "15px" }}>
           <button
             onClick={tomarFoto}
-            style={{ flex: 1, padding: "10px", background: "#d4af37", color: "#070b12", borderRadius: "8px", border: "none", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}
+            style={{
+              flex: 1,
+              padding: "10px",
+              background: "#d4af37",
+              color: "#070b12",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "bold",
+              cursor: "pointer",
+              fontSize: "13px",
+            }}
           >
             📸 Hacer Foto
           </button>
           <button
             onClick={seleccionarDeGaleria}
-            style={{ flex: 1, padding: "10px", background: "#27ae60", color: "#fff", borderRadius: "8px", border: "none", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}
+            style={{
+              flex: 1,
+              padding: "10px",
+              background: "#27ae60",
+              color: "#fff",
+              borderRadius: "8px",
+              border: "none",
+              fontWeight: "bold",
+              cursor: "pointer",
+              fontSize: "13px",
+            }}
           >
             🖼️ Galería
           </button>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "15px" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            marginBottom: "15px",
+          }}
+        >
           {items.map((item, index) => (
             <div
               key={item.id || index}
@@ -300,7 +409,14 @@ export default function ChecklistUnificado() {
                 border: "1px solid #1e3050",
               }}
             >
-              <p style={{ marginBottom: "8px", fontSize: "13px", fontWeight: "600", color: "#fff" }}>
+              <p
+                style={{
+                  marginBottom: "8px",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "#fff",
+                }}
+              >
                 {index + 1}. {item.item}
               </p>
 
@@ -327,7 +443,10 @@ export default function ChecklistUnificado() {
                   style={{
                     flex: 1,
                     padding: "8px",
-                    background: !item.completado && item.completado !== null ? "#e74c3c" : "#111b2e",
+                    background:
+                      !item.completado && item.completado !== null
+                        ? "#e74c3c"
+                        : "#111b2e",
                     color: "#fff",
                     borderRadius: "6px",
                     border: "1px solid #e74c3c",
@@ -366,7 +485,8 @@ export default function ChecklistUnificado() {
           style={{
             width: "100%",
             padding: "12px",
-            background: "linear-gradient(to bottom, #f3e0aa 0%, #d4af37 50%, #b8860b 100%)",
+            background:
+              "linear-gradient(to bottom, #f3e0aa 0%, #d4af37 50%, #b8860b 100%)",
             color: "#070b12",
             borderRadius: "8px",
             border: "none",
@@ -378,7 +498,6 @@ export default function ChecklistUnificado() {
         >
           {guardando ? "Guardando..." : "✅ Guardar y Finalizar Checklist"}
         </button>
-
       </div>
     </Menu>
   );
