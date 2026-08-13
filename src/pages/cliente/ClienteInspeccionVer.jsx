@@ -1,209 +1,117 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
 import Menu from "../../layouts/Menu";
-
-const COLOR_DORADO = "#e0b034";
-const COLOR_BRILLO_DORADO = "rgba(224, 176, 52, 0.5)";
-const FONDO_TARJETA = "linear-gradient(145deg, #0d1626 0%, #05080f 100%)";
-const FONDO_PRINCIPAL = "#030509";
-const BORDE_DORADO = `1px solid ${COLOR_DORADO}`;
-const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: `0 0 8px ${COLOR_BRILLO_DORADO}` };
+import { supabase } from "../../lib/supabase";
+import { useParams, Link } from "react-router-dom";
 
 export default function ClienteInspeccionVer() {
   const { id } = useParams();
-  const navigate = useNavigate();
-
   const [inspeccion, setInspeccion] = useState(null);
+  const [fotos, setFotos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   useEffect(() => {
-    async function cargarDetalle() {
-      if (!id) return;
-
-      try {
-        setLoading(true);
-        setError(false);
-
-        // 1. Intento de consulta completa con relaciones
-        let { data, error: errFetch } = await supabase
-          .from("inspecciones")
-          .select(`
-            *,
-            viviendas ( direccion, alias, ciudad ),
-            tecnicos ( nombre, apellidos )
-          `)
-          .eq("id", id)
-          .maybeSingle();
-
-        // 2. Si la unión de tablas falla, hacemos una consulta simple
-        if (errFetch || !data) {
-          console.warn("Fallo la consulta con relaciones, reintentando consulta simple...", errFetch);
-          const { data: dataSimple, error: errSimple } = await supabase
-            .from("inspecciones")
-            .select("*")
-            .eq("id", id)
-            .maybeSingle();
-
-          if (errSimple || !dataSimple) {
-            setError(true);
-            return;
-          }
-          data = dataSimple;
-        }
-
-        setInspeccion(data);
-      } catch (err) {
-        console.error("Error inesperado en detalle inspección:", err);
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    cargarDetalle();
+    if (id) cargarDetalles();
   }, [id]);
+
+  async function cargarDetalles() {
+    setLoading(true);
+    try {
+      // 1. Obtener datos de la inspección
+      const { data: insp } = await supabase
+        .from("inspecciones")
+        .select("*, viviendas(direccion, localidad)")
+        .eq("id", String(id))
+        .single();
+
+      if (insp) setInspeccion(insp);
+
+      // 2. Cargar fotos asociadas
+      const { data: fotosData } = await supabase
+        .from("fotos_inspecciones")
+        .select("*")
+        .eq("inspeccion_id", String(id));
+
+      if (fotosData) setFotos(fotosData);
+    } catch (err) {
+      console.error("Error cargando detalles:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <Menu>
+        <div style={{ height: "100vh", background: "#0a0f1a", color: "#4db8ff", display: "flex", justifyContent: "center", alignItems: "center" }}>
+          Cargando información...
+        </div>
+      </Menu>
+    );
+  }
 
   return (
     <Menu>
-      <div
-        style={{
-          width: "100%",
-          minHeight: "100vh",
-          background: FONDO_PRINCIPAL,
-          padding: "15px",
-          fontFamily: "'Inter', sans-serif",
-          color: "#fff",
-          boxSizing: "border-box",
-          paddingBottom: "110px"
-        }}
-      >
-        {/* BOTÓN VOLVER */}
-        <button
-          onClick={() => navigate("/cliente/inspecciones")}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: COLOR_DORADO,
-            fontSize: "14px",
-            fontWeight: "700",
-            cursor: "pointer",
-            marginBottom: "15px",
-            display: "flex",
-            alignItems: "center",
-            gap: "5px"
-          }}
-        >
+      <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif", paddingBottom: "80px" }}>
+        
+        <Link to="/cliente/inspecciones" style={{ color: "#ffcc00", textDecoration: "none", fontWeight: "600", display: "inline-block", marginBottom: "20px" }}>
           ← Volver a Mis Inspecciones
-        </button>
+        </Link>
 
-        {loading && (
-          <div style={{ textAlign: "center", padding: "50px 0", color: COLOR_DORADO }}>
-            <p>Cargando detalle de la inspección...</p>
-          </div>
-        )}
-
-        {error && !loading && (
-          <div style={{ textAlign: "center", padding: "40px 20px" }}>
-            <h2 style={{ fontSize: "20px", color: "#38bdf8", marginBottom: "15px" }}>
-              No se encontró la inspección
-            </h2>
-            <button
-              onClick={() => navigate("/cliente/inspecciones")}
-              style={{
-                background: "transparent",
-                border: BORDE_DORADO,
-                color: COLOR_DORADO,
-                padding: "8px 16px",
-                borderRadius: "20px",
-                cursor: "pointer"
-              }}
-            >
-              Volver
-            </button>
-          </div>
-        )}
-
-        {!loading && !error && inspeccion && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            {/* CABECERA DETALLE */}
-            <div
-              style={{
-                background: FONDO_TARJETA,
-                border: BORDE_DORADO,
-                borderRadius: "16px",
-                padding: "16px",
-                boxShadow: "0 0 15px rgba(224, 176, 52, 0.15)"
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                <div>
-                  <h2 style={{ fontSize: "16px", fontWeight: "800", margin: 0, ...TEXTO_DORADO_BRILLO }}>
-                    Inspección #{inspeccion.id.substring(0, 6)}
-                  </h2>
-                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: "4px 0 0 0" }}>
-                    Fecha: {inspeccion.created_at ? new Date(inspeccion.created_at).toLocaleDateString("es-ES") : "N/A"}
-                  </p>
-                </div>
-                <span
-                  style={{
-                    fontSize: "10px",
-                    fontWeight: "800",
-                    padding: "4px 10px",
-                    borderRadius: "12px",
-                    textTransform: "uppercase",
-                    background: inspeccion.estado === "completada" || inspeccion.estado === "finalizada" ? "rgba(16, 185, 129, 0.2)" : "rgba(224, 176, 52, 0.2)",
-                    color: inspeccion.estado === "completada" || inspeccion.estado === "finalizada" ? "#10b981" : COLOR_DORADO,
-                    border: `1px solid ${inspeccion.estado === "completada" || inspeccion.estado === "finalizada" ? "#10b981" : COLOR_DORADO}`
-                  }}
-                >
-                  {inspeccion.estado || "Pendiente"}
+        {inspeccion && (
+          <>
+            <div style={{ background: "rgba(255,255,255,0.03)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,204,0,0.3)", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h2 style={{ color: "#ffcc00", fontSize: "18px", margin: 0 }}>Inspección #{inspeccion.id.slice(0, 8)}</h2>
+                <span style={{ fontSize: "13px", color: "#aaa" }}>
+                  Fecha: {inspeccion.fecha ? new Date(inspeccion.fecha).toLocaleDateString() : "-"}
                 </span>
               </div>
+              <span style={{ padding: "4px 10px", border: "1px solid #ffcc00", color: "#ffcc00", borderRadius: "20px", fontSize: "12px", fontWeight: "bold", textTransform: "uppercase" }}>
+                {inspeccion.estado}
+              </span>
             </div>
 
-            {/* INFORMACIÓN DE LA VIVIENDA */}
-            <div
-              style={{
-                background: FONDO_TARJETA,
-                border: BORDE_DORADO,
-                borderRadius: "16px",
-                padding: "16px"
-              }}
-            >
-              <h3 style={{ fontSize: "12px", color: "#94a3b8", textTransform: "uppercase", margin: "0 0 10px 0", fontWeight: "700" }}>
-                Ubicación / Vivienda
-              </h3>
-              <p style={{ fontSize: "14px", fontWeight: "600", margin: 0, color: "#e2e8f0" }}>
-                {inspeccion.viviendas?.alias || inspeccion.viviendas?.direccion || "Dirección no especificada"}
+            <div style={{ background: "rgba(255,255,255,0.03)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "20px" }}>
+              <h4 style={{ color: "#4db8ff", fontSize: "13px", textTransform: "uppercase", marginBottom: "8px" }}>Ubicación / Vivienda</h4>
+              <p style={{ margin: 0, fontSize: "15px", fontWeight: "600" }}>
+                {inspeccion.viviendas?.direccion || inspeccion.direccion || "Dirección no especificada"}
               </p>
-              {inspeccion.viviendas?.ciudad && (
-                <p style={{ fontSize: "12px", color: "#94a3b8", margin: "4px 0 0 0" }}>
-                  {inspeccion.viviendas.ciudad}
-                </p>
+            </div>
+
+            <div style={{ background: "rgba(255,255,255,0.03)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "20px" }}>
+              <h4 style={{ color: "#4db8ff", fontSize: "13px", textTransform: "uppercase", marginBottom: "8px" }}>Observaciones</h4>
+              <p style={{ margin: 0, fontSize: "14px", color: "#ddd" }}>
+                {inspeccion.notas_tecnico || inspeccion.observaciones || "Sin observaciones registradas."}
+              </p>
+            </div>
+
+            <div style={{ background: "rgba(255,255,255,0.03)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "20px" }}>
+              <h4 style={{ color: "#4db8ff", fontSize: "13px", textTransform: "uppercase", marginBottom: "12px" }}>Fotografías Adjuntas</h4>
+              {fotos.length === 0 ? (
+                <p style={{ color: "#888", fontSize: "13px", margin: 0 }}>No hay fotografías adjuntas a esta inspección.</p>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: "10px" }}>
+                  {fotos.map((foto, idx) => (
+                    <a key={idx} href={foto.url_foto || foto.url} target="_blank" rel="noreferrer">
+                      <img
+                        src={foto.url_foto || foto.url}
+                        alt={`Foto ${idx + 1}`}
+                        style={{ width: "100%", height: "90px", objectFit: "cover", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.2)" }}
+                      />
+                    </a>
+                  ))}
+                </div>
               )}
             </div>
 
-            {/* OBSERVACIONES / NOTAS */}
-            {inspeccion.observaciones && (
-              <div
-                style={{
-                  background: FONDO_TARJETA,
-                  border: BORDE_DORADO,
-                  borderRadius: "16px",
-                  padding: "16px"
-                }}
-              >
-                <h3 style={{ fontSize: "12px", color: "#94a3b8", textTransform: "uppercase", margin: "0 0 8px 0", fontWeight: "700" }}>
-                  Observaciones
-                </h3>
-                <p style={{ fontSize: "13px", color: "#cbd5e1", margin: 0, lineHeight: "1.5" }}>
-                  {inspeccion.observaciones}
-                </p>
-              </div>
+            {inspeccion.pdf_url && (
+              <a href={inspeccion.pdf_url} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                <button style={{ width: "100%", padding: "14px", background: "#ffcc00", color: "#000", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px", cursor: "pointer" }}>
+                  📄 Descargar Informe PDF
+                </button>
+              </a>
             )}
-          </div>
+          </>
         )}
       </div>
     </Menu>
