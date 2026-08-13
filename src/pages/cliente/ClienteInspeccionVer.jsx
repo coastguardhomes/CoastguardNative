@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useParams, Link } from "react-router-dom";
+import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
 
 export default function ClienteInspeccionVer() {
   const { id } = useParams();
   const [inspeccion, setInspeccion] = useState(null);
+  const [vivienda, setVivienda] = useState(null);
   const [fotos, setFotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -18,7 +20,7 @@ export default function ClienteInspeccionVer() {
     setLoading(true);
     setErrorMsg("");
     try {
-      // 1. Obtener datos directos de la inspección sin joins complejos para evitar fallos de Foreign Key
+      // 1. Obtener datos de la inspección
       const { data: insp, error: inspErr } = await supabase
         .from("inspecciones")
         .select("*")
@@ -33,13 +35,28 @@ export default function ClienteInspeccionVer() {
 
       setInspeccion(insp);
 
-      // 2. Cargar fotos asociadas si existen
-      const { data: fotosData } = await supabase
-        .from("fotos_inspecciones")
-        .select("*")
-        .eq("inspeccion_id", String(id));
+      // 2. Cargar dirección desde la tabla viviendas
+      if (insp.vivienda_id) {
+        const { data: viv } = await supabase
+          .from("viviendas")
+          .select("direccion, ciudad")
+          .eq("id", insp.vivienda_id)
+          .maybeSingle();
 
-      if (fotosData) setFotos(fotosData);
+        setVivienda(viv);
+      }
+
+      // 3. Cargar fotos con el helper oficial o consulta directa a 'fotos'
+      try {
+        const fotosCargadas = await cargarFotosInspeccion(id);
+        setFotos(fotosCargadas || []);
+      } catch {
+        const { data: fotosData } = await supabase
+          .from("fotos")
+          .select("*")
+          .eq("inspeccion_id", String(id));
+        setFotos(fotosData || []);
+      }
 
     } catch (err) {
       console.error("Error al cargar detalles:", err);
@@ -94,7 +111,7 @@ export default function ClienteInspeccionVer() {
             <div style={{ background: "rgba(255,255,255,0.03)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "20px" }}>
               <h4 style={{ color: "#4db8ff", fontSize: "13px", textTransform: "uppercase", marginBottom: "8px" }}>Ubicación / Vivienda</h4>
               <p style={{ margin: 0, fontSize: "15px", fontWeight: "600" }}>
-                {inspeccion.direccion || inspeccion.vivienda_direccion || "Dirección no especificada"}
+                {vivienda?.direccion || inspeccion.direccion || inspeccion.vivienda_direccion || "Dirección no especificada"}
               </p>
             </div>
 
@@ -143,4 +160,4 @@ export default function ClienteInspeccionVer() {
       </div>
     </Menu>
   );
-                        }
+}
