@@ -133,13 +133,13 @@ export default function VerTecnico() {
         return;
       }
 
-      // Si pasa a inactivo, desvinculamos inspecciones pendientes
+      // Si pasa a inactivo, desvinculamos inspecciones pendientes o asignadas
       if (!nuevoEstado) {
         await supabase
           .from("inspecciones")
           .update({ tecnico_id: null, estado: "pendiente_reasignar" })
           .eq("tecnico_id", String(id))
-          .eq("estado", "pendiente");
+          .in("estado", ["pendiente", "asignada"]);
       }
 
       await cargarDatos();
@@ -263,24 +263,8 @@ export default function VerTecnico() {
               </p>
             </div>
 
-            {/* Inspecciones */}
-            <Bloque titulo={`Inspecciones Asignadas (${inspecciones.length})`}>
-              {inspecciones.length === 0 ? (
-                <p style={{ opacity: 0.7, fontSize: "14px" }}>
-                  Este técnico no tiene inspecciones asignadas.
-                </p>
-              ) : (
-                inspecciones.map((i) => (
-                  <Item
-                    key={i.id}
-                    to={`/inspecciones/${i.id}`}
-                    titulo={`${i.vivienda?.direccion || "Vivienda sin dirección"} — ${i.estado}`}
-                  />
-                ))
-              )}
-            </Bloque>
-
-            <Bloque titulo={`Pendientes (${pendientes.length})`}>
+            {/* Inspecciones separadas por categoría */}
+            <Bloque titulo={`Pendientes / Asignadas (${pendientes.length})`}>
               {pendientes.length === 0 ? (
                 <p style={{ opacity: 0.7, fontSize: "14px" }}>
                   No hay inspecciones pendientes.
@@ -290,7 +274,7 @@ export default function VerTecnico() {
                   <Item
                     key={i.id}
                     to={`/inspecciones/${i.id}`}
-                    titulo={`${i.vivienda?.direccion || "Vivienda"} — Pendiente`}
+                    titulo={`${i.vivienda?.direccion || "Vivienda sin dirección"} — ${i.estado}`}
                   />
                 ))
               )}
@@ -330,7 +314,13 @@ export default function VerTecnico() {
 
             {/* Botones de acción */}
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "20px" }}>
-              <Link to={`/tecnicos/editar/${id}`} style={{ textDecoration: "none" }}>
+              <Link
+                to={`/tecnicos/editar/${id}`}
+                style={{
+                  textDecoration: "none",
+                  pointerEvents: procesando ? "none" : "auto",
+                }}
+              >
                 <button
                   disabled={procesando}
                   style={{
