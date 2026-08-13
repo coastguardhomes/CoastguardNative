@@ -35,7 +35,7 @@ export default function ClienteInspeccionVer() {
 
       setInspeccion(insp);
 
-      // 2. Cargar dirección desde la tabla viviendas
+      // 2. Cargar la vivienda/dirección asociada
       if (insp.vivienda_id) {
         const { data: viv } = await supabase
           .from("viviendas")
@@ -46,10 +46,19 @@ export default function ClienteInspeccionVer() {
         setVivienda(viv);
       }
 
-      // 3. Cargar fotos con el helper oficial o consulta directa a 'fotos'
+      // 3. Cargar las fotos de la inspección
       try {
         const fotosCargadas = await cargarFotosInspeccion(id);
-        setFotos(fotosCargadas || []);
+        if (fotosCargadas && fotosCargadas.length > 0) {
+          setFotos(fotosCargadas);
+        } else {
+          // Fallback consulta directa
+          const { data: fotosData } = await supabase
+            .from("fotos")
+            .select("*")
+            .eq("inspeccion_id", String(id));
+          setFotos(fotosData || []);
+        }
       } catch {
         const { data: fotosData } = await supabase
           .from("fotos")
@@ -64,6 +73,21 @@ export default function ClienteInspeccionVer() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Función auxiliar para obtener siempre una URL de imagen válida
+  function obtenerUrlPublica(foto) {
+    const rawUrl = foto.url_foto || foto.url || foto.path || foto.foto_url || "";
+    if (!rawUrl) return "";
+    
+    // Si ya es una URL web completa (http... o https...)
+    if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+      return rawUrl;
+    }
+    
+    // Si es una ruta interna de Supabase Storage, generamos la URL pública
+    const { data } = supabase.storage.from("fotos").getPublicUrl(rawUrl);
+    return data?.publicUrl || rawUrl;
   }
 
   if (loading) {
@@ -107,7 +131,7 @@ export default function ClienteInspeccionVer() {
               </span>
             </div>
 
-            {/* Ubicación */}
+            {/* Ubicación / Vivienda */}
             <div style={{ background: "rgba(255,255,255,0.03)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "20px" }}>
               <h4 style={{ color: "#4db8ff", fontSize: "13px", textTransform: "uppercase", marginBottom: "8px" }}>Ubicación / Vivienda</h4>
               <p style={{ margin: 0, fontSize: "15px", fontWeight: "600" }}>
@@ -123,27 +147,30 @@ export default function ClienteInspeccionVer() {
               </p>
             </div>
 
-            {/* Galería de Fotos */}
+            {/* Galería de Fotografías */}
             <div style={{ background: "rgba(255,255,255,0.03)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "20px" }}>
               <h4 style={{ color: "#4db8ff", fontSize: "13px", textTransform: "uppercase", marginBottom: "12px" }}>Fotografías Adjuntas</h4>
               {fotos.length === 0 ? (
                 <p style={{ color: "#888", fontSize: "13px", margin: 0 }}>No hay fotografías adjuntas a esta inspección.</p>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: "10px" }}>
-                  {fotos.map((foto, idx) => (
-                    <a key={idx} href={foto.url_foto || foto.url} target="_blank" rel="noreferrer">
-                      <img
-                        src={foto.url_foto || foto.url}
-                        alt={`Foto ${idx + 1}`}
-                        style={{ width: "100%", height: "90px", objectFit: "cover", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.2)" }}
-                      />
-                    </a>
-                  ))}
+                  {fotos.map((foto, idx) => {
+                    const imgUrl = obtenerUrlPublica(foto);
+                    return (
+                      <a key={idx} href={imgUrl} target="_blank" rel="noreferrer">
+                        <img
+                          src={imgUrl}
+                          alt={`Foto ${idx + 1}`}
+                          style={{ width: "100%", height: "90px", objectFit: "cover", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.2)" }}
+                        />
+                      </a>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* Botón Descargar PDF */}
+            {/* Botón Descargar Informe PDF */}
             {inspeccion.pdf_url ? (
               <a href={inspeccion.pdf_url} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
                 <button style={{ width: "100%", padding: "14px", background: "#ffcc00", color: "#000", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "15px", cursor: "pointer" }}>
