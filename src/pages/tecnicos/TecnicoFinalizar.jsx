@@ -84,7 +84,7 @@ export default function TecnicoFinalizar() {
 
     setGuardando(true);
 
-    // 1️⃣ Actualizar inspección
+    // 1️⃣ Actualizar estado de la inspección en la base de datos
     const { error } = await supabase
       .from("inspecciones")
       .update({
@@ -100,18 +100,27 @@ export default function TecnicoFinalizar() {
       return;
     }
 
-    // 2️⃣ Notificar al admin
+    // 2️⃣ Generar PDF y enviar Email usando tus Edge Functions reales
     try {
-      await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email-inspeccion-finalizada?id=${id}`
-      );
+      // Generar el informe PDF de la inspección
+      await supabase.functions.invoke("pdf-inspeccion", {
+        body: { inspeccion_id: id },
+      });
+
+      // Enviar el correo de notificación
+      await supabase.functions.invoke("enviar-email", {
+        body: { 
+          inspeccion_id: id,
+          tipo: "inspeccion_finalizada"
+        },
+      });
     } catch (e) {
-      console.error("Error enviando email:", e);
+      console.error("Error al ejecutar Edge Functions de PDF o Email:", e);
     }
 
     setGuardando(false);
 
-    // 3️⃣ Volver al dashboard técnico correcto
+    // 3️⃣ Volver al dashboard técnico
     navigate("/tecnico");
   }
 
@@ -226,7 +235,7 @@ export default function TecnicoFinalizar() {
             marginBottom: "20px",
           }}
         >
-          {guardando ? "Guardando..." : "Finalizar inspección"}
+          {guardando ? "Procesando e informando..." : "Finalizar inspección"}
         </button>
 
         {/* Navegación */}
