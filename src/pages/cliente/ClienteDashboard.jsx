@@ -19,7 +19,7 @@ const BORDE_DORADO_FINO = `1px solid ${COLOR_DORADO}`;
 const SOMBRA_TARJETA_PROFUNDA = "0 8px 20px rgba(0,0,0,0.6)";
 const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: `0 0 8px ${COLOR_BRILLO_DORADO}` };
 
-// --- Datos de ejemplo para el gráfico (Simulando los datos de la semana) ---
+// --- Datos de ejemplo para el gráfico ---
 const datosGrafico = [
   { dia: 'Lun', inspecciones: 4 },
   { dia: 'Mar', inspecciones: 3 },
@@ -75,7 +75,7 @@ export default function ClienteDashboard() {
     cargarDatos();
   }, [user]);
 
-  // Estilo ajustado para prevenir desbordamientos en móvil
+  // Estilo de tarjetas optimizado para evitar desbordamiento
   const estiloTarjetaDato = {
     background: FONDO_TARJETA_LINEAL,
     border: BORDE_DORADO_FINO,
@@ -86,7 +86,7 @@ export default function ClienteDashboard() {
     flexDirection: 'column',
     justifyContent: 'space-between',
     minHeight: '90px',
-    minWidth: 0, // Evita que el contenido desborde las columnas del grid
+    minWidth: 0,
     cursor: 'pointer'
   };
 
@@ -117,7 +117,7 @@ export default function ClienteDashboard() {
         }}
       >
         
-        {/* --- CABECERA PRINCIPAL (LOGO Y TÍTULO CLIENTE) --- */}
+        {/* --- CABECERA PRINCIPAL --- */}
         <div
           style={{
             background: "linear-gradient(180deg, #0d1626 0%, #05080f 100%)",
@@ -203,7 +203,7 @@ export default function ClienteDashboard() {
             </div>
           </div>
 
-          {/* Tarjeta 3: Contratos */}
+          {/* Tarjeta 3: Contratos / Viviendas */}
           <div style={estiloTarjetaDato} onClick={() => navigate('/cliente/contratos')}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <span style={{ fontSize: "10px", fontWeight: "700", color: "#cbd5e1", textTransform: "uppercase", lineHeight: "1.2" }}>
@@ -257,10 +257,10 @@ export default function ClienteDashboard() {
            </div>
         </div>
 
-        {/* --- TERCERA FILA: BOTÓN DE CONFIGURACIÓN --- */}
+        {/* --- TERCERA FILA: BOTÓN A CONFIGURACIÓN Y SEGURIDAD --- */}
         <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
           <button
-            onClick={() => navigate("/cliente/perfil")}
+            onClick={() => navigate("/cliente/configuracion")}
             style={{
               width: "100%",
               maxWidth: "400px",
