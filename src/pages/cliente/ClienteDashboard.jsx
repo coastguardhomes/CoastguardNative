@@ -5,7 +5,7 @@ import { useLanguage } from "../../context/LanguageContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Menu from "../../layouts/Menu.jsx";
 
-// Librería para el gráfico de inspecciones
+// Gráfico de inspecciones
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 import logoReal from "../../assets/logo.jpeg";
@@ -19,7 +19,7 @@ const BORDE_DORADO_FINO = `1px solid ${COLOR_DORADO}`;
 const SOMBRA_TARJETA_PROFUNDA = "0 8px 20px rgba(0,0,0,0.6)";
 const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: `0 0 8px ${COLOR_BRILLO_DORADO}` };
 
-// Datos de prueba para el gráfico
+// Datos de ejemplo para el gráfico
 const datosGrafico = [
   { dia: 'Lun', inspecciones: 4 },
   { dia: 'Mar', inspecciones: 3 },
@@ -36,8 +36,9 @@ export default function ClienteDashboard() {
   const { user } = useAuth();
 
   const [cliente, setCliente] = useState(null);
-  const [numContratos, setNumContratos] = useState(0);
+  const [numInspecciones, setNumInspecciones] = useState(0);
   const [numAlertas, setNumAlertas] = useState(0);
+  const [numViviendas, setNumViviendas] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,31 +46,51 @@ export default function ClienteDashboard() {
       if (!user) return;
 
       try {
-        const { data: clienteData, error: clienteError } = await supabase
+        // 1. Obtener registro del cliente (por usuario_id o por id)
+        let { data: clienteData, error: clienteError } = await supabase
           .from("clientes")
           .select("*")
           .eq("usuario_id", user.id)
           .maybeSingle();
 
+        if (!clienteData) {
+          const { data: clienteById } = await supabase
+            .from("clientes")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+          clienteData = clienteById;
+        }
+
         if (clienteData) {
           setCliente(clienteData);
           const clienteId = clienteData.id;
 
-          const [
-            { count: countContratos },
-            { count: countAlertas }
-          ] = await Promise.all([
-            supabase.from("contratos").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
-            supabase.from("alertas").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId).eq("estado", "activa")
+          // 2. Consultar conteos reales en paralelo
+          const [resInspecciones, resAlertas, resViviendas] = await Promise.all([
+            supabase
+              .from("inspecciones")
+              .select("*", { count: "exact", head: true })
+              .eq("cliente_id", clienteId),
+            supabase
+              .from("alertas")
+              .select("*", { count: "exact", head: true })
+              .eq("cliente_id", clienteId)
+              .eq("estado", "activa"),
+            supabase
+              .from("viviendas")
+              .select("*", { count: "exact", head: true })
+              .eq("cliente_id", clienteId)
           ]);
 
-          setNumContratos(countContratos || 0);
-          setNumAlertas(countAlertas || 0);
+          setNumInspecciones(resInspecciones.count || 0);
+          setNumAlertas(resAlertas.count || 0);
+          setNumViviendas(resViviendas.count || 0);
         } else if (clienteError) {
           console.error("Error cargando cliente:", clienteError);
         }
       } catch (err) {
-        console.error("Error inesperado:", err);
+        console.error("Error inesperado en dashboard cliente:", err);
       } finally {
         setLoading(false);
       }
@@ -186,7 +207,7 @@ export default function ClienteDashboard() {
                 <span style={{ fontSize: "14px" }}>📋</span>
             </div>
             <div style={{ marginTop: '8px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-              <span style={{ fontSize: "26px", fontWeight: "900", ...TEXTO_DORADO_BRILLO }}>{numContratos}</span>
+              <span style={{ fontSize: "26px", fontWeight: "900", ...TEXTO_DORADO_BRILLO }}>{numInspecciones}</span>
               <span style={{ fontSize: "10px", color: "#94a3b8" }}>Activas</span>
             </div>
           </div>
@@ -214,7 +235,7 @@ export default function ClienteDashboard() {
                 <span style={{ fontSize: "14px" }}>🏠</span>
             </div>
             <div style={{ marginTop: '8px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                <span style={{ fontSize: "26px", fontWeight: "900", ...TEXTO_DORADO_BRILLO }}>{numContratos}</span>
+                <span style={{ fontSize: "26px", fontWeight: "900", ...TEXTO_DORADO_BRILLO }}>{numViviendas}</span>
                 <span style={{ fontSize: "10px", color: "#94a3b8" }}>Total</span>
             </div>
           </div>
