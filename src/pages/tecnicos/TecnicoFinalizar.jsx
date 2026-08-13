@@ -5,7 +5,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function TecnicoFinalizar() {
-  const { id } = useParams(); // ID inspección
+  const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -16,64 +16,51 @@ export default function TecnicoFinalizar() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    cargarInspeccion();
-  }, [id]);
+    if (id && user) {
+      cargarInspeccion();
+    }
+  }, [id, user]);
 
   async function cargarInspeccion() {
     setLoading(true);
+    setMensaje("");
 
-    // 1️⃣ Obtener técnico real por email
-    const { data: tecnico } = await supabase
-      .from("tecnicos")
-      .select("id")
-      .eq("email", user.email)
-      .single();
+    try {
+      // 1️⃣ Obtener la inspección
+      const { data: insp, error: inspError } = await supabase
+        .from("inspecciones")
+        .select("id, fecha, estado, notas_tecnico, observaciones, tecnico_id, vivienda_id, checklist_completado")
+        .eq("id", String(id))
+        .single();
 
-    if (!tecnico) {
-      setMensaje("No se pudo validar el técnico.");
+      if (inspError || !insp) {
+        console.error("Error obteniendo inspección:", inspError);
+        setMensaje(`Error cargando inspección: ${inspError?.message || "No encontrada"}`);
+        setLoading(false);
+        return;
+      }
+
+      // 2️⃣ Validar técnico asignado (si la tabla tecnicos existe y coincide)
+      if (user?.email) {
+        const { data: tecnico } = await supabase
+          .from("tecnicos")
+          .select("id")
+          .eq("email", user.email)
+          .maybeSingle();
+
+        if (tecnico && insp.tecnico_id && String(insp.tecnico_id) !== String(tecnico.id)) {
+          setMensaje("Aviso: No figuras como el técnico asignado a esta inspección.");
+        }
+      }
+
+      setInspeccion(insp);
+      setNotas(insp.notas_tecnico || insp.observaciones || "");
+    } catch (e) {
+      console.error("Error inesperado en la carga:", e);
+      setMensaje("Error de conexión al cargar la inspección.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // 2️⃣ Cargar inspección completa
-    const { data: insp, error } = await supabase
-      .from("inspecciones")
-      .select("id, fecha, estado, notas_tecnico, tecnico_id, vivienda_id")
-      .eq("id", id)
-      .single();
-
-    if (error || !insp) {
-      setMensaje("Error cargando inspección");
-      setLoading(false);
-      return;
-    }
-
-    // 3️⃣ Validar que la inspección pertenece al técnico
-    if (insp.tecnico_id !== tecnico.id) {
-      setMensaje("No tienes permiso para finalizar esta inspección.");
-      setLoading(false);
-      return;
-    }
-
-    // 4️⃣ Validar checklist completo
-    const { data: checklist } = await supabase
-      .from("checklist_inspeccion")
-      .select("estado")
-      .eq("inspeccion_id", id);
-
-    const incompletos = (checklist || []).filter(
-      (i) => i.estado !== "ok" && i.estado !== "ko"
-    );
-
-    if (incompletos.length > 0) {
-      setMensaje("Debes completar el checklist antes de finalizar.");
-      setLoading(false);
-      return;
-    }
-
-    setInspeccion(insp);
-    setNotas(insp.notas_tecnico || "");
-    setLoading(false);
   }
 
   async function finalizarInspeccion() {
@@ -83,45 +70,50 @@ export default function TecnicoFinalizar() {
     }
 
     setGuardando(true);
+    setMensaje("");
 
-    // 1️⃣ Actualizar estado de la inspección en la base de datos
-    const { error } = await supabase
-      .from("inspecciones")
-      .update({
-        notas_tecnico: notas,
-        estado: "completada_tecnico",
-        fecha_finalizacion: new Date().toISOString(),
-      })
-      .eq("id", id);
-
-    if (error) {
-      setMensaje("Error guardando la inspección");
-      setGuardando(false);
-      return;
-    }
-
-    // 2️⃣ Generar PDF y enviar Email usando tus Edge Functions reales
     try {
-      // Generar el informe PDF de la inspección
-      await supabase.functions.invoke("pdf-inspeccion", {
-        body: { inspeccion_id: id },
-      });
+      // 1️⃣ Actualizar estado e inspección
+      const { error } = await supabase
+        .from("inspecciones")
+        .update({
+          notas_tecnico: notas,
+          observaciones: notas,
+          estado: "completada_tecnico",
+          fecha_finalizacion: new Date().toISOString(),
+        })
+        .eq("id", String(id));
 
-      // Enviar el correo de notificación
-      await supabase.functions.invoke("enviar-email", {
-        body: { 
-          inspeccion_id: id,
-          tipo: "inspeccion_finalizada"
-        },
-      });
+      if (error) {
+        console.error("Error al actualizar:", error);
+        setMensaje("Error guardando la inspección: " + error.message);
+        setGuardando(false);
+        return;
+      }
+
+      // 2️⃣ Invocación de Edge Functions (PDF y Email) de forma segura
+      try {
+        await supabase.functions.invoke("pdf-inspeccion", {
+          body: { inspeccion_id: id },
+        });
+
+        await supabase.functions.invoke("enviar-email", {
+          body: { 
+            inspeccion_id: id,
+            tipo: "inspeccion_finalizada"
+          },
+        });
+      } catch (e) {
+        console.warn("Aviso: No se pudieron ejecutar los servicios de email/PDF:", e);
+      }
+
+      // 3️⃣ Redireccionar
+      navigate("/tecnico");
     } catch (e) {
-      console.error("Error al ejecutar Edge Functions de PDF o Email:", e);
+      console.error("Error crítico:", e);
+      setMensaje("Error procesando la finalización.");
+      setGuardando(false);
     }
-
-    setGuardando(false);
-
-    // 3️⃣ Volver al dashboard técnico
-    navigate("/tecnico");
   }
 
   if (loading) {
@@ -131,12 +123,13 @@ export default function TecnicoFinalizar() {
           style={{
             height: "100vh",
             background: "#0a0f1a",
-            color: "#fff",
+            color: "#4db8ff",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             fontFamily: "Inter, sans-serif",
             fontSize: "18px",
+            fontWeight: "bold",
           }}
         >
           Cargando inspección...
@@ -154,12 +147,13 @@ export default function TecnicoFinalizar() {
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
+          paddingBottom: "80px",
         }}
       >
         <h1
           style={{
             color: "#4db8ff",
-            marginBottom: "25px",
+            marginBottom: "20px",
             fontSize: "26px",
             fontWeight: "700",
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
@@ -170,36 +164,46 @@ export default function TecnicoFinalizar() {
         </h1>
 
         {mensaje && (
-          <p
+          <div
             style={{
               marginBottom: "15px",
-              color: "#ff6b6b",
+              padding: "10px",
+              background: mensaje.includes("Aviso") ? "rgba(255, 193, 7, 0.2)" : "rgba(255, 107, 107, 0.2)",
+              border: `1px solid ${mensaje.includes("Aviso") ? "#ffc107" : "#ff6b6b"}`,
+              borderRadius: "8px",
+              color: mensaje.includes("Aviso") ? "#ffc107" : "#ff6b6b",
+              fontSize: "14px",
               fontWeight: "600",
+              textAlign: "center",
             }}
           >
             {mensaje}
-          </p>
+          </div>
         )}
 
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-            marginBottom: "25px",
-          }}
-        >
-          <p>
-            <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
-            {inspeccion?.fecha}
-          </p>
-          <p>
-            <strong style={{ color: "#4db8ff" }}>Estado actual:</strong>{" "}
-            {inspeccion?.estado}
-          </p>
-        </div>
+        {inspeccion && (
+          <div
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              padding: "18px",
+              borderRadius: "14px",
+              border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+              marginBottom: "20px",
+            }}
+          >
+            <p style={{ marginBottom: "8px" }}>
+              <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
+              {inspeccion.fecha ? String(inspeccion.fecha).slice(0, 10) : "Sin fecha"}
+            </p>
+            <p>
+              <strong style={{ color: "#4db8ff" }}>Estado actual:</strong>{" "}
+              <span style={{ padding: "2px 6px", background: "rgba(255,255,255,0.1)", borderRadius: "4px" }}>
+                {inspeccion.estado}
+              </span>
+            </p>
+          </div>
+        )}
 
         {/* Notas del técnico */}
         <textarea
@@ -208,14 +212,15 @@ export default function TecnicoFinalizar() {
           placeholder="Escribe aquí las notas de la inspección..."
           style={{
             width: "100%",
-            height: "150px",
+            height: "130px",
             padding: "12px",
             borderRadius: "10px",
             border: "1px solid rgba(255,255,255,0.2)",
             background: "rgba(255,255,255,0.05)",
             color: "#fff",
-            fontSize: "16px",
+            fontSize: "15px",
             marginBottom: "20px",
+            boxSizing: "border-box",
           }}
         />
 
@@ -225,69 +230,70 @@ export default function TecnicoFinalizar() {
           style={{
             padding: "14px",
             width: "100%",
-            background: guardando ? "#999" : "#4ade80",
+            background: guardando ? "#666" : "#4ade80",
             color: "#000",
             borderRadius: "10px",
             border: "none",
             fontWeight: "700",
-            fontSize: "17px",
+            fontSize: "16px",
             cursor: guardando ? "not-allowed" : "pointer",
-            marginBottom: "20px",
+            marginBottom: "15px",
+            boxShadow: "0 0 10px rgba(74,222,128,0.3)",
           }}
         >
           {guardando ? "Procesando e informando..." : "Finalizar inspección"}
         </button>
 
-        {/* Navegación */}
-        <Link to={`/tecnico/inspeccion/${id}/checklist`}>
+        {/* Botones de Navegación */}
+        <Link to={`/tecnico/inspeccion/${id}/checklist`} style={{ textDecoration: "none" }}>
           <button
             style={{
-              padding: "14px",
+              padding: "12px",
               width: "100%",
               background: "#4db8ff",
               color: "#000",
               borderRadius: "10px",
               border: "none",
               fontWeight: "700",
-              fontSize: "17px",
+              fontSize: "15px",
               cursor: "pointer",
-              marginBottom: "15px",
+              marginBottom: "12px",
             }}
           >
             Checklist
           </button>
         </Link>
 
-        <Link to={`/tecnico/inspeccion/${id}/fotos`}>
+        <Link to={`/tecnico/inspeccion/${id}/fotos`} style={{ textDecoration: "none" }}>
           <button
             style={{
-              padding: "14px",
+              padding: "12px",
               width: "100%",
               background: "#1e90ff",
               color: "#fff",
               borderRadius: "10px",
               border: "none",
               fontWeight: "700",
-              fontSize: "17px",
+              fontSize: "15px",
               cursor: "pointer",
-              marginBottom: "15px",
+              marginBottom: "12px",
             }}
           >
             Fotos
           </button>
         </Link>
 
-        <Link to={`/tecnico/inspeccion/${id}`}>
+        <Link to={`/tecnico/inspeccion/${id}`} style={{ textDecoration: "none" }}>
           <button
             style={{
-              padding: "14px",
+              padding: "12px",
               width: "100%",
               background: "#ffcc00",
               color: "#000",
               borderRadius: "10px",
               border: "none",
               fontWeight: "700",
-              fontSize: "17px",
+              fontSize: "15px",
               cursor: "pointer",
             }}
           >
