@@ -26,7 +26,7 @@ export default function Inspecciones() {
       } else {
         setInspecciones(data || []);
       }
-    } catch (err) {
+    } catch {
       setErrorMsg("Error conectando con el servidor.");
     } finally {
       setLoading(false);
@@ -68,7 +68,6 @@ export default function Inspecciones() {
                   borderRadius: "12px",
                   border: "1px solid rgba(255,255,255,0.1)",
                   cursor: "pointer",
-                  transition: "transform 0.1s ease",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
                 }}
               >
