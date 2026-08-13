@@ -1,171 +1,94 @@
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function Inspecciones() {
-  const [user, setUser] = useState(null);
   const [inspecciones, setInspecciones] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [mensaje, setMensaje] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
-    async function cargarUsuario() {
-      const { data } = await supabase.auth.getUser();
-      setUser(data?.user || null);
-    }
-
-    cargarUsuario();
+    cargarInspecciones();
   }, []);
 
-  useEffect(() => {
-    async function cargarInspecciones() {
-      if (!user) return;
+  async function cargarInspecciones() {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("inspecciones")
+        .select("*")
+        .order("fecha", { ascending: false });
 
-      try {
-        let query = supabase
-          .from("inspecciones")
-          .select(`
-            id,
-            fecha,
-            estado,
-            vivienda_id,
-            tecnico_id,
-            viviendas (
-              direccion,
-              ciudad
-            )
-          `)
-          .order("id", { ascending: false });
-
-        // Si NO es admin → filtrar por técnico
-        if (user.email !== "coastguardhomes2@gmail.com") {
-          query = query.eq("tecnico_id", user.id);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
+      if (error) {
+        setErrorMsg("Error al obtener inspecciones: " + error.message);
+      } else {
         setInspecciones(data || []);
-      } catch (err) {
-        console.error("Error detallado:", err.message);
-        
-        // Plan B: Cargar todo sin filtros para ver qué devuelve
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from("inspecciones")
-          .select("*")
-          .order("id", { ascending: false });
-
-        if (fallbackError) {
-          setMensaje("Error cargando inspecciones");
-        } else {
-          setInspecciones(fallbackData || []);
-        }
-      } finally {
-        setLoading(false);
       }
+    } catch (err) {
+      setErrorMsg("Error conectando con el servidor.");
+    } finally {
+      setLoading(false);
     }
-
-    cargarInspecciones();
-  }, [user]);
+  }
 
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          background: "#0a0f1a",
-          minHeight: "100vh",
-          color: "#fff",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "28px",
-            fontWeight: "700",
-            marginBottom: "25px",
-            color: "#4db8ff",
-          }}
-        >
+      <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif", paddingBottom: "80px" }}>
+        <h1 style={{ color: "#4db8ff", marginBottom: "20px", fontSize: "28px", fontWeight: "700", textAlign: "center" }}>
           Inspecciones
         </h1>
 
-        {mensaje && (
-          <p style={{ marginBottom: "15px", color: "#4db8ff", fontWeight: "600" }}>
-            {mensaje}
-          </p>
-        )}
+        <Link to="/inspecciones/nueva" style={{ textDecoration: "none" }}>
+          <button style={{ padding: "14px", width: "100%", background: "#4db8ff", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "16px", cursor: "pointer", marginBottom: "25px" }}>
+            Nueva inspección
+          </button>
+        </Link>
 
-        {/* Solo admin */}
-        {user?.email === "coastguardhomes2@gmail.com" && (
-          <Link to="/inspecciones/nueva">
-            <button
-              style={{
-                marginBottom: "25px",
-                padding: "14px",
-                width: "100%",
-                background: "#4db8ff",
-                color: "#000",
-                borderRadius: "10px",
-                border: "none",
-                fontWeight: "700",
-                fontSize: "17px",
-                cursor: "pointer",
-              }}
-            >
-              Nueva inspección
-            </button>
-          </Link>
+        {errorMsg && (
+          <div style={{ padding: "10px", background: "rgba(255,107,107,0.2)", border: "1px solid #ff6b6b", color: "#ff6b6b", borderRadius: "8px", marginBottom: "15px", textAlign: "center" }}>
+            {errorMsg}
+          </div>
         )}
 
         {loading ? (
-          <p>Cargando inspecciones...</p>
+          <div style={{ textAlign: "center", color: "#4db8ff", marginTop: "30px" }}>Cargando inspecciones...</div>
         ) : inspecciones.length === 0 ? (
-          <p>No hay inspecciones registradas o asignadas a este usuario.</p>
+          <div style={{ textAlign: "center", color: "#aaa", marginTop: "30px" }}>No hay inspecciones registradas.</div>
         ) : (
-          <div>
-            {inspecciones.map((i) => (
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            {inspecciones.map((insp) => (
               <div
-                key={i.id}
+                key={insp.id}
+                onClick={() => navigate(`/inspecciones/finalizar/${insp.id}`)}
                 style={{
-                  marginBottom: "15px",
                   background: "rgba(255,255,255,0.05)",
                   padding: "18px",
-                  borderRadius: "14px",
+                  borderRadius: "12px",
                   border: "1px solid rgba(255,255,255,0.1)",
+                  cursor: "pointer",
+                  transition: "transform 0.1s ease",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
                 }}
               >
-                {/* 🛠️ Ruta corregida para enlazar de forma coherente con el detalle/checklist de la inspección */}
-                <Link
-                  to={`/inspecciones/${i.id}`}
-                  style={{
-                    color: "#4db8ff",
-                    fontWeight: "700",
-                    fontSize: "18px",
-                  }}
-                >
-                  Inspección #{i.id}
-                </Link>
-
-                <p style={{ opacity: 0.8, marginTop: "10px" }}>
-                  <strong style={{ color: "#4db8ff" }}>Dirección:</strong>{" "}
-                  {i.viviendas?.direccion || "No especificada"}
+                <h3 style={{ color: "#4db8ff", fontSize: "16px", marginBottom: "8px", wordBreak: "break-all" }}>
+                  Inspección #{insp.id}
+                </h3>
+                <p style={{ color: "#ccc", fontSize: "14px", marginBottom: "4px" }}>
+                  <strong>Dirección:</strong> {insp.direccion || "No especificada"}
                 </p>
-
-                <p style={{ opacity: 0.8 }}>
-                  <strong style={{ color: "#4db8ff" }}>Localidad:</strong>{" "}
-                  {i.viviendas?.ciudad || "No especificada"}
+                <p style={{ color: "#ccc", fontSize: "14px", marginBottom: "4px" }}>
+                  <strong>Localidad:</strong> {insp.localidad || "No especificada"}
                 </p>
-
-                <p style={{ opacity: 0.8 }}>
-                  <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
-                  {i.fecha}
+                <p style={{ color: "#ccc", fontSize: "14px", marginBottom: "4px" }}>
+                  <strong>Fecha:</strong> {insp.fecha ? String(insp.fecha).slice(0, 10) : "Sin fecha"}
                 </p>
-
-                <p style={{ opacity: 0.8 }}>
-                  <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
-                  {i.estado}
+                <p style={{ color: "#ccc", fontSize: "14px" }}>
+                  <strong>Estado:</strong>{" "}
+                  <span style={{ color: insp.estado === "completada_tecnico" ? "#4ade80" : insp.estado === "aprobada" ? "#60a5fa" : "#facc15" }}>
+                    {insp.estado}
+                  </span>
                 </p>
               </div>
             ))}
