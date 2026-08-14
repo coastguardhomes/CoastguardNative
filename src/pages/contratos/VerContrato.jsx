@@ -87,27 +87,36 @@ export default function VerContrato() {
       const token = session ? session.access_token : "";
 
       const pdfResponse = await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${id}`,
+        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf`,
         {
-          method: "GET",
+          method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"
-          }
+          },
+          body: JSON.stringify({ contratoId: id })
         }
       );
 
       const respuestaTexto = await pdfResponse.text();
 
       if (pdfResponse.ok) {
+        let urlPdf = respuestaTexto;
+        try {
+          const jsonRes = JSON.parse(respuestaTexto);
+          if (jsonRes.url) urlPdf = jsonRes.url;
+        } catch (e) {
+          // Mantiene el texto plano si no viene en formato JSON
+        }
+
         await supabase
           .from("contratos")
-          .update({ pdf_url: respuestaTexto })
+          .update({ pdf_url: urlPdf })
           .eq("id", id);
 
-        setContrato({ ...contrato, pdf_url: respuestaTexto });
+        setContrato({ ...contrato, pdf_url: urlPdf });
         setMensaje("");
-        window.open(respuestaTexto, "_blank");
+        window.open(urlPdf, "_blank");
       } else {
         setMensaje(`Error del servidor: ${respuestaTexto || pdfResponse.statusText}`);
       }
