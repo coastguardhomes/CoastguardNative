@@ -9,18 +9,32 @@ export default function Contratos() {
   const cargarContratosAdmin = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // 1. Cargar contratos directamente
+      const { data: contratosData, error: contratosError } = await supabase
         .from("contratos")
-        .select("*, clientes(nombre, email, telefono)")
+        .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Error al cargar contratos:", error);
-      } else {
-        setContratos(data || []);
-      }
+      if (contratosError) throw contratosError;
+
+      // 2. Cargar clientes para emparejarlos manualmente de forma segura
+      const { data: clientesData } = await supabase
+        .from("clientes")
+        .select("id, nombre, email, telefono");
+
+      const clientesMap = {};
+      (clientesData || []).forEach((c) => {
+        clientesMap[c.id] = c;
+      });
+
+      const contratosConCliente = (contratosData || []).map((c) => ({
+        ...c,
+        clientes: clientesMap[c.cliente_id] || null,
+      }));
+
+      setContratos(contratosConCliente);
     } catch (err) {
-      console.error("Error en la carga de contratos:", err);
+      console.error("Error al cargar contratos:", err);
     } finally {
       setLoading(false);
     }
@@ -48,7 +62,6 @@ export default function Contratos() {
             marginBottom: "24px",
             fontSize: "26px",
             fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
           Gestión de Contratos
@@ -75,19 +88,9 @@ export default function Contratos() {
                     border: `1px solid ${estaFirmado ? "rgba(77, 255, 136, 0.4)" : "rgba(255, 255, 255, 0.1)"}`,
                     borderRadius: "14px",
                     padding: "18px",
-                    boxShadow: estaFirmado
-                      ? "0 0 12px rgba(77, 255, 136, 0.15)"
-                      : "0 0 10px rgba(0, 0, 0, 0.3)",
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "10px",
-                    }}
-                  >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                     <h3 style={{ margin: 0, color: "#4db8ff", fontSize: "18px" }}>
                       Contrato #{c.id}
                     </h3>
@@ -141,11 +144,10 @@ export default function Contratos() {
                           flex: 1,
                           padding: "10px",
                           background: "rgba(255, 255, 255, 0.03)",
-                          border: "1px solid rgba(255, 255, 255, 0.05)",
                           color: "#666",
+                          border: "1px solid rgba(255, 255, 255, 0.05)",
                           borderRadius: "8px",
                           fontSize: "13px",
-                          cursor: "not-allowed",
                         }}
                       >
                         Sin Firma
@@ -165,7 +167,6 @@ export default function Contratos() {
                           fontWeight: "bold",
                           fontSize: "13px",
                           cursor: "pointer",
-                          boxShadow: "0 0 8px rgba(0,153,255,0.4)",
                         }}
                       >
                         📄 Ver PDF
@@ -177,11 +178,10 @@ export default function Contratos() {
                           flex: 1,
                           padding: "10px",
                           background: "rgba(255, 255, 255, 0.03)",
-                          border: "1px solid rgba(255, 255, 255, 0.05)",
                           color: "#666",
+                          border: "1px solid rgba(255, 255, 255, 0.05)",
                           borderRadius: "8px",
                           fontSize: "13px",
-                          cursor: "not-allowed",
                         }}
                       >
                         Sin PDF
@@ -196,4 +196,4 @@ export default function Contratos() {
       </div>
     </Menu>
   );
-}
+                                         }
