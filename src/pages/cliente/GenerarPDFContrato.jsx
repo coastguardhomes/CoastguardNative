@@ -9,15 +9,10 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  // Seguridad: comprobar que el contrato pertenece al cliente
   useEffect(() => {
     async function comprobarContrato() {
       if (!user) return;
 
-      // contratos.cliente_id es bigint y user.id el UUID de auth: nunca
-      // coinciden, así que esta alerta saltaba siempre aunque el contrato
-      // SÍ fuera del cliente. RLS (contratos_select) ya impide leer
-      // contratos de otro cliente, por eso basta con mirar error/data.
       const { data, error } = await supabase
         .from("contratos")
         .select("cliente_id")
@@ -37,7 +32,6 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
 
     const doc = new jsPDF();
 
-    // Encabezado
     doc.setFontSize(18);
     doc.text(t("pdfTitulo"), 20, 20);
 
@@ -66,26 +60,25 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
     doc.text(t("pdfCondiciones"), 20, 130);
     doc.text(t("pdfCondicionesTexto"), 20, 140, { maxWidth: 170 });
 
-    // Firma del cliente si existe
+    // Firma del cliente SIN fetch()
     if (contrato?.firma) {
       try {
-        const { data } = supabase.storage
+        const { data, error } = await supabase.storage
           .from("firmas")
-          .getPublicUrl(contrato.firma);
+          .download(contrato.firma);
 
-        const firmaImg = await fetch(data.publicUrl)
-          .then((r) => r.blob())
-          .then(
-            (b) =>
-              new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.readAsDataURL(b);
-              })
-          );
+        if (!error && data) {
+          const reader = new FileReader();
+          const base64 = await new Promise((resolve) => {
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(data);
+          });
 
-        doc.addImage(firmaImg, "PNG", 20, 160, 60, 30);
-      } catch (e) {
+          doc.addImage(base64, "PNG", 20, 160, 60, 30);
+        } else {
+          doc.text(`${t("pdfFirmaCliente")}: ____________________`, 20, 170);
+        }
+      } catch {
         doc.text(`${t("pdfFirmaCliente")}: ____________________`, 20, 170);
       }
     } else {
