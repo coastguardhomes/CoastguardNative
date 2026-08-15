@@ -86,41 +86,30 @@ export default function VerContrato() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session ? session.access_token : "";
 
-      // CORREGIDO: Se elimina el "?id=" de la URL y se envía correctamente en el body JSON
-      const pdfResponse = await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf`,
+      // 🔥 CORREGIDO: usar invoke() en vez de fetch()
+      const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
+        "contrato-pdf",
         {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ contratoId: Number(id) })
+          body: { contratoId: Number(id) }
         }
       );
 
-      const respuestaTexto = await pdfResponse.text();
-
-      if (pdfResponse.ok) {
-        let urlPdf = respuestaTexto;
-        try {
-          const jsonRes = JSON.parse(respuestaTexto);
-          if (jsonRes.url) urlPdf = jsonRes.url;
-        } catch (e) {
-          // Mantiene el texto plano si no viene en formato JSON
-        }
-
-        await supabase
-          .from("contratos")
-          .update({ pdf_url: urlPdf })
-          .eq("id", Number(id));
-
-        setContrato({ ...contrato, pdf_url: urlPdf });
-        setMensaje("");
-        window.open(urlPdf, "_blank");
-      } else {
-        setMensaje(`Error del servidor: ${respuestaTexto || pdfResponse.statusText}`);
+      if (pdfError) {
+        setMensaje(`Error generando PDF: ${pdfError.message}`);
+        return;
       }
+
+      const urlPdf = pdfData.url;
+
+      await supabase
+        .from("contratos")
+        .update({ pdf_url: urlPdf })
+        .eq("id", Number(id));
+
+      setContrato({ ...contrato, pdf_url: urlPdf });
+      setMensaje("");
+      window.open(urlPdf, "_blank");
+
     } catch (e) {
       console.error(e);
       setMensaje(`Fallo de red: ${e.message}`);
@@ -204,7 +193,6 @@ export default function VerContrato() {
           </p>
         )}
 
-        {/* Datos del contrato */}
         <Bloque titulo="Datos del contrato">
           <p><strong style={{ color: "#4db8ff" }}>Modalidad:</strong> {contrato.modalidad || "Sin modalidad"}</p>
           <p><strong style={{ color: "#4db8ff" }}>Precio:</strong> {contrato.precio ? `${contrato.precio}€` : "Sin precio"}</p>
@@ -232,7 +220,6 @@ export default function VerContrato() {
           </button>
         </Bloque>
 
-        {/* Técnico */}
         <Bloque titulo="Técnico asignado">
           {tecnico ? (
             <Item
@@ -244,7 +231,6 @@ export default function VerContrato() {
           )}
         </Bloque>
 
-        {/* Cliente */}
         <Bloque titulo="Cliente">
           {cliente ? (
             <Item
@@ -256,7 +242,6 @@ export default function VerContrato() {
           )}
         </Bloque>
 
-        {/* Vivienda */}
         <Bloque titulo="Vivienda">
           {vivienda ? (
             <Item
@@ -268,7 +253,6 @@ export default function VerContrato() {
           )}
         </Bloque>
 
-        {/* Firma */}
         <Bloque titulo="Firma del cliente">
           {contrato.firma_url ? (
             <img
@@ -286,7 +270,6 @@ export default function VerContrato() {
           </p>
         </Bloque>
 
-        {/* Inspecciones */}
         <Bloque titulo="Inspecciones del contrato">
           {inspecciones.length === 0 ? (
             <p style={{ opacity: 0.7 }}>No hay inspecciones.</p>
@@ -301,7 +284,6 @@ export default function VerContrato() {
           )}
         </Bloque>
 
-        {/* Botón editar */}
         <Link to={`/contratos/editar/${id}`}>
           <button
             style={{
@@ -322,7 +304,6 @@ export default function VerContrato() {
           </button>
         </Link>
 
-        {/* Botón eliminar */}
         <button
           onClick={eliminarContrato}
           style={{
