@@ -5,17 +5,15 @@ import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import GenerarPDFContrato from "./GenerarPDFContrato.jsx";
 
-const botonSecundario = {
+const botonEstilo = {
   padding: "12px",
   width: "100%",
-  background: "rgba(255,255,255,0.08)",
-  color: "#fff",
-  border: "1px solid rgba(255,255,255,0.2)",
   borderRadius: "8px",
   cursor: "pointer",
   marginTop: "12px",
   fontWeight: "600",
   fontSize: "15px",
+  border: "none",
 };
 
 export default function ClienteContratoVer() {
@@ -25,6 +23,7 @@ export default function ClienteContratoVer() {
 
   const [contrato, setContrato] = useState(null);
   const [cliente, setCliente] = useState(null);
+  const [enviando, setEnviando] = useState(false);
 
   const cargarContrato = async () => {
     const { data: contratoData, error: contratoError } = await supabase
@@ -40,69 +39,84 @@ export default function ClienteContratoVer() {
 
     setContrato(contratoData);
 
-    const { data: clienteData, error: clienteError } = await supabase
-      .from("clientes")
-      .select("*")
-      .eq("id", contratoData.cliente_id)
-      .single();
+    if (contratoData.cliente_id) {
+      const { data: clienteData } = await supabase
+        .from("clientes")
+        .select("*")
+        .eq("id", contratoData.cliente_id)
+        .single();
 
-    if (clienteError) {
-      console.error("Error cargando cliente:", clienteError);
-      return;
+      if (clienteData) setCliente(clienteData);
     }
-
-    setCliente(clienteData);
   };
 
   useEffect(() => {
     cargarContrato();
   }, [id]);
 
+  const esFirmado = Boolean(contrato?.firma_url || contrato?.estado === "firmado" || contrato?.estado === "enviado_al_admin");
+
+  const enviarAlAdmin = async () => {
+    if (!esFirmado) {
+      alert("Debes firmar el contrato antes de enviarlo.");
+      return;
+    }
+
+    setEnviando(true);
+    const { error } = await supabase
+      .from("contratos")
+      .update({ estado: "enviado_al_admin" })
+      .eq("id", id);
+
+    setEnviando(false);
+
+    if (error) {
+      alert("Error notificando al administrador: " + error.message);
+    } else {
+      alert("¡Contrato firmado enviado al administrador!");
+      cargarContrato();
+    }
+  };
+
   const abrirPDF = () => {
-    if (contrato?.pdf_url) {
-      window.open(contrato.pdf_url, "_blank");
+    const url = esFirmado && contrato?.firma_url ? contrato.firma_url : contrato?.pdf_url;
+    if (url) {
+      window.open(url, "_blank");
     } else {
       alert("Primero debes hacer clic en 'Generar PDF del contrato'.");
     }
   };
 
-  if (!contrato || !cliente) {
+  if (!contrato) {
     return (
       <Menu>
         <div
           style={{
-            height: "100%",
+            minHeight: "100vh",
             background: "#0a0f1a",
             color: "#fff",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             fontFamily: "Inter, sans-serif",
-            fontSize: "18px",
           }}
         >
-          {t("clienteContratoCargando")}
+          {t("clienteContratoCargando") || "Cargando contrato..."}
         </div>
       </Menu>
     );
   }
 
-  const precioServicio =
-    contrato.precio != null
-      ? `${contrato.precio} €`
-      : t("clienteContratoPrecioNoDisponible");
-
-  const estaFirmado = Boolean(contrato.firma_url || contrato.estado === "firmado");
-
   return (
     <Menu>
       <div
         style={{
-          height: "100%",
+          minHeight: "100vh",
           background: "#0a0f1a",
           padding: "20px",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
+          paddingBottom: "80px",
         }}
       >
         <h2
@@ -115,7 +129,7 @@ export default function ClienteContratoVer() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          {t("clienteContratoTitulo")}
+          {t("clienteContratoTitulo") || "Contrato del Cliente"}
         </h2>
 
         {/* Datos del Cliente */}
@@ -129,12 +143,12 @@ export default function ClienteContratoVer() {
             marginBottom: "20px",
           }}
         >
-          <h3 style={{ color: "#4db8ff", marginBottom: "10px", fontSize: "20px" }}>
-            {t("clienteContratoDatosCliente")}
+          <h3 style={{ color: "#4db8ff", marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
+            {t("clienteContratoDatosCliente") || "Datos del Cliente"}
           </h3>
-          <p><strong>{t("clienteContratoNombre")}:</strong> {cliente.nombre}</p>
-          <p><strong>{t("clienteContratoDireccion")}:</strong> {cliente.direccion}</p>
-          <p><strong>{t("clienteContratoTelefono")}:</strong> {cliente.telefono}</p>
+          <p style={{ margin: "6px 0" }}><strong>{t("clienteContratoNombre") || "Nombre"}:</strong> {cliente?.nombre || contrato?.cliente_nombre || "—"}</p>
+          <p style={{ margin: "6px 0" }}><strong>{t("clienteContratoDireccion") || "Dirección"}:</strong> {cliente?.direccion || "—"}</p>
+          <p style={{ margin: "6px 0" }}><strong>{t("clienteContratoTelefono") || "Teléfono"}:</strong> {cliente?.telefono || "—"}</p>
         </div>
 
         {/* Detalles del Contrato */}
@@ -147,48 +161,70 @@ export default function ClienteContratoVer() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          <h3 style={{ color: "#4db8ff", marginBottom: "10px", fontSize: "20px" }}>
-            {t("clienteContratoDetalles")}
+          <h3 style={{ color: "#4db8ff", marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
+            {t("clienteContratoDetalles") || "Detalles del Contrato"}
           </h3>
 
-          <p>
-            <strong>{t("clienteContratoTipoServicio")}:</strong>{" "}
-            {contrato.frecuencia ? `${t("contratoCadaDias")} ${contrato.frecuencia}` : "—"}
+          <p style={{ margin: "6px 0" }}>
+            <strong>{t("clienteContratoTipoServicio") || "Tipo de servicio"}:</strong> Cada {contrato.frecuencia || 30} días
           </p>
-          <p><strong>{t("clienteContratoPrecioMensual")}:</strong> {precioServicio}</p>
-          <p><strong>{t("clienteContratoFechaInicio")}:</strong> {contrato.fecha_inicio || "—"}</p>
-          <p>
+          <p style={{ margin: "6px 0" }}>
+            <strong>{t("clienteContratoPrecioMensual") || "Precio mensual"}:</strong> {contrato.precio != null ? `${contrato.precio} €` : "—"}
+          </p>
+          <p style={{ margin: "6px 0" }}>
+            <strong>{t("clienteContratoFechaInicio") || "Fecha inicio"}:</strong> {contrato.fecha_inicio || "—"}
+          </p>
+          <p style={{ margin: "6px 0 16px 0" }}>
             <strong>Estado:</strong>{" "}
-            <span style={{ color: estaFirmado ? "#4dff88" : "#ffb84d" }}>
-              {estaFirmado ? "✅ Firmado" : "⏳ Pendiente de firma"}
+            <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d" }}>
+              {esFirmado ? "✅ Firmado" : "⏳ Pendiente de firma"}
             </span>
           </p>
 
-          {/* Botón para ir a dibujar la firma */}
+          {/* 1. Botón Firma del Cliente */}
           <button
             onClick={() => navigate(`/cliente/firma/${id}`)}
             style={{
-              ...botonSecundario,
-              background: estaFirmado ? "rgba(255,255,255,0.05)" : "#4db8ff",
-              color: estaFirmado ? "#fff" : "#0a0f1a",
+              ...botonEstilo,
+              background: "#4db8ff",
+              color: "#0a0f1a",
             }}
           >
-            ✍️ {estaFirmado ? "Ver / Cambiar Firma" : t("clienteFirmaTitulo")}
+            ✍️ {esFirmado ? "Ver / Cambiar Firma" : (t("clienteFirmaTitulo") || "Firma del Cliente")}
           </button>
 
-          {/* Generador de PDF */}
+          {/* 2. Botón Enviar al Admin */}
+          <button
+            onClick={enviarAlAdmin}
+            disabled={!esFirmado || enviando}
+            style={{
+              ...botonEstilo,
+              background: esFirmado ? "#4cd964" : "rgba(255,255,255,0.15)",
+              color: esFirmado ? "#0a0f1a" : "#888",
+              cursor: esFirmado ? "pointer" : "not-allowed",
+            }}
+          >
+            {enviando ? "Enviando..." : "📤 Enviar contrato al Admin"}
+          </button>
+
+          {/* 3. Generar PDF (Componente original) */}
           <GenerarPDFContrato
             contrato={contrato}
             cliente={cliente}
             onGenerado={cargarContrato}
           />
 
-          {/* Botón para abrir el PDF generado directamente */}
+          {/* 4. Botón Ver Contrato PDF */}
           <button
             onClick={abrirPDF}
-            style={botonSecundario}
+            style={{
+              ...botonEstilo,
+              background: "rgba(255,255,255,0.08)",
+              color: "#fff",
+              border: "1px solid rgba(255,255,255,0.2)",
+            }}
           >
-            📄 {t("pdfTituloVista")}
+            📄 {t("pdfTituloVista") || "Contrato PDF"}
           </button>
         </div>
       </div>
