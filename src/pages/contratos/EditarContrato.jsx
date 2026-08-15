@@ -88,7 +88,7 @@ export default function EditarContrato() {
         precio: form.precio,
         notas: form.notas,
         frecuencia: form.frecuencia,
-        tecnico_id: String(form.tecnico_id), // UUID CORRECTO
+        tecnico_id: String(form.tecnico_id),
         modalidad: form.modalidad,
       })
       .eq("id", id);
@@ -111,13 +111,31 @@ export default function EditarContrato() {
       .update({ fecha_fin: fechaFin })
       .eq("id", id);
 
-    // 3️⃣ Regenerar PDF actualizado
+    // Obtener sesión para autenticar las peticiones a las Edge Functions
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session ? session.access_token : "";
+
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {})
+    };
+
+    const contratoId = id;
+
+    // 3️⃣ Regenerar PDF actualizado (vía POST)
     let pdfUrl = null;
     try {
       const pdfResponse = await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${id}`
+        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ contratoId })
+        }
       );
-      pdfUrl = await pdfResponse.text();
+      if (pdfResponse.ok) {
+        pdfUrl = await pdfResponse.text();
+      }
     } catch (e) {
       console.error("Error regenerando PDF:", e);
     }
@@ -127,19 +145,29 @@ export default function EditarContrato() {
       .update({ pdf_url: pdfUrl })
       .eq("id", id);
 
-    // 4️⃣ Regenerar inspecciones automáticas (NOMBRE CORRECTO)
+    // 4️⃣ Regenerar inspecciones automáticas (vía POST)
     try {
       await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear_inspecciones_programadas?id=${id}`
+        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear_inspecciones_programadas",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ contratoId })
+        }
       );
     } catch (e) {
       console.error("Error regenerando inspecciones:", e);
     }
 
-    // 5️⃣ Enviar email automático al cliente
+    // 5️⃣ Enviar email automático al cliente (vía POST)
     try {
       await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${id}`
+        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ contratoId })
+        }
       );
     } catch (e) {
       console.error("Error enviando email:", e);
