@@ -86,6 +86,7 @@ export default function VerContrato() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session ? session.access_token : "";
 
+      // CORREGIDO: Se elimina el "?id=" de la URL y se envía correctamente en el body JSON
       const pdfResponse = await fetch(
         `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf`,
         {
@@ -94,7 +95,7 @@ export default function VerContrato() {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ contratoId: id })
+          body: JSON.stringify({ contratoId: Number(id) })
         }
       );
 
@@ -112,7 +113,7 @@ export default function VerContrato() {
         await supabase
           .from("contratos")
           .update({ pdf_url: urlPdf })
-          .eq("id", id);
+          .eq("id", Number(id));
 
         setContrato({ ...contrato, pdf_url: urlPdf });
         setMensaje("");
@@ -135,7 +136,7 @@ export default function VerContrato() {
     await supabase.from("checklist_inspeccion").delete().eq("contrato_id", id);
     await supabase.from("inspecciones").delete().eq("contrato_id", id);
 
-    const { error } = await supabase.from("contratos").delete().eq("id", id);
+    const { error } = await supabase.from("contratos").delete().eq("id", Number(id));
 
     if (error) {
       setMensaje("Error eliminando contrato");
@@ -267,7 +268,7 @@ export default function VerContrato() {
           )}
         </Bloque>
 
-        {/* Firma corregida a firma_url */}
+        {/* Firma */}
         <Bloque titulo="Firma del cliente">
           {contrato.firma_url ? (
             <img
@@ -390,4 +391,4 @@ function Item({ to, titulo }) {
       </div>
     </Link>
   );
-              }
+}
