@@ -50,11 +50,17 @@ export default function ClienteContratoVer() {
     }
   };
 
+  // Se recarga cada vez que entras a la vista
   useEffect(() => {
     cargarContrato();
   }, [id]);
 
-  const esFirmado = Boolean(contrato?.firma_url || contrato?.estado === "firmado" || contrato?.estado === "enviado_al_admin");
+  // Se considera firmado si existe firma_url O si el estado ya cambió
+  const esFirmado = Boolean(
+    (contrato?.firma_url && contrato.firma_url.trim() !== "") ||
+    contrato?.estado === "firmado" ||
+    contrato?.estado === "enviado_al_admin"
+  );
 
   const enviarAlAdmin = async () => {
     if (!esFirmado) {
@@ -83,7 +89,7 @@ export default function ClienteContratoVer() {
     if (url) {
       window.open(url, "_blank");
     } else {
-      alert("Primero debes hacer clic en 'Generar PDF del contrato'.");
+      alert("No hay archivo PDF o firma disponible para visualizar.");
     }
   };
 
@@ -146,9 +152,9 @@ export default function ClienteContratoVer() {
           <h3 style={{ color: "#4db8ff", marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
             {t("clienteContratoDatosCliente") || "Datos del Cliente"}
           </h3>
-          <p style={{ margin: "6px 0" }}><strong>{t("clienteContratoNombre") || "Nombre"}:</strong> {cliente?.nombre || contrato?.cliente_nombre || "—"}</p>
-          <p style={{ margin: "6px 0" }}><strong>{t("clienteContratoDireccion") || "Dirección"}:</strong> {cliente?.direccion || "—"}</p>
-          <p style={{ margin: "6px 0" }}><strong>{t("clienteContratoTelefono") || "Teléfono"}:</strong> {cliente?.telefono || "—"}</p>
+          <p style={{ margin: "6px 0" }}><strong>Nombre:</strong> {cliente?.nombre || contrato?.cliente_nombre || "—"}</p>
+          <p style={{ margin: "6px 0" }}><strong>Dirección:</strong> {cliente?.direccion || "—"}</p>
+          <p style={{ margin: "6px 0" }}><strong>Teléfono:</strong> {cliente?.telefono || "—"}</p>
         </div>
 
         {/* Detalles del Contrato */}
@@ -166,17 +172,17 @@ export default function ClienteContratoVer() {
           </h3>
 
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("clienteContratoTipoServicio") || "Tipo de servicio"}:</strong> Cada {contrato.frecuencia || 30} días
+            <strong>Tipo de servicio:</strong> Cada {contrato.frecuencia || 30} días
           </p>
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("clienteContratoPrecioMensual") || "Precio mensual"}:</strong> {contrato.precio != null ? `${contrato.precio} €` : "—"}
+            <strong>Precio mensual:</strong> {contrato.precio != null ? `${contrato.precio} €` : "—"}
           </p>
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("clienteContratoFechaInicio") || "Fecha inicio"}:</strong> {contrato.fecha_inicio || "—"}
+            <strong>Fecha inicio:</strong> {contrato.fecha_inicio || "—"}
           </p>
           <p style={{ margin: "6px 0 16px 0" }}>
             <strong>Estado:</strong>{" "}
-            <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d" }}>
+            <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d", fontWeight: "bold" }}>
               {esFirmado ? "✅ Firmado" : "⏳ Pendiente de firma"}
             </span>
           </p>
@@ -190,10 +196,10 @@ export default function ClienteContratoVer() {
               color: "#0a0f1a",
             }}
           >
-            ✍️ {esFirmado ? "Ver / Cambiar Firma" : (t("clienteFirmaTitulo") || "Firma del Cliente")}
+            ✍️ {esFirmado ? "Ver / Cambiar Firma" : "Firma del Cliente"}
           </button>
 
-          {/* 2. Botón Enviar al Admin */}
+          {/* 2. Botón Enviar al Admin (Se ilumina en VERDE cuando esFirmado es true) */}
           <button
             onClick={enviarAlAdmin}
             disabled={!esFirmado || enviando}
@@ -207,14 +213,14 @@ export default function ClienteContratoVer() {
             {enviando ? "Enviando..." : "📤 Enviar contrato al Admin"}
           </button>
 
-          {/* 3. Generar PDF (Componente original) */}
+          {/* 3. Generador de PDF */}
           <GenerarPDFContrato
             contrato={contrato}
             cliente={cliente}
             onGenerado={cargarContrato}
           />
 
-          {/* 4. Botón Ver Contrato PDF */}
+          {/* 4. Ver PDF */}
           <button
             onClick={abrirPDF}
             style={{
@@ -224,7 +230,7 @@ export default function ClienteContratoVer() {
               border: "1px solid rgba(255,255,255,0.2)",
             }}
           >
-            📄 {t("pdfTituloVista") || "Contrato PDF"}
+            📄 Contrato PDF
           </button>
         </div>
       </div>
