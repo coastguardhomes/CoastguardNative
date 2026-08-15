@@ -44,7 +44,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
   const dibujar = (e) => {
     if (!isDrawing) return;
-    if (e.touches) e.preventDefault();
 
     const { x, y } = obtenerCoordenadas(e);
     const ctx = canvasRef.current.getContext("2d");
@@ -71,8 +70,9 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
       return;
     }
 
-    if (!contratoId) {
-      alert("Error: No se encontró el ID del contrato.");
+    // Validar identificador del contrato
+    if (!contratoId || contratoId === "undefined") {
+      alert("Error: No se encontró un ID de contrato válido.");
       return;
     }
 
@@ -101,23 +101,27 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
         .from("contratos")
         .getPublicUrl(fileName);
 
-      // 3. Actualizar contrato en la base de datos
-      const { error: updateError } = await supabase
+      // 3. Actualizar contrato y verificar respuesta de filas
+      const { data: updatedData, error: updateError } = await supabase
         .from("contratos")
         .update({
           firma_url: publicUrl,
           estado: "firmado",
         })
-        .eq("id", contratoId);
+        .eq("id", contratoId)
+        .select();
 
       if (updateError) throw updateError;
+
+      if (!updatedData || updatedData.length === 0) {
+        throw new Error("Supabase no actualizó la fila. Comprueba los permisos RLS en tu base de datos.");
+      }
 
       alert("¡Contrato firmado con éxito!");
 
       if (onFirmaGuardada) {
         onFirmaGuardada(publicUrl);
       } else {
-        // CORRECCIÓN: Navegación explícita para forzar la recarga de datos en la vista de detalle
         navigate(`/cliente/contrato/${contratoId}`, { replace: true });
       }
     } catch (err) {
@@ -149,7 +153,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
             onTouchStart={iniciarTrazo}
             onTouchMove={dibujar}
             onTouchEnd={detenerTrazo}
-            style={{ display: "block", width: "100%", cursor: "crosshair" }}
+            style={{ display: "block", width: "100%", cursor: "crosshair", touchAction: "none" }}
           />
         </div>
 
