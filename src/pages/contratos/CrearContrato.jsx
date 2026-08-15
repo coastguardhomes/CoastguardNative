@@ -133,12 +133,16 @@ export default function CrearContrato() {
       ...(token ? { "Authorization": `Bearer ${token}` } : {})
     };
 
-    // 3️⃣ Generar PDF en la Edge Function (el cual usará los datos legales y el sello)
+    // 3️⃣ Generar PDF en la Edge Function (vía POST)
     let pdfUrl = null;
     try {
       const pdfResponse = await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${contratoId}`,
-        { headers }
+        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ contratoId })
+        }
       );
       if (pdfResponse.ok) {
         pdfUrl = await pdfResponse.text();
@@ -158,21 +162,29 @@ export default function CrearContrato() {
       })
       .eq("id", contratoId);
 
-    // 5️⃣ Crear inspecciones automáticas
+    // 5️⃣ Crear inspecciones automáticas (vía POST)
     try {
       await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear_inspecciones_programadas?id=${contratoId}`,
-        { headers }
+        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear_inspecciones_programadas",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ contratoId })
+        }
       );
     } catch (e) {
       console.error("Error creando inspecciones:", e);
     }
 
-    // 6️⃣ Enviar email al cliente con el enlace de firma
+    // 6️⃣ Enviar email al cliente con el enlace de firma (vía POST)
     try {
       await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${contratoId}`,
-        { headers }
+        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ contratoId })
+        }
       );
     } catch (e) {
       console.error("Error enviando email:", e);
