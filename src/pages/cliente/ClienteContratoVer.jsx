@@ -4,7 +4,6 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import GenerarPDFContrato from "./GenerarPDFContrato.jsx";
-import ClienteFirmaDibujar from "./ClienteFirmaDibujar.jsx";
 
 const botonSecundario = {
   padding: "12px",
@@ -26,7 +25,6 @@ export default function ClienteContratoVer() {
 
   const [contrato, setContrato] = useState(null);
   const [cliente, setCliente] = useState(null);
-  const [mostrarFirma, setMostrarFirma] = useState(false);
 
   const cargarContrato = async () => {
     const { data: contratoData, error: contratoError } = await supabase
@@ -59,6 +57,14 @@ export default function ClienteContratoVer() {
   useEffect(() => {
     cargarContrato();
   }, [id]);
+
+  const abrirPDF = () => {
+    if (contrato?.pdf_url) {
+      window.open(contrato.pdf_url, "_blank");
+    } else {
+      alert("Primero debes hacer clic en 'Generar PDF del contrato'.");
+    }
+  };
 
   if (!contrato || !cliente) {
     return (
@@ -139,7 +145,6 @@ export default function ClienteContratoVer() {
             borderRadius: "14px",
             border: "1px solid rgba(255,255,255,0.1)",
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-            marginBottom: "20px",
           }}
         >
           <h3 style={{ color: "#4db8ff", marginBottom: "10px", fontSize: "20px" }}>
@@ -159,57 +164,33 @@ export default function ClienteContratoVer() {
             </span>
           </p>
 
-          {/* Si NO está firmado, mostramos el botón para desplegar la firma */}
-          {!estaFirmado && (
-            <button
-              onClick={() => setMostrarFirma(!mostrarFirma)}
-              style={{
-                ...botonSecundario,
-                background: mostrarFirma ? "rgba(255,255,255,0.15)" : "#4db8ff",
-                color: mostrarFirma ? "#fff" : "#0a0f1a",
-              }}
-            >
-              ✍️ {mostrarFirma ? "Ocultar panel de firma" : t("clienteFirmaTitulo")}
-            </button>
-          )}
+          {/* Botón para ir a dibujar la firma */}
+          <button
+            onClick={() => navigate(`/cliente/firma/${id}`)}
+            style={{
+              ...botonSecundario,
+              background: estaFirmado ? "rgba(255,255,255,0.05)" : "#4db8ff",
+              color: estaFirmado ? "#fff" : "#0a0f1a",
+            }}
+          >
+            ✍️ {estaFirmado ? "Ver / Cambiar Firma" : t("clienteFirmaTitulo")}
+          </button>
 
-          {/* Generador/Visor de PDF */}
+          {/* Generador de PDF */}
           <GenerarPDFContrato
             contrato={contrato}
             cliente={cliente}
             onGenerado={cargarContrato}
           />
 
-          {contrato.pdf_url && (
-            <button
-              onClick={() => navigate(`/cliente/contrato/${id}/pdf`)}
-              style={botonSecundario}
-            >
-              📄 {t("pdfTituloVista")}
-            </button>
-          )}
-        </div>
-
-        {/* Módulo de Firma desplegable en la misma pantalla */}
-        {!estaFirmado && mostrarFirma && (
-          <div
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              padding: "20px",
-              borderRadius: "14px",
-              border: "1px solid rgba(0,153,255,0.4)",
-              boxShadow: "0 0 15px rgba(0,153,255,0.3)",
-            }}
+          {/* Botón para abrir el PDF generado directamente */}
+          <button
+            onClick={abrirPDF}
+            style={botonSecundario}
           >
-            <ClienteFirmaDibujar
-              contratoId={contrato.id}
-              onFirmaGuardada={() => {
-                setMostrarFirma(false);
-                cargarContrato();
-              }}
-            />
-          </div>
-        )}
+            📄 {t("pdfTituloVista")}
+          </button>
+        </div>
       </div>
     </Menu>
   );
