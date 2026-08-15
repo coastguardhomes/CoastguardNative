@@ -85,7 +85,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
       const fileName = `firmas/firma_contrato_${contratoId}_${Date.now()}.png`;
 
-      // 1. Subir la imagen al Storage
+      // 1. Subir la imagen al Storage de Supabase
       const { error: storageError } = await supabase.storage
         .from("contratos")
         .upload(fileName, blob, {
@@ -95,12 +95,12 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
       if (storageError) throw storageError;
 
-      // 2. Obtener la URL pública
+      // 2. Obtener la URL pública de la firma
       const { data: { publicUrl } } = supabase.storage
         .from("contratos")
         .getPublicUrl(fileName);
 
-      // 3. Actualizar la fila en Supabase (Estandarizado a "firmado")
+      // 3. Actualizar la fila en Supabase (Guardando firma y cambiando estado a 'firmado')
       const { error: updateError } = await supabase
         .from("contratos")
         .update({
@@ -111,12 +111,21 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
       if (updateError) throw updateError;
 
+      // 4. Opcional: Disparar notificación por Edge Function (si la utilizas)
+      try {
+        await supabase.functions.invoke('enviar-email', {
+          body: { contratoId: contratoId, tipo: 'contrato_firmado' }
+        });
+      } catch (emailErr) {
+        console.warn("Aviso: El contrato se guardó pero la función de correo no se ejecutó:", emailErr);
+      }
+
       alert("¡Contrato firmado con éxito!");
 
       if (onFirmaGuardada) {
         onFirmaGuardada(publicUrl);
       } else {
-        navigate(-1); // Vuelve a la pantalla anterior (ClienteContratoVer)
+        navigate(-1);
       }
     } catch (err) {
       console.error("Error al guardar la firma:", err);
@@ -155,7 +164,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
           <button
             onClick={limpiarLienzo}
             disabled={guardando}
-            style={{ flex: 1, background: "transparent", border: "1px solid #ff4d4d", color: "#ff4d4d", padding: "12px", borderRadius: "8px", fontWeight: "bold" }}
+            style={{ flex: 1, background: "transparent", border: "1px solid #ff4d4d", color: "#ff4d4d", padding: "12px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}
           >
             🗑️ Limpiar
           </button>
