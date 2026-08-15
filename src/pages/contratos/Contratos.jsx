@@ -1,176 +1,196 @@
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { Link } from "react-router-dom";
 
 export default function Contratos() {
   const [contratos, setContratos] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function cargarContratos() {
+  const cargarContratosAdmin = async () => {
+    setLoading(true);
+    try {
       const { data, error } = await supabase
         .from("contratos")
-        .select(`
-          id,
-          cliente_id,
-          vivienda_id,
-          tecnico_id,
-          precio,
-          fecha_inicio,
-          fecha_fin,
-          modalidad,
-          estado,
-          firma,
-          creado_en
-        `)
-        .order("creado_en", { ascending: false });
+        .select("*, clientes(nombre, email, telefono)")
+        .order("created_at", { ascending: false });
 
-      if (!error) {
-        // Cargar nombres relacionados
-        const clientes = await supabase.from("clientes").select("id, nombre");
-        const viviendas = await supabase.from("viviendas").select("id, direccion");
-        const tecnicos = await supabase.from("tecnicos").select("id, nombre");
-
-        const contratosConNombres = data.map((c) => ({
-          ...c,
-          cliente_nombre:
-            clientes.data.find((x) => x.id === c.cliente_id)?.nombre || "—",
-          vivienda_direccion:
-            viviendas.data.find((x) => x.id === c.vivienda_id)?.direccion || "—",
-          tecnico_nombre:
-            tecnicos.data.find((x) => x.id === c.tecnico_id)?.nombre || "—",
-        }));
-
-        setContratos(contratosConNombres);
+      if (error) {
+        console.error("Error al cargar contratos:", error);
+      } else {
+        setContratos(data || []);
       }
-
+    } catch (err) {
+      console.error("Error en la carga de contratos:", err);
+    } finally {
       setLoading(false);
     }
+  };
 
-    cargarContratos();
+  useEffect(() => {
+    cargarContratosAdmin();
   }, []);
 
   return (
     <Menu>
       <div
         style={{
-          padding: "20px",
           background: "#0a0f1a",
           minHeight: "100vh",
+          padding: "20px",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
         }}
       >
-        <h1
+        <h2
           style={{
-            fontSize: "28px",
-            fontWeight: "700",
-            marginBottom: "20px",
+            textAlign: "center",
             color: "#4db8ff",
+            marginBottom: "24px",
+            fontSize: "26px",
+            fontWeight: "700",
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          Contratos
-        </h1>
-
-        <Link to="/contratos/crear">
-          <button
-            style={{
-              marginBottom: "25px",
-              padding: "14px",
-              width: "100%",
-              background: "#4db8ff",
-              color: "#000",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "17px",
-              cursor: "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-            }}
-          >
-            Nuevo contrato
-          </button>
-        </Link>
+          Gestión de Contratos
+        </h2>
 
         {loading ? (
-          <p style={{ textAlign: "center", fontSize: "18px", opacity: 0.8 }}>
-            Cargando contratos...
-          </p>
+          <div style={{ textAlign: "center", marginTop: "40px", color: "#9fb3c8" }}>
+            <h3>Cargando lista de contratos...</h3>
+          </div>
         ) : contratos.length === 0 ? (
-          <p style={{ textAlign: "center", fontSize: "16px", opacity: 0.8 }}>
-            No hay contratos registrados.
-          </p>
+          <div style={{ textAlign: "center", marginTop: "40px", color: "#9fb3c8" }}>
+            <p>No hay contratos registrados en el sistema.</p>
+          </div>
         ) : (
-          <div>
-            {contratos.map((c) => (
-              <Link
-                key={c.id}
-                to={`/contratos/ver/${c.id}`}
-                style={{ textDecoration: "none", color: "#fff" }}
-              >
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxWidth: "600px", margin: "0 auto" }}>
+            {contratos.map((c) => {
+              const estaFirmado = c.estado === "firmado" || Boolean(c.firma_url);
+
+              return (
                 <div
+                  key={c.id}
                   style={{
-                    background: "rgba(255,255,255,0.05)",
-                    padding: "18px",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    border: `1px solid ${estaFirmado ? "rgba(77, 255, 136, 0.4)" : "rgba(255, 255, 255, 0.1)"}`,
                     borderRadius: "14px",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-                    marginBottom: "15px",
+                    padding: "18px",
+                    boxShadow: estaFirmado
+                      ? "0 0 12px rgba(77, 255, 136, 0.15)"
+                      : "0 0 10px rgba(0, 0, 0, 0.3)",
                   }}
                 >
-                  <p>
-                    <strong style={{ color: "#4db8ff" }}>Contrato:</strong> #{c.id}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    <h3 style={{ margin: 0, color: "#4db8ff", fontSize: "18px" }}>
+                      Contrato #{c.id}
+                    </h3>
+                    <span
+                      style={{
+                        background: estaFirmado ? "rgba(77, 255, 136, 0.15)" : "rgba(255, 184, 77, 0.15)",
+                        color: estaFirmado ? "#4dff88" : "#ffb84d",
+                        border: `1px solid ${estaFirmado ? "#4dff88" : "#ffb84d"}`,
+                        padding: "4px 10px",
+                        borderRadius: "20px",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {estaFirmado ? "✅ Firmado" : "⏳ Pendiente"}
+                    </span>
+                  </div>
+
+                  <p style={{ margin: "6px 0", color: "#ffffff", fontSize: "15px" }}>
+                    <strong>Cliente:</strong> {c.clientes?.nombre || "Sin cliente asignado"}
+                  </p>
+                  <p style={{ margin: "4px 0", color: "#9fb3c8", fontSize: "14px" }}>
+                    <strong>Teléfono:</strong> {c.clientes?.telefono || "—"}
+                  </p>
+                  <p style={{ margin: "4px 0", color: "#9fb3c8", fontSize: "14px" }}>
+                    <strong>Fecha Inicio:</strong> {c.fecha_inicio || "—"} | <strong>Precio:</strong> {c.precio ? `${c.precio} €` : "—"}
                   </p>
 
-                  <p>
-                    <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
-                    {c.cliente_nombre}
-                  </p>
+                  <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
+                    {c.firma_url ? (
+                      <button
+                        onClick={() => window.open(c.firma_url, "_blank")}
+                        style={{
+                          flex: 1,
+                          padding: "10px",
+                          background: "rgba(255, 255, 255, 0.08)",
+                          border: "1px solid rgba(255, 255, 255, 0.2)",
+                          color: "#fff",
+                          borderRadius: "8px",
+                          fontWeight: "600",
+                          fontSize: "13px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        🖋️ Ver Firma
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        style={{
+                          flex: 1,
+                          padding: "10px",
+                          background: "rgba(255, 255, 255, 0.03)",
+                          border: "1px solid rgba(255, 255, 255, 0.05)",
+                          color: "#666",
+                          borderRadius: "8px",
+                          fontSize: "13px",
+                          cursor: "not-allowed",
+                        }}
+                      >
+                        Sin Firma
+                      </button>
+                    )}
 
-                  <p>
-                    <strong style={{ color: "#4db8ff" }}>Vivienda:</strong>{" "}
-                    {c.vivienda_direccion}
-                  </p>
-
-                  <p>
-                    <strong style={{ color: "#4db8ff" }}>Técnico:</strong>{" "}
-                    {c.tecnico_nombre}
-                  </p>
-
-                  <p>
-                    <strong style={{ color: "#4db8ff" }}>Modalidad:</strong>{" "}
-                    {c.modalidad || "Sin modalidad"}
-                  </p>
-
-                  <p>
-                    <strong style={{ color: "#4db8ff" }}>Fecha inicio:</strong>{" "}
-                    {c.fecha_inicio || "Sin fecha"}
-                  </p>
-
-                  <p>
-                    <strong style={{ color: "#4db8ff" }}>Fecha fin:</strong>{" "}
-                    {c.fecha_fin || "Sin fecha"}
-                  </p>
-
-                  <p>
-                    <strong style={{ color: "#4db8ff" }}>Precio:</strong>{" "}
-                    {c.precio ? `${c.precio} €` : "Sin precio"}
-                  </p>
-
-                  <p>
-                    <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
-                    {c.estado || "Sin estado"}
-                  </p>
-
-                  <p>
-                    <strong style={{ color: "#4db8ff" }}>Firmado:</strong>{" "}
-                    {c.firma ? "Sí" : "No"}
-                  </p>
+                    {c.pdf_url ? (
+                      <button
+                        onClick={() => window.open(c.pdf_url, "_blank")}
+                        style={{
+                          flex: 1,
+                          padding: "10px",
+                          background: "#4db8ff",
+                          border: "none",
+                          color: "#0a0f1a",
+                          borderRadius: "8px",
+                          fontWeight: "bold",
+                          fontSize: "13px",
+                          cursor: "pointer",
+                          boxShadow: "0 0 8px rgba(0,153,255,0.4)",
+                        }}
+                      >
+                        📄 Ver PDF
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        style={{
+                          flex: 1,
+                          padding: "10px",
+                          background: "rgba(255, 255, 255, 0.03)",
+                          border: "1px solid rgba(255, 255, 255, 0.05)",
+                          color: "#666",
+                          borderRadius: "8px",
+                          fontSize: "13px",
+                          cursor: "not-allowed",
+                        }}
+                      >
+                        Sin PDF
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
