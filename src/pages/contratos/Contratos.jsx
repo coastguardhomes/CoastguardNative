@@ -41,6 +41,23 @@ export default function Contratos() {
     }
   };
 
+  // 🗑️ FUNCIÓN PARA ELIMINAR CONTRATO
+  const eliminarContrato = async (id) => {
+    if (!window.confirm("¿Estás seguro de que deseas eliminar este contrato?")) return;
+
+    const { error } = await supabase
+      .from("contratos")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert("Error al eliminar el contrato: " + error.message);
+    } else {
+      alert("Contrato eliminado con éxito.");
+      cargarContratos();
+    }
+  };
+
   const verDocumento = (c) => {
     const url = c.firma_url || c.pdf_url;
     if (url) {
@@ -75,7 +92,6 @@ export default function Contratos() {
             📋 Panel de Contratos (Admin)
           </h1>
 
-          {/* BOTÓN RESTAURADO PARA CREAR NUEVO CONTRATO */}
           <button
             onClick={() => navigate("/contratos/nuevo")}
             style={{
@@ -102,7 +118,7 @@ export default function Contratos() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
               {contratos.map((c) => {
-                const esFirmado = c.estado === "firmado" || c.estado === "enviado_al_admin" || Boolean(c.firma_url);
+                const esFirmado = c.estado === "firmado" || c.estado === "activo" || c.estado === "enviado_al_admin" || Boolean(c.firma_url);
 
                 return (
                   <div
@@ -136,7 +152,7 @@ export default function Contratos() {
                       Fecha Inicio: {c.fecha_inicio || "Sin fecha"}
                     </p>
 
-                    <div style={{ display: "flex", gap: "10px" }}>
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                       {!esFirmado && (
                         <button
                           onClick={() => enviarACliente(c.id)}
@@ -151,7 +167,7 @@ export default function Contratos() {
                             cursor: "pointer",
                           }}
                         >
-                          🚀 Enviar a Cliente
+                          🚀 Enviar
                         </button>
                       )}
 
@@ -169,6 +185,22 @@ export default function Contratos() {
                         }}
                       >
                         📄 {esFirmado ? "Ver Firmado" : "Ver Borrador"}
+                      </button>
+
+                      {/* 🗑️ BOTÓN DE BORRAR */}
+                      <button
+                        onClick={() => eliminarContrato(c.id)}
+                        style={{
+                          padding: "12px 16px",
+                          background: "rgba(255, 77, 77, 0.2)",
+                          color: "#ff4d4d",
+                          border: "1px solid #ff4d4d",
+                          borderRadius: "8px",
+                          fontWeight: "bold",
+                          cursor: "pointer",
+                        }}
+                      >
+                        🗑️ Borrar
                       </button>
                     </div>
                   </div>
