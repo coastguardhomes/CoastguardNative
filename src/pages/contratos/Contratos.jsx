@@ -14,6 +14,7 @@ export default function Contratos() {
 
   const cargarContratos = async () => {
     setCargando(true);
+
     const { data, error } = await supabase
       .from("contratos")
       .select("*")
@@ -24,6 +25,7 @@ export default function Contratos() {
     } else {
       setContratos(data || []);
     }
+
     setCargando(false);
   };
 
@@ -41,7 +43,6 @@ export default function Contratos() {
     }
   };
 
-  // 🗑️ FUNCIÓN PARA ELIMINAR CONTRATO
   const eliminarContrato = async (id) => {
     if (!window.confirm("¿Estás seguro de que deseas eliminar este contrato?")) return;
 
@@ -59,8 +60,8 @@ export default function Contratos() {
   };
 
   const verDocumento = (c) => {
-    // 🛠️ CORREGIDO: Prioriza el PDF final si existe; si no, busca el borrador o la firma
     const url = c.pdf_url || c.firma_url;
+
     if (url) {
       window.open(url, "_blank");
     } else {
@@ -115,11 +116,17 @@ export default function Contratos() {
           {cargando ? (
             <p style={{ textAlign: "center" }}>Cargando contratos...</p>
           ) : contratos.length === 0 ? (
-            <p style={{ textAlign: "center", opacity: 0.8 }}>No hay contratos en la base de datos.</p>
+            <p style={{ textAlign: "center", opacity: 0.8 }}>
+              No hay contratos en la base de datos.
+            </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
               {contratos.map((c) => {
-                const esFirmado = c.estado === "firmado" || c.estado === "activo" || c.estado === "enviado_al_admin" || Boolean(c.firma_url);
+                const esFirmado =
+                  c.estado === "firmado" ||
+                  c.estado === "activo" ||
+                  c.estado === "enviado_al_admin" ||
+                  !!c.firma_url;
 
                 return (
                   <div
@@ -131,25 +138,46 @@ export default function Contratos() {
                       border: "1px solid rgba(255,255,255,0.1)",
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                      <h3 style={{ margin: 0, fontSize: "18px" }}>Contrato #{c.id}</h3>
-                      
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      <h3 style={{ margin: 0, fontSize: "18px" }}>
+                        Contrato #{c.id}
+                      </h3>
+
                       <span
                         style={{
-                          background: esFirmado ? "rgba(76, 217, 100, 0.2)" : "rgba(255, 184, 77, 0.2)",
+                          background: esFirmado
+                            ? "rgba(76, 217, 100, 0.2)"
+                            : "rgba(255, 184, 77, 0.2)",
                           color: esFirmado ? "#4cd964" : "#ffb84d",
-                          border: `1px solid ${esFirmado ? "#4cd964" : "#ffb84d"}`,
+                          border: `1px solid ${
+                            esFirmado ? "#4cd964" : "#ffb84d"
+                          }`,
                           padding: "4px 10px",
                           borderRadius: "12px",
                           fontSize: "12px",
                           fontWeight: "bold",
                         }}
                       >
-                        {esFirmado ? "✅ FIRMADO" : `⏳ ${c.estado ? c.estado.toUpperCase() : "PENDIENTE"}`}
+                        {esFirmado
+                          ? "✅ FIRMADO"
+                          : `⏳ ${c.estado ? c.estado.toUpperCase() : "PENDIENTE"}`}
                       </span>
                     </div>
 
-                    <p style={{ margin: "4px 0 14px 0", fontSize: "14px", color: "#9fb3c8" }}>
+                    <p
+                      style={{
+                        margin: "4px 0 14px 0",
+                        fontSize: "14px",
+                        color: "#9fb3c8",
+                      }}
+                    >
                       Fecha Inicio: {c.fecha_inicio || "Sin fecha"}
                     </p>
 
@@ -188,7 +216,6 @@ export default function Contratos() {
                         📄 {esFirmado ? "Ver Firmado" : "Ver Borrador"}
                       </button>
 
-                      {/* 🗑️ BOTÓN DE BORRAR */}
                       <button
                         onClick={() => eliminarContrato(c.id)}
                         style={{
