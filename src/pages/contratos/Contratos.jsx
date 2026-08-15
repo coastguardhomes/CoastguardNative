@@ -17,11 +17,11 @@ export default function Contratos() {
     setError(null);
 
     try {
-      // Consulta todos los contratos ordenados por fecha de creación desc
+      // Ordenamos por 'id' en lugar de 'created_at' para evitar fallos de columna
       const { data, error } = await supabase
         .from("contratos")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("id", { ascending: false });
 
       if (error) {
         throw error;
@@ -114,7 +114,7 @@ export default function Contratos() {
                         Contrato #{contrato.id} {contrato.cliente_nombre ? `- ${contrato.cliente_nombre}` : ""}
                       </h3>
                       <p style={{ margin: 0, fontSize: "13px", color: "#9fb3c8" }}>
-                        Fecha: {contrato.created_at ? new Date(contrato.created_at).toLocaleDateString() : "Sin fecha"}
+                        Fecha Inicio: {contrato.fecha_inicio || contrato.fecha || "Sin fecha"}
                       </p>
                     </div>
 
