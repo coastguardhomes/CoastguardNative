@@ -1,223 +1,255 @@
-import { useRef, useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import SignaturePad from "react-signature-canvas";
+import React, { useRef, useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { useLanguage } from "../../context/LanguageContext.jsx";
-import { useAuth } from "../../context/AuthContext.jsx";
 
-export default function ClienteFirmaDibujar() {
-  const { t } = useLanguage();
-  const { id } = useParams();
+export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirmaGuardada }) {
+  const { id: routeContratoId } = useParams();
+  const contratoId = propContratoId || routeContratoId;
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const sigCanvas = useRef(null);
 
-  const [loading, setLoading] = useState(false);
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [hayFirma, setHayFirma] = useState(false);
 
-  // Seguridad: comprobar que el contrato pertenece al cliente
+  // --- Ajustar el tamaño del canvas al contenedor ---
   useEffect(() => {
-    async function comprobarContrato() {
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("contratos")
-        .select("cliente_id")
-        .eq("id", id)
-        .single();
-
-      if (error || !data) {
-        navigate("/cliente/dashboard");
-      }
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = 220;
     }
-
-    comprobarContrato();
-  }, [user, id, navigate]);
-
-  // Ajuste responsive del canvas
-  const ajustarCanvas = () => {
-    if (!sigCanvas.current) return;
-
-    const canvas = sigCanvas.current.getCanvas();
-    const container = canvas.parentNode;
-
-    canvas.width = container.offsetWidth;
-    canvas.height = 250;
-
-    sigCanvas.current.clear();
-  };
-
-  useEffect(() => {
-    ajustarCanvas();
-    window.addEventListener("resize", ajustarCanvas);
-    return () => window.removeEventListener("resize", ajustarCanvas);
   }, []);
 
+  // --- Captura de coordenadas para táctil y ratón ---
+  const obtenerCoordenadas = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  };
+
+  const iniciarTrazo = (e) => {
+    setIsDrawing(true);
+    setHayFirma(true);
+    const { x, y } = obtenerCoordenadas(e);
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const dibujar = (e) => {
+    if (!isDrawing) return;
+    if (e.touches) e.preventDefault(); // Evita scroll de la pantalla al firmar con el dedo
+
+    const { x, y } = obtenerCoordenadas(e);
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const detenerTrazo = () => {
+    setIsDrawing(false);
+  };
+
+  const limpiarLienzo = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHayFirma(false);
+  };
+
+  // --- Guardar Firma y Notificar al Admin ---
   const guardarFirma = async () => {
-    const canvas = sigCanvas.current;
-    if (!canvas) return;
-
-    setLoading(true);
-
-    // Convertir firma a PNG
-    const dataURL = canvas.getTrimmedCanvas().toDataURL("image/png");
-    const blob = await (await fetch(dataURL)).blob();
-
-    const filePath = `firmas/contrato_${id}.png`;
-
-    // Subir firma
-    const { error: uploadError } = await supabase.storage
-      .from("firmas")
-      .upload(filePath, blob, {
-        upsert: true,
-        contentType: "image/png",
-      });
-
-    if (uploadError) {
-      console.error("Error subiendo firma:", uploadError);
-      setLoading(false);
+    if (!hayFirma) {
+      alert("Por favor, realiza tu firma antes de guardar.");
       return;
     }
 
-    // Obtener URL pública
-    const { data: publicUrlData } = supabase.storage
-      .from("firmas")
-      .getPublicUrl(filePath);
-
-    const firmaUrl = publicUrlData.publicUrl;
-
-    // Guardar firma en contrato
-    await supabase
-      .from("contratos")
-      .update({
-        firma: firmaUrl,
-        firmado_en: new Date().toISOString().split("T")[0],
-        estado: "firmado",
-      })
-      .eq("id", id);
-
-    // Regenerar PDF con firma
-    try {
-      await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf?id=${id}&firma=${encodeURIComponent(
-          firmaUrl
-        )}`
-      );
-    } catch (e) {
-      console.error("Error regenerando PDF:", e);
+    if (!contratoId) {
+      alert("Error: No se encontró el ID del contrato.");
+      return;
     }
 
-    // Enviar email automático
+    setGuardando(true);
+
     try {
-      await fetch(
-        `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${id}`
-      );
-    } catch (e) {
-      console.error("Error enviando email:", e);
+      const canvas = canvasRef.current;
+      
+      // 1. Convertir el canvas a Blob (PNG)
+      const dataUrl = canvas.toDataURL("image/png");
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+
+      const fileName = `firmas/firma_contrato_${contratoId}_${Date.now()}.png`;
+
+      // 2. Subir imagen al Bucket 'contratos' en Supabase Storage
+      const { data: storageData, error: storageError } = await supabase.storage
+        .from("contratos")
+        .upload(fileName, blob, {
+          contentType: "image/png",
+          upsert: true,
+        });
+
+      if (storageError) throw storageError;
+
+      // 3. Obtener la URL pública de la firma
+      const { data: { publicUrl } } = supabase.storage
+        .from("contratos")
+        .getPublicUrl(fileName);
+
+      // 4. Actualizar el contrato en la base de datos
+      const { error: updateError } = await supabase
+        .from("contratos")
+        .update({
+          firma_url: publicUrl,
+          estado: "firmado",
+          fecha_firma: new Date().toISOString(),
+        })
+        .eq("id", contratoId);
+
+      if (updateError) throw updateError;
+
+      // 5. Crear notificación / alerta para el rol Administrador
+      await supabase.from("alertas").insert([
+        {
+          titulo: "✍️ Nuevo contrato firmado",
+          mensaje: `El contrato #${contratoId} ha sido firmado por el cliente.`,
+          leida: false,
+          usuario_id: null, // Visibilidad global para administradores
+        },
+      ]);
+
+      alert("¡Contrato firmado y guardado con éxito!");
+
+      if (onFirmaGuardada) {
+        onFirmaGuardada(publicUrl);
+      } else {
+        navigate(`/cliente/contrato/${contratoId}`);
+      }
+
+    } catch (err) {
+      console.error("Error al guardar la firma:", err);
+      alert("Error guardando la firma: " + (err.message || err.error_description || "Error desconocido"));
+    } finally {
+      setGuardando(false);
     }
-
-    navigate(`/cliente/contrato/${id}`);
   };
 
-  const limpiar = () => {
-    sigCanvas.current?.clear();
-  };
-
-  return (
-    <Menu>
-      <div
+  const contenido = (
+    <div
+      style={{
+        background: "#0a0f1a",
+        minHeight: "100vh",
+        padding: "20px",
+        color: "#fff",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <h2
         style={{
-          minHeight: "100vh",
-          background: "#0a0f1a",
-          padding: "20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
+          textAlign: "center",
+          color: "#4db8ff",
+          marginBottom: "20px",
+          fontSize: "26px",
+          fontWeight: "700",
+          textShadow: "0 0 8px rgba(0,153,255,0.6)",
         }}
       >
-        <h2
-          style={{
-            textAlign: "center",
-            color: "#4db8ff",
-            marginBottom: "25px",
-            fontSize: "28px",
-            fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
-          {t("clienteFirmaTitulo")}
-        </h2>
+        Firma del Cliente
+      </h2>
 
+      <div
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          padding: "18px",
+          borderRadius: "14px",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+          maxWidth: "500px",
+          margin: "0 auto",
+        }}
+      >
+        <p style={{ color: "#9fb3c8", fontSize: "14px", marginBottom: "12px", textAlign: "center" }}>
+          Dibuje su firma con el dedo dentro del recuadro blanco:
+        </p>
+
+        {/* Cuadro de Dibujo (Canvas) */}
         <div
           style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-            marginBottom: "20px",
-            textAlign: "center",
+            background: "#ffffff",
+            borderRadius: "10px",
+            overflow: "hidden",
+            touchAction: "none",
+            width: "100%",
           }}
         >
-          <div
+          <canvas
+            ref={canvasRef}
+            onMouseDown={iniciarTrazo}
+            onMouseMove={dibujar}
+            onMouseUp={detenerTrazo}
+            onMouseLeave={detenerTrazo}
+            onTouchStart={iniciarTrazo}
+            onTouchMove={dibujar}
+            onTouchEnd={detenerTrazo}
+            style={{ display: "block", width: "100%", cursor: "crosshair" }}
+          />
+        </div>
+
+        {/* Botones de Acción */}
+        <div style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
+          <button
+            onClick={limpiarLienzo}
+            disabled={guardando}
             style={{
-              width: "100%",
-              background: "#fff",
-              borderRadius: "10px",
-              border: "2px solid #4db8ff",
-              marginBottom: "20px",
+              flex: 1,
+              background: "transparent",
+              border: "1px solid #ff4d4d",
+              color: "#ff4d4d",
+              padding: "12px",
+              borderRadius: "8px",
+              fontWeight: "bold",
+              fontSize: "15px",
+              cursor: "pointer",
             }}
           >
-            <SignaturePad
-              ref={sigCanvas}
-              penColor="#4db8ff"
-              canvasProps={{
-                style: {
-                  width: "100%",
-                  height: "250px",
-                  borderRadius: "10px",
-                },
-              }}
-            />
-          </div>
+            🗑️ Limpiar
+          </button>
 
           <button
             onClick={guardarFirma}
-            disabled={loading}
+            disabled={guardando || !hayFirma}
             style={{
-              width: "100%",
-              padding: "12px",
-              backgroundColor: "#4db8ff",
-              color: "#000",
+              flex: 2,
+              background: guardando || !hayFirma ? "rgba(77, 184, 255, 0.4)" : "#4db8ff",
+              color: "#0a0f1a",
               border: "none",
+              padding: "12px",
               borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "700",
-              fontSize: "16px",
-              marginBottom: "10px",
-              opacity: loading ? 0.6 : 1,
+              fontWeight: "bold",
+              fontSize: "15px",
+              cursor: guardando || !hayFirma ? "not-allowed" : "pointer",
+              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
             }}
           >
-            {loading ? t("clienteFirmaGuardando") : t("clienteFirmaGuardar")}
-          </button>
-
-          <button
-            onClick={limpiar}
-            style={{
-              width: "100%",
-              padding: "12px",
-              backgroundColor: "#dc3545",
-              color: "#fff",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "700",
-              fontSize: "16px",
-            }}
-          >
-            {t("clienteFirmaLimpiar")}
+            {guardando ? "Guardando..." : "💾 Guardar firma"}
           </button>
         </div>
       </div>
-    </Menu>
+    </div>
   );
-}
+
+  // Si se usa como componente incrustado no envuelve en Menu, si se accede por ruta sí.
+  return propContratoId ? contenido : <Menu>{contenido}</Menu>;
+              }
