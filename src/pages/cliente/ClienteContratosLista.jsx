@@ -10,39 +10,48 @@ export default function ClienteContratosLista() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [contratos, setContratos] = useState([]);
+  const [cargando, setCargando] = useState(true);
 
   const cargarContratos = async () => {
     if (!user) return;
+    setCargando(true);
 
-    // 1. Cargamos todos los contratos (RLS debería filtrar solo los del cliente)
-    const { data: contratosData, error: contratosError } = await supabase
-      .from("contratos")
-      .select("*")
-      .order("id", { ascending: false });
+    try {
+      // 1. Obtenemos el perfil del cliente logueado
+      const { data: clienteData, error: clienteError } = await supabase
+        .from("clientes")
+        .select("id, nombre, direccion")
+        .eq("usuario_id", user.id);
 
-    if (contratosError) {
-      console.error("Error cargando contratos:", contratosError);
+      if (clienteError) throw clienteError;
+
+      const cliente = clienteData && clienteData.length > 0 ? clienteData[0] : null;
+
+      // 2. Cargamos los contratos filtrados por el cliente encontrado
+      let query = supabase.from("contratos").select("*").order("id", { ascending: false });
+
+      if (cliente) {
+        query = query.eq("cliente_id", cliente.id);
+      }
+
+      const { data: contratosData, error: contratosError } = await query;
+
+      if (contratosError) throw contratosError;
+
+      // 3. Mapeamos los datos para mostrarlos en la vista
+      const contratosConCliente = (contratosData || []).map((contrato) => ({
+        ...contrato,
+        clienteNombre: cliente ? cliente.nombre : "Cliente",
+        clienteDireccion: cliente ? cliente.direccion : "Dirección no disponible",
+      }));
+
+      setContratos(contratosConCliente);
+    } catch (err) {
+      console.error("Error cargando contratos del cliente:", err);
       setContratos([]);
-      return;
+    } finally {
+      setCargando(false);
     }
-
-    // 2. Cargamos el perfil de cliente sin usar .single() para evitar bloqueos
-    const { data: clienteData } = await supabase
-      .from("clientes")
-      .select("*")
-      .eq("usuario_id", user.id);
-
-    // Si encontramos al cliente, tomamos sus datos, si no, dejamos valores por defecto
-    const cliente = clienteData && clienteData.length > 0 ? clienteData[0] : null;
-
-    // 3. Mapeamos los datos
-    const contratosConCliente = (contratosData || []).map((contrato) => ({
-      ...contrato,
-      clienteNombre: cliente ? cliente.nombre : "Cliente",
-      clienteDireccion: cliente ? cliente.direccion : "Dirección no disponible",
-    }));
-
-    setContratos(contratosConCliente);
   };
 
   useEffect(() => {
@@ -59,7 +68,7 @@ export default function ClienteContratosLista() {
           padding: "20px",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
-          paddingBottom: "80px"
+          paddingBottom: "80px",
         }}
       >
         <h2
@@ -72,57 +81,80 @@ export default function ClienteContratosLista() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          {t("clienteListaTitulo")}
+          {t("clienteListaTitulo") || "Mis Contratos"}
         </h2>
 
-        {contratos.length === 0 && (
-          <p
-            style={{
-              textAlign: "center",
-              opacity: 0.8,
-              fontSize: "16px",
-            }}
-          >
-            {t("clienteListaVacio")}
+        {cargando && (
+          <p style={{ textAlign: "center", opacity: 0.8 }}>Cargando contratos...</p>
+        )}
+
+        {!cargando && contratos.length === 0 && (
+          <p style={{ textAlign: "center", opacity: 0.8, fontSize: "16px" }}>
+            {t("clienteListaVacio") || "No tienes contratos registrados."}
           </p>
         )}
 
-        {contratos.map((c) => (
-          <div
-            key={c.id}
-            onClick={() => navigate(`/cliente/contrato/${c.id}`)}
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              padding: "18px",
-              borderRadius: "14px",
-              border: "1px solid rgba(255,255,255,0.1)",
-              boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-              marginBottom: "15px",
-              cursor: "pointer",
-              transition: "transform 0.15s",
-            }}
-          >
-            <p style={{ marginBottom: 6 }}>
-              <strong style={{ color: "#4db8ff" }}>{t("clienteListaCliente")}:</strong>{" "}
-              {c.clienteNombre}
-            </p>
+        {!cargando &&
+          contratos.map((c) => {
+            const esFirmado = c.estado === "firmado" || Boolean(c.firma_url);
 
-            <p style={{ marginBottom: 6 }}>
-              <strong style={{ color: "#4db8ff" }}>{t("clienteListaDireccion")}:</strong>{" "}
-              {c.clienteDireccion}
-            </p>
+            return (
+              <div
+                key={c.id}
+                onClick={() => navigate(`/cliente/contrato/${c.id}`)}
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  padding: "18px",
+                  borderRadius: "14px",
+                  border: `1px solid ${esFirmado ? "rgba(76, 217, 100, 0.3)" : "rgba(255, 184, 77, 0.3)"}`,
+                  boxShadow: "0 0 12px rgba(0,153,255,0.15)",
+                  marginBottom: "15px",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "16px", fontWeight: "bold", color: "#ffffff" }}>
+                    Contrato #{c.id}
+                  </span>
+                  
+                  {/* Badge de Estado del contrato */}
+                  <span
+                    style={{
+                      background: esFirmado ? "rgba(76, 217, 100, 0.2)" : "rgba(255, 184, 77, 0.2)",
+                      color: esFirmado ? "#4cd964" : "#ffb84d",
+                      border: `1px solid ${esFirmado ? "#4cd964" : "#ffb84d"}`,
+                      padding: "4px 10px",
+                      borderRadius: "12px",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {esFirmado ? "✅ Firmado" : "⏳ Pendiente"}
+                  </span>
+                </div>
 
-            <p style={{ marginBottom: 6 }}>
-              <strong style={{ color: "#4db8ff" }}>{t("clienteListaServicio")}:</strong>{" "}
-              {c.frecuencia ? `${t("contratoCadaDias")} ${c.frecuencia}` : "—"}
-            </p>
+                <p style={{ marginBottom: 6, fontSize: "14px" }}>
+                  <strong style={{ color: "#4db8ff" }}>{t("clienteListaCliente") || "Cliente"}:</strong>{" "}
+                  {c.clienteNombre}
+                </p>
 
-            <p>
-              <strong style={{ color: "#4db8ff" }}>{t("clienteListaPrecio")}:</strong>{" "}
-              {c.precio != null ? `${c.precio} €` : "—"}
-            </p>
-          </div>
-        ))}
+                <p style={{ marginBottom: 6, fontSize: "14px" }}>
+                  <strong style={{ color: "#4db8ff" }}>{t("clienteListaDireccion") || "Dirección"}:</strong>{" "}
+                  {c.clienteDireccion}
+                </p>
+
+                <p style={{ marginBottom: 6, fontSize: "14px" }}>
+                  <strong style={{ color: "#4db8ff" }}>{t("clienteListaServicio") || "Servicio"}:</strong>{" "}
+                  {c.frecuencia ? `${t("contratoCadaDias") || "Cada"} ${c.frecuencia} días` : "—"}
+                </p>
+
+                <p style={{ margin: 0, fontSize: "14px" }}>
+                  <strong style={{ color: "#4db8ff" }}>{t("clienteListaPrecio") || "Precio"}:</strong>{" "}
+                  {c.precio != null ? `${c.precio} €` : "—"}
+                </p>
+              </div>
+            );
+          })}
       </div>
     </Menu>
   );
