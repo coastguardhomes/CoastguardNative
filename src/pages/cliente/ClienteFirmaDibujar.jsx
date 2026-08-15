@@ -86,6 +86,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
       const fileName = `firmas/firma_contrato_${contratoId}_${Date.now()}.png`;
 
+      // 1. Subir al bucket de Supabase Storage
       const { error: storageError } = await supabase.storage
         .from("contratos")
         .upload(fileName, blob, {
@@ -95,11 +96,12 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
       if (storageError) throw storageError;
 
+      // 2. Obtener URL pública
       const { data: { publicUrl } } = supabase.storage
         .from("contratos")
         .getPublicUrl(fileName);
 
-      // Actualizar solo las columnas existentes
+      // 3. Actualizar contrato en la base de datos
       const { error: updateError } = await supabase
         .from("contratos")
         .update({
@@ -110,12 +112,12 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
       if (updateError) throw updateError;
 
-      alert("¡Contrato firmado y guardado con éxito!");
+      alert("¡Contrato firmado con éxito!");
 
       if (onFirmaGuardada) {
         onFirmaGuardada(publicUrl);
       } else {
-        navigate(`/cliente/contrato/${contratoId}`);
+        navigate(-1);
       }
     } catch (err) {
       console.error("Error al guardar la firma:", err);
@@ -126,50 +128,17 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
   };
 
   const contenido = (
-    <div
-      style={{
-        background: "#0a0f1a",
-        minHeight: "100vh",
-        padding: "20px",
-        color: "#fff",
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
-      <h2
-        style={{
-          textAlign: "center",
-          color: "#4db8ff",
-          marginBottom: "20px",
-          fontSize: "26px",
-          fontWeight: "700",
-        }}
-      >
+    <div style={{ background: "#0a0f1a", minHeight: "100vh", padding: "20px", color: "#fff" }}>
+      <h2 style={{ textAlign: "center", color: "#4db8ff", marginBottom: "20px" }}>
         Firma del Cliente
       </h2>
 
-      <div
-        style={{
-          background: "rgba(255,255,255,0.05)",
-          padding: "18px",
-          borderRadius: "14px",
-          border: "1px solid rgba(255,255,255,0.1)",
-          maxWidth: "500px",
-          margin: "0 auto",
-        }}
-      >
+      <div style={{ background: "rgba(255,255,255,0.05)", padding: "18px", borderRadius: "14px", maxWidth: "500px", margin: "0 auto" }}>
         <p style={{ color: "#9fb3c8", fontSize: "14px", marginBottom: "12px", textAlign: "center" }}>
           Dibuje su firma con el dedo dentro del recuadro blanco:
         </p>
 
-        <div
-          style={{
-            background: "#ffffff",
-            borderRadius: "10px",
-            overflow: "hidden",
-            touchAction: "none",
-            width: "100%",
-          }}
-        >
+        <div style={{ background: "#ffffff", borderRadius: "10px", overflow: "hidden", touchAction: "none" }}>
           <canvas
             ref={canvasRef}
             onMouseDown={iniciarTrazo}
@@ -187,17 +156,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
           <button
             onClick={limpiarLienzo}
             disabled={guardando}
-            style={{
-              flex: 1,
-              background: "transparent",
-              border: "1px solid #ff4d4d",
-              color: "#ff4d4d",
-              padding: "12px",
-              borderRadius: "8px",
-              fontWeight: "bold",
-              fontSize: "15px",
-              cursor: "pointer",
-            }}
+            style={{ flex: 1, background: "transparent", border: "1px solid #ff4d4d", color: "#ff4d4d", padding: "12px", borderRadius: "8px", fontWeight: "bold" }}
           >
             🗑️ Limpiar
           </button>
@@ -205,17 +164,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
           <button
             onClick={guardarFirma}
             disabled={guardando || !hayFirma}
-            style={{
-              flex: 2,
-              background: guardando || !hayFirma ? "rgba(77, 184, 255, 0.4)" : "#4db8ff",
-              color: "#0a0f1a",
-              border: "none",
-              padding: "12px",
-              borderRadius: "8px",
-              fontWeight: "bold",
-              fontSize: "15px",
-              cursor: guardando || !hayFirma ? "not-allowed" : "pointer",
-            }}
+            style={{ flex: 2, background: guardando || !hayFirma ? "rgba(77, 184, 255, 0.4)" : "#4db8ff", color: "#0a0f1a", border: "none", padding: "12px", borderRadius: "8px", fontWeight: "bold" }}
           >
             {guardando ? "Guardando..." : "💾 Guardar firma"}
           </button>
@@ -225,5 +174,4 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
   );
 
   return propContratoId ? contenido : <Menu>{contenido}</Menu>;
-              }
-              
+}
