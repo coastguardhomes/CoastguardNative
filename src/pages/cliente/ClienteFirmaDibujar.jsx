@@ -100,12 +100,12 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
         .from("contratos")
         .getPublicUrl(fileName);
 
-      // 3. Actualizar la fila en Supabase
+      // 3. Actualizar la fila en Supabase (Estandarizado a "firmado")
       const { error: updateError } = await supabase
         .from("contratos")
         .update({
           firma_url: publicUrl,
-          estado: "activo",
+          estado: "firmado",
         })
         .eq("id", contratoId);
 
@@ -116,7 +116,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
       if (onFirmaGuardada) {
         onFirmaGuardada(publicUrl);
       } else {
-        navigate(`/cliente/contratos`, { replace: true });
+        navigate(-1); // Vuelve a la pantalla anterior (ClienteContratoVer)
       }
     } catch (err) {
       console.error("Error al guardar la firma:", err);
@@ -163,7 +163,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
           <button
             onClick={guardarFirma}
             disabled={guardando || !hayFirma}
-            style={{ flex: 2, background: guardando || !hayFirma ? "rgba(77, 184, 255, 0.4)" : "#4db8ff", color: "#0a0f1a", border: "none", padding: "12px", borderRadius: "8px", fontWeight: "bold" }}
+            style={{ flex: 2, background: guardando || !hayFirma ? "rgba(77, 184, 255, 0.4)" : "#4db8ff", color: "#0a0f1a", border: "none", padding: "12px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}
           >
             {guardando ? "Guardando..." : "💾 Guardar firma"}
           </button>
