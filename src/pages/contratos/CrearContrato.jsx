@@ -13,12 +13,13 @@ export default function CrearContrato() {
   const [form, setForm] = useState({
     cliente_id: "",
     vivienda_id: "",
-    tecnico_id: "", // UUID real
+    tecnico_id: "", 
     fecha_inicio: "",
     precio: "",
     notas: "",
     frecuencia: "",
     modalidad: "",
+    duracion_meses: "12", // Añadido por defecto para el contrato legal
   });
 
   const [mensaje, setMensaje] = useState("");
@@ -42,7 +43,6 @@ export default function CrearContrato() {
       .from("viviendas")
       .select("id, direccion, cliente_id");
 
-    // ⚠️ IMPORTANTE: técnico_id es UUID → hay que traer el UUID real
     const { data: tecnicosData } = await supabase
       .from("tecnicos")
       .select("id, nombre");
@@ -70,7 +70,6 @@ export default function CrearContrato() {
   async function crearContrato() {
     setMensaje("");
 
-    // VALIDACIONES
     if (!form.cliente_id || !form.vivienda_id || !form.tecnico_id) {
       setMensaje("Cliente, vivienda y técnico son obligatorios");
       return;
@@ -86,32 +85,22 @@ export default function CrearContrato() {
       return;
     }
 
-    if (!form.precio || !form.frecuencia) {
-      setMensaje("Precio y frecuencia son obligatorios");
-      return;
-    }
-
-    // 1️⃣ Crear contrato inicial
+    // 1️⃣ Crear contrato inicial en Supabase
     const { data, error } = await supabase
       .from("contratos")
       .insert([
         {
           cliente_id: form.cliente_id,
           vivienda_id: form.vivienda_id,
-
-          // ⚠️ UUID CORRECTO
           tecnico_id: String(form.tecnico_id),
-
           fecha_inicio: form.fecha_inicio,
           precio: form.precio,
           notas: form.notas,
           frecuencia: form.frecuencia,
           modalidad: form.modalidad,
           estado: "pendiente",
-
-          // CAMPOS AVANZADOS
-          firma: null,
-          firmado_en: null,
+          duracion_meses: form.duracion_meses,
+          firma_url: null,
           pdf_url: null,
           fecha_fin: null,
         },
@@ -126,15 +115,16 @@ export default function CrearContrato() {
 
     const contratoId = data[0].id;
 
-    // 2️⃣ Calcular fecha_fin
+    // 2️⃣ Calcular fecha_fin basada en la frecuencia
     const fechaInicio = new Date(form.fecha_inicio);
+    const frecuenciaDias = Number(form.frecuencia) || 30;
     const fechaFin = new Date(
-      fechaInicio.getTime() + form.frecuencia * 24 * 60 * 60 * 1000
+      fechaInicio.getTime() + frecuenciaDias * 24 * 60 * 60 * 1000
     )
       .toISOString()
       .split("T")[0];
 
-    // Obtenemos la sesión actual para autorizar las peticiones a las Edge Functions
+    // Obtener sesión para la Edge Function
     const { data: { session } } = await supabase.auth.getSession();
     const token = session ? session.access_token : "";
 
@@ -143,7 +133,7 @@ export default function CrearContrato() {
       ...(token ? { "Authorization": `Bearer ${token}` } : {})
     };
 
-    // 3️⃣ Generar PDF
+    // 3️⃣ Generar PDF en la Edge Function (el cual usará los datos legales y el sello)
     let pdfUrl = null;
     try {
       const pdfResponse = await fetch(
@@ -178,7 +168,7 @@ export default function CrearContrato() {
       console.error("Error creando inspecciones:", e);
     }
 
-    // 6️⃣ Enviar email
+    // 6️⃣ Enviar email al cliente con el enlace de firma
     try {
       await fetch(
         `https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email?contrato=${contratoId}`,
@@ -188,7 +178,7 @@ export default function CrearContrato() {
       console.error("Error enviando email:", e);
     }
 
-    setMensaje("¡Contrato creado, PDF generado y correo enviado con éxito!");
+    setMensaje("¡Contrato legal creado y enviado al cliente con éxito!");
     setTimeout(() => {
       navigate("/contratos");
     }, 1500);
@@ -224,7 +214,7 @@ export default function CrearContrato() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          Crear Contrato
+          Crear Contrato Legal
         </h1>
 
         {mensaje && (
@@ -310,6 +300,15 @@ export default function CrearContrato() {
             ))}
           </select>
 
+          {/* Duración en meses */}
+          <label>Duración (meses):</label>
+          <input
+            type="number"
+            value={form.duracion_meses}
+            onChange={(e) => setForm({ ...form, duracion_meses: e.target.value })}
+            style={inputStyle}
+          />
+
           {/* Fecha inicio */}
           <label>Fecha inicio:</label>
           <input
@@ -320,7 +319,7 @@ export default function CrearContrato() {
           />
 
           {/* Precio */}
-          <label>Precio (€):</label>
+          <label>Precio (€/mes):</label>
           <input
             type="number"
             value={form.precio}
@@ -329,7 +328,7 @@ export default function CrearContrato() {
           />
 
           {/* Frecuencia */}
-          <label>Frecuencia (días):</label>
+          <label>Frecuencia de visitas (días):</label>
           <input
             type="number"
             value={form.frecuencia}
@@ -338,7 +337,7 @@ export default function CrearContrato() {
           />
 
           {/* Notas */}
-          <label>Notas:</label>
+          <label>Notas adicionales:</label>
           <textarea
             value={form.notas}
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
@@ -364,7 +363,7 @@ export default function CrearContrato() {
               boxShadow: "0 0 10px rgba(0,153,255,0.4)",
             }}
           >
-            Guardar contrato
+            Generar y Enviar Contrato Legal
           </button>
         </div>
       </div>
