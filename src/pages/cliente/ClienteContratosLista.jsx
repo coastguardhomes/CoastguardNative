@@ -17,7 +17,6 @@ export default function ClienteContratosLista() {
     setCargando(true);
 
     try {
-      // 1. Obtenemos el perfil del cliente logueado
       const { data: clienteData, error: clienteError } = await supabase
         .from("clientes")
         .select("id, nombre, direccion")
@@ -27,7 +26,6 @@ export default function ClienteContratosLista() {
 
       const cliente = clienteData && clienteData.length > 0 ? clienteData[0] : null;
 
-      // 2. Cargamos los contratos filtrados por el cliente encontrado
       let query = supabase.from("contratos").select("*").order("id", { ascending: false });
 
       if (cliente) {
@@ -38,7 +36,6 @@ export default function ClienteContratosLista() {
 
       if (contratosError) throw contratosError;
 
-      // 3. Mapeamos los datos para mostrarlos en la vista
       const contratosConCliente = (contratosData || []).map((contrato) => ({
         ...contrato,
         clienteNombre: cliente ? cliente.nombre : "Cliente",
@@ -62,7 +59,6 @@ export default function ClienteContratosLista() {
     <Menu>
       <div
         style={{
-          height: "100%",
           minHeight: "100vh",
           background: "#0a0f1a",
           padding: "20px",
@@ -81,7 +77,7 @@ export default function ClienteContratosLista() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          {t("clienteListaTitulo") || "Mis Contratos"}
+          {t("clienteListaTitulo") || "Contratos de Clientes"}
         </h2>
 
         {cargando && (
@@ -96,7 +92,7 @@ export default function ClienteContratosLista() {
 
         {!cargando &&
           contratos.map((c) => {
-            const esFirmado = c.estado === "firmado" || Boolean(c.firma_url);
+            const esFirmado = c.estado === "firmado" || c.estado === "enviado_al_admin" || Boolean(c.firma_url);
 
             return (
               <div
@@ -117,7 +113,6 @@ export default function ClienteContratosLista() {
                     Contrato #{c.id}
                   </span>
                   
-                  {/* Badge de Estado del contrato */}
                   <span
                     style={{
                       background: esFirmado ? "rgba(76, 217, 100, 0.2)" : "rgba(255, 184, 77, 0.2)",
@@ -145,7 +140,7 @@ export default function ClienteContratosLista() {
 
                 <p style={{ marginBottom: 6, fontSize: "14px" }}>
                   <strong style={{ color: "#4db8ff" }}>{t("clienteListaServicio") || "Servicio"}:</strong>{" "}
-                  {c.frecuencia ? `${t("contratoCadaDias") || "Cada"} ${c.frecuencia} días` : "—"}
+                  {c.frecuencia ? `${t("contratoCadaDias") || "Cada"} ${c.frecuencia} días` : "Cada 30 días"}
                 </p>
 
                 <p style={{ margin: 0, fontSize: "14px" }}>
