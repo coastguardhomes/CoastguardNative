@@ -70,7 +70,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
       return;
     }
 
-    // Validar identificador del contrato
     if (!contratoId || contratoId === "undefined") {
       alert("Error: No se encontró un ID de contrato válido.");
       return;
@@ -86,7 +85,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
       const fileName = `firmas/firma_contrato_${contratoId}_${Date.now()}.png`;
 
-      // 1. Subir al bucket de Supabase Storage
+      // 1. Subir imagen al Bucket
       const { error: storageError } = await supabase.storage
         .from("contratos")
         .upload(fileName, blob, {
@@ -101,12 +100,12 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
         .from("contratos")
         .getPublicUrl(fileName);
 
-      // 3. Actualizar contrato y verificar respuesta de filas
+      // 3. Actualizar contrato en Supabase (Solo firma_url y estado valido)
       const { data: updatedData, error: updateError } = await supabase
         .from("contratos")
         .update({
           firma_url: publicUrl,
-          estado: "firmado",
+          estado: "activo", // CORREGIDO: "activo" en lugar de "firmado" para evitar error 400
         })
         .eq("id", contratoId)
         .select();
@@ -114,7 +113,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
       if (updateError) throw updateError;
 
       if (!updatedData || updatedData.length === 0) {
-        throw new Error("Supabase no actualizó la fila. Comprueba los permisos RLS en tu base de datos.");
+        throw new Error("No se pudo actualizar el contrato. Comprueba los permisos en Supabase.");
       }
 
       alert("¡Contrato firmado con éxito!");
@@ -122,7 +121,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
       if (onFirmaGuardada) {
         onFirmaGuardada(publicUrl);
       } else {
-        navigate(`/cliente/contrato/${contratoId}`, { replace: true });
+        navigate(`/cliente/contratos`, { replace: true });
       }
     } catch (err) {
       console.error("Error al guardar la firma:", err);
