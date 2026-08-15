@@ -20,7 +20,7 @@ export default function ClienteContratoVer() {
   const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation(); // Permite detectar cuándo se navega de vuelta a esta pantalla
+  const location = useLocation();
 
   const [contrato, setContrato] = useState(null);
   const [cliente, setCliente] = useState(null);
@@ -51,7 +51,6 @@ export default function ClienteContratoVer() {
     }
   };
 
-  // Se recarga automáticamente al cambiar la ubicación o volver de la firma
   useEffect(() => {
     cargarContrato();
   }, [id, location.key]);
@@ -85,11 +84,12 @@ export default function ClienteContratoVer() {
   };
 
   const abrirPDF = () => {
-    const url = esFirmado && contrato?.firma_url ? contrato.firma_url : contrato?.pdf_url;
+    // 🛠️ CORREGIDO: Prioriza el archivo PDF generado; si no existe, busca la firma o avisa
+    const url = contrato?.pdf_url || contrato?.firma_url;
     if (url) {
       window.open(url, "_blank");
     } else {
-      alert("No hay archivo PDF o firma disponible para visualizar.");
+      alert("No hay archivo PDF o documento disponible todavía. Genera el PDF primero.");
     }
   };
 
