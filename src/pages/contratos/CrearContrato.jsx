@@ -19,7 +19,7 @@ export default function CrearContrato() {
     notas: "",
     frecuencia: "",
     modalidad: "",
-    duracion_meses: "12", // Añadido por defecto para el contrato legal
+    duracion_meses: "12",
   });
 
   const [mensaje, setMensaje] = useState("");
@@ -133,7 +133,7 @@ export default function CrearContrato() {
       ...(token ? { "Authorization": `Bearer ${token}` } : {})
     };
 
-    // 3️⃣ Generar PDF en la Edge Function (vía POST)
+    // 3️⃣ Generar PDF en la Edge Function (vía POST y parseando la respuesta)
     let pdfUrl = null;
     try {
       const pdfResponse = await fetch(
@@ -145,7 +145,13 @@ export default function CrearContrato() {
         }
       );
       if (pdfResponse.ok) {
-        pdfUrl = await pdfResponse.text();
+        const respuestaTexto = await pdfResponse.text();
+        try {
+          const jsonRes = JSON.parse(respuestaTexto);
+          pdfUrl = jsonRes.url || jsonRes.pdfUrl || respuestaTexto;
+        } catch {
+          pdfUrl = respuestaTexto;
+        }
       } else {
         console.error("Error en respuesta de PDF:", await pdfResponse.text());
       }
@@ -153,7 +159,7 @@ export default function CrearContrato() {
       console.error("Error generando PDF:", e);
     }
 
-    // 4️⃣ Guardar fecha_fin y pdf_url
+    // 4️⃣ Guardar fecha_fin y pdf_url limpios
     await supabase
       .from("contratos")
       .update({
