@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 
@@ -7,6 +6,7 @@ export default function Contratos() {
   const [contratos, setContratos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
+  const [copiadoId, setCopiadoId] = useState(null);
 
   useEffect(() => {
     obtenerContratos();
@@ -17,16 +17,12 @@ export default function Contratos() {
     setError(null);
 
     try {
-      // Ordenamos por 'id' en lugar de 'created_at' para evitar fallos de columna
       const { data, error } = await supabase
         .from("contratos")
         .select("*")
         .order("id", { ascending: false });
 
-      if (error) {
-        throw error;
-      }
-
+      if (error) throw error;
       setContratos(data || []);
     } catch (err) {
       console.error("Error cargando contratos:", err);
@@ -34,6 +30,14 @@ export default function Contratos() {
     } finally {
       setCargando(false);
     }
+  };
+
+  // Función para copiar el enlace que se le envía al cliente para que firme
+  const copiarEnlaceCliente = (id) => {
+    const enlace = `${window.location.origin}/contratos/${id}/firmar`;
+    navigator.clipboard.writeText(enlace);
+    setCopiadoId(id);
+    setTimeout(() => setCopiadoId(null), 2500);
   };
 
   return (
@@ -45,10 +49,10 @@ export default function Contratos() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
             <div>
               <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "#4db8ff", margin: 0 }}>
-                📑 Gestión de Contratos
+                📑 Panel de Contratos (Admin)
               </h1>
               <p style={{ color: "#9fb3c8", margin: "4px 0 0 0", fontSize: "14px" }}>
-                Listado y estado de firma de los contratos
+                Estado de firmas y enlaces para enviar a clientes
               </p>
             </div>
             
@@ -68,7 +72,7 @@ export default function Contratos() {
             </button>
           </div>
 
-          {/* Mensajes de carga / error */}
+          {/* Mensajes de Carga / Error */}
           {cargando && (
             <div style={{ textAlign: "center", padding: "40px", color: "#9fb3c8" }}>
               Cargando contratos...
@@ -78,13 +82,6 @@ export default function Contratos() {
           {error && (
             <div style={{ background: "rgba(255, 77, 77, 0.15)", border: "1px solid #ff4d4d", color: "#ff4d4d", padding: "16px", borderRadius: "10px", marginBottom: "20px" }}>
               ⚠️ {error}
-            </div>
-          )}
-
-          {/* Estado sin contratos */}
-          {!cargando && !error && contratos.length === 0 && (
-            <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: "12px", padding: "40px", textAlign: "center", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <p style={{ color: "#9fb3c8", fontSize: "16px" }}>No hay contratos registrados aún en Supabase.</p>
             </div>
           )}
 
@@ -118,8 +115,8 @@ export default function Contratos() {
                       </p>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                      {/* Badge de Estado */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                      {/* Estado */}
                       <span
                         style={{
                           padding: "6px 12px",
@@ -132,11 +129,11 @@ export default function Contratos() {
                           border: `1px solid ${esFirmado ? "#4cd964" : "#ffb300"}`
                         }}
                       >
-                        {esFirmado ? "✓ Firmado" : "⏳ Pendiente"}
+                        {esFirmado ? "✓ Firmado por Cliente" : "⏳ Pendiente de Cliente"}
                       </span>
 
-                      {/* Botones de Acción */}
-                      {esFirmado && contrato.firma_url ? (
+                      {/* Acciones según el estado */}
+                      {esFirmado ? (
                         <a
                           href={contrato.firma_url}
                           target="_blank"
@@ -151,23 +148,24 @@ export default function Contratos() {
                             fontSize: "13px"
                           }}
                         >
-                          👁️ Ver Firma
+                          👁️ Ver Firma del Cliente
                         </a>
                       ) : (
-                        <Link
-                          to={`/contratos/${contrato.id}/firmar`}
+                        <button
+                          onClick={() => copiarEnlaceCliente(contrato.id)}
                           style={{
-                            background: "#4db8ff",
+                            background: copiadoId === contrato.id ? "#4cd964" : "#4db8ff",
                             color: "#0a0f1a",
+                            border: "none",
                             padding: "8px 14px",
                             borderRadius: "8px",
-                            textDecoration: "none",
                             fontWeight: "bold",
-                            fontSize: "13px"
+                            fontSize: "13px",
+                            cursor: "pointer"
                           }}
                         >
-                          ✍️ Firmar ahora
-                        </Link>
+                          {copiadoId === contrato.id ? "✓ ¡Enlace Copiado!" : "🔗 Enlace para Cliente"}
+                        </button>
                       )}
                     </div>
                   </div>
