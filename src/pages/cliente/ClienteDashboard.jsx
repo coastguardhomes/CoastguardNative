@@ -66,7 +66,7 @@ export default function ClienteDashboard() {
           setCliente(clienteData);
           const clienteId = clienteData.id;
 
-          // 2. Consultar conteos reales en paralelo
+          // 2. Consultar conteos reales en paralelo (Filtro de alertas corregido)
           const [resInspecciones, resAlertas, resViviendas] = await Promise.all([
             supabase
               .from("inspecciones")
@@ -76,7 +76,7 @@ export default function ClienteDashboard() {
               .from("alertas")
               .select("*", { count: "exact", head: true })
               .eq("cliente_id", clienteId)
-              .eq("estado", "activa"),
+              .eq("estado", "pendiente"), // CORREGIDO: "pendiente" en lugar de "activa"
             supabase
               .from("viviendas")
               .select("*", { count: "exact", head: true })
