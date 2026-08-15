@@ -13,7 +13,7 @@ export default function CrearContrato() {
   const [form, setForm] = useState({
     cliente_id: "",
     vivienda_id: "",
-    tecnico_id: "", 
+    tecnico_id: "",
     fecha_inicio: "",
     precio: "",
     notas: "",
@@ -85,7 +85,7 @@ export default function CrearContrato() {
       return;
     }
 
-    // 1️⃣ Crear contrato inicial en Supabase
+    // 1️⃣ Crear contrato inicial
     const { data, error } = await supabase
       .from("contratos")
       .insert([
@@ -115,7 +115,7 @@ export default function CrearContrato() {
 
     const contratoId = data[0].id;
 
-    // 2️⃣ Calcular fecha_fin basada en la frecuencia
+    // 2️⃣ Calcular fecha_fin
     const fechaInicio = new Date(form.fecha_inicio);
     const frecuenciaDias = Number(form.frecuencia) || 30;
     const fechaFin = new Date(
@@ -124,42 +124,24 @@ export default function CrearContrato() {
       .toISOString()
       .split("T")[0];
 
-    // Obtener sesión para la Edge Function
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session ? session.access_token : "";
-
-    const headers = {
-      "Content-Type": "application/json",
-      ...(token ? { "Authorization": `Bearer ${token}` } : {})
-    };
-
-    // 3️⃣ Generar PDF en la Edge Function (vía POST y parseando la respuesta)
+    // 3️⃣ Generar PDF (CORREGIDO)
     let pdfUrl = null;
     try {
-      const pdfResponse = await fetch(
-        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf",
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ contratoId })
-        }
+      const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
+        "contrato-pdf",
+        { body: { contratoId } }
       );
-      if (pdfResponse.ok) {
-        const respuestaTexto = await pdfResponse.text();
-        try {
-          const jsonRes = JSON.parse(respuestaTexto);
-          pdfUrl = jsonRes.url || jsonRes.pdfUrl || respuestaTexto;
-        } catch {
-          pdfUrl = respuestaTexto;
-        }
+
+      if (pdfError) {
+        console.error(pdfError);
       } else {
-        console.error("Error en respuesta de PDF:", await pdfResponse.text());
+        pdfUrl = pdfData.url;
       }
     } catch (e) {
       console.error("Error generando PDF:", e);
     }
 
-    // 4️⃣ Guardar fecha_fin y pdf_url limpios
+    // 4️⃣ Guardar fecha_fin y pdf_url
     await supabase
       .from("contratos")
       .update({
@@ -168,29 +150,21 @@ export default function CrearContrato() {
       })
       .eq("id", contratoId);
 
-    // 5️⃣ Crear inspecciones automáticas (vía POST)
+    // 5️⃣ Crear inspecciones automáticas (CORREGIDO)
     try {
-      await fetch(
-        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear_inspecciones_programadas",
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ contratoId })
-        }
+      await supabase.functions.invoke(
+        "crear_inspecciones_programadas",
+        { body: { contratoId } }
       );
     } catch (e) {
       console.error("Error creando inspecciones:", e);
     }
 
-    // 6️⃣ Enviar email al cliente con el enlace de firma (vía POST)
+    // 6️⃣ Enviar email al cliente (CORREGIDO)
     try {
-      await fetch(
-        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email",
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ contratoId })
-        }
+      await supabase.functions.invoke(
+        "enviar-email",
+        { body: { contratoId } }
       );
     } catch (e) {
       console.error("Error enviando email:", e);
@@ -318,7 +292,7 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          {/* Duración en meses */}
+          {/* Duración */}
           <label>Duración (meses):</label>
           <input
             type="number"
