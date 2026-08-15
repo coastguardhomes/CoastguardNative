@@ -111,36 +111,20 @@ export default function EditarContrato() {
       .update({ fecha_fin: fechaFin })
       .eq("id", id);
 
-    // Obtener sesión para autenticar las peticiones a las Edge Functions
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session ? session.access_token : "";
-
-    const headers = {
-      "Content-Type": "application/json",
-      ...(token ? { "Authorization": `Bearer ${token}` } : {})
-    };
-
     const contratoId = id;
 
-    // 3️⃣ Regenerar PDF actualizado (vía POST y parseando la respuesta)
+    // 3️⃣ Regenerar PDF actualizado (CORREGIDO)
     let pdfUrl = null;
     try {
-      const pdfResponse = await fetch(
-        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/contrato-pdf",
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ contratoId })
-        }
+      const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
+        "contrato-pdf",
+        { body: { contratoId } }
       );
-      if (pdfResponse.ok) {
-        const respuestaTexto = await pdfResponse.text();
-        try {
-          const jsonRes = JSON.parse(respuestaTexto);
-          pdfUrl = jsonRes.url || jsonRes.pdfUrl || respuestaTexto;
-        } catch {
-          pdfUrl = respuestaTexto;
-        }
+
+      if (pdfError) {
+        console.error(pdfError);
+      } else {
+        pdfUrl = pdfData.url;
       }
     } catch (e) {
       console.error("Error regenerando PDF:", e);
@@ -151,29 +135,21 @@ export default function EditarContrato() {
       .update({ pdf_url: pdfUrl })
       .eq("id", id);
 
-    // 4️⃣ Regenerar inspecciones automáticas (vía POST)
+    // 4️⃣ Regenerar inspecciones automáticas (CORREGIDO)
     try {
-      await fetch(
-        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/crear_inspecciones_programadas",
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ contratoId })
-        }
+      await supabase.functions.invoke(
+        "crear_inspecciones_programadas",
+        { body: { contratoId } }
       );
     } catch (e) {
       console.error("Error regenerando inspecciones:", e);
     }
 
-    // 5️⃣ Enviar email automático al cliente (vía POST)
+    // 5️⃣ Enviar email automático al cliente (CORREGIDO)
     try {
-      await fetch(
-        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/enviar-email",
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ contratoId })
-        }
+      await supabase.functions.invoke(
+        "enviar-email",
+        { body: { contratoId } }
       );
     } catch (e) {
       console.error("Error enviando email:", e);
@@ -236,7 +212,6 @@ export default function EditarContrato() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          {/* Modalidad */}
           <label>Modalidad:</label>
           <select
             value={form.modalidad || ""}
@@ -251,7 +226,6 @@ export default function EditarContrato() {
             ))}
           </select>
 
-          {/* Fecha inicio */}
           <label>Fecha inicio:</label>
           <input
             type="date"
@@ -260,7 +234,6 @@ export default function EditarContrato() {
             style={inputStyle}
           />
 
-          {/* Precio */}
           <label>Precio (€):</label>
           <input
             type="number"
@@ -269,7 +242,6 @@ export default function EditarContrato() {
             style={inputStyle}
           />
 
-          {/* Frecuencia */}
           <label>Frecuencia (días):</label>
           <input
             type="number"
@@ -278,7 +250,6 @@ export default function EditarContrato() {
             style={inputStyle}
           />
 
-          {/* Técnico */}
           <label>Técnico:</label>
           <select
             value={form.tecnico_id || ""}
@@ -295,7 +266,6 @@ export default function EditarContrato() {
             ))}
           </select>
 
-          {/* Notas */}
           <label>Notas:</label>
           <textarea
             value={form.notas || ""}
