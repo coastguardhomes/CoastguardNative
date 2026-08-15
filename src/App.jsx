@@ -80,7 +80,7 @@ import ClienteInspeccionesLista from "./pages/cliente/ClienteInspeccionesLista.j
 import ClienteInspeccionVer from "./pages/cliente/ClienteInspeccionVer.jsx";
 import ClienteFacturasLista from "./pages/cliente/ClienteFacturasLista.jsx";
 import ClienteFacturaVer from "./pages/cliente/ClienteFacturaVer.jsx";
-import ClienteConfiguracion from "./pages/cliente/ClienteConfiguracion.jsx"; // <-- IMPORT AÑADIDO
+import ClienteConfiguracion from "./pages/cliente/ClienteConfiguracion.jsx";
 
 // AJUSTES / IDIOMA
 import Ajustes from "./pages/Ajustes/Ajustes.jsx";
@@ -131,7 +131,7 @@ export default function App() {
         <Route path="inspeccion/:id" element={<ClienteInspeccionVer />} />
         <Route path="facturas" element={<ClienteFacturasLista />} />
         <Route path="factura/:id" element={<ClienteFacturaVer />} />
-        <Route path="configuracion" element={<ClienteConfiguracion />} /> {/* <-- RUTA AÑADIDA */}
+        <Route path="configuracion" element={<ClienteConfiguracion />} />
       </Route>
 
       {/* ---------------- CLIENTES ---------------- */}
@@ -164,6 +164,7 @@ export default function App() {
       {/* ---------------- CONTRATOS ---------------- */}
       <Route path="/contratos" element={<PrivateRoute />}>
         <Route index element={<Contratos />} />
+        <Route path="nuevo" element={<CrearContrato />} />
         <Route path="crear" element={<CrearContrato />} />
         <Route path="editar/:id" element={<EditarContrato />} />
         <Route path=":id/editar" element={<EditarContrato />} />
