@@ -85,7 +85,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
       const fileName = `firmas/firma_contrato_${contratoId}_${Date.now()}.png`;
 
-      // 1. Subir imagen al Bucket
+      // 1. Subir la imagen al Storage
       const { error: storageError } = await supabase.storage
         .from("contratos")
         .upload(fileName, blob, {
@@ -95,26 +95,21 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
       if (storageError) throw storageError;
 
-      // 2. Obtener URL pública
+      // 2. Obtener la URL pública
       const { data: { publicUrl } } = supabase.storage
         .from("contratos")
         .getPublicUrl(fileName);
 
-      // 3. Actualizar contrato en Supabase (Solo firma_url y estado valido)
-      const { data: updatedData, error: updateError } = await supabase
+      // 3. Actualizar la fila en Supabase
+      const { error: updateError } = await supabase
         .from("contratos")
         .update({
           firma_url: publicUrl,
-          estado: "activo", // CORREGIDO: "activo" en lugar de "firmado" para evitar error 400
+          estado: "activo",
         })
-        .eq("id", contratoId)
-        .select();
+        .eq("id", contratoId);
 
       if (updateError) throw updateError;
-
-      if (!updatedData || updatedData.length === 0) {
-        throw new Error("No se pudo actualizar el contrato. Comprueba los permisos en Supabase.");
-      }
 
       alert("¡Contrato firmado con éxito!");
 
