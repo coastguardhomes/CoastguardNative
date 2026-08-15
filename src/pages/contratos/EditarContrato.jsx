@@ -122,7 +122,7 @@ export default function EditarContrato() {
 
     const contratoId = id;
 
-    // 3️⃣ Regenerar PDF actualizado (vía POST)
+    // 3️⃣ Regenerar PDF actualizado (vía POST y parseando la respuesta)
     let pdfUrl = null;
     try {
       const pdfResponse = await fetch(
@@ -134,7 +134,13 @@ export default function EditarContrato() {
         }
       );
       if (pdfResponse.ok) {
-        pdfUrl = await pdfResponse.text();
+        const respuestaTexto = await pdfResponse.text();
+        try {
+          const jsonRes = JSON.parse(respuestaTexto);
+          pdfUrl = jsonRes.url || jsonRes.pdfUrl || respuestaTexto;
+        } catch {
+          pdfUrl = respuestaTexto;
+        }
       }
     } catch (e) {
       console.error("Error regenerando PDF:", e);
