@@ -117,7 +117,8 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
       if (onFirmaGuardada) {
         onFirmaGuardada(publicUrl);
       } else {
-        navigate(-1);
+        // CORRECCIÓN: Navegación explícita para forzar la recarga de datos en la vista de detalle
+        navigate(`/cliente/contrato/${contratoId}`, { replace: true });
       }
     } catch (err) {
       console.error("Error al guardar la firma:", err);
