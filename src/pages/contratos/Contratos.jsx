@@ -59,11 +59,12 @@ export default function Contratos() {
   };
 
   const verDocumento = (c) => {
-    const url = c.firma_url || c.pdf_url;
+    // 🛠️ CORREGIDO: Prioriza el PDF final si existe; si no, busca el borrador o la firma
+    const url = c.pdf_url || c.firma_url;
     if (url) {
       window.open(url, "_blank");
     } else {
-      alert("No hay documento en PDF adjunto para este contrato.");
+      alert("No hay documento o archivo adjunto disponible para este contrato todavía.");
     }
   };
 
