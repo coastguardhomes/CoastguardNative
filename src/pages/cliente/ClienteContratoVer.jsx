@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
@@ -20,6 +20,7 @@ export default function ClienteContratoVer() {
   const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation(); // Permite detectar cuándo se navega de vuelta a esta pantalla
 
   const [contrato, setContrato] = useState(null);
   const [cliente, setCliente] = useState(null);
@@ -50,12 +51,11 @@ export default function ClienteContratoVer() {
     }
   };
 
-  // Se recarga cada vez que entras a la vista
+  // Se recarga automáticamente al cambiar la ubicación o volver de la firma
   useEffect(() => {
     cargarContrato();
-  }, [id]);
+  }, [id, location.key]);
 
-  // Se considera firmado si existe firma_url O si el estado ya cambió
   const esFirmado = Boolean(
     (contrato?.firma_url && contrato.firma_url.trim() !== "") ||
     contrato?.estado === "firmado" ||
@@ -199,7 +199,7 @@ export default function ClienteContratoVer() {
             ✍️ {esFirmado ? "Ver / Cambiar Firma" : "Firma del Cliente"}
           </button>
 
-          {/* 2. Botón Enviar al Admin (Se ilumina en VERDE cuando esFirmado es true) */}
+          {/* 2. Botón Enviar al Admin */}
           <button
             onClick={enviarAlAdmin}
             disabled={!esFirmado || enviando}
@@ -213,7 +213,7 @@ export default function ClienteContratoVer() {
             {enviando ? "Enviando..." : "📤 Enviar contrato al Admin"}
           </button>
 
-          {/* 3. Generador de PDF */}
+          {/* 3. Generar PDF */}
           <GenerarPDFContrato
             contrato={contrato}
             cliente={cliente}
