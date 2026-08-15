@@ -13,7 +13,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
   const [guardando, setGuardando] = useState(false);
   const [hayFirma, setHayFirma] = useState(false);
 
-  // --- Ajustar el tamaño del canvas al contenedor ---
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -23,7 +22,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
     }
   }, []);
 
-  // --- Captura de coordenadas para táctil y ratón ---
   const obtenerCoordenadas = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -46,7 +44,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
   const dibujar = (e) => {
     if (!isDrawing) return;
-    if (e.touches) e.preventDefault(); // Evita scroll de la pantalla al firmar con el dedo
+    if (e.touches) e.preventDefault();
 
     const { x, y } = obtenerCoordenadas(e);
     const ctx = canvasRef.current.getContext("2d");
@@ -58,9 +56,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
     ctx.stroke();
   };
 
-  const detenerTrazo = () => {
-    setIsDrawing(false);
-  };
+  const detenerTrazo = () => setIsDrawing(false);
 
   const limpiarLienzo = () => {
     const canvas = canvasRef.current;
@@ -69,7 +65,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
     setHayFirma(false);
   };
 
-  // --- Guardar Firma y Notificar al Admin ---
   const guardarFirma = async () => {
     if (!hayFirma) {
       alert("Por favor, realiza tu firma antes de guardar.");
@@ -85,16 +80,13 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
     try {
       const canvas = canvasRef.current;
-      
-      // 1. Convertir el canvas a Blob (PNG)
       const dataUrl = canvas.toDataURL("image/png");
       const res = await fetch(dataUrl);
       const blob = await res.blob();
 
       const fileName = `firmas/firma_contrato_${contratoId}_${Date.now()}.png`;
 
-      // 2. Subir imagen al Bucket 'contratos' en Supabase Storage
-      const { data: storageData, error: storageError } = await supabase.storage
+      const { error: storageError } = await supabase.storage
         .from("contratos")
         .upload(fileName, blob, {
           contentType: "image/png",
@@ -103,32 +95,20 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
       if (storageError) throw storageError;
 
-      // 3. Obtener la URL pública de la firma
       const { data: { publicUrl } } = supabase.storage
         .from("contratos")
         .getPublicUrl(fileName);
 
-      // 4. Actualizar el contrato en la base de datos
+      // Actualizar solo las columnas existentes
       const { error: updateError } = await supabase
         .from("contratos")
         .update({
           firma_url: publicUrl,
           estado: "firmado",
-          fecha_firma: new Date().toISOString(),
         })
         .eq("id", contratoId);
 
       if (updateError) throw updateError;
-
-      // 5. Crear notificación / alerta para el rol Administrador
-      await supabase.from("alertas").insert([
-        {
-          titulo: "✍️ Nuevo contrato firmado",
-          mensaje: `El contrato #${contratoId} ha sido firmado por el cliente.`,
-          leida: false,
-          usuario_id: null, // Visibilidad global para administradores
-        },
-      ]);
 
       alert("¡Contrato firmado y guardado con éxito!");
 
@@ -137,10 +117,9 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
       } else {
         navigate(`/cliente/contrato/${contratoId}`);
       }
-
     } catch (err) {
       console.error("Error al guardar la firma:", err);
-      alert("Error guardando la firma: " + (err.message || err.error_description || "Error desconocido"));
+      alert("Error guardando la firma: " + (err.message || "Error desconocido"));
     } finally {
       setGuardando(false);
     }
@@ -163,7 +142,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
           marginBottom: "20px",
           fontSize: "26px",
           fontWeight: "700",
-          textShadow: "0 0 8px rgba(0,153,255,0.6)",
         }}
       >
         Firma del Cliente
@@ -175,7 +153,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
           padding: "18px",
           borderRadius: "14px",
           border: "1px solid rgba(255,255,255,0.1)",
-          boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           maxWidth: "500px",
           margin: "0 auto",
         }}
@@ -184,7 +161,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
           Dibuje su firma con el dedo dentro del recuadro blanco:
         </p>
 
-        {/* Cuadro de Dibujo (Canvas) */}
         <div
           style={{
             background: "#ffffff",
@@ -207,7 +183,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
           />
         </div>
 
-        {/* Botones de Acción */}
         <div style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
           <button
             onClick={limpiarLienzo}
@@ -240,7 +215,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
               fontWeight: "bold",
               fontSize: "15px",
               cursor: guardando || !hayFirma ? "not-allowed" : "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
             }}
           >
             {guardando ? "Guardando..." : "💾 Guardar firma"}
@@ -250,6 +224,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
     </div>
   );
 
-  // Si se usa como componente incrustado no envuelve en Menu, si se accede por ruta sí.
   return propContratoId ? contenido : <Menu>{contenido}</Menu>;
               }
+              
