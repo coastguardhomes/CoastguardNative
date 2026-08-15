@@ -267,21 +267,21 @@ export default function VerContrato() {
           )}
         </Bloque>
 
-        {/* Firma */}
+        {/* Firma corregida a firma_url */}
         <Bloque titulo="Firma del cliente">
-          {contrato.firma ? (
+          {contrato.firma_url ? (
             <img
-              src={contrato.firma}
+              src={contrato.firma_url}
               alt="Firma del cliente"
-              style={{ width: "100%", borderRadius: "10px" }}
+              style={{ width: "100%", borderRadius: "10px", background: "#fff", padding: "5px" }}
             />
           ) : (
             <p style={{ opacity: 0.7 }}>Sin firma.</p>
           )}
 
-          <p>
+          <p style={{ marginTop: "10px" }}>
             <strong style={{ color: "#4db8ff" }}>Firmado en:</strong>{" "}
-            {contrato.firmado_en || "Sin fecha"}
+            {contrato.firmado_en || "Actualizado en Supabase"}
           </p>
         </Bloque>
 
@@ -390,4 +390,4 @@ function Item({ to, titulo }) {
       </div>
     </Link>
   );
-}
+              }
