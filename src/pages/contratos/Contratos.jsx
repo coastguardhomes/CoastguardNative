@@ -182,6 +182,24 @@ export default function Contratos() {
                     </p>
 
                     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+
+                      {/* 🔍 VER CONTRATO (NUEVO) */}
+                      <button
+                        onClick={() => navigate(`/contratos/${c.id}`)}
+                        style={{
+                          flex: 1,
+                          padding: "12px",
+                          background: "rgba(255,255,255,0.15)",
+                          color: "#fff",
+                          border: "1px solid rgba(255,255,255,0.3)",
+                          borderRadius: "8px",
+                          fontWeight: "bold",
+                          cursor: "pointer",
+                        }}
+                      >
+                        🔍 Ver contrato
+                      </button>
+
                       {!esFirmado && (
                         <button
                           onClick={() => enviarACliente(c.id)}
