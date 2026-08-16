@@ -3,7 +3,6 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
-import GenerarPDFContrato from "./GenerarPDFContrato.jsx";
 
 const botonEstilo = {
   padding: "12px",
@@ -85,7 +84,7 @@ export default function ClienteContratoVer() {
 
   const abrirPDF = () => {
     if (!contrato?.pdf_url) {
-      alert("Genera el PDF primero.");
+      alert("El administrador aún no ha generado el PDF.");
       return;
     }
     window.open(contrato.pdf_url, "_blank");
@@ -187,13 +186,7 @@ export default function ClienteContratoVer() {
 
           {/* Ver contrato antes de firmar */}
           <button
-            onClick={() => {
-              if (!contrato?.pdf_url) {
-                alert("Primero genera el PDF del contrato.");
-                return;
-              }
-              window.open(contrato.pdf_url, "_blank");
-            }}
+            onClick={abrirPDF}
             style={{
               ...botonEstilo,
               background: "rgba(255,255,255,0.12)",
@@ -229,13 +222,6 @@ export default function ClienteContratoVer() {
           >
             {enviando ? "Enviando..." : "📤 Enviar contrato al Admin"}
           </button>
-
-          {/* Generar PDF */}
-          <GenerarPDFContrato
-            contrato={contrato}
-            cliente={cliente}
-            onGenerado={cargarContrato}
-          />
 
           {/* Ver contrato firmado */}
           <button
