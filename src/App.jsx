@@ -168,6 +168,8 @@ export default function App() {
         <Route path="crear" element={<CrearContrato />} />
         <Route path="editar/:id" element={<EditarContrato />} />
         <Route path=":id/editar" element={<EditarContrato />} />
+
+        {/* ⭐ RUTA CORRECTA PARA VER CONTRATO */}
         <Route path="ver/:id" element={<VerContrato />} />
       </Route>
 
