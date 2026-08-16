@@ -39,7 +39,6 @@ export default function VerContrato() {
   }
 
   async function cargarRelacionados() {
-    // Cliente
     const { data: cli } = await supabase
       .from("clientes")
       .select("*")
@@ -47,7 +46,6 @@ export default function VerContrato() {
       .single();
     setCliente(cli || null);
 
-    // Vivienda
     const { data: viv } = await supabase
       .from("viviendas")
       .select("*")
@@ -55,7 +53,6 @@ export default function VerContrato() {
       .single();
     setVivienda(viv || null);
 
-    // Técnico
     const { data: tec } = await supabase
       .from("tecnicos")
       .select("*")
@@ -63,7 +60,6 @@ export default function VerContrato() {
       .single();
     setTecnico(tec || null);
 
-    // Inspecciones
     const { data: insp } = await supabase
       .from("inspecciones")
       .select("*")
@@ -83,10 +79,6 @@ export default function VerContrato() {
     setMensaje("Generando PDF del contrato...");
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session ? session.access_token : "";
-
-      // 🔥 CORREGIDO: usar invoke() en vez de fetch()
       const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
         "contrato-pdf",
         {
@@ -99,7 +91,7 @@ export default function VerContrato() {
         return;
       }
 
-      const urlPdf = pdfData.url;
+      const urlPdf = pdfData.pdf_url;
 
       await supabase
         .from("contratos")
