@@ -84,13 +84,11 @@ export default function ClienteContratoVer() {
   };
 
   const abrirPDF = () => {
-    // 🛠️ CORREGIDO: Prioriza el archivo PDF generado; si no existe, busca la firma o avisa
-    const url = contrato?.pdf_url || contrato?.firma_url;
-    if (url) {
-      window.open(url, "_blank");
-    } else {
-      alert("No hay archivo PDF o documento disponible todavía. Genera el PDF primero.");
+    if (!contrato?.pdf_url) {
+      alert("Genera el PDF primero.");
+      return;
     }
+    window.open(contrato.pdf_url, "_blank");
   };
 
   if (!contrato) {
@@ -187,7 +185,26 @@ export default function ClienteContratoVer() {
             </span>
           </p>
 
-          {/* 1. Botón Firma del Cliente */}
+          {/* Ver contrato antes de firmar */}
+          <button
+            onClick={() => {
+              if (!contrato?.pdf_url) {
+                alert("Primero genera el PDF del contrato.");
+                return;
+              }
+              window.open(contrato.pdf_url, "_blank");
+            }}
+            style={{
+              ...botonEstilo,
+              background: "rgba(255,255,255,0.12)",
+              color: "#fff",
+              border: "1px solid rgba(255,255,255,0.3)",
+            }}
+          >
+            📄 Ver contrato antes de firmar
+          </button>
+
+          {/* Firma del Cliente */}
           <button
             onClick={() => navigate(`/cliente/firma/${id}`)}
             style={{
@@ -199,7 +216,7 @@ export default function ClienteContratoVer() {
             ✍️ {esFirmado ? "Ver / Cambiar Firma" : "Firma del Cliente"}
           </button>
 
-          {/* 2. Botón Enviar al Admin */}
+          {/* Enviar al Admin */}
           <button
             onClick={enviarAlAdmin}
             disabled={!esFirmado || enviando}
@@ -213,16 +230,22 @@ export default function ClienteContratoVer() {
             {enviando ? "Enviando..." : "📤 Enviar contrato al Admin"}
           </button>
 
-          {/* 3. Generar PDF */}
+          {/* Generar PDF */}
           <GenerarPDFContrato
             contrato={contrato}
             cliente={cliente}
             onGenerado={cargarContrato}
           />
 
-          {/* 4. Ver PDF */}
+          {/* Ver contrato firmado */}
           <button
-            onClick={abrirPDF}
+            onClick={() => {
+              if (!contrato?.pdf_url) {
+                alert("No hay PDF firmado todavía.");
+                return;
+              }
+              window.open(contrato.pdf_url, "_blank");
+            }}
             style={{
               ...botonEstilo,
               background: "rgba(255,255,255,0.08)",
@@ -230,7 +253,7 @@ export default function ClienteContratoVer() {
               border: "1px solid rgba(255,255,255,0.2)",
             }}
           >
-            📄 Contrato PDF
+            📄 Ver contrato firmado (PDF)
           </button>
         </div>
       </div>
