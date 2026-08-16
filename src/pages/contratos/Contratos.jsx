@@ -7,6 +7,8 @@ export default function Contratos() {
   const navigate = useNavigate();
   const [contratos, setContratos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [modalHtml, setModalHtml] = useState(null);
+  const [generandoId, setGenerandoId] = useState(null);
 
   useEffect(() => {
     cargarContratos();
@@ -27,6 +29,32 @@ export default function Contratos() {
     }
 
     setCargando(false);
+  };
+
+  const generarPDF = async (id) => {
+    try {
+      setGenerandoId(id);
+
+      const { data, error } = await supabase.functions.invoke("contrato-pdf", {
+        body: { contratoId: id },
+      });
+
+      if (error) throw error;
+
+      // Obtener el HTML renderizado de la respuesta sin disparar el catch
+      const htmlContent = typeof data === "string" ? data : data?.html;
+
+      if (htmlContent) {
+        setModalHtml(htmlContent);
+      } else {
+        alert("No se pudo obtener la vista del documento.");
+      }
+    } catch (err) {
+      console.error("Error al generar PDF:", err);
+      alert("Error al generar el contrato: " + err.message);
+    } finally {
+      setGenerandoId(null);
+    }
   };
 
   const enviarACliente = async (id) => {
@@ -181,71 +209,92 @@ export default function Contratos() {
                       Fecha Inicio: {c.fecha_inicio || "Sin fecha"}
                     </p>
 
-                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                      {/* 🔍 VER CONTRATO → RUTA CORRECTA */}
-                      <button
-                        onClick={() => navigate(`/contratos/ver/${c.id}`)}
-                        style={{
-                          flex: 1,
-                          padding: "12px",
-                          background: "rgba(255,255,255,0.15)",
-                          color: "#fff",
-                          border: "1px solid rgba(255,255,255,0.3)",
-                          borderRadius: "8px",
-                          fontWeight: "bold",
-                          cursor: "pointer",
-                        }}
-                      >
-                        🔍 Ver contrato
-                      </button>
-
-                      {!esFirmado && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                         <button
-                          onClick={() => enviarACliente(c.id)}
+                          onClick={() => navigate(`/contratos/ver/${c.id}`)}
                           style={{
                             flex: 1,
                             padding: "12px",
-                            background: "#4db8ff",
-                            color: "#0a0f1a",
-                            border: "none",
+                            background: "rgba(255,255,255,0.15)",
+                            color: "#fff",
+                            border: "1px solid rgba(255,255,255,0.3)",
                             borderRadius: "8px",
                             fontWeight: "bold",
                             cursor: "pointer",
                           }}
                         >
-                          🚀 Enviar
+                          🔍 Ver ficha
                         </button>
-                      )}
 
+                        {!esFirmado && (
+                          <button
+                            onClick={() => enviarACliente(c.id)}
+                            style={{
+                              flex: 1,
+                              padding: "12px",
+                              background: "#4db8ff",
+                              color: "#0a0f1a",
+                              border: "none",
+                              borderRadius: "8px",
+                              fontWeight: "bold",
+                              cursor: "pointer",
+                            }}
+                          >
+                            🚀 Enviar
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => verDocumento(c)}
+                          style={{
+                            flex: 1,
+                            padding: "12px",
+                            background: "rgba(255,255,255,0.1)",
+                            color: "#fff",
+                            border: "1px solid rgba(255,255,255,0.2)",
+                            borderRadius: "8px",
+                            fontWeight: "bold",
+                            cursor: "pointer",
+                          }}
+                        >
+                          📄 {esFirmado ? "Ver Firmado" : "Ver Borrador"}
+                        </button>
+
+                        <button
+                          onClick={() => eliminarContrato(c.id)}
+                          style={{
+                            padding: "12px 16px",
+                            background: "rgba(255, 77, 77, 0.2)",
+                            color: "#ff4d4d",
+                            border: "1px solid #ff4d4d",
+                            borderRadius: "8px",
+                            fontWeight: "bold",
+                            cursor: "pointer",
+                          }}
+                        >
+                          🗑️ Borrar
+                        </button>
+                      </div>
+
+                      {/* Botón principal verde para Generar y Ver Documento */}
                       <button
-                        onClick={() => verDocumento(c)}
+                        onClick={() => generarPDF(c.id)}
+                        disabled={generandoId === c.id}
                         style={{
-                          flex: 1,
+                          width: "100%",
                           padding: "12px",
-                          background: "rgba(255,255,255,0.1)",
-                          color: "#fff",
-                          border: "1px solid rgba(255,255,255,0.2)",
+                          background: "#22c55e",
+                          color: "#ffffff",
+                          border: "none",
                           borderRadius: "8px",
                           fontWeight: "bold",
+                          fontSize: "14px",
                           cursor: "pointer",
+                          opacity: generandoId === c.id ? 0.6 : 1,
                         }}
                       >
-                        📄 {esFirmado ? "Ver Firmado" : "Ver Borrador"}
-                      </button>
-
-                      <button
-                        onClick={() => eliminarContrato(c.id)}
-                        style={{
-                          padding: "12px 16px",
-                          background: "rgba(255, 77, 77, 0.2)",
-                          color: "#ff4d4d",
-                          border: "1px solid #ff4d4d",
-                          borderRadius: "8px",
-                          fontWeight: "bold",
-                          cursor: "pointer",
-                        }}
-                      >
-                        🗑️ Borrar
+                        {generandoId === c.id ? "⌛ Generando..." : "📄 Generar PDF / Ver Contrato"}
                       </button>
                     </div>
                   </div>
@@ -255,6 +304,62 @@ export default function Contratos() {
           )}
         </div>
       </div>
+
+      {/* VISOR MODAL DE CONTRATO (IFRAME PANTALLA COMPLETA) */}
+      {modalHtml && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.9)",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div
+            style={{
+              padding: "12px 16px",
+              background: "#0a0f1a",
+              borderBottom: "1px solid rgba(255,255,255,0.1)",
+              display: "flex",
+              justify: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <span style={{ fontWeight: "bold", color: "#4db8ff" }}>
+              📄 Documento de Contrato
+            </span>
+            <button
+              onClick={() => setModalHtml(null)}
+              style={{
+                background: "#ff4d4d",
+                color: "#fff",
+                border: "none",
+                padding: "6px 14px",
+                borderRadius: "6px",
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+            >
+              ✕ Cerrar
+            </button>
+          </div>
+          <iframe
+            title="Vista Contrato"
+            srcDoc={modalHtml}
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+              background: "#ffffff",
+            }}
+          />
+        </div>
+      )}
     </Menu>
   );
 }
