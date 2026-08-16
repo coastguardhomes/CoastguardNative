@@ -79,51 +79,27 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
     try {
       const canvas = canvasRef.current;
-      const dataUrl = canvas.toDataURL("image/png");
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
+      const firmaBase64 = canvas.toDataURL("image/png");
 
-      const fileName = `firmas/firma_contrato_${contratoId}_${Date.now()}.png`;
+      // ⭐ NUEVO: llamar a la Edge Function que ignora RLS
+      const { data, error } = await supabase.functions.invoke("guardar-firma", {
+        body: {
+          contratoId,
+          firmaBase64,
+        },
+      });
 
-      // 1. Subir la imagen al Storage de Supabase
-      const { error: storageError } = await supabase.storage
-        .from("contratos")
-        .upload(fileName, blob, {
-          contentType: "image/png",
-          upsert: true,
-        });
-
-      if (storageError) throw storageError;
-
-      // 2. Obtener la URL pública de la firma
-      const { data: { publicUrl } } = supabase.storage
-        .from("contratos")
-        .getPublicUrl(fileName);
-
-      // 3. Actualizar la fila en Supabase (Guardando firma y cambiando estado a 'firmado')
-      const { error: updateError } = await supabase
-        .from("contratos")
-        .update({
-          firma_url: publicUrl,
-          estado: "firmado",
-        })
-        .eq("id", contratoId);
-
-      if (updateError) throw updateError;
-
-      // 4. Opcional: Disparar notificación por Edge Function (si la utilizas)
-      try {
-        await supabase.functions.invoke('enviar-email', {
-          body: { contratoId: contratoId, tipo: 'contrato_firmado' }
-        });
-      } catch (emailErr) {
-        console.warn("Aviso: El contrato se guardó pero la función de correo no se ejecutó:", emailErr);
+      if (error) {
+        console.error("Error guardando firma:", error);
+        alert("Error guardando la firma.");
+        setGuardando(false);
+        return;
       }
 
       alert("¡Contrato firmado con éxito!");
 
       if (onFirmaGuardada) {
-        onFirmaGuardada(publicUrl);
+        onFirmaGuardada(data.firma_url);
       } else {
         navigate(-1);
       }
