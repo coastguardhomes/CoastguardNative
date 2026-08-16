@@ -182,10 +182,9 @@ export default function Contratos() {
                     </p>
 
                     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-
-                      {/* 🔍 VER CONTRATO (NUEVO) */}
+                      {/* 🔍 VER CONTRATO → RUTA CORRECTA */}
                       <button
-                        onClick={() => navigate(`/contratos/${c.id}`)}
+                        onClick={() => navigate(`/contratos/ver/${c.id}`)}
                         style={{
                           flex: 1,
                           padding: "12px",
