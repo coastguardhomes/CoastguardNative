@@ -60,7 +60,7 @@ export default function VerPDFContrato() {
         .from("contratos")
         .getPublicUrl(cleanPath);
 
-      setPdfURL(publicData.publicUrl);
+      setPdfURL(publicData?.publicUrl || "");
     }
 
     setLoading(false);
