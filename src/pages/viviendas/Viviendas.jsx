@@ -10,13 +10,15 @@ export default function Viviendas() {
 
   useEffect(() => {
     async function cargarViviendas() {
+      // Usamos '*' para traer todas las columnas disponibles sin causar HTTP 400
       const { data, error } = await supabase
         .from("viviendas")
-        .select("id, nombre, direccion, ciudad, codigo_postal")
+        .select("*")
         .order("id", { ascending: false });
 
       if (error) {
-        setMensaje("Error cargando viviendas");
+        console.error("Error al obtener viviendas:", error);
+        setMensaje("Error cargando viviendas: " + error.message);
         setLoading(false);
         return;
       }
@@ -56,8 +58,9 @@ export default function Viviendas() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: "#ff4d4d",
               fontWeight: "600",
+              textAlign: "center",
             }}
           >
             {mensaje}
@@ -85,9 +88,9 @@ export default function Viviendas() {
         </Link>
 
         {loading ? (
-          <p style={{ opacity: 0.8 }}>Cargando...</p>
+          <p style={{ opacity: 0.8, textAlign: "center" }}>Cargando...</p>
         ) : viviendas.length === 0 ? (
-          <p style={{ opacity: 0.8 }}>No hay viviendas registradas.</p>
+          <p style={{ opacity: 0.8, textAlign: "center" }}>No hay viviendas registradas.</p>
         ) : (
           <div>
             {viviendas.map((v) => (
@@ -108,13 +111,14 @@ export default function Viviendas() {
                     color: "#4db8ff",
                     fontWeight: "700",
                     fontSize: "18px",
+                    textDecoration: "none",
                   }}
                 >
-                  {v.nombre} — {v.direccion}
+                  {v.nombre || v.titulo || "Vivienda"} — {v.direccion || v.direccion_fiscal || "Sin dirección"}
                 </Link>
 
                 <p style={{ marginTop: "8px", opacity: 0.8 }}>
-                  {v.ciudad} — {v.codigo_postal}
+                  {v.ciudad || "Sin ciudad"} — {v.codigo_postal || v.cp || "Sin C.P."}
                 </p>
               </div>
             ))}
