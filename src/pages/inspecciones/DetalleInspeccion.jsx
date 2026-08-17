@@ -31,85 +31,108 @@ export default function DetalleInspeccion() {
     let cancelado = false;
 
     async function cargar() {
-      // 1️⃣ Cargar inspección
-      const { data: insp, error: errorInsp } = await supabase
-        .from("inspecciones")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
+      try {
+        setCargando(true);
+        setError("");
 
-      if (cancelado) return;
-
-      if (errorInsp || !insp) {
-        setError("No se pudo cargar la inspección.");
-        setCargando(false);
-        return;
-      }
-
-      setInspeccion(insp);
-
-      // 2️⃣ Cargar vivienda
-      const { data: viv } = await supabase
-        .from("viviendas")
-        .select("*")
-        .eq("id", insp.vivienda_id)
-        .maybeSingle();
-
-      setVivienda(viv);
-
-      // 3️⃣ Cargar cliente
-      if (viv?.cliente_id || insp.cliente_id) {
-        const clienteId = viv?.cliente_id || insp.cliente_id;
-        const { data: cli } = await supabase
-          .from("clientes")
+        // 1️⃣ Cargar inspección
+        const { data: insp, error: errorInsp } = await supabase
+          .from("inspecciones")
           .select("*")
-          .eq("id", clienteId)
+          .eq("id", id)
           .maybeSingle();
 
-        setCliente(cli);
-      }
+        if (cancelado) return;
 
-      // 4️⃣ Cargar técnico
-      if (insp.tecnico_id) {
-        const { data: tec } = await supabase
-          .from("tecnicos")
+        if (errorInsp || !insp) {
+          setError("No se pudo cargar la inspección.");
+          setCargando(false);
+          return;
+        }
+
+        setInspeccion(insp);
+
+        // 2️⃣ Cargar vivienda
+        if (insp.vivienda_id) {
+          const { data: viv } = await supabase
+            .from("viviendas")
+            .select("*")
+            .eq("id", insp.vivienda_id)
+            .maybeSingle();
+
+          setVivienda(viv);
+
+          // 3️⃣ Cargar cliente
+          const clienteId = viv?.cliente_id || insp.cliente_id;
+          if (clienteId) {
+            const { data: cli } = await supabase
+              .from("clientes")
+              .select("*")
+              .eq("id", clienteId)
+              .maybeSingle();
+
+            setCliente(cli);
+          }
+        }
+
+        // 4️⃣ Cargar técnico
+        if (insp.tecnico_id) {
+          const { data: tec } = await supabase
+            .from("tecnicos")
+            .select("*")
+            .eq("id", insp.tecnico_id)
+            .maybeSingle();
+          setTecnico(tec);
+        }
+
+        // 5️⃣ Cargar contrato
+        if (insp.contrato_id) {
+          const { data: cont } = await supabase
+            .from("contratos")
+            .select("*")
+            .eq("id", insp.contrato_id)
+            .maybeSingle();
+          setContrato(cont);
+        }
+
+        // 6️⃣ Cargar checklist para auditoría del admin
+        const { data: chk } = await supabase
+          .from("checklist_inspeccion")
           .select("*")
-          .eq("id", insp.tecnico_id)
-          .maybeSingle();
-        setTecnico(tec);
+          .eq("inspeccion_id", id);
+        setChecklist(chk || []);
+
+        // 7️⃣ Cargar fotos de forma segura
+        try {
+          const fotosCargadas = await cargarFotosInspeccion(id);
+          setFotos(fotosCargadas || []);
+        } catch (errFoto) {
+          console.warn("Error cargando fotos:", errFoto);
+          setFotos([]);
+        }
+
+        // 8️⃣ Cargar firma de forma segura
+        try {
+          const { data: firmas } = await supabase
+            .from("firmas_inspeccion")
+            .select("url")
+            .eq("inspeccion_id", id)
+            .limit(1);
+
+          setFirma(firmas?.[0]?.url || null);
+        } catch (errFirma) {
+          console.warn("Error cargando firma:", errFirma);
+          setFirma(null);
+        }
+
+      } catch (errGeneral) {
+        console.error("Error crítico cargando detalle de inspección:", errGeneral);
+        setError("Error al cargar los datos de la inspección.");
+      } finally {
+        if (!cancelado) {
+          setCargando(false);
+        }
       }
-
-      // 5️⃣ Cargar contrato
-      if (insp.contrato_id) {
-        const { data: cont } = await supabase
-          .from("contratos")
-          .select("*")
-          .eq("id", insp.contrato_id)
-          .maybeSingle();
-        setContrato(cont);
-      }
-
-      // 6️⃣ Cargar checklist para auditoría del admin
-      const { data: chk } = await supabase
-        .from("checklist_inspeccion")
-        .select("*")
-        .eq("inspeccion_id", id);
-      setChecklist(chk || []);
-
-      // 7️⃣ Cargar fotos
-      setFotos(await cargarFotosInspeccion(id));
-
-      // 8️⃣ Cargar firma
-      const { data: firmas } = await supabase
-        .from("firmas_inspeccion")
-        .select("url")
-        .eq("inspeccion_id", id)
-        .order("id", { ascending: false })
-        .limit(1);
-
-      setFirma(firmas?.[0]?.url || null);
-
-      setCargando(false);
     }
 
     cargar();
@@ -121,10 +144,13 @@ export default function DetalleInspeccion() {
   async function aBase64(url) {
     if (!url) return null;
     try {
-      const blob = await (await fetch(url)).blob();
+      const res = await fetch(url, { mode: "cors" });
+      if (!res.ok) return null;
+      const blob = await res.blob();
       return await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
         reader.readAsDataURL(blob);
       });
     } catch {
@@ -194,6 +220,19 @@ export default function DetalleInspeccion() {
     );
   }
 
+  if (!inspeccion) {
+    return (
+      <Menu>
+        <div style={estilos.centrado}>
+          <div>
+            <p style={{ color: "#ff6b6b", marginBottom: "15px" }}>{error || "No se encontró la inspección."}</p>
+            <button onClick={() => navigate(-1)} style={estilos.botonSec}>Volver</button>
+          </div>
+        </div>
+      </Menu>
+    );
+  }
+
   const estaAprobada = inspeccion.estado === "completada_admin";
 
   return (
@@ -210,7 +249,7 @@ export default function DetalleInspeccion() {
             Panel de Validación del Administrador
           </h3>
           <p style={{ fontSize: "14.5px", marginBottom: "12px" }}>
-            Estado actual: <strong style={{ color: estaAprobada ? "#4ade80" : "#ffcc00" }}>{inspeccion.estado}</strong>
+            Estado actual: <strong style={{ color: estaAprobada ? "#4ade80" : "#ffcc00" }}>{inspeccion.estado || "Pendiente"}</strong>
           </p>
 
           {!estaAprobada ? (
@@ -249,7 +288,7 @@ export default function DetalleInspeccion() {
           {inspeccion.observaciones && <Dato clave="Notas del técnico" valor={inspeccion.observaciones} />}
         </div>
 
-        {/* ACCIÓN PDF (Solo disponible si el admin aprobó o si se desea forzar) */}
+        {/* ACCIÓN PDF */}
         <button
           onClick={generarInforme}
           disabled={generando}
@@ -393,12 +432,12 @@ const estilos = {
     padding: 12,
   },
   error: {
+    padding: 12,
     marginBottom: 14,
     color: "#ff6b6b",
     fontWeight: 600,
     background: "rgba(255,107,107,0.1)",
     border: "1px solid rgba(255,107,107,0.35)",
     borderRadius: 8,
-    padding: 12,
   },
 };
