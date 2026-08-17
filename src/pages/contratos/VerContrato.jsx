@@ -9,40 +9,81 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 export default function VerContrato() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [contrato, setContrato] = useState(null);
   const [numPages, setNumPages] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [resolvedPdfUrl, setResolvedPdfUrl] = useState(null);
 
   useEffect(() => {
-    cargarContrato();
+    cargarYResolverContrato();
   }, [id]);
 
-  const cargarContrato = async () => {
-    setCargando(true);
-    const { data, error } = await supabase
-      .from("contratos")
-      .select("*")
-      .eq("id", id)
-      .single();
+  const cargarYResolverContrato = async () => {
+    try {
+      setCargando(true);
+      const { data, error } = await supabase
+        .from("contratos")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-    if (error) {
-      alert("Error al cargar el contrato: " + error.message);
-    } else {
-      setContrato(data);
+      if (error || !data) {
+        alert("Error al cargar el contrato: " + (error?.message || "No encontrado"));
+        setCargando(false);
+        return;
+      }
+
+      // Priorizar firma antes que el contrato base
+      const rawPath = data.firma_url || data.pdf_url;
+
+      if (!rawPath) {
+        setResolvedPdfUrl(null);
+        setCargando(false);
+        return;
+      }
+
+      // Blindaje de texto no PDF (HTML o JSON)
+      if (rawPath.includes("<!DOCTYPE") || rawPath.includes("<html") || rawPath.includes("{")) {
+        setResolvedPdfUrl(null);
+        setCargando(false);
+        return;
+      }
+
+      let finalUrl = null;
+
+      // Si es una URL absoluta (http/https)
+      if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) {
+        finalUrl = rawPath;
+      } else {
+        // Limpiar la ruta para Supabase Storage
+        const cleanPath = rawPath.replace(/^contratos\//, "");
+
+        // 1. Intentar signedUrl para buckets privados (1 hora)
+        const { data: signedData, error: signedErr } = await supabase.storage
+          .from("contratos")
+          .createSignedUrl(cleanPath, 3600);
+
+        if (signedData?.signedUrl && !signedErr) {
+          finalUrl = signedData.signedUrl;
+        } else {
+          // 2. Fallback a getPublicUrl para buckets públicos
+          const { data: publicData } = supabase.storage
+            .from("contratos")
+            .getPublicUrl(cleanPath);
+          finalUrl = publicData?.publicUrl || null;
+        }
+      }
+
+      setResolvedPdfUrl(finalUrl);
+    } catch (err) {
+      console.error("Error al procesar la URL del contrato:", err);
+    } finally {
+      setCargando(false);
     }
-    setCargando(false);
   };
 
   const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
   };
-
-  let rawPdfUrl = contrato?.pdf_url || contrato?.firma_url;
-
-  // BLINDAJE: Si por error se guardó código HTML o texto en lugar de una URL de PDF, lo anulamos para que no pete la app
-  if (rawPdfUrl && (rawPdfUrl.includes("<!DOCTYPE") || rawPdfUrl.includes("<html") || rawPdfUrl.includes("{"))) {
-    rawPdfUrl = null;
-  }
 
   return (
     <Menu>
@@ -62,15 +103,34 @@ export default function VerContrato() {
 
           {cargando ? (
             <p style={{ textAlign: "center" }}>Cargando datos...</p>
-          ) : !rawPdfUrl ? (
+          ) : !resolvedPdfUrl ? (
             <div style={{ textAlign: "center", padding: "20px", background: "#1a2332", borderRadius: "12px" }}>
               <p style={{ color: "#ff4d4d", marginBottom: "10px" }}>No hay ningún archivo PDF válido asociado a este contrato.</p>
-              <p style={{ color: "#94a3b8", fontSize: "12px" }}>El campo en la base de datos contiene texto plano o está vacío.</p>
+              <p style={{ color: "#94a3b8", fontSize: "12px" }}>El campo en la base de datos está vacío o la ruta de Storage no existe.</p>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", background: "#1a2332", padding: "10px", borderRadius: "12px", overflowX: "auto" }}>
+              
+              <a
+                href={resolvedPdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  padding: "8px 14px",
+                  background: "#4db8ff",
+                  color: "#000",
+                  borderRadius: "8px",
+                  fontWeight: "700",
+                  textDecoration: "none",
+                  marginBottom: "15px",
+                  fontSize: "14px"
+                }}
+              >
+                ↗️ Abrir PDF en nueva pestaña
+              </a>
+
               <Document
-                file={rawPdfUrl}
+                file={resolvedPdfUrl}
                 onLoadSuccess={onDocumentLoadSuccess}
                 loading={<p style={{ color: "#fff" }}>Cargando PDF en la app...</p>}
                 error={<p style={{ color: "#ff4d4d" }}>Error al renderizar el archivo PDF.</p>}
