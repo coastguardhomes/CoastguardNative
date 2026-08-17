@@ -11,7 +11,7 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
 
   useEffect(() => {
     async function comprobarContrato() {
-      if (!user) return;
+      if (!user || !contrato?.id) return;
 
       const { data, error } = await supabase
         .from("contratos")
@@ -25,96 +25,111 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
     }
 
     comprobarContrato();
-  }, [user, contrato.id, t]);
+  }, [user, contrato?.id, t]);
 
   const generarPDF = async () => {
     setLoading(true);
 
-    const doc = new jsPDF();
+    try {
+      const doc = new jsPDF();
 
-    doc.setFontSize(18);
-    doc.text(t("pdfTitulo"), 20, 20);
+      doc.setFontSize(18);
+      doc.text(t("pdfTitulo"), 20, 20);
 
-    doc.setFontSize(12);
-    doc.text(`${t("pdfNombreCliente")}: ${cliente?.nombre || ""}`, 20, 40);
-    doc.text(`${t("pdfDireccion")}: ${cliente?.direccion || ""}`, 20, 50);
-    doc.text(`${t("pdfTelefono")}: ${cliente?.telefono || ""}`, 20, 60);
+      doc.setFontSize(12);
+      doc.text(`${t("pdfNombreCliente")}: ${cliente?.nombre || ""}`, 20, 40);
+      doc.text(`${t("pdfDireccion")}: ${cliente?.direccion || ""}`, 20, 50);
+      doc.text(`${t("pdfTelefono")}: ${cliente?.telefono || ""}`, 20, 60);
 
-    doc.text(t("pdfDetallesServicio"), 20, 80);
-    doc.text(
-      `${t("pdfTipoServicio")}: ${
-        contrato?.frecuencia ? `${t("contratoCadaDias")} ${contrato.frecuencia}` : "N/D"
-      }`,
-      20,
-      90
-    );
-    doc.text(`${t("pdfFechaInicio")}: ${contrato?.fecha_inicio || "N/D"}`, 20, 100);
-    doc.text(
-      `${t("pdfPrecioMensual")}: ${
-        contrato?.precio != null ? contrato.precio : "N/D"
-      } €`,
-      20,
-      110
-    );
+      doc.text(t("pdfDetallesServicio"), 20, 80);
+      doc.text(
+        `${t("pdfTipoServicio")}: ${
+          contrato?.frecuencia ? `${t("contratoCadaDias")} ${contrato.frecuencia}` : "N/D"
+        }`,
+        20,
+        90
+      );
+      doc.text(`${t("pdfFechaInicio")}: ${contrato?.fecha_inicio || "N/D"}`, 20, 100);
+      doc.text(
+        `${t("pdfPrecioMensual")}: ${
+          contrato?.precio != null ? contrato.precio : "N/D"
+        } €`,
+        20,
+        110
+      );
 
-    doc.text(t("pdfCondiciones"), 20, 130);
-    doc.text(t("pdfCondicionesTexto"), 20, 140, { maxWidth: 170 });
+      doc.text(t("pdfCondiciones"), 20, 130);
+      doc.text(t("pdfCondicionesTexto"), 20, 140, { maxWidth: 170 });
 
-    // Firma del cliente SIN fetch()
-    if (contrato?.firma) {
-      try {
-        const { data, error } = await supabase.storage
-          .from("firmas")
-          .download(contrato.firma);
+      // Firma del cliente
+      if (contrato?.firma) {
+        try {
+          const { data, error } = await supabase.storage
+            .from("firmas")
+            .download(contrato.firma);
 
-        if (!error && data) {
-          const reader = new FileReader();
-          const base64 = await new Promise((resolve) => {
-            reader.onload = () => resolve(reader.result);
-            reader.readAsDataURL(data);
-          });
+          if (!error && data) {
+            const reader = new FileReader();
+            const base64 = await new Promise((resolve) => {
+              reader.onload = () => resolve(reader.result);
+              reader.readAsDataURL(data);
+            });
 
-          doc.addImage(base64, "PNG", 20, 160, 60, 30);
-        } else {
+            doc.addImage(base64, "PNG", 20, 160, 60, 30);
+          } else {
+            doc.text(`${t("pdfFirmaCliente")}: ____________________`, 20, 170);
+          }
+        } catch {
           doc.text(`${t("pdfFirmaCliente")}: ____________________`, 20, 170);
         }
-      } catch {
+      } else {
         doc.text(`${t("pdfFirmaCliente")}: ____________________`, 20, 170);
       }
-    } else {
-      doc.text(`${t("pdfFirmaCliente")}: ____________________`, 20, 170);
-    }
 
-    // Guardar PDF en Supabase Storage
-    const pdfBlob = doc.output("blob");
-    const filePath = `contratos/contrato_${contrato.id}.pdf`;
+      // Guardar PDF en Supabase Storage
+      const pdfBlob = doc.output("blob");
+      const fileName = `contrato_${contrato.id}.pdf`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("contratos")
-      .upload(filePath, pdfBlob, {
-        upsert: true,
-        contentType: "application/pdf",
-      });
+      const { error: uploadError } = await supabase.storage
+        .from("contratos")
+        .upload(fileName, pdfBlob, {
+          upsert: true,
+          contentType: "application/pdf",
+        });
 
-    if (uploadError) {
-      console.error("Error subiendo PDF:", uploadError);
+      if (uploadError) {
+        console.error("Error subiendo PDF:", uploadError);
+        alert("Error al subir el PDF a Storage.");
+        setLoading(false);
+        return;
+      }
+
+      // Obtener URL pública completa
+      const { data: publicData } = supabase.storage
+        .from("contratos")
+        .getPublicUrl(fileName);
+
+      const fullPdfUrl = publicData.publicUrl;
+
+      // Actualizar registro en base de datos con la URL pública completa
+      await supabase
+        .from("contratos")
+        .update({
+          pdf_url: fullPdfUrl,
+          fecha_pdf: new Date().toISOString(),
+          estado_pdf: "generado",
+        })
+        .eq("id", contrato.id);
+
+      alert(t("pdfGenerado"));
+
+      if (onGenerado) onGenerado();
+    } catch (err) {
+      console.error("Error generando PDF:", err);
+      alert("Error al generar el PDF: " + err.message);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    await supabase
-      .from("contratos")
-      .update({
-        pdf_url: filePath,
-        fecha_pdf: new Date().toISOString(),
-        estado_pdf: "generado",
-      })
-      .eq("id", contrato.id);
-
-    setLoading(false);
-    alert(t("pdfGenerado"));
-
-    if (onGenerado) onGenerado();
   };
 
   return (
