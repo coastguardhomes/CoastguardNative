@@ -37,7 +37,12 @@ export default function VerContrato() {
     setNumPages(numPages);
   };
 
-  const pdfUrl = contrato?.pdf_url || contrato?.firma_url;
+  let rawPdfUrl = contrato?.pdf_url || contrato?.firma_url;
+
+  // BLINDAJE: Si por error se guardó código HTML o texto en lugar de una URL de PDF, lo anulamos para que no pete la app
+  if (rawPdfUrl && (rawPdfUrl.includes("<!DOCTYPE") || rawPdfUrl.includes("<html") || rawPdfUrl.includes("{"))) {
+    rawPdfUrl = null;
+  }
 
   return (
     <Menu>
@@ -57,15 +62,18 @@ export default function VerContrato() {
 
           {cargando ? (
             <p style={{ textAlign: "center" }}>Cargando datos...</p>
-          ) : !pdfUrl ? (
-            <p style={{ textAlign: "center", color: "#ff4d4d" }}>No hay ningún PDF asociado a este contrato.</p>
+          ) : !rawPdfUrl ? (
+            <div style={{ textAlign: "center", padding: "20px", background: "#1a2332", borderRadius: "12px" }}>
+              <p style={{ color: "#ff4d4d", marginBottom: "10px" }}>No hay ningún archivo PDF válido asociado a este contrato.</p>
+              <p style={{ color: "#94a3b8", fontSize: "12px" }}>El campo en la base de datos contiene texto plano o está vacío.</p>
+            </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", background: "#1a2332", padding: "10px", borderRadius: "12px", overflowX: "auto" }}>
               <Document
-                file={pdfUrl}
+                file={rawPdfUrl}
                 onLoadSuccess={onDocumentLoadSuccess}
                 loading={<p style={{ color: "#fff" }}>Cargando PDF en la app...</p>}
-                error={<p style={{ color: "#ff4d4d" }}>Error al renderizar el PDF.</p>}
+                error={<p style={{ color: "#ff4d4d" }}>Error al renderizar el archivo PDF.</p>}
               >
                 {Array.from(new Array(numPages || 0), (el, index) => (
                   <Page
