@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabase";
 
 /**
  * Sube un PDF a Supabase y guarda su URL en la inspección
- * Versión estable WEB + APP (2026)
+ * Versión estable WEB + APP (2026) - Corregido para permitir actualizaciones
  */
 export async function subirPDF(inspeccionId, pdfBlob) {
   if (!inspeccionId || !pdfBlob) {
@@ -31,7 +31,7 @@ export async function subirPDF(inspeccionId, pdfBlob) {
   // Verificar que la inspección existe
   const { data: inspeccion, error: inspeccionError } = await supabase
     .from("inspecciones")
-    .select("id, pdf_url")
+    .select("id")
     .eq("id", inspeccionId)
     .single();
 
@@ -45,19 +45,8 @@ export async function subirPDF(inspeccionId, pdfBlob) {
 
   const bucket = "pdfs";
 
-  // Nombre único para evitar sobrescribir PDFs
+  // Nombre único para evitar conflictos de caché en Supabase Storage
   const filePath = `inspecciones/inspeccion_${inspeccionId}_${Date.now()}.pdf`;
-
-  // Si ya existe un PDF, evitar reemplazarlo
-  if (inspeccion.pdf_url) {
-    return {
-      ok: true,
-      mensaje: "La inspección ya tenía PDF, no se reemplazó",
-      url: inspeccion.pdf_url,
-      id: inspeccionId,
-      filePath,
-    };
-  }
 
   // SUBIR PDF
   const { error: uploadError } = await supabase.storage
