@@ -1,12 +1,16 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 
 /**
  * Genera un PDF de inspección que funciona IGUAL en WEB y APP (CoastGuardNative)
- * Versión estable 2026
+ * Versión estable 2026 - Optimizada y unificada
  */
 export async function generarPDFInspeccion(elementoHTML) {
   try {
+    if (!elementoHTML) {
+      throw new Error("El elemento HTML proporcionado es nulo o no existe.");
+    }
+
     // 🔥 Asegurar que todo está visible antes de capturar
     window.scrollTo(0, 0);
 
@@ -21,7 +25,7 @@ export async function generarPDFInspeccion(elementoHTML) {
           new Promise((resolve) => {
             if (img.complete) resolve();
             img.onload = resolve;
-            img.onerror = resolve;
+            img.onerror = resolve; // Evita que una imagen rota bloquee todo el PDF
           })
       )
     );
@@ -41,7 +45,7 @@ export async function generarPDFInspeccion(elementoHTML) {
 
     const imgData = canvas.toDataURL("image/png");
 
-    // 🔥 Crear PDF A4
+    // 🔥 Crear PDF A4 (unidades en milímetros)
     const pdf = new jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
@@ -64,31 +68,34 @@ export async function generarPDFInspeccion(elementoHTML) {
       heightLeft -= pageHeight;
     }
 
-    // 🔥 Numeración de páginas
-    const totalPages = pdf.internal.getNumberOfPages();
+    // 🔥 Numeración de páginas y Footer unificados en un solo bucle eficiente
+    const totalPages = pdf.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
       pdf.setFontSize(10);
-      pdf.text(`Página ${i} de ${totalPages}`, pageWidth - 40, pageHeight - 10);
-    }
-
-    // 🔥 Footer CoastGuard
-    for (let i = 1; i <= totalPages; i++) {
-      pdf.setPage(i);
-      pdf.setFontSize(10);
+      pdf.setTextColor("#555555");
+      
+      // Footer a la izquierda
       pdf.text(
         "CoastGuard — Protección y supervisión de viviendas",
         20,
+        pageHeight - 10
+      );
+
+      // Numeración a la derecha
+      pdf.text(
+        `Página ${i} de ${totalPages}`, 
+        pageWidth - 40, 
         pageHeight - 10
       );
     }
 
     return pdf.output("blob");
   } catch (error) {
-    console.error("Error generando PDF:", error);
+    console.error("Error generando PDF de inspección:", error);
 
-    // 🔥 Fallback válido (web + app)
-    const pdf = new jsPDF();
+    // 🔥 Fallback seguro en caso de error crítico
+    const pdf = new jsPDF("p", "mm", "a4");
     pdf.setFontSize(16);
     pdf.text("Error generando PDF de la inspección.", 20, 20);
 
