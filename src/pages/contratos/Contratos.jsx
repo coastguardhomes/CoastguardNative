@@ -35,41 +35,34 @@ export default function Contratos() {
     try {
       setGenerandoId(id);
 
-      const { data, error } = await supabase.functions.invoke("contrato-pdf", {
+      const response = await supabase.functions.invoke("contrato-pdf", {
         body: { contratoId: id },
       });
 
-      if (error) throw error;
+      if (response.error) throw response.error;
 
-      let parsedData = data;
+      let htmlContent = "";
+      const rawData = response.data;
 
-      // Si la respuesta viene como String JSON, la parseamos
-      if (typeof data === "string") {
-        try {
-          parsedData = JSON.parse(data);
-        } catch {
-          parsedData = data;
-        }
-      } else if (data instanceof Blob) {
-        const text = await data.text();
-        try {
-          parsedData = JSON.parse(text);
-        } catch {
-          parsedData = text;
-        }
+      // Extracción robusta de HTML sin importar cómo lo devuelva Supabase
+      if (typeof rawData === "string") {
+        htmlContent = rawData;
+      } else if (rawData instanceof Blob) {
+        htmlContent = await rawData.text();
+      } else if (typeof rawData === "object" && rawData !== null) {
+        htmlContent = rawData.html || JSON.stringify(rawData);
       }
 
-      // Extraer el contenido HTML real del objeto
-      const htmlContent = typeof parsedData === "object" ? parsedData?.html : parsedData;
-
-      if (htmlContent) {
+      // Validación final: si el contenido parece HTML válido, lo mostramos en el modal
+      if (htmlContent && (htmlContent.includes("<!DOCTYPE") || htmlContent.includes("<html") || htmlContent.includes("<div"))) {
         setModalHtml(htmlContent);
       } else {
-        alert("No se pudo extraer la vista HTML del documento.");
+        throw new Error("La respuesta de la función no contiene un documento HTML válido.");
       }
+
     } catch (err) {
       console.error("Error al generar PDF:", err);
-      alert("Error al generar el contrato: " + (err.message || err));
+      alert("Error al generar el contrato: " + (err.message || JSON.stringify(err)));
     } finally {
       setGenerandoId(null);
     }
@@ -113,11 +106,9 @@ export default function Contratos() {
       return;
     }
 
-    // Si ya es URL completa HTTP/HTTPS la abre directamente
     if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
       window.open(rawUrl, "_blank");
     } else {
-      // Limpia la ruta relativa y obtiene la URL pública de Storage
       const cleanPath = rawUrl.replace(/^contratos\//, "");
       const { data: publicData } = supabase.storage
         .from("contratos")
