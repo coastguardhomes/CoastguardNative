@@ -99,7 +99,7 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
 
       if (uploadError) {
         console.error("Error subiendo PDF:", uploadError);
-        alert("Error al subir el PDF a Storage.");
+        alert("Error al subir el PDF a Storage: " + uploadError.message);
         setLoading(false);
         return;
       }
@@ -109,10 +109,10 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
         .from("contratos")
         .getPublicUrl(fileName);
 
-      const fullPdfUrl = publicData.publicUrl;
+      const fullPdfUrl = publicData?.publicUrl;
 
-      // Actualizar registro en base de datos con la URL pública completa
-      await supabase
+      // Actualizar registro en base de datos asegurando la URL
+      const { error: updateError } = await supabase
         .from("contratos")
         .update({
           pdf_url: fullPdfUrl,
@@ -120,6 +120,10 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
           estado_pdf: "generado",
         })
         .eq("id", contrato.id);
+
+      if (updateError) {
+        throw new Error("No se pudo actualizar el contrato con la URL del PDF: " + updateError.message);
+      }
 
       alert(t("pdfGenerado"));
 
