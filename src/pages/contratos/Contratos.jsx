@@ -44,7 +44,6 @@ export default function Contratos() {
       let htmlContent = "";
       const rawData = response.data;
 
-      // Si la Edge Function devuelve un objeto con la URL del PDF generado, actualizamos la BD
       if (typeof rawData === "object" && rawData !== null) {
         const urlGenerada = rawData.pdf_url || rawData.url || rawData.path;
         if (urlGenerada) {
@@ -57,7 +56,6 @@ export default function Contratos() {
         }
       }
 
-      // Extracción robusta de HTML
       if (typeof rawData === "string") {
         htmlContent = rawData;
       } else if (rawData instanceof Blob) {
@@ -129,14 +127,20 @@ export default function Contratos() {
       .from("contratos")
       .createSignedUrl(cleanPath, 3600);
 
+    let finalUrl = null;
     if (signedData?.signedUrl && !signedErr) {
-      window.open(signedData.signedUrl, "_blank");
+      finalUrl = signedData.signedUrl;
     } else {
       const { data: publicData } = supabase.storage
         .from("contratos")
         .getPublicUrl(cleanPath);
+      finalUrl = publicData?.publicUrl || null;
+    }
 
-      window.open(publicData.publicUrl, "_blank");
+    if (finalUrl) {
+      const separator = finalUrl.includes("?") ? "&" : "?";
+      finalUrl = `${finalUrl}${separator}t=${Date.now()}`;
+      window.open(finalUrl, "_blank");
     }
   };
 
