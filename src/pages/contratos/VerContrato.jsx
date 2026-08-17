@@ -9,6 +9,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 export default function VerContrato() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [contrato, setContrato] = useState(null);
   const [numPages, setNumPages] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [resolvedPdfUrl, setResolvedPdfUrl] = useState(null);
@@ -31,6 +32,8 @@ export default function VerContrato() {
         setCargando(false);
         return;
       }
+
+      setContrato(data);
 
       // Priorizar firma antes que el contrato base
       const rawPath = data.firma_url || data.pdf_url;
@@ -136,14 +139,30 @@ export default function VerContrato() {
                 error={<p style={{ color: "#ff4d4d" }}>Error al renderizar el archivo PDF.</p>}
               >
                 {Array.from(new Array(numPages || 0), (el, index) => (
-                  <Page
-                    key={`page_${index + 1}`}
-                    pageNumber={index + 1}
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
-                    width={Math.min(window.innerWidth - 50, 550)}
-                    style={{ marginBottom: "10px" }}
-                  />
+                  <div key={`page_wrapper_${index + 1}`} style={{ position: "relative", width: "100%", marginBottom: "10px", display: "flex", justifyContent: "center" }}>
+                    <Page
+                      pageNumber={index + 1}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                      width={Math.min(window.innerWidth - 50, 550)}
+                    />
+                    {contrato?.sello_url && (
+                      <img
+                        src={contrato.sello_url}
+                        alt="Sello"
+                        style={{
+                          position: "absolute",
+                          right: "5%",
+                          bottom: "5%",
+                          width: "clamp(56px, 18%, 120px)",
+                          height: "auto",
+                          pointerEvents: "none",
+                          opacity: 0.95,
+                          zIndex: 10
+                        }}
+                      />
+                    )}
+                  </div>
                 ))}
               </Document>
             </div>
