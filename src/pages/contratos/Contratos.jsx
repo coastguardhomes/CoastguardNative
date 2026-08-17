@@ -41,21 +41,31 @@ export default function Contratos() {
 
       if (error) throw error;
 
-      let htmlContent = "";
+      let parsedData = data;
 
-      // Captura el HTML sin importar si Supabase responde string, JSON o Blob
+      // Si la respuesta viene como String JSON, la parseamos
       if (typeof data === "string") {
-        htmlContent = data;
+        try {
+          parsedData = JSON.parse(data);
+        } catch {
+          parsedData = data;
+        }
       } else if (data instanceof Blob) {
-        htmlContent = await data.text();
-      } else if (data?.html) {
-        htmlContent = data.html;
+        const text = await data.text();
+        try {
+          parsedData = JSON.parse(text);
+        } catch {
+          parsedData = text;
+        }
       }
+
+      // Extraer el contenido HTML real del objeto
+      const htmlContent = typeof parsedData === "object" ? parsedData?.html : parsedData;
 
       if (htmlContent) {
         setModalHtml(htmlContent);
       } else {
-        alert("No se pudo obtener la vista del documento.");
+        alert("No se pudo extraer la vista HTML del documento.");
       }
     } catch (err) {
       console.error("Error al generar PDF:", err);
@@ -96,12 +106,24 @@ export default function Contratos() {
   };
 
   const verDocumento = (c) => {
-    const url = c.pdf_url || c.firma_url;
+    const rawUrl = c.pdf_url || c.firma_url;
 
-    if (url) {
-      window.open(url, "_blank");
-    } else {
+    if (!rawUrl) {
       alert("No hay documento o archivo adjunto disponible para este contrato todavía.");
+      return;
+    }
+
+    // Si ya es URL completa HTTP/HTTPS la abre directamente
+    if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+      window.open(rawUrl, "_blank");
+    } else {
+      // Limpia la ruta relativa y obtiene la URL pública de Storage
+      const cleanPath = rawUrl.replace(/^contratos\//, "");
+      const { data: publicData } = supabase.storage
+        .from("contratos")
+        .getPublicUrl(cleanPath);
+
+      window.open(publicData.publicUrl, "_blank");
     }
   };
 
@@ -285,7 +307,6 @@ export default function Contratos() {
                         </button>
                       </div>
 
-                      {/* Botón principal verde para Generar y Ver Documento */}
                       <button
                         onClick={() => generarPDF(c.id)}
                         disabled={generandoId === c.id}
@@ -313,7 +334,6 @@ export default function Contratos() {
         </div>
       </div>
 
-      {/* VISOR MODAL DE CONTRATO (IFRAME PANTALLA COMPLETA) */}
       {modalHtml && (
         <div
           style={{
@@ -334,7 +354,7 @@ export default function Contratos() {
               background: "#0a0f1a",
               borderBottom: "1px solid rgba(255,255,255,0.1)",
               display: "flex",
-              justify: "space-between",
+              justifyContent: "space-between",
               alignItems: "center",
             }}
           >
