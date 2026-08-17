@@ -35,7 +35,6 @@ export default function VerContrato() {
 
       setContrato(data);
 
-      // Priorizar firma antes que el contrato base
       const rawPath = data.firma_url || data.pdf_url;
 
       if (!rawPath) {
@@ -44,7 +43,6 @@ export default function VerContrato() {
         return;
       }
 
-      // Blindaje de texto no PDF (HTML o JSON)
       if (rawPath.includes("<!DOCTYPE") || rawPath.includes("<html") || rawPath.includes("{")) {
         setResolvedPdfUrl(null);
         setCargando(false);
@@ -53,14 +51,11 @@ export default function VerContrato() {
 
       let finalUrl = null;
 
-      // Si es una URL absoluta (http/https)
       if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) {
         finalUrl = rawPath;
       } else {
-        // Limpiar la ruta para Supabase Storage
         const cleanPath = rawPath.replace(/^contratos\//, "");
 
-        // 1. Intentar signedUrl para buckets privados (1 hora)
         const { data: signedData, error: signedErr } = await supabase.storage
           .from("contratos")
           .createSignedUrl(cleanPath, 3600);
@@ -68,12 +63,17 @@ export default function VerContrato() {
         if (signedData?.signedUrl && !signedErr) {
           finalUrl = signedData.signedUrl;
         } else {
-          // 2. Fallback a getPublicUrl para buckets públicos
           const { data: publicData } = supabase.storage
             .from("contratos")
             .getPublicUrl(cleanPath);
           finalUrl = publicData?.publicUrl || null;
         }
+      }
+
+      // Solución Fallo 4: Evitar caché en navegadores móviles con timestamp
+      if (finalUrl) {
+        const separator = finalUrl.includes("?") ? "&" : "?";
+        finalUrl = `${finalUrl}${separator}t=${Date.now()}`;
       }
 
       setResolvedPdfUrl(finalUrl);
@@ -92,7 +92,6 @@ export default function VerContrato() {
     <Menu>
       <div style={{ minHeight: "100vh", background: "#0a0f1a", padding: "15px", color: "#fff", paddingBottom: "80px" }}>
         <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-          
           <button
             onClick={() => navigate(-1)}
             style={{ padding: "10px 16px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", cursor: "pointer", marginBottom: "15px" }}
@@ -113,7 +112,6 @@ export default function VerContrato() {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", background: "#1a2332", padding: "10px", borderRadius: "12px", overflowX: "auto" }}>
-              
               <a
                 href={resolvedPdfUrl}
                 target="_blank"
