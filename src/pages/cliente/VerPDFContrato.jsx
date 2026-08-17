@@ -14,8 +14,10 @@ export default function VerPDFContrato() {
   const [pdfURL, setPdfURL] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Seguridad
+  // Seguridad: comprobar acceso al contrato
   useEffect(() => {
+    let cancelado = false;
+
     async function comprobarContrato() {
       if (!user) return;
 
@@ -25,45 +27,61 @@ export default function VerPDFContrato() {
         .eq("id", id)
         .single();
 
-      if (error || !data) {
+      if (!cancelado && (error || !data)) {
         navigate("/cliente/dashboard");
       }
     }
 
     comprobarContrato();
+    return () => {
+      cancelado = true;
+    };
   }, [user, id, navigate]);
 
   const cargarPDF = async () => {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const { data, error } = await supabase
-      .from("contratos")
-      .select("pdf_url")
-      .eq("id", id)
-      .single();
-
-    if (error || !data?.pdf_url) {
-      console.error("Error o sin URL en contrato:", error);
-      setLoading(false);
-      return;
-    }
-
-    const rawUrl = data.pdf_url;
-
-    // Si ya es una URL web completa, se usa directamente
-    if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
-      setPdfURL(rawUrl);
-    } else {
-      // Limpiar prefijos para evitar rutas duplicadas en storage
-      const cleanPath = rawUrl.replace(/^contratos\//, "");
-      const { data: publicData } = supabase.storage
+      const { data, error } = await supabase
         .from("contratos")
-        .getPublicUrl(cleanPath);
+        .select("pdf_url")
+        .eq("id", id)
+        .single();
 
-      setPdfURL(publicData?.publicUrl || "");
+      if (error || !data?.pdf_url) {
+        console.error("Error o sin URL en contrato:", error);
+        setPdfURL("");
+        setLoading(false);
+        return;
+      }
+
+      const rawUrl = data.pdf_url;
+      let finalUrl = "";
+
+      // Procesar URL pública o ruta del bucket
+      if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+        finalUrl = rawUrl;
+      } else {
+        const cleanPath = rawUrl.replace(/^contratos\//, "");
+        const { data: publicData } = supabase.storage
+          .from("contratos")
+          .getPublicUrl(cleanPath);
+
+        finalUrl = publicData?.publicUrl || "";
+      }
+
+      // 🔥 EVITAR CACHÉ EN WEB Y APP NATIVA: Añadir parámetro de tiempo único
+      if (finalUrl) {
+        finalUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
+      }
+
+      setPdfURL(finalUrl);
+    } catch (err) {
+      console.error("Error crítico cargando PDF del contrato:", err);
+      setPdfURL("");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -85,7 +103,7 @@ export default function VerPDFContrato() {
             fontSize: "18px",
           }}
         >
-          {t("pdfCargando")}
+          {t("pdfCargando") || "Cargando PDF..."}
         </div>
       </Menu>
     );
@@ -104,9 +122,11 @@ export default function VerPDFContrato() {
             alignItems: "center",
             fontFamily: "Inter, sans-serif",
             fontSize: "18px",
+            textAlign: "center",
+            padding: "20px",
           }}
         >
-          {t("pdfNoGenerado")}
+          {t("pdfNoGenerado") || "No hay ningún archivo PDF generado para este contrato."}
         </div>
       </Menu>
     );
@@ -134,7 +154,7 @@ export default function VerPDFContrato() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          {t("pdfTituloVista")} #{id}
+          {t("pdfTituloVista") || "Contrato"} #{id}
         </h2>
 
         <button
@@ -152,7 +172,7 @@ export default function VerPDFContrato() {
             fontSize: "15px",
           }}
         >
-          {t("pdfVolver")}
+          {t("pdfVolver") || "Volver"}
         </button>
 
         <div
@@ -167,7 +187,7 @@ export default function VerPDFContrato() {
         >
           <iframe
             src={pdfURL}
-            title={t("pdfTituloIframe")}
+            title={t("pdfTituloIframe") || "Visor de Contrato"}
             style={{
               width: "100%",
               height: "70vh",
@@ -193,7 +213,7 @@ export default function VerPDFContrato() {
             boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
-          {t("pdfAbrirNuevaPestana")}
+          {t("pdfAbrirNuevaPestana") || "Abrir en nueva pestaña"}
         </button>
       </div>
     </Menu>
