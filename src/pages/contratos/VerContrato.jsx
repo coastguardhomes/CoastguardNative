@@ -4,7 +4,8 @@ import { Document, Page, pdfjs } from "react-pdf";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Configuración del worker de PDF.js optimizada para Web y App nativa
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
 export default function VerContrato() {
   const { id } = useParams();
@@ -12,6 +13,7 @@ export default function VerContrato() {
   const [numPages, setNumPages] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [resolvedPdfUrl, setResolvedPdfUrl] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
 
   useEffect(() => {
     cargarYResolverContrato();
@@ -20,6 +22,8 @@ export default function VerContrato() {
   const cargarYResolverContrato = async () => {
     try {
       setCargando(true);
+      setErrorMsg(null);
+
       const { data, error } = await supabase
         .from("contratos")
         .select("pdf_url")
@@ -39,13 +43,18 @@ export default function VerContrato() {
         finalUrl = rawPath;
       } else {
         const cleanPath = rawPath.replace(/^contratos\//, "");
-        const { data: signedData } = await supabase.storage
+        const { data: signedData, error: signedError } = await supabase.storage
           .from("contratos")
           .createSignedUrl(cleanPath, 3600);
+
+        if (signedError) {
+          throw new Error("No se pudo generar la URL firmada del contrato.");
+        }
 
         finalUrl = signedData?.signedUrl || null;
       }
 
+      // Añadir parámetro de tiempo para evitar caché agresiva en WebView móvil
       if (finalUrl) {
         finalUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
       }
@@ -53,6 +62,7 @@ export default function VerContrato() {
       setResolvedPdfUrl(finalUrl);
     } catch (err) {
       console.error("Error al cargar contrato:", err);
+      setErrorMsg("No se pudo cargar el documento correctamente.");
     } finally {
       setCargando(false);
     }
@@ -61,14 +71,31 @@ export default function VerContrato() {
   return (
     <Menu>
       <div style={{ minHeight: "100vh", background: "#0a0f1a", padding: "15px", color: "#fff" }}>
-        <button onClick={() => navigate(-1)} style={{ padding: "10px 16px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", cursor: "pointer", marginBottom: "15px" }}>
+        <button 
+          onClick={() => navigate(-1)} 
+          style={{ 
+            padding: "10px 16px", 
+            background: "rgba(255,255,255,0.1)", 
+            color: "#fff", 
+            border: "1px solid rgba(255,255,255,0.2)", 
+            borderRadius: "8px", 
+            cursor: "pointer", 
+            marginBottom: "15px" 
+          }}
+        >
           ⬅️ Volver
         </button>
 
-        <h2 style={{ textAlign: "center", color: "#4db8ff", marginBottom: "15px" }}>📄 Contrato #{id}</h2>
+        <h2 style={{ textAlign: "center", color: "#4db8ff", marginBottom: "15px" }}>
+          📄 Contrato #{id}
+        </h2>
 
         {cargando ? (
-          <p style={{ textAlign: "center" }}>Cargando PDF...</p>
+          <p style={{ textAlign: "center", color: "#94a3b8" }}>Cargando visor de PDF...</p>
+        ) : errorMsg ? (
+          <div style={{ textAlign: "center", padding: "20px", background: "#1a2332", borderRadius: "12px" }}>
+            <p style={{ color: "#ff4d4d", marginBottom: "10px" }}>{errorMsg}</p>
+          </div>
         ) : !resolvedPdfUrl ? (
           <div style={{ textAlign: "center", padding: "20px", background: "#1a2332", borderRadius: "12px" }}>
             <p style={{ color: "#ff4d4d", marginBottom: "10px" }}>No hay ningún archivo PDF generado para este contrato.</p>
@@ -79,11 +106,11 @@ export default function VerContrato() {
             <Document
               file={resolvedPdfUrl}
               onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-              loading={<p>Cargando visor...</p>}
-              error={<p style={{ color: "#ff4d4d" }}>Error al renderizar el PDF.</p>}
+              loading={<p style={{ color: "#94a3b8" }}>Cargando páginas del PDF...</p>}
+              error={<p style={{ color: "#ff4d4d" }}>Error al renderizar el PDF en el visor.</p>}
             >
               {Array.from(new Array(numPages || 0), (el, index) => (
-                <div key={index} style={{ marginBottom: "10px" }}>
+                <div key={index} style={{ marginBottom: "15px", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
                   <Page
                     pageNumber={index + 1}
                     renderTextLayer={false}
