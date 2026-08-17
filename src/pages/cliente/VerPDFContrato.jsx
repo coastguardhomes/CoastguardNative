@@ -14,18 +14,14 @@ export default function VerPDFContrato() {
   const [pdfURL, setPdfURL] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Seguridad: comprobar que el contrato pertenece al cliente
+  // Seguridad
   useEffect(() => {
     async function comprobarContrato() {
       if (!user) return;
 
-      // contratos.cliente_id es bigint y user.id el UUID de auth: nunca
-      // coinciden, así que este check redirigía siempre aunque el
-      // contrato SÍ fuera del cliente. RLS (contratos_select) ya impide
-      // leer contratos de otro cliente, por eso basta con mirar error/data.
       const { data, error } = await supabase
         .from("contratos")
-        .select("cliente_id")
+        .select("id")
         .eq("id", id)
         .single();
 
@@ -38,28 +34,35 @@ export default function VerPDFContrato() {
   }, [user, id, navigate]);
 
   const cargarPDF = async () => {
+    setLoading(true);
+
     const { data, error } = await supabase
       .from("contratos")
       .select("pdf_url")
       .eq("id", id)
       .single();
 
-    if (error) {
-      console.error("Error cargando PDF del contrato:", error);
+    if (error || !data?.pdf_url) {
+      console.error("Error o sin URL en contrato:", error);
       setLoading(false);
       return;
     }
 
-    if (!data?.pdf_url) {
-      setLoading(false);
-      return;
+    const rawUrl = data.pdf_url;
+
+    // Si ya es una URL web completa, se usa directamente
+    if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+      setPdfURL(rawUrl);
+    } else {
+      // Limpiar prefijos para evitar rutas duplicadas en storage
+      const cleanPath = rawUrl.replace(/^contratos\//, "");
+      const { data: publicData } = supabase.storage
+        .from("contratos")
+        .getPublicUrl(cleanPath);
+
+      setPdfURL(publicData.publicUrl);
     }
 
-    const { data: publicData } = supabase.storage
-      .from("contratos")
-      .getPublicUrl(data.pdf_url);
-
-    setPdfURL(publicData.publicUrl);
     setLoading(false);
   };
 
@@ -72,7 +75,7 @@ export default function VerPDFContrato() {
       <Menu>
         <div
           style={{
-            height: "100%",
+            height: "100vh",
             background: "#0a0f1a",
             color: "#fff",
             display: "flex",
@@ -93,7 +96,7 @@ export default function VerPDFContrato() {
       <Menu>
         <div
           style={{
-            height: "100%",
+            height: "100vh",
             background: "#0a0f1a",
             color: "#fff",
             display: "flex",
@@ -113,11 +116,12 @@ export default function VerPDFContrato() {
     <Menu>
       <div
         style={{
-          height: "100%",
+          minHeight: "100vh",
           background: "#0a0f1a",
           padding: "20px",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
+          paddingBottom: "80px",
         }}
       >
         <h2
