@@ -41,8 +41,16 @@ export default function Contratos() {
 
       if (error) throw error;
 
-      // Obtener el HTML renderizado de la respuesta sin disparar el catch
-      const htmlContent = typeof data === "string" ? data : data?.html;
+      let htmlContent = "";
+
+      // Captura el HTML sin importar si Supabase responde string, JSON o Blob
+      if (typeof data === "string") {
+        htmlContent = data;
+      } else if (data instanceof Blob) {
+        htmlContent = await data.text();
+      } else if (data?.html) {
+        htmlContent = data.html;
+      }
 
       if (htmlContent) {
         setModalHtml(htmlContent);
@@ -51,7 +59,7 @@ export default function Contratos() {
       }
     } catch (err) {
       console.error("Error al generar PDF:", err);
-      alert("Error al generar el contrato: " + err.message);
+      alert("Error al generar el contrato: " + (err.message || err));
     } finally {
       setGenerandoId(null);
     }
