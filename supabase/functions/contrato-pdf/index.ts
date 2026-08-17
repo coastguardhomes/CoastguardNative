@@ -1,0 +1,205 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const { contratoId } = await req.json();
+
+    if (!contratoId) {
+      return new Response(
+        JSON.stringify({ error: "El ID del contrato es requerido." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // 1. Consulta de datos del contrato y cliente
+    const { data: contrato, error: dbError } = await supabase
+      .from("contratos")
+      .select("*, clientes(*)")
+      .eq("id", contratoId)
+      .single();
+
+    if (dbError || !contrato) {
+      return new Response(
+        JSON.stringify({ error: "No se encontró el contrato solicitado." }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 2. Extracción y formateo de campos
+    const clienteNombre = contrato.clientes?.nombre || "N/A";
+    const clienteDni = contrato.clientes?.dni || contrato.clientes?.cif || "N/A";
+    const clienteTelefono = contrato.clientes?.telefono || "N/A";
+    const clienteEmail = contrato.clientes?.email || "N/A";
+    const clienteDireccion = contrato.clientes?.direccion || "N/A";
+
+    const fechaInicio = contrato.fecha_inicio || "A convenir";
+    const fechaFin = contrato.fecha_fin || "Indefinida";
+    const frecuencia = contrato.frecuencia || "Según acuerdo de partes";
+    const precio = contrato.precio != null ? `${contrato.precio} €` : "A convenir";
+    const serviciosDetalle = contrato.servicios_incluidos || contrato.observaciones || "Servicios profesionales detallados según la propuesta técnica acordada.";
+    
+    const firmaCliente = contrato.firma_url || null;
+    const selloEmpresa = contrato.sello_url || "https://via.placeholder.com/150x150.png?text=SELLO+OFICIAL";
+
+    // 3. Plantilla HTML Legal Profesional Completa con Sello Corregido (Fallo 3)
+    const htmlContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: A4; margin: 12mm 15mm 15mm 15mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #0f172a; background: #ffffff; line-height: 1.4; font-size: 9.5pt; }
+    
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f2b48; padding-bottom: 12px; margin-bottom: 16px; }
+    .brand h1 { color: #0f2b48; font-size: 16pt; font-weight: 800; letter-spacing: -0.3px; text-transform: uppercase; }
+    .brand p { color: #64748b; font-size: 8pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .doc-meta { text-align: right; }
+    .badge { background: #0f2b48; color: #ffffff; font-weight: 700; font-size: 8pt; padding: 4px 10px; border-radius: 4px; display: inline-block; text-transform: uppercase; }
+    .date { color: #64748b; font-size: 8pt; margin-top: 4px; }
+
+    .section-title { font-size: 9.5pt; font-weight: 700; color: #0f2b48; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 8px; text-transform: uppercase; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; }
+    .card p { margin-bottom: 3px; font-size: 9pt; color: #334155; }
+    .card strong { color: #0f2b48; }
+
+    .legal-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 16px; }
+    .clause { margin-bottom: 10px; text-align: justify; }
+    .clause h3 { font-size: 9pt; color: #0f2b48; margin-bottom: 2px; text-transform: uppercase; font-weight: 700; }
+    .clause p { font-size: 8pt; color: #475569; line-height: 1.35; }
+
+    .signatures-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; page-break-inside: avoid; }
+    .sig-box { 
+      border: 1px dashed #cbd5e1; 
+      border-radius: 6px; 
+      padding: 8px; 
+      text-align: center; 
+      height: 130px; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: space-between; 
+      align-items: center; 
+      position: relative; 
+      overflow: visible; 
+    }
+    .sig-box p { font-size: 8pt; color: #0f2b48; font-weight: bold; width: 100%; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; }
+    .sig-img { max-height: 70px; max-width: 90%; object-fit: contain; margin: auto; }
+    .stamp-img { 
+      position: absolute; 
+      bottom: 6%; 
+      right: 6%; 
+      opacity: 0.95; 
+      width: clamp(56px, 18%, 120px); 
+      height: auto; 
+      max-height: 72%; 
+      object-fit: contain; 
+      pointer-events: none;
+      display: block;
+    }
+    .pending-text { font-size: 8pt; color: #94a3b8; font-style: italic; margin: auto; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <h1>CONTRATO DE PRESTACIÓN DE SERVICIOS</h1>
+      <p>Documento de Vinculación Legal — N° Ref: #${contrato.id}</p>
+    </div>
+    <div class="doc-meta">
+      <span class="badge">${(contrato.estado || "PENDIENTE").toUpperCase()}</span>
+      <div class="date">Emisión: ${new Date().toLocaleDateString("es-ES")}</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="section-title">Datos del Cliente</div>
+      <p><strong>Nombre / Razón Social:</strong> ${clienteNombre}</p>
+      <p><strong>Identificación (DNI/CIF):</strong> ${clienteDni}</p>
+      <p><strong>Teléfono de Contacto:</strong> ${clienteTelefono}</p>
+      <p><strong>Correo Electrónico:</strong> ${clienteEmail}</p>
+      <p><strong>Dirección Fiscal/Postal:</strong> ${clienteDireccion}</p>
+    </div>
+    <div class="card">
+      <div class="section-title">Condiciones Comerciales</div>
+      <p><strong>Fecha de Inicio:</strong> ${fechaInicio}</p>
+      <p><strong>Fecha de Finalización:</strong> ${fechaFin}</p>
+      <p><strong>Frecuencia del Servicio:</strong> ${frecuencia}</p>
+      <p><strong>Importe Acordado:</strong> ${precio}</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 16px;">
+    <div class="section-title">Objeto del Contrato y Descripción del Servicio</div>
+    <p style="font-size: 8.5pt; color: #334155;">${serviciosDetalle}</p>
+  </div>
+
+  <div class="legal-box">
+    <div class="clause">
+      <h3>Primera. Objeto y Alcance</h3>
+      <p>El Prestador se obliga a prestar los servicios detallados en el presente documento de acuerdo con los estándares de calidad del sector. El Cliente se compromete a facilitar el acceso preciso y oportuno a la información o instalaciones necesarias para el correcto desarrollo del servicio.</p>
+    </div>
+    <div class="clause">
+      <h3>Segunda. Condiciones Económicas y Facturación</h3>
+      <p>El importe fijado tributará según los impuestos aplicables. El pago se efectuará conforme al calendario acordado. El incumplimiento en los plazos de pago devengará un interés de demora del tipo legal vigente más dos puntos porcentuales.</p>
+    </div>
+    <div class="clause">
+      <h3>Tercera. Duración y Rescisión</h3>
+      <p>Este contrato entrará en vigor en la fecha señalada y se mantendrá hasta la conclusión de las prestaciones o fecha limite estipulada. Cualquiera de las partes podrá resolver el contrato con un preaviso por escrito de 15 días en caso de incumplimiento de las obligaciones contractuales.</p>
+    </div>
+    <div class="clause">
+      <h3>Cuarta. Protección de Datos y Confidencialidad (RGPD)</h3>
+      <p>Las partes tratan los datos personales conforme al Reglamento (UE) 2016/679. La información intercambiada tendrá carácter confidencial y solo podrá ser empleada para los fines estipulados en esta relación contractual.</p>
+    </div>
+  </div>
+
+  <div class="signatures-container">
+    <div class="sig-box">
+      <p>POR EL PRESTADOR DE SERVICIOS</p>
+      <img src="${selloEmpresa}" class="stamp-img" alt="Sello Empresa" />
+      <div style="font-size: 7.5pt; color: #0f2b48; margin-top: auto; font-weight: bold;">FIRMADO Y SELLADO DIGITALMENTE</div>
+    </div>
+    <div class="sig-box">
+      <p>POR EL CLIENTE / CONTRATANTE</p>
+      ${firmaCliente 
+        ? `<img src="${firmaCliente}" class="sig-img" alt="Firma Cliente" />` 
+        : '<div class="pending-text">Pendiente de firma del cliente</div>'
+      }
+    </div>
+  </div>
+</body>
+</html>`;
+
+    return new Response(htmlContent, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/html; charset=utf-8",
+      },
+    });
+
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({ error: err.message || "Error al procesar el contrato." }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+});
