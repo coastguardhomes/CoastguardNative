@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabase";
 
 /**
  * Guarda la URL del PDF en una inspección
- * Versión estable WEB + APP (2026)
+ * Versión estable WEB + APP (2026) - Corregida para permitir actualizaciones
  */
 export async function guardarURL(inspeccionId, url) {
   if (!inspeccionId || !url) {
@@ -13,11 +13,10 @@ export async function guardarURL(inspeccionId, url) {
     };
   }
 
-  // Validación robusta de URL PDF (Supabase genera URLs con parámetros)
+  // Validación robusta de URL PDF (soporta dominios de Supabase y extensiones .pdf)
   const esPDF =
-    url.includes(".pdf") || // soporta ?t=12345
-    url.startsWith("https://") || // URLs públicas
-    url.startsWith("http://");
+    typeof url === "string" &&
+    (url.includes(".pdf") || url.includes("supabase.co") || url.startsWith("http"));
 
   if (!esPDF) {
     return {
@@ -30,7 +29,7 @@ export async function guardarURL(inspeccionId, url) {
   // Verificar que la inspección existe
   const { data: existe, error: existeError } = await supabase
     .from("inspecciones")
-    .select("id, pdf_url")
+    .select("id")
     .eq("id", inspeccionId)
     .single();
 
@@ -42,17 +41,7 @@ export async function guardarURL(inspeccionId, url) {
     };
   }
 
-  // Si ya tiene PDF, evitar reemplazarlo (pero permitir override si el técnico lo necesita)
-  if (existe.pdf_url) {
-    return {
-      ok: true,
-      mensaje: "La inspección ya tenía PDF, no se reemplazó",
-      url: existe.pdf_url,
-      id: inspeccionId,
-    };
-  }
-
-  // Guardar URL + fecha de firmado
+  // Guardar URL + fecha de firmado (permitiendo actualizar si se regenera el PDF)
   const { error } = await supabase
     .from("inspecciones")
     .update({
