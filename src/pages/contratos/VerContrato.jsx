@@ -9,7 +9,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 export default function VerContrato() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [contrato, setContrato] = useState(null);
   const [numPages, setNumPages] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [resolvedPdfUrl, setResolvedPdfUrl] = useState(null);
@@ -21,151 +20,59 @@ export default function VerContrato() {
   const cargarYResolverContrato = async () => {
     try {
       setCargando(true);
+      // Solo traemos el PDF, ignoramos la firma aquí. La firma se pintó en el PDF al generarlo.
       const { data, error } = await supabase
         .from("contratos")
-        .select("*")
+        .select("pdf_url")
         .eq("id", id)
         .single();
 
-      if (error || !data) {
-        alert("Error al cargar el contrato: " + (error?.message || "No encontrado"));
-        setCargando(false);
-        return;
-      }
-
-      setContrato(data);
-
-      const rawPath = data.firma_url || data.pdf_url;
-
-      if (!rawPath) {
+      if (error || !data || !data.pdf_url) {
         setResolvedPdfUrl(null);
         setCargando(false);
         return;
       }
 
-      if (rawPath.includes("<!DOCTYPE") || rawPath.includes("<html") || rawPath.includes("{")) {
-        setResolvedPdfUrl(null);
-        setCargando(false);
-        return;
-      }
-
+      const rawPath = data.pdf_url;
       let finalUrl = null;
 
-      if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) {
-        finalUrl = rawPath;
-      } else {
-        const cleanPath = rawPath.replace(/^contratos\//, "");
+      // Generar URL firmada para acceder al bucket privado
+      const cleanPath = rawPath.replace(/^contratos\//, "");
+      const { data: signedData } = await supabase.storage
+        .from("contratos")
+        .createSignedUrl(cleanPath, 3600);
 
-        const { data: signedData, error: signedErr } = await supabase.storage
-          .from("contratos")
-          .createSignedUrl(cleanPath, 3600);
+      finalUrl = signedData?.signedUrl || null;
 
-        if (signedData?.signedUrl && !signedErr) {
-          finalUrl = signedData.signedUrl;
-        } else {
-          const { data: publicData } = supabase.storage
-            .from("contratos")
-            .getPublicUrl(cleanPath);
-          finalUrl = publicData?.publicUrl || null;
-        }
-      }
-
-      // Solución Fallo 4: Evitar caché en navegadores móviles con timestamp
+      // Aplicar bypass de caché SOLO al PDF
       if (finalUrl) {
-        const separator = finalUrl.includes("?") ? "&" : "?";
-        finalUrl = `${finalUrl}${separator}t=${Date.now()}`;
+        finalUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
       }
 
       setResolvedPdfUrl(finalUrl);
     } catch (err) {
-      console.error("Error al procesar la URL del contrato:", err);
+      console.error("Error:", err);
     } finally {
       setCargando(false);
     }
   };
 
-  const onDocumentLoadSuccess = ({ numPages }) => {
-    setNumPages(numPages);
-  };
-
   return (
     <Menu>
-      <div style={{ minHeight: "100vh", background: "#0a0f1a", padding: "15px", color: "#fff", paddingBottom: "80px" }}>
-        <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-          <button
-            onClick={() => navigate(-1)}
-            style={{ padding: "10px 16px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", cursor: "pointer", marginBottom: "15px" }}
-          >
-            ⬅️ Volver
-          </button>
-
-          <h2 style={{ textAlign: "center", color: "#4db8ff", marginBottom: "15px" }}>
-            📄 Contrato #{id}
-          </h2>
-
-          {cargando ? (
-            <p style={{ textAlign: "center" }}>Cargando datos...</p>
-          ) : !resolvedPdfUrl ? (
-            <div style={{ textAlign: "center", padding: "20px", background: "#1a2332", borderRadius: "12px" }}>
-              <p style={{ color: "#ff4d4d", marginBottom: "10px" }}>No hay ningún archivo PDF válido asociado a este contrato.</p>
-              <p style={{ color: "#94a3b8", fontSize: "12px" }}>El campo en la base de datos está vacío o la ruta de Storage no existe.</p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", background: "#1a2332", padding: "10px", borderRadius: "12px", overflowX: "auto" }}>
-              <a
-                href={resolvedPdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  padding: "8px 14px",
-                  background: "#4db8ff",
-                  color: "#000",
-                  borderRadius: "8px",
-                  fontWeight: "700",
-                  textDecoration: "none",
-                  marginBottom: "15px",
-                  fontSize: "14px"
-                }}
-              >
-                ↗️ Abrir PDF en nueva pestaña
-              </a>
-
-              <Document
-                file={resolvedPdfUrl}
-                onLoadSuccess={onDocumentLoadSuccess}
-                loading={<p style={{ color: "#fff" }}>Cargando PDF en la app...</p>}
-                error={<p style={{ color: "#ff4d4d" }}>Error al renderizar el archivo PDF.</p>}
-              >
-                {Array.from(new Array(numPages || 0), (el, index) => (
-                  <div key={`page_wrapper_${index + 1}`} style={{ position: "relative", width: "100%", marginBottom: "10px", display: "flex", justifyContent: "center" }}>
-                    <Page
-                      pageNumber={index + 1}
-                      renderTextLayer={false}
-                      renderAnnotationLayer={false}
-                      width={Math.min(window.innerWidth - 50, 550)}
-                    />
-                    {contrato?.sello_url && (
-                      <img
-                        src={contrato.sello_url}
-                        alt="Sello"
-                        style={{
-                          position: "absolute",
-                          right: "5%",
-                          bottom: "5%",
-                          width: "clamp(56px, 18%, 120px)",
-                          height: "auto",
-                          pointerEvents: "none",
-                          opacity: 0.95,
-                          zIndex: 10
-                        }}
-                      />
-                    )}
-                  </div>
-                ))}
-              </Document>
-            </div>
-          )}
-        </div>
+      <div style={{ minHeight: "100vh", background: "#0a0f1a", padding: "15px", color: "#fff" }}>
+        <button onClick={() => navigate(-1)} style={{ padding: "10px", background: "#333", color: "#fff", border: "none", borderRadius: "5px", marginBottom: "10px" }}>⬅️ Volver</button>
+        
+        {cargando ? <p>Cargando PDF...</p> : !resolvedPdfUrl ? <p>No hay PDF disponible.</p> : (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <Document file={resolvedPdfUrl} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+              {Array.from(new Array(numPages || 0), (el, index) => (
+                <div key={index} style={{ marginBottom: "10px" }}>
+                  <Page pageNumber={index + 1} renderTextLayer={false} renderAnnotationLayer={false} width={Math.min(window.innerWidth - 40, 600)} />
+                </div>
+              ))}
+            </Document>
+          </div>
+        )}
       </div>
     </Menu>
   );
