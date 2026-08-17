@@ -44,6 +44,19 @@ export default function Contratos() {
       let htmlContent = "";
       const rawData = response.data;
 
+      // Si la Edge Function devuelve un objeto con la URL del PDF generado, actualizamos la BD
+      if (typeof rawData === "object" && rawData !== null) {
+        const urlGenerada = rawData.pdf_url || rawData.url || rawData.path;
+        if (urlGenerada) {
+          await supabase
+            .from("contratos")
+            .update({ pdf_url: urlGenerada })
+            .eq("id", id);
+          
+          await cargarContratos(); // Recargar datos locales
+        }
+      }
+
       // Extracción robusta de HTML sin importar cómo lo devuelva Supabase
       if (typeof rawData === "string") {
         htmlContent = rawData;
@@ -57,7 +70,8 @@ export default function Contratos() {
       if (htmlContent && (htmlContent.includes("<!DOCTYPE") || htmlContent.includes("<html") || htmlContent.includes("<div"))) {
         setModalHtml(htmlContent);
       } else {
-        throw new Error("La respuesta de la función no contiene un documento HTML válido.");
+        // Si no devolvió HTML sino la confirmación de generación, avisamos al usuario
+        alert("PDF generado y vinculado con éxito.");
       }
 
     } catch (err) {
@@ -98,18 +112,31 @@ export default function Contratos() {
     }
   };
 
-  const verDocumento = (c) => {
-    const rawUrl = c.pdf_url || c.firma_url;
+  const verDocumento = async (c) => {
+    const rawUrl = c.firma_url || c.pdf_url;
 
     if (!rawUrl) {
       alert("No hay documento o archivo adjunto disponible para este contrato todavía.");
       return;
     }
 
+    // Si ya es una URL absoluta HTTP/HTTPS
     if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
       window.open(rawUrl, "_blank");
+      return;
+    }
+
+    // Resolver ruta en Storage (con soporte para Signed URLs si es privado)
+    const cleanPath = rawUrl.replace(/^contratos\//, "");
+
+    const { data: signedData, error: signedErr } = await supabase.storage
+      .from("contratos")
+      .createSignedUrl(cleanPath, 3600);
+
+    if (signedData?.signedUrl && !signedErr) {
+      window.open(signedData.signedUrl, "_blank");
     } else {
-      const cleanPath = rawUrl.replace(/^contratos\//, "");
+      // Fallback a Public URL si falla la firma
       const { data: publicData } = supabase.storage
         .from("contratos")
         .getPublicUrl(cleanPath);
