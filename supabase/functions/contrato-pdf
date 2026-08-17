@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Manejo de peticiones preflight CORS
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -56,7 +55,7 @@ serve(async (req) => {
     const firmaCliente = contrato.firma_url || null;
     const selloEmpresa = contrato.sello_url || "https://via.placeholder.com/150x150.png?text=SELLO+OFICIAL";
 
-    // 3. Plantilla HTML Legal Profesional
+    // 3. Plantilla HTML Legal Profesional Completa
     const htmlContent = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -163,14 +162,15 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    // 4. Retorno de respuesta JSON limpia
-    return new Response(
-      JSON.stringify({ ok: true, html: htmlContent }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    // 4. Retornar directamente el HTML como texto plano para evitar que React interprete mal un JSON y salte el alert
+    return new Response(htmlContent, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/html; charset=utf-8",
+      },
+    });
+
   } catch (err: any) {
     return new Response(
       JSON.stringify({ error: err.message || "Error al procesar el contrato." }),
