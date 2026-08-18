@@ -56,7 +56,7 @@ serve(async (req) => {
     const firmaCliente = contrato.firma_url || null;
     const selloEmpresa = contrato.sello_url || "https://via.placeholder.com/150x150.png?text=SELLO+OFICIAL";
 
-    // 3. Plantilla HTML profesional completa con clausulado legal ampliado y sello autorrellenado
+    // 3. Plantilla HTML profesional completa con clausulado legal y sello autorrellenado
     const htmlContent = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -64,7 +64,7 @@ serve(async (req) => {
   <style>
     @page { size: A4; margin: 12mm 15mm 15mm 15mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #0f172a; background: #ffffff; line-height: 1.5; font-size: 9.5pt; }
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #0f172a; background: #ffffff; line-height: 1.5; font-size: 9.5pt; padding: 20px; max-width: 800px; margin: auto; }
     .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f2b48; padding-bottom: 12px; margin-bottom: 16px; }
     .brand h1 { color: #0f2b48; font-size: 15pt; font-weight: 800; letter-spacing: -0.3px; text-transform: uppercase; }
     .brand p { color: #64748b; font-size: 8pt; margin-top: 2px; }
@@ -144,45 +144,14 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    // 4. Subir al bucket 'contratos' de Supabase Storage
-    const bucket = "contratos";
-    const filePath = `contratos/contrato_${contratoId}_${Date.now()}.html`;
-    const blob = new Blob([htmlContent], { type: "text/html" });
+    // 4. Crear Data URI segura para renderizar HTML directamente sin problemas de Storage
+    const dataUri = `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, blob, {
-        contentType: "text/html",
-        upsert: true,
-      });
-
-    if (uploadError) {
-      return new Response(
-        JSON.stringify({ error: "Error subiendo el archivo al storage", detail: uploadError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // 5. Obtener URL pública definitiva
-    const { data: urlData, error: urlError } = await supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
-
-    if (urlError || !urlData?.publicUrl) {
-      return new Response(
-        JSON.stringify({ error: "Error obteniendo URL pública del archivo", detail: urlError?.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const publicUrl = urlData.publicUrl;
-
-    // 6. Actualizar la base de datos con la URL real del contrato generado
+    // 5. Actualizar la base de datos con la Data URI
     const { error: updateError } = await supabase
       .from("contratos")
       .update({
-        pdf_url: publicUrl,
-        pdf_path: filePath,
+        pdf_url: dataUri,
         actualizado_en: new Date().toISOString(),
       })
       .eq("id", contratoId);
@@ -191,12 +160,11 @@ serve(async (req) => {
       console.error("Error actualizando contrato.pdf_url en base de datos:", updateError);
     }
 
-    // 7. Respuesta JSON exitosa con la URL correcta para el frontend
+    // 6. Respuesta JSON exitosa
     return new Response(
       JSON.stringify({
         ok: true,
-        url: publicUrl,
-        path: filePath,
+        url: dataUri,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -208,3 +176,4 @@ serve(async (req) => {
     );
   }
 });
+        
