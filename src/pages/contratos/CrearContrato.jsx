@@ -15,12 +15,13 @@ export default function CrearContrato() {
     vivienda_id: "",
     tecnico_id: "",
     fecha_inicio: "",
+    fecha_fin: "",
     precio: "",
     notas: "",
     frecuencia: "",
     modalidad: "",
     duracion_meses: "12",
-    dni: "", // Campo para introducir o editar el DNI/NIE directamente
+    dni: "",
   });
 
   const [mensaje, setMensaje] = useState("");
@@ -57,7 +58,6 @@ export default function CrearContrato() {
     ? viviendas.filter((v) => String(v.cliente_id) === String(form.cliente_id))
     : viviendas;
 
-  // Autocompletar el DNI al seleccionar un cliente existente
   function handleClienteChange(e) {
     const clienteId = e.target.value;
     const clienteEncontrado = clientes.find((c) => String(c.id) === String(clienteId));
@@ -65,7 +65,7 @@ export default function CrearContrato() {
     setForm({
       ...form,
       cliente_id: clienteId,
-      vivienda_id: "", // Limpiar vivienda al cambiar de cliente
+      vivienda_id: "",
       dni: clienteEncontrado ? (clienteEncontrado.dni || clienteEncontrado.cif || "") : "",
     });
   }
@@ -78,6 +78,41 @@ export default function CrearContrato() {
       modalidad: modalidadId,
       precio: mod ? mod.precio : "",
       frecuencia: mod ? mod.frecuencia : "",
+    });
+  }
+
+  // Auto-calcular fecha_fin opcionalmente si cambia fecha_inicio o duracion_meses y no se ha puesto manual
+  function handleFechaInicioChange(e) {
+    const nuevaFechaInicio = e.target.value;
+    let nuevaFechaFin = form.fecha_fin;
+
+    if (nuevaFechaInicio && form.duracion_meses) {
+      const fecha = new Date(nuevaFechaInicio);
+      fecha.setMonth(fecha.getMonth() + Number(form.duracion_meses));
+      nuevaFechaFin = fecha.toISOString().split("T")[0];
+    }
+
+    setForm({
+      ...form,
+      fecha_inicio: nuevaFechaInicio,
+      fecha_fin: nuevaFechaFin,
+    });
+  }
+
+  function handleDuracionChange(e) {
+    const nuevaDuracion = e.target.value;
+    let nuevaFechaFin = form.fecha_fin;
+
+    if (form.fecha_inicio && nuevaDuracion) {
+      const fecha = new Date(form.fecha_inicio);
+      fecha.setMonth(fecha.getMonth() + Number(nuevaDuracion));
+      nuevaFechaFin = fecha.toISOString().split("T")[0];
+    }
+
+    setForm({
+      ...form,
+      duracion_meses: nuevaDuracion,
+      fecha_fin: nuevaFechaFin,
     });
   }
 
@@ -107,7 +142,16 @@ export default function CrearContrato() {
         .eq("id", form.cliente_id);
     }
 
-    // 1️⃣ Crear contrato inicial
+    // 1️⃣ Calcular fecha_fin definitiva si está vacía
+    let fechaFinFinal = form.fecha_fin;
+    if (!fechaFinFinal && form.fecha_inicio) {
+      const fechaInicioObj = new Date(form.fecha_inicio);
+      const meses = Number(form.duracion_meses) || 12;
+      fechaInicioObj.setMonth(fechaInicioObj.getMonth() + meses);
+      fechaFinFinal = fechaInicioObj.toISOString().split("T")[0];
+    }
+
+    // 2️⃣ Crear contrato inicial
     const { data, error } = await supabase
       .from("contratos")
       .insert([
@@ -116,6 +160,7 @@ export default function CrearContrato() {
           vivienda_id: form.vivienda_id,
           tecnico_id: String(form.tecnico_id),
           fecha_inicio: form.fecha_inicio,
+          fecha_fin: fechaFinFinal,
           precio: form.precio,
           notas: form.notas,
           frecuencia: form.frecuencia,
@@ -124,7 +169,6 @@ export default function CrearContrato() {
           duracion_meses: form.duracion_meses,
           firma_url: null,
           pdf_url: null,
-          fecha_fin: null,
         },
       ])
       .select();
@@ -136,15 +180,6 @@ export default function CrearContrato() {
     }
 
     const contratoId = data[0].id;
-
-    // 2️⃣ Calcular fecha_fin
-    const fechaInicio = new Date(form.fecha_inicio);
-    const frecuenciaDias = Number(form.frecuencia) || 30;
-    const fechaFin = new Date(
-      fechaInicio.getTime() + frecuenciaDias * 24 * 60 * 60 * 1000
-    )
-      .toISOString()
-      .split("T")[0];
 
     // 3️⃣ Generar PDF
     let pdfUrl = null;
@@ -163,14 +198,15 @@ export default function CrearContrato() {
       console.error("Error generando PDF:", e);
     }
 
-    // 4️⃣ Guardar fecha_fin y pdf_url
-    await supabase
-      .from("contratos")
-      .update({
-        fecha_fin: fechaFin,
-        pdf_url: pdfUrl,
-      })
-      .eq("id", contratoId);
+    // 4️⃣ Guardar pdf_url actualizado
+    if (pdfUrl) {
+      await supabase
+        .from("contratos")
+        .update({
+          pdf_url: pdfUrl,
+        })
+        .eq("id", contratoId);
+    }
 
     // 5️⃣ Crear inspecciones automáticas
     try {
@@ -329,7 +365,7 @@ export default function CrearContrato() {
           <input
             type="number"
             value={form.duracion_meses}
-            onChange={(e) => setForm({ ...form, duracion_meses: e.target.value })}
+            onChange={handleDuracionChange}
             style={inputStyle}
           />
 
@@ -338,7 +374,16 @@ export default function CrearContrato() {
           <input
             type="date"
             value={form.fecha_inicio}
-            onChange={(e) => setForm({ ...form, fecha_inicio: e.target.value })}
+            onChange={handleFechaInicioChange}
+            style={inputStyle}
+          />
+
+          {/* Fecha finalización */}
+          <label>Fecha de finalización:</label>
+          <input
+            type="date"
+            value={form.fecha_fin}
+            onChange={(e) => setForm({ ...form, fecha_fin: e.target.value })}
             style={inputStyle}
           />
 
