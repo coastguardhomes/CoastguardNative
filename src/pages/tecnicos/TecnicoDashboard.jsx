@@ -163,12 +163,6 @@ export default function DashboardTecnico() {
           ) : inspeccionesDiarias.length === 0 ? (
             <div style={styles.emptyBox}>
               <p style={styles.emptyText}>No hay inspecciones pendientes asignadas.</p>
-              <button 
-                style={styles.btnDirectChecklist}
-                onClick={() => navigate('/tecnico/inspeccion/general/checklist')}
-              >
-                Abrir Checklist Genérico
-              </button>
             </div>
           ) : (
             <div style={styles.listScrollContainer}>
@@ -274,7 +268,6 @@ const styles = {
   listScrollContainer: { maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' },
   emptyBox: { textAlign: 'center', padding: '10px 0' },
   emptyText: { fontSize: '11px', color: '#888', marginBottom: '6px' },
-  btnDirectChecklist: { backgroundColor: '#27ae60', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' },
   assignmentItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111b2e', padding: '10px 12px', borderRadius: '6px', border: '1px solid #2a3b55' },
   btnActionItem: { backgroundColor: '#27ae60', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' },
 };
