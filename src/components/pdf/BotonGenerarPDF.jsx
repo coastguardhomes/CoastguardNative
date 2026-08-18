@@ -1,18 +1,9 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
 import { generarPDFCliente } from "../../pdf/generarPDFCliente";
 import { subirPDF } from "../../pdf/subirPDF";
 
-/**
- * Botón reutilizable para generar y guardar el informe PDF de una inspección.
- *
- * Antes recibía un `elemento` del DOM y hacía una captura con html2canvas,
- * descartando después el Blob: el PDF nunca se subía y aun así avisaba de
- * "PDF generado correctamente". Ahora construye el informe con los datos de
- * la inspección y lo guarda con subirPDF, que además actualiza
- * inspecciones.pdf_url.
- */
 export default function BotonGenerarPDF({ id, onGenerado }) {
   const [loading, setLoading] = useState(false);
 
@@ -46,14 +37,18 @@ export default function BotonGenerarPDF({ id, onGenerado }) {
         throw new Error(`${resultado.mensaje}: ${resultado.error}`);
       }
 
-      if (onGenerado) onGenerado(resultado.url);
+      // 🔥 Notificar al componente padre la nueva URL para actualizar el estado al instante
+      if (onGenerado) {
+        onGenerado(resultado.url);
+      }
+
       alert("Informe PDF generado y guardado correctamente.");
     } catch (e) {
       console.error("Error generando PDF:", e);
       alert(`No se pudo generar el informe: ${e.message}`);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
