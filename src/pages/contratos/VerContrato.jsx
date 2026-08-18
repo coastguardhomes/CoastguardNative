@@ -4,7 +4,6 @@ import { Document, Page, pdfjs } from "react-pdf";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 
-// Configuración del worker de PDF.js
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
 export default function VerContrato() {
@@ -16,58 +15,40 @@ export default function VerContrato() {
   const [errorMsg, setErrorMsg] = useState(null);
 
   useEffect(() => {
-    cargarYResolverContrato();
+    cargarContrato();
   }, [id]);
 
-  const cargarYResolverContrato = async () => {
+  const cargarContrato = async () => {
     try {
       setCargando(true);
       setErrorMsg(null);
 
-      // CORRECCIÓN: Consultar la tabla "inspecciones" donde realmente se guarda el PDF
       const { data, error } = await supabase
-        .from("inspecciones")
+        .from("contratos")
         .select("pdf_url")
         .eq("id", id)
         .single();
 
-      if (error || !data || !data.pdf_url) {
+      if (error || !data?.pdf_url) {
+        setErrorMsg("No se encontró el archivo del contrato.");
         setResolvedPdfUrl(null);
-        setCargando(false);
-        return;
-      }
-
-      const rawPath = data.pdf_url;
-      let finalUrl = null;
-
-      if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) {
-        finalUrl = rawPath;
       } else {
-        const cleanPath = rawPath.replace(/^pdfs\//, "");
-        const { data: signedData, error: signedError } = await supabase.storage
-          .from("pdfs")
-          .createSignedUrl(cleanPath, 3600);
-
-        if (signedError) {
-          throw new Error("No se pudo generar la URL firmada del documento.");
-        }
-
-        finalUrl = signedData?.signedUrl || null;
+        setResolvedPdfUrl(data.pdf_url);
       }
-
-      // Evitar caché agresiva en Web/App
-      if (finalUrl) {
-        finalUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
-      }
-
-      setResolvedPdfUrl(finalUrl);
     } catch (err) {
-      console.error("Error al cargar PDF:", err);
-      setErrorMsg("No se pudo cargar el documento correctamente.");
+      console.error("Error cargando contrato:", err);
+      setErrorMsg("Error cargando el contrato.");
+      setResolvedPdfUrl(null);
     } finally {
       setCargando(false);
     }
   };
+
+  const isHtmlDocument = resolvedPdfUrl && (
+    resolvedPdfUrl.endsWith(".html") || 
+    resolvedPdfUrl.includes(".html?") || 
+    resolvedPdfUrl.includes("text/html")
+  );
 
   return (
     <Menu>
@@ -88,27 +69,54 @@ export default function VerContrato() {
         </button>
 
         <h2 style={{ textAlign: "center", color: "#4db8ff", marginBottom: "15px" }}>
-          📄 Informe Inspección #{id}
+          📄 Contrato #{id}
         </h2>
 
         {cargando ? (
-          <p style={{ textAlign: "center", color: "#94a3b8" }}>Cargando visor de PDF...</p>
+          <p style={{ textAlign: "center", color: "#94a3b8" }}>Cargando contrato...</p>
         ) : errorMsg ? (
           <div style={{ textAlign: "center", padding: "20px", background: "#1a2332", borderRadius: "12px" }}>
             <p style={{ color: "#ff4d4d", marginBottom: "10px" }}>{errorMsg}</p>
           </div>
         ) : !resolvedPdfUrl ? (
           <div style={{ textAlign: "center", padding: "20px", background: "#1a2332", borderRadius: "12px" }}>
-            <p style={{ color: "#ff4d4d", marginBottom: "10px" }}>No hay ningún archivo PDF generado para esta inspección.</p>
-            <p style={{ color: "#94a3b8", fontSize: "12px" }}>Vuelve al panel y pulsa en "Generar informe PDF".</p>
+            <p style={{ color: "#ff4d4d", marginBottom: "10px" }}>No hay ningún archivo generado para este contrato.</p>
+            <p style={{ color: "#94a3b8", fontSize: "12px" }}>Vuelve al panel y pulsa en "Generar PDF / Ver Contrato".</p>
+          </div>
+        ) : isHtmlDocument ? (
+          <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <iframe
+              src={resolvedPdfUrl}
+              title={`Contrato ${id}`}
+              style={{
+                width: "100%",
+                maxWidth: "800px",
+                height: "80vh",
+                border: "none",
+                borderRadius: 12,
+                background: "#ffffff",
+                boxShadow: "0 6px 20px rgba(0,0,0,0.35)"
+              }}
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            />
+            <div style={{ marginTop: 16 }}>
+              <a 
+                href={resolvedPdfUrl} 
+                target="_blank" 
+                rel="noreferrer" 
+                style={{ color: "#4db8ff", textDecoration: "underline" }}
+              >
+                Abrir en nueva pestaña
+              </a>
+            </div>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <Document
               file={resolvedPdfUrl}
               onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-              loading={<p style={{ color: "#94a3b8" }}>Cargando páginas del PDF...</p>}
-              error={<p style={{ color: "#ff4d4d" }}>Error al renderizar el PDF en el visor.</p>}
+              loading={<p style={{ color: "#94a3b8" }}>Cargando documento...</p>}
+              error={<p style={{ color: "#ff4d4d" }}>Error al renderizar el documento en el visor.</p>}
             >
               {Array.from(new Array(numPages || 0), (el, index) => (
                 <div key={index} style={{ marginBottom: "15px", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
@@ -116,11 +124,22 @@ export default function VerContrato() {
                     pageNumber={index + 1}
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
-                    width={Math.min(window.innerWidth - 40, 550)}
+                    width={Math.min(window.innerWidth - 40, 700)}
                   />
                 </div>
               ))}
             </Document>
+
+            <div style={{ marginTop: 16 }}>
+              <a
+                href={resolvedPdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: "#4db8ff", textDecoration: "underline" }}
+              >
+                Abrir en nueva pestaña
+              </a>
+            </div>
           </div>
         )}
       </div>
