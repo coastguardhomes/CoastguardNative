@@ -6,17 +6,8 @@ import { supabase } from "../../lib/supabase";
 /**
  * Facturación de extras.
  *
- * Crea una factura a partir de los servicios sueltos seleccionados y guarda
- * el desglose en facturas_lineas.
- *
- * Detalles que antes hacían fallar la pantalla:
- *   · Se insertaba una columna `extras` que no existe en la tabla.
- *   · No se enviaban `cliente_id` ni `numero`, que son NOT NULL sin valor por
- *     defecto, así que el insert se rechazaba siempre.
- *   · Sin `cliente_id` la factura tampoco sería visible para el cliente: su
- *     política RLS filtra por cliente_id = mi_cliente_id().
- *   · Llamaba a "https://YOUR-SUPABASE-FUNCTION-URL/..." (URL de ejemplo) para
- *     el PDF y el email, lo que lanzaba una excepción al terminar.
+ * Crea una factura a partir de los servicios sueltos seleccionados, guarda
+ * el desglose en facturas_lineas y automatiza la creación de inspecciones.
  */
 
 const EXTRAS = [
@@ -49,6 +40,13 @@ export default function Extras() {
 
   const [clientes, setClientes] = useState([]);
   const [clienteId, setClienteId] = useState("");
+  
+  // Estados para automatización de inspecciones
+  const [viviendas, setViviendas] = useState([]);
+  const [tecnicos, setTecnicos] = useState([]);
+  const [viviendaId, setViviendaId] = useState("");
+  const [tecnicoId, setTecnicoId] = useState("");
+
   const [seleccionados, setSeleccionados] = useState([]);
   const [precios, setPrecios] = useState({});
   const [enviarEmail, setEnviarEmail] = useState(true);
@@ -57,32 +55,62 @@ export default function Extras() {
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(true);
 
+  // Cargar Clientes y Técnicos al montar
   useEffect(() => {
     let cancelado = false;
 
-    async function cargarClientes() {
-      const { data, error: errorClientes } = await supabase
-        .from("clientes")
-        .select("id, nombre, direccion, email")
-        .order("nombre");
+    async function cargarDatosIniciales() {
+      const [resClientes, resTecnicos] = await Promise.all([
+        supabase.from("clientes").select("id, nombre, direccion, email").order("nombre"),
+        supabase.from("tecnicos").select("id, nombre").eq("activo", true).order("nombre")
+      ]);
 
       if (cancelado) return;
 
-      if (errorClientes) {
-        console.error("Error cargando clientes:", errorClientes);
+      if (resClientes.error) {
+        console.error("Error cargando clientes:", resClientes.error);
         setError("No se pudieron cargar los clientes.");
       } else {
-        setClientes(data || []);
+        setClientes(resClientes.data || []);
+      }
+
+      if (!resTecnicos.error) {
+        setTecnicos(resTecnicos.data || []);
       }
 
       setCargando(false);
     }
 
-    cargarClientes();
+    cargarDatosIniciales();
     return () => {
       cancelado = true;
     };
   }, []);
+
+  // Cargar Viviendas cuando cambia el cliente seleccionado
+  useEffect(() => {
+    if (!clienteId) {
+      setViviendas([]);
+      setViviendaId("");
+      return;
+    }
+
+    async function cargarViviendasCliente() {
+      const { data, error: errViviendas } = await supabase
+        .from("viviendas")
+        .select("id, direccion")
+        .eq("cliente_id", clienteId)
+        .eq("activa", true);
+
+      if (errViviendas) {
+        console.error("Error cargando viviendas:", errViviendas);
+      } else {
+        setViviendas(data || []);
+      }
+    }
+
+    cargarViviendasCliente();
+  }, [clienteId]);
 
   const toggleExtra = (nombre) => {
     setSeleccionados((prev) =>
@@ -103,8 +131,7 @@ export default function Extras() {
 
   /**
    * Genera el siguiente número de factura con el formato ya usado en la base
-   * de datos ("CG-000008"). `numero` es NOT NULL y no tiene secuencia, así
-   * que hay que calcularlo aquí.
+   * de datos ("CG-000008").
    */
   async function siguienteNumero() {
     const { data, error: errorNum } = await supabase
@@ -143,6 +170,12 @@ export default function Extras() {
       return;
     }
 
+    const esInspeccion = seleccionados.includes("Inspección posterior a tormenta");
+    if (esInspeccion && (!viviendaId || !tecnicoId)) {
+      setError("Para la inspección posterior a tormenta, debes seleccionar una vivienda y un técnico.");
+      return;
+    }
+
     setGuardando(true);
 
     try {
@@ -176,7 +209,6 @@ export default function Extras() {
       );
 
       if (errorLineas) {
-        // La factura ya existe: se avisa en lugar de dejarlo en silencio.
         console.error("Error guardando líneas:", errorLineas);
         setMensaje(
           `Factura ${factura.numero} creada, pero falló el desglose: ${errorLineas.message}`
@@ -185,12 +217,26 @@ export default function Extras() {
         return;
       }
 
-      // ---- PDF y email mediante las Edge Functions ya desplegadas ----
-      // Antes se llamaba por fetch a "https://YOUR-SUPABASE-FUNCTION-URL/..."
-      // y además con los nombres de campo equivocados: factura-pdf espera
-      // `facturaId` y enviar-email espera `email` y `pdfUrl`.
-      // Se usa functions.invoke para que añada la URL del proyecto y el token
-      // de sesión automáticamente.
+      // AUTOMATIZACIÓN: Si es inspección, crear registro automático para la app del técnico
+      let avisoInspeccion = "";
+      if (esInspeccion) {
+        const { error: errorInspeccion } = await supabase.from("inspecciones").insert({
+          vivienda_id: Number(viviendaId),
+          cliente_id: String(clienteId),
+          tecnico_id: tecnicoId,
+          estado: "pendiente",
+          fecha: new Date().toISOString(),
+          notas: `Generado automáticamente desde Factura ${factura.numero}`
+        });
+
+        if (errorInspeccion) {
+          console.error("Error creando inspección:", errorInspeccion);
+          avisoInspeccion = " (Aviso: La factura se creó pero falló la asignación al técnico).";
+        } else {
+          avisoInspeccion = " Inspección asignada al técnico en la app.";
+        }
+      }
+
       let avisoPdf = "";
 
       const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
@@ -202,8 +248,6 @@ export default function Extras() {
         console.error("Error generando PDF:", errorPdf);
         avisoPdf = " El PDF no se pudo generar.";
       } else if (pdfData?.url && !(await pdfDisponible(pdfData.url))) {
-        // La función responde 200 con una URL aunque no haya llegado a subir
-        // el fichero. Sin esta comprobación se guardaría un enlace roto.
         console.warn("factura-pdf devolvió una URL inexistente:", pdfData.url);
         avisoPdf = " El PDF no está disponible todavía.";
       } else if (pdfData?.url) {
@@ -233,8 +277,10 @@ export default function Extras() {
 
       setSeleccionados([]);
       setPrecios({});
+      setViviendaId("");
+      setTecnicoId("");
       setMensaje(
-        `Factura ${factura.numero} creada correctamente (${total} €).${avisoPdf}`
+        `Factura ${factura.numero} creada correctamente (${total} €).${avisoInspeccion}${avisoPdf}`
       );
       setGuardando(false);
     } catch (e) {
@@ -249,7 +295,7 @@ export default function Extras() {
       <div style={estilos.pagina}>
         <h1 style={estilos.titulo}>Extras</h1>
         <p style={estilos.subtitulo}>
-          Factura servicios sueltos que no entran en el contrato.
+          Factura servicios sueltos y automatiza órdenes para los técnicos.
         </p>
 
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
@@ -313,8 +359,48 @@ export default function Extras() {
           ))}
         </div>
 
-        {/* Totales en vivo: antes no había forma de ver el importe antes de
-            crear la factura. */}
+        {/* Sección condicional para la automatización de inspecciones */}
+        {seleccionados.includes("Inspección posterior a tormenta") && (
+          <div style={{ ...estilos.tarjeta, border: "1px solid #4db8ff" }}>
+            <h3 style={{ color: "#4db8ff", marginBottom: 14, fontSize: 16 }}>
+              ⚡ Automatización de Inspección
+            </h3>
+
+            <label style={estilos.etiqueta}>Vivienda a inspeccionar</label>
+            <select
+              value={viviendaId}
+              onChange={(e) => setViviendaId(e.target.value)}
+              style={estilos.select}
+            >
+              <option value="">-- Selecciona una vivienda del cliente --</option>
+              {viviendas.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.direccion}
+                </option>
+              ))}
+            </select>
+            {clienteId && viviendas.length === 0 && (
+              <p style={{ ...estilos.aviso, color: "#ffc861" }}>
+                Este cliente no tiene viviendas registradas.
+              </p>
+            )}
+
+            <label style={{ ...estilos.etiqueta, marginTop: 14 }}>Técnico asignado</label>
+            <select
+              value={tecnicoId}
+              onChange={(e) => setTecnicoId(e.target.value)}
+              style={estilos.select}
+            >
+              <option value="">-- Selecciona un técnico --</option>
+              {tecnicos.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div style={estilos.tarjeta}>
           <Fila clave="Base" valor={`${base.toFixed(2)} €`} />
           <Fila clave={`IVA (${IVA * 100}%)`} valor={`${iva.toFixed(2)} €`} />
@@ -338,7 +424,7 @@ export default function Extras() {
           disabled={guardando}
           style={{ ...estilos.boton, opacity: guardando ? 0.6 : 1 }}
         >
-          {guardando ? "Creando factura..." : "Crear factura"}
+          {guardando ? "Procesando..." : "Crear factura y asignar"}
         </button>
 
         <button onClick={() => navigate("/facturas")} style={estilos.botonSec}>
