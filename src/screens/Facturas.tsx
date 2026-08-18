@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, ActivityIndicator, TouchableOpacity, Linking } from "react-native";
 import { obtenerFactura } from "../services/facturas";
 import { enviarFactura } from "../services/facturaEnviar";
 
@@ -56,6 +56,14 @@ export default function FacturasScreen({ route }) {
     setEnviando(false);
   }
 
+  async function handleVerPDF() {
+    if (factura && factura.pdf_url) {
+      Linking.openURL(factura.pdf_url);
+    } else {
+      setMensaje("No hay PDF disponible para esta factura");
+    }
+  }
+
   if (loading) {
     return (
       <View style={{ padding: 20 }}>
@@ -108,7 +116,30 @@ export default function FacturasScreen({ route }) {
         </Text>
       </View>
 
-      <View style={{ marginTop: 40 }}>
+      {/* Botón para ver el PDF de la factura */}
+      <View style={{ marginTop: 20 }}>
+        <TouchableOpacity
+          onPress={handleVerPDF}
+          style={{
+            backgroundColor: "#334155",
+            padding: 15,
+            borderRadius: 10,
+          }}
+        >
+          <Text
+            style={{
+              color: "#fff",
+              textAlign: "center",
+              fontSize: 18,
+              fontWeight: "600",
+            }}
+          >
+            Ver PDF
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ marginTop: 20 }}>
         {enviando ? (
           <ActivityIndicator size="large" />
         ) : (
