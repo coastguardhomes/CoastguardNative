@@ -70,6 +70,9 @@ import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas.jsx";
 // EXTRAS
 import Extras from "./pages/extras/Extras.jsx";
 
+// SERVICIOS Y ÓRDENES (NUEVO MÓDULO)
+import Servicios from "./pages/servicios/Servicios.jsx";
+
 // ÁREA DEL CLIENTE
 import ClienteContratosLista from "./pages/cliente/ClienteContratosLista.jsx";
 import ClienteContratoVer from "./pages/cliente/ClienteContratoVer.jsx";
@@ -202,6 +205,11 @@ export default function App() {
       {/* ---------------- EXTRAS ---------------- */}
       <Route path="/extras" element={<PrivateRoute />}>
         <Route index element={<Extras />} />
+      </Route>
+
+      {/* ---------------- SERVICIOS Y ÓRDENES ---------------- */}
+      <Route path="/servicios" element={<PrivateRoute />}>
+        <Route index element={<Servicios />} />
       </Route>
 
       {/* ---------------- AJUSTES / IDIOMA ---------------- */}
