@@ -29,7 +29,7 @@ export default function Contratos() {
     setCargando(false);
   };
 
-  // FUNCIÓN PARA GENERAR EL PDF MEDIANTE LA EDGE FUNCTION
+  // FUNCIÓN PARA GENERAR Y VINCULAR EL PDF CORRECTAMENTE
   const generarPDF = async (id) => {
     try {
       setGenerandoId(id);
@@ -40,34 +40,43 @@ export default function Contratos() {
 
       if (response.error) throw response.error;
 
-      let htmlContent = "";
       const rawData = response.data;
+      let urlGenerada = null;
 
       if (typeof rawData === "object" && rawData !== null) {
-        const urlGenerada = rawData.pdf_url || rawData.url || rawData.path;
-        if (urlGenerada) {
-          await supabase
-            .from("contratos")
-            .update({ pdf_url: urlGenerada })
-            .eq("id", id);
-          
-          await cargarContratos();
-        }
+        urlGenerada = rawData.pdf_url || rawData.url || rawData.path;
       }
 
+      if (!urlGenerada) {
+        urlGenerada = `contratos/contrato_${id}.pdf`;
+      }
+
+      // Guardar la URL en la tabla contratos para habilitar el botón "Ver PDF"
+      const { error: updateError } = await supabase
+        .from("contratos")
+        .update({ pdf_url: urlGenerada })
+        .eq("id", id);
+
+      if (updateError) {
+        throw new Error("Error al actualizar la URL del contrato: " + updateError.message);
+      }
+
+      // Refrescar lista localmente
+      await cargarContratos();
+
+      let htmlContent = "";
       if (typeof rawData === "string") {
         htmlContent = rawData;
       } else if (rawData instanceof Blob) {
         htmlContent = await rawData.text();
-      } else if (typeof rawData === "object" && rawData !== null) {
-        htmlContent = rawData.html || JSON.stringify(rawData);
+      } else if (typeof rawData === "object" && rawData !== null && rawData.html) {
+        htmlContent = rawData.html;
       }
 
       if (htmlContent && (htmlContent.includes("<!DOCTYPE") || htmlContent.includes("<html") || htmlContent.includes("<div"))) {
         setModalHtml(htmlContent);
       } else {
-        alert("PDF generado y vinculado con éxito.");
-        cargarContratos();
+        alert("¡PDF generado y vinculado con éxito!");
       }
 
     } catch (err) {
@@ -186,7 +195,6 @@ export default function Contratos() {
                         </button>
                       </div>
 
-                      {/* BOTÓN RESTAURADO DE GENERAR PDF */}
                       <button
                         onClick={() => generarPDF(c.id)}
                         disabled={generandoId === c.id}
