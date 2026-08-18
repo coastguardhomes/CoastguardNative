@@ -38,6 +38,7 @@ import TecnicoInspeccion from "./pages/tecnicos/TecnicoInspeccion.jsx";
 import TecnicoChecklist from "./pages/tecnicos/TecnicoChecklist.jsx";
 import TecnicoFotos from "./pages/tecnicos/TecnicoFotos.jsx";
 import TecnicoFinalizar from "./pages/tecnicos/TecnicoFinalizar.jsx";
+import TecnicoInspeccionExtra from "./pages/tecnicos/TecnicoInspeccionExtra.jsx"; // ⭐ NUEVA PANTALLA TÉCNICO EXTRAS
 
 // CONTRATOS
 import Contratos from "./pages/contratos/Contratos.jsx";
@@ -113,6 +114,7 @@ export default function App() {
         <Route path="inspeccion/:id/checklist" element={<TecnicoChecklist />} />
         <Route path="inspeccion/:id/fotos" element={<TecnicoFotos />} />
         <Route path="inspeccion/:id/finalizar" element={<TecnicoFinalizar />} />
+        <Route path="extra/:id" element={<TecnicoInspeccionExtra />} /> {/* ⭐ RUTA NUEVA PARA INSPECCIÓN DE EXTRAS */}
       </Route>
 
       {/* ---------------- ÁREA DEL CLIENTE ---------------- */}
