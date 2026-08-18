@@ -4,7 +4,7 @@ import { createExtraInvoice } from '../services/extras';
 import BotonMarcarPagada from '../components/BotonMarcarPagada';
 
 export default function ExtrasScreen({ route, navigation }) {
-  const { clienteId, propiedadId } = route.params;
+  const { clienteId, propiedadId } = route.params || {};
 
   const [extras, setExtras] = useState({
     apertura: false,
