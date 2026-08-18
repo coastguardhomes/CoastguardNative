@@ -12,6 +12,7 @@ import {
   FaChartBar,
   FaCog,
   FaClipboardCheck,
+  FaTools,
 } from "react-icons/fa";
 
 // ---------------- ITEMS ADMIN ----------------
@@ -20,6 +21,7 @@ const ITEMS_ADMIN = [
   { ruta: "/clientes", etiqueta: "Clientes", icono: FaUsers },
   { ruta: "/viviendas", etiqueta: "Viviendas", icono: FaBuilding },
   { ruta: "/inspecciones", etiqueta: "Inspecciones", icono: FaSearch },
+  { ruta: "/servicios", etiqueta: "Servicios", icono: FaTools },
   { ruta: "/contratos", etiqueta: "Contratos", icono: FaFileContract },
   { ruta: "/facturas", etiqueta: "Facturas", icono: FaMoneyBillWave },
   { ruta: "/tecnicos", etiqueta: "Técnicos", icono: FaKey },
