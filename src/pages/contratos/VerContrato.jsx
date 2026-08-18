@@ -4,7 +4,7 @@ import { Document, Page, pdfjs } from "react-pdf";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 
-// Configuración del worker de PDF.js optimizada para Web y App nativa
+// Configuración del worker de PDF.js
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
 export default function VerContrato() {
@@ -24,8 +24,9 @@ export default function VerContrato() {
       setCargando(true);
       setErrorMsg(null);
 
+      // CORRECCIÓN: Consultar la tabla "inspecciones" donde realmente se guarda el PDF
       const { data, error } = await supabase
-        .from("contratos")
+        .from("inspecciones")
         .select("pdf_url")
         .eq("id", id)
         .single();
@@ -42,26 +43,26 @@ export default function VerContrato() {
       if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) {
         finalUrl = rawPath;
       } else {
-        const cleanPath = rawPath.replace(/^contratos\//, "");
+        const cleanPath = rawPath.replace(/^pdfs\//, "");
         const { data: signedData, error: signedError } = await supabase.storage
-          .from("contratos")
+          .from("pdfs")
           .createSignedUrl(cleanPath, 3600);
 
         if (signedError) {
-          throw new Error("No se pudo generar la URL firmada del contrato.");
+          throw new Error("No se pudo generar la URL firmada del documento.");
         }
 
         finalUrl = signedData?.signedUrl || null;
       }
 
-      // Añadir parámetro de tiempo para evitar caché agresiva en WebView móvil
+      // Evitar caché agresiva en Web/App
       if (finalUrl) {
         finalUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
       }
 
       setResolvedPdfUrl(finalUrl);
     } catch (err) {
-      console.error("Error al cargar contrato:", err);
+      console.error("Error al cargar PDF:", err);
       setErrorMsg("No se pudo cargar el documento correctamente.");
     } finally {
       setCargando(false);
@@ -87,7 +88,7 @@ export default function VerContrato() {
         </button>
 
         <h2 style={{ textAlign: "center", color: "#4db8ff", marginBottom: "15px" }}>
-          📄 Contrato #{id}
+          📄 Informe Inspección #{id}
         </h2>
 
         {cargando ? (
@@ -98,8 +99,8 @@ export default function VerContrato() {
           </div>
         ) : !resolvedPdfUrl ? (
           <div style={{ textAlign: "center", padding: "20px", background: "#1a2332", borderRadius: "12px" }}>
-            <p style={{ color: "#ff4d4d", marginBottom: "10px" }}>No hay ningún archivo PDF generado para este contrato.</p>
-            <p style={{ color: "#94a3b8", fontSize: "12px" }}>Vuelve al panel y pulsa en "Generar PDF / Ver Contrato".</p>
+            <p style={{ color: "#ff4d4d", marginBottom: "10px" }}>No hay ningún archivo PDF generado para esta inspección.</p>
+            <p style={{ color: "#94a3b8", fontSize: "12px" }}>Vuelve al panel y pulsa en "Generar informe PDF".</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
