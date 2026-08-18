@@ -14,21 +14,28 @@ export default function Firma() {
 
   useEffect(() => {
     async function cargarFirma() {
-      const { data } = await supabase
-        .from("firmas_inspeccion")
-        .select("*")
-        .eq("inspeccion_id", id)
-        .order("id", { ascending: false })
-        .limit(1);
+      try {
+        const { data } = await supabase
+          .from("firmas_inspeccion")
+          .select("*")
+          .eq("inspeccion_id", id)
+          .order("id", { ascending: false })
+          .limit(1);
 
-      if (data?.length > 0) {
-        const archivo = data[0].archivo;
+        if (data?.length > 0) {
+          const archivo = data[0].archivo;
 
-        const { data: urlData } = supabase.storage
-          .from("firmas")
-          .getPublicUrl(archivo);
+          const { data: urlData } = supabase.storage
+            .from("firmas")
+            .getPublicUrl(archivo);
 
-        setFirmaGuardada(urlData.publicUrl);
+          if (urlData?.publicUrl) {
+            // Evitar caché con timestamp
+            setFirmaGuardada(`${urlData.publicUrl}?t=${Date.now()}`);
+          }
+        }
+      } catch (err) {
+        console.error("Error cargando firma anterior:", err);
       }
     }
 
@@ -37,8 +44,11 @@ export default function Firma() {
 
   function obtenerPosicion(e) {
     const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    
     const rect = canvas.getBoundingClientRect();
-    const punto = e.touches?.[0] || e.changedTouches?.[0] || e.nativeEvent;
+    const punto = e.touches?.[0] || e.changedTouches?.[0] || e;
+    
     const escalaX = canvas.width / rect.width;
     const escalaY = canvas.height / rect.height;
 
@@ -49,8 +59,10 @@ export default function Firma() {
   }
 
   function startDrawing(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const canvas = canvasRef.current;
+    if (!canvas) return;
+    
     const ctx = canvas.getContext("2d");
     const { x, y } = obtenerPosicion(e);
 
@@ -66,9 +78,11 @@ export default function Firma() {
 
   function draw(e) {
     if (!isDrawing) return;
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
 
     const canvas = canvasRef.current;
+    if (!canvas) return;
+    
     const ctx = canvas.getContext("2d");
     const { x, y } = obtenerPosicion(e);
 
@@ -82,6 +96,7 @@ export default function Firma() {
 
   function limpiar() {
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
@@ -90,15 +105,12 @@ export default function Firma() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Validar que hay firma dibujada (comprobando si hay píxeles distintos del fondo blanco/transparente)
     const ctx = canvas.getContext("2d");
     const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     
-    // Verificamos si algún píxel no es totalmente blanco (alfa o color)
     let hayFirma = false;
     for (let i = 3; i < pixels.length; i += 4) {
-      if (pixels[i] > 0) { // si el canal alpha tiene opacidad
-        // Revisar si no es blanco puro (255, 255, 255)
+      if (pixels[i] > 0) {
         const r = pixels[i - 3];
         const g = pixels[i - 2];
         const b = pixels[i - 1];
@@ -149,20 +161,20 @@ export default function Firma() {
       .from("firmas")
       .getPublicUrl(nombreArchivo);
 
-    setFirmaGuardada(urlData.publicUrl);
+    const nuevaUrlFirma = urlData?.publicUrl ? `${urlData.publicUrl}?t=${Date.now()}` : null;
+    setFirmaGuardada(nuevaUrlFirma);
 
     // Guardar URL de firma en inspecciones
     await supabase
       .from("inspecciones")
       .update({
-        firma_url: urlData.publicUrl,
+        firma_url: urlData?.publicUrl || null,
         fecha_firma: new Date().toISOString(),
       })
       .eq("id", id);
 
     setMensaje("Firma guardada correctamente ✔");
 
-    // Redirigir de vuelta al detalle de inspección para mantener el flujo intacto
     setTimeout(() => {
       navigate(`/inspecciones/${id}`);
     }, 1000);
