@@ -12,6 +12,9 @@ export default function TecnicoInspeccionExtra() {
   const [descripcion, setDescripcion] = useState('');
   const [materiales, setMateriales] = useState('');
   const [tiempo, setTiempo] = useState('');
+  const [fotos, setFotos] = useState([]);
+  const [mensaje, setMensaje] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     cargarDetalleExtra();
@@ -20,24 +23,71 @@ export default function TecnicoInspeccionExtra() {
   const cargarDetalleExtra = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('inspecciones')
-        .select('*, viviendas(direccion)')
+      setError('');
+      
+      // ⭐ CORREGIDO: Consultamos la tabla 'extras' que es donde están estos trabajos
+      const { data, error: err } = await supabase
+        .from('extras')
+        .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
-      setExtraData(data);
+      if (err) throw err;
+
       if (data) {
-        setDescripcion(data.descripcion_trabajo || '');
-        setMateriales(data.materiales_usados || '');
+        setExtraData(data);
+        setDescripcion(data.descripcion || '');
+        setMateriales(data.materiales || '');
         setTiempo(data.tiempo_empleado || '');
+        setFotos(data.fotos || []);
+      } else {
+        setError('No se encontró el trabajo extra.');
       }
-    } catch (error) {
-      console.error('Error al cargar extra:', error);
-      alert('Error al cargar los datos del trabajo extra.');
+    } catch (err) {
+      console.error('Error al cargar extra:', err);
+      setError('Error al cargar los datos del trabajo extra.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const manejarSubidaFotos = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      setSaving(true);
+      setError('');
+      const nuevasUrls = [...fotos];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random()}.${fileExt}`;
+        const filePath = `extras/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('extras') // Asegúrate de tener un bucket llamado 'extras' en Supabase Storage
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('extras')
+          .getPublicUrl(filePath);
+
+        if (publicUrlData?.publicUrl) {
+          nuevasUrls.push(publicUrlData.publicUrl);
+        }
+      }
+
+      setFotos(nuevasUrls);
+      setMensaje('¡Fotos subidas con éxito!');
+    } catch (err) {
+      console.error('Error al subir fotos:', err);
+      setError('No se pudieron subir las fotos.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -45,23 +95,27 @@ export default function TecnicoInspeccionExtra() {
     e.preventDefault();
     try {
       setSaving(true);
-      const { error } = await supabase
-        .from('inspecciones')
+      setError('');
+
+      // ⭐ Actualizamos la tabla 'extras' y cambiamos estado a 'finalizado'
+      const { error: updateError } = await supabase
+        .from('extras')
         .update({
-          descripcion_trabajo: descripcion,
-          materiales_usados: materiales,
+          descripcion,
+          materiales,
           tiempo_empleado: tiempo,
-          estado: 'completada_tecnico'
+          fotos,
+          estado: 'finalizado'
         })
         .eq('id', id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       alert('Inspección de extra enviada al admin con éxito.');
       navigate('/tecnico');
-    } catch (error) {
-      console.error('Error al guardar:', error);
-      alert('Error al enviar la inspección: ' + error.message);
+    } catch (err) {
+      console.error('Error al guardar:', err);
+      setError('Error al enviar la inspección: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -79,10 +133,47 @@ export default function TecnicoInspeccionExtra() {
           <h2 style={styles.title}>Inspección de Extra</h2>
         </div>
 
+        {mensaje && <p style={styles.ok}>{mensaje}</p>}
+        {error && <p style={styles.errorText}>{error}</p>}
+
         {extraData && (
           <div style={styles.infoBox}>
-            <p style={styles.infoText}>🏠 <strong>Vivienda:</strong> {extraData.viviendas?.direccion || extraData.direccion || 'N/A'}</p>
             <p style={styles.infoText}>🆔 <strong>Ref ID:</strong> #{String(extraData.id).substring(0, 8)}</p>
+            <p style={styles.infoText}>📄 <strong>Detalle:</strong> {extraData.descripcion || 'Sin descripción previa'}</p>
+          </div>
+        )}
+
+        {/* Botones de Cámara y Galería */}
+        <div style={styles.contenedorBotonesFoto}>
+          <label style={styles.botonFoto}>
+            📸 Hacer Foto
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={manejarSubidaFotos}
+              style={{ display: 'none' }}
+            />
+          </label>
+
+          <label style={styles.botonGaleria}>
+            🖼️ Galería
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={manejarSubidaFotos}
+              style={{ display: 'none' }}
+            />
+          </label>
+        </div>
+
+        {/* Vista previa de las fotos subidas */}
+        {fotos.length > 0 && (
+          <div style={styles.gridFotos}>
+            {fotos.map((url, index) => (
+              <img key={index} src={url} alt={`Evidencia ${index}`} style={styles.miniatura} />
+            ))}
           </div>
         )}
 
@@ -143,5 +234,12 @@ const styles = {
   label: { fontSize: '12px', color: '#ffd700', fontWeight: '600' },
   input: { backgroundColor: '#132033', border: '1px solid #2a3b55', borderRadius: '8px', padding: '10px', color: '#fff', fontSize: '13px' },
   textarea: { backgroundColor: '#132033', border: '1px solid #2a3b55', borderRadius: '8px', padding: '10px', color: '#fff', fontSize: '13px', resize: 'vertical' },
-  btnSubmit: { background: 'linear-gradient(to bottom, #27ae60 0%, #219653 100%)', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }
+  contenedorBotonesFoto: { display: 'flex', gap: '10px' },
+  botonFoto: { flex: 1, textAlign: 'center', background: '#f59e0b', color: '#000', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' },
+  botonGaleria: { flex: 1, textAlign: 'center', background: '#10b981', color: '#fff', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' },
+  gridFotos: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
+  miniatura: { width: '60px', height: '60px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #c5a03e' },
+  btnSubmit: { background: 'linear-gradient(to bottom, #27ae60 0%, #219653 100%)', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' },
+  ok: { color: '#4ade80', backgroundColor: 'rgba(74,222,128,0.1)', padding: '8px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' },
+  errorText: { color: '#f87171', backgroundColor: 'rgba(248,113,113,0.1)', padding: '8px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }
 };
