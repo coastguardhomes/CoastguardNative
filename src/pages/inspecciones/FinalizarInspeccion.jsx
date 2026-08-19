@@ -96,6 +96,28 @@ export default function FinalizarInspeccion() {
     }
   }
 
+  // 🚀 NUEVA FUNCIÓN: Eliminar inspección y sus datos relacionados (checklist y fotos)
+  async function eliminarInspeccion() {
+    const confirmar = window.confirm("¿Seguro que deseas eliminar esta inspección?");
+    if (!confirmar) return;
+
+    setProcesando(true);
+    try {
+      await supabase.from("checklist_inspeccion").delete().eq("inspeccion_id", id);
+      await supabase.from("fotos_inspeccion").delete().eq("inspeccion_id", id);
+
+      const { error } = await supabase.from("inspecciones").delete().eq("id", id);
+
+      if (error) throw error;
+
+      alert("Inspección eliminada correctamente");
+      navigate("/inspecciones");
+    } catch (e) {
+      alert("Error eliminando inspección: " + e.message);
+      setProcesando(false);
+    }
+  }
+
   if (loading) {
     return (
       <Menu>
@@ -133,6 +155,15 @@ export default function FinalizarInspeccion() {
               style={{ padding: "14px", width: "100%", background: "#4ade80", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "16px", cursor: "pointer", opacity: procesando ? 0.6 : 1 }}
             >
               {procesando ? "Procesando..." : "✔ Aprobar y Enviar al Cliente"}
+            </button>
+
+            {/* 🚀 NUEVO BOTÓN DE ELIMINAR */}
+            <button
+              onClick={eliminarInspeccion}
+              disabled={procesando}
+              style={{ marginTop: "12px", padding: "14px", width: "100%", background: "#ef4444", color: "#fff", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "16px", cursor: "pointer", opacity: procesando ? 0.6 : 1 }}
+            >
+              Eliminar Inspección
             </button>
           </>
         )}
