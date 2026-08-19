@@ -86,7 +86,7 @@ export default function ClienteDashboard() {
               .from("extras")
               .select("*")
               .eq("cliente_id", clienteId)
-              .in("estado", ["enviado_cliente", "completado"]) // <-- Ampliado para aceptar ambos estados
+              .in("estado", ["enviado_cliente", "ENVIADO_CLIENTE", "completado", "COMPLETADO"]) // <-- CORREGIDO PARA DETECTAR MAYÚSCULAS
               .order("created_at", { ascending: false })
           ]);
 
@@ -202,7 +202,7 @@ export default function ClienteDashboard() {
           </div>
         </div>
 
-        {/* --- AVISO DE INFORMES EXTRAS (DISEÑO LUXURY LIMPIO) --- */}
+        {/* --- AVISO DE INFORMES EXTRAS --- */}
         {nuevosExtras.length > 0 && (
           <div style={{ 
             marginBottom: "20px", 
@@ -230,7 +230,6 @@ export default function ClienteDashboard() {
             
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {nuevosExtras.map((extra) => {
-                // Limpiar descripción para el resumen si incluye datos de factura
                 const descLimpia = extra.descripcion 
                   ? extra.descripcion.replace(/Factura\s*[^:]*:\s*/i, "").substring(0, 45) + "..." 
                   : "Pulsa para ver detalles completos y multimedia";
@@ -274,7 +273,7 @@ export default function ClienteDashboard() {
           </div>
         )}
 
-        {/* --- TARJETAS DE DATOS (ESTILO MODERNO GRID) --- */}
+        {/* --- TARJETAS DE DATOS --- */}
         <div
           style={{
             display: "grid",
