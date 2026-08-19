@@ -86,7 +86,7 @@ export default function ClienteDashboard() {
               .from("extras")
               .select("*")
               .eq("cliente_id", clienteId)
-              .eq("estado", "enviado_cliente")
+              .in("estado", ["enviado_cliente", "completado"]) // <-- Ampliado para aceptar ambos estados
               .order("created_at", { ascending: false })
           ]);
 
@@ -202,7 +202,7 @@ export default function ClienteDashboard() {
           </div>
         </div>
 
-        {/* --- AVISO DE INFORMES EXTRAS (DISEÑO LUXURY) --- */}
+        {/* --- AVISO DE INFORMES EXTRAS (DISEÑO LUXURY LIMPIO) --- */}
         {nuevosExtras.length > 0 && (
           <div style={{ 
             marginBottom: "20px", 
@@ -214,7 +214,6 @@ export default function ClienteDashboard() {
             position: "relative",
             overflow: "hidden"
           }}>
-            {/* Brillo decorativo superior */}
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "3px", background: "linear-gradient(90deg, transparent, #e0b034, transparent)" }}></div>
             
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
@@ -223,47 +222,54 @@ export default function ClienteDashboard() {
               </div>
               <div>
                 <h3 style={{ fontSize: "13px", fontWeight: "900", ...TEXTO_DORADO_BRILLO, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  ¡Nuevos informes disponibles!
+                  ¡Trabajos Extras Disponibles!
                 </h3>
-                <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>Tienes {nuevosExtras.length} {nuevosExtras.length === 1 ? "informe extra enviado" : "informes extras enviados"} por la administración.</p>
+                <p style={{ fontSize: "11px", color: "#94a3b8", margin: 0 }}>Tienes {nuevosExtras.length} {nuevosExtras.length === 1 ? "trabajo extra registrado" : "trabajos extras registrados"}.</p>
               </div>
             </div>
             
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {nuevosExtras.map((extra) => (
-                <div 
-                  key={extra.id} 
-                  onClick={() => navigate(`/cliente/inspeccion/${extra.id}`)}
-                  style={{ 
-                    background: "rgba(5, 8, 15, 0.75)", 
-                    border: "1px solid rgba(224, 176, 52, 0.35)", 
-                    borderRadius: "12px", 
-                    padding: "14px", 
-                    cursor: "pointer", 
-                    display: "flex", 
-                    justifyContent: "space-between", 
-                    alignItems: "center",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div style={{ width: "8px", height: "8px", background: COLOR_DORADO, borderRadius: "50%", boxShadow: `0 0 8px ${COLOR_DORADO}` }}></div>
-                    <div>
-                      <div style={{ fontSize: "13px", fontWeight: "700", color: "#fff" }}>
-                        {extra.direccion || "Trabajo Extra / Informe de Mantenimiento"}
-                      </div>
-                      <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
-                        {extra.descripcion ? extra.descripcion.substring(0, 45) + "..." : "Pulsa para ver detalles completos y multimedia"}
+              {nuevosExtras.map((extra) => {
+                // Limpiar descripción para el resumen si incluye datos de factura
+                const descLimpia = extra.descripcion 
+                  ? extra.descripcion.replace(/Factura\s*[^:]*:\s*/i, "").substring(0, 45) + "..." 
+                  : "Pulsa para ver detalles completos y multimedia";
+
+                return (
+                  <div 
+                    key={extra.id} 
+                    onClick={() => navigate(`/cliente/inspeccion/${extra.id}`)}
+                    style={{ 
+                      background: "rgba(5, 8, 15, 0.75)", 
+                      border: "1px solid rgba(224, 176, 52, 0.35)", 
+                      borderRadius: "12px", 
+                      padding: "14px", 
+                      cursor: "pointer", 
+                      display: "flex", 
+                      justifyContent: "space-between", 
+                      alignItems: "center",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div style={{ width: "8px", height: "8px", background: COLOR_DORADO, borderRadius: "50%", boxShadow: `0 0 8px ${COLOR_DORADO}` }}></div>
+                      <div>
+                        <div style={{ fontSize: "13px", fontWeight: "700", color: "#fff" }}>
+                          Trabajo Extra
+                        </div>
+                        <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
+                          {descLimpia}
+                        </div>
                       </div>
                     </div>
+                    <div style={{ background: "rgba(224, 176, 52, 0.15)", padding: "6px 12px", borderRadius: "8px", border: BORDE_DORADO_FINO }}>
+                      <span style={{ fontSize: "11px", fontWeight: "800", color: COLOR_DORADO, whiteSpace: "nowrap" }}>
+                        Ver →
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ background: "rgba(224, 176, 52, 0.15)", padding: "6px 12px", borderRadius: "8px", border: BORDE_DORADO_FINO }}>
-                    <span style={{ fontSize: "11px", fontWeight: "800", color: COLOR_DORADO, whiteSpace: "nowrap" }}>
-                      Ver →
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -328,7 +334,7 @@ export default function ClienteDashboard() {
           </div>
         </div>
 
-        {/* --- GRÁFICO DE INSPECCIONES (DISEÑO PULIDO) --- */}
+        {/* --- GRÁFICO DE INSPECCIONES --- */}
         <div
           style={{
             background: FONDO_TARJETA,
@@ -369,7 +375,7 @@ export default function ClienteDashboard() {
            </div>
         </div>
 
-        {/* --- ENLACE A CONFIGURACIÓN Y SEGURIDAD (BOTÓN PREMIUM) --- */}
+        {/* --- ENLACE A CONFIGURACIÓN Y SEGURIDAD --- */}
         <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
           <Link
             to="/cliente/configuracion"
