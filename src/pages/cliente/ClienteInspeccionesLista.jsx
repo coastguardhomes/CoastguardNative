@@ -6,11 +6,9 @@ import Menu from "../../layouts/Menu.jsx";
 
 // --- CONSTANTES DE ESTILO PREMIUM ---
 const COLOR_DORADO = "#e0b034";
-const COLOR_BRILLO_DORADO = "rgba(224, 176, 52, 0.5)";
 const FONDO_PRINCIPAL = "#030509";
 const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
 const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
-const BORDE_DORADO_INTENSO = "1px solid rgba(224, 176, 52, 0.7)";
 const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
 
@@ -53,7 +51,7 @@ export default function ClienteInspeccionesLista() {
 
         const clienteId = clienteData.id;
 
-        // 1. Cargar inspecciones normales y trabajos extras en paralelo
+        // Cargar inspecciones normales y trabajos extras
         const [resInspecciones, resExtras] = await Promise.all([
           supabase.from("inspecciones").select("*").eq("cliente_id", clienteId),
           supabase.from("extras").select("*").eq("cliente_id", clienteId)
@@ -71,13 +69,11 @@ export default function ClienteInspeccionesLista() {
           fechaOrden: new Date(item.created_at || 0)
         }));
 
-        // Combinar y ordenar por fecha descendente (lo más nuevo primero)
         const combinados = [...listaInspecciones, ...listaExtras].sort((a, b) => b.fechaOrden - a.fechaOrden);
-
         setElementos(combinados);
 
       } catch (err) {
-        console.error("Error cargando inspecciones y extras:", err);
+        console.error("Error cargando datos:", err);
         setErrorMsg("Hubo un error al cargar los datos.");
       } finally {
         setLoading(false);
@@ -116,14 +112,18 @@ export default function ClienteInspeccionesLista() {
             {elementos.map((item) => {
               const esExtra = item.tipo === 'extra';
               
-              // Limpiar la descripción eliminando códigos de factura si los tuviera
-              const descripcionLimpia = item.descripcion 
-                ? item.descripcion.replace(/Factura\s*[^:]*:\s*/i, "") 
-                : (item.detalle || "No especificada");
+              // Buscar el texto disponible en cualquier columna posible de la base de datos
+              const textoCrudo = item.observaciones || item.comentarios || item.descripcion || item.detalle || item.nota || "";
+              const descripcionLimpia = textoCrudo ? textoCrudo.replace(/Factura\s*[^:]*:\s*/i, "") : "Inspección realizada correctamente";
+
+              // Título dinámico
+              const tituloItem = esExtra 
+                ? "Trabajo Extra" 
+                : (item.titulo || item.nombre || `Inspección`);
 
               const fechaFormateada = item.created_at 
                 ? new Date(item.created_at).toLocaleDateString() 
-                : (item.fecha || "Reciente");
+                : (item.fecha ? new Date(item.fecha).toLocaleDateString() : "Reciente");
 
               return (
                 <div
@@ -144,7 +144,7 @@ export default function ClienteInspeccionesLista() {
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: "14px", fontWeight: "800", color: "#fff" }}>
-                      {esExtra ? "Trabajo Extra" : (item.titulo || `Inspección`)}
+                      {tituloItem}
                     </span>
                     <span style={{ 
                       fontSize: "10px", 
@@ -160,7 +160,7 @@ export default function ClienteInspeccionesLista() {
                   </div>
 
                   <div style={{ fontSize: "12px", color: "#94a3b8" }}>
-                    <strong style={{ color: "#cbd5e1" }}>Detalle:</strong> {descripcionLimpia.substring(0, 60)}...
+                    <strong style={{ color: "#cbd5e1" }}>Detalle:</strong> {descripcionLimpia.substring(0, 70)}...
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px", fontSize: "11px", color: "#64748b" }}>
