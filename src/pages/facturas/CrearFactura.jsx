@@ -13,20 +13,50 @@ export default function CrearFactura() {
     concepto: "",
     importe: "",
     estado: "pendiente",
+    es_extra: false, // Opcional: si quieres marcar si es un extra o no
   });
 
   const [mensaje, setMensaje] = useState("");
 
   async function crearFactura() {
-    const { error } = await supabase.from("facturas").insert([form]);
+    // 1. Insertamos la factura principal
+    const { data: facturaCreada, error } = await supabase
+      .from("facturas")
+      .insert([
+        {
+          cliente_id: form.cliente_id || null,
+          vivienda_id: form.vivienda_id || null,
+          fecha: form.fecha,
+          descripcion: form.concepto,
+          total: form.importe,
+          estado: form.estado
+        }
+      ])
+      .select()
+      .single();
 
-    if (error) {
+    if (error || !facturaCreada) {
       setMensaje("Error creando factura");
       return;
     }
 
-    setMensaje("Factura creada correctamente");
-    navigate("/facturas/lista");
+    // 2. 🚀 CREAR EL REGISTRO EN 'EXTRAS' PARA QUE LE LLEGUE AL TÉCNICO
+    const { error: errorExtra } = await supabase
+      .from("extras")
+      .insert([
+        {
+          contrato_id: facturaCreada.id, // Enlazamos con el ID de la factura creada
+          descripcion: form.concepto,
+          estado: "finalizado", // O el estado inicial que requiera tu app para que aparezca
+        }
+      ]);
+
+    if (errorExtra) {
+      console.error("Error al crear el extra para el técnico:", errorExtra);
+    }
+
+    setMensaje("Factura creada y enviada al técnico correctamente");
+    setTimeout(() => navigate("/facturas/lista"), 1500);
   }
 
   return (
@@ -49,7 +79,7 @@ export default function CrearFactura() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          Nueva Factura
+          Nueva Factura / Extra
         </h1>
 
         {mensaje && (
@@ -166,7 +196,7 @@ export default function CrearFactura() {
               boxShadow: "0 0 10px rgba(0,153,255,0.4)",
             }}
           >
-            Guardar factura
+            Guardar factura y enviar al técnico
           </button>
         </div>
       </div>
