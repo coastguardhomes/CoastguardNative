@@ -48,6 +48,7 @@ export default function ClienteInspeccionesLista() {
           return;
         }
 
+        // 1. Cargar inspecciones normales
         const { data: dataInspecciones, error: errInspecciones } = await supabase
           .from("inspecciones")
           .select("*")
@@ -56,8 +57,31 @@ export default function ClienteInspeccionesLista() {
 
         if (errInspecciones) throw errInspecciones;
 
-        if (dataInspecciones && dataInspecciones.length > 0) {
-          const viviendaIds = [...new Set(dataInspecciones.map(i => i.vivienda_id).filter(Boolean))];
+        // 2. Cargar trabajos extra enviados al cliente desde la tabla 'extras'
+        const { data: dataExtras, error: errExtras } = await supabase
+          .from("extras")
+          .select("*")
+          .eq("estado", "enviado_cliente")
+          .order("created_at", { ascending: false });
+
+        if (errExtras) console.error("Error al cargar extras:", errExtras);
+
+        // Mapeamos los extras para que coincidan con la estructura visual de la lista
+        const extrasFormateados = (dataExtras || []).map(extra => ({
+          id: extra.id,
+          created_at: extra.created_at,
+          fecha: extra.updated_at || extra.created_at,
+          estado: "completado", // o 'enviado_cliente'
+          direccion: extra.direccion || "Trabajo Extra / Mantenimiento",
+          localidad: "",
+          esExtra: true
+        }));
+
+        const listaInspeccionesBase = dataInspecciones || [];
+        const listaTotal = [...listaInspeccionesBase, ...extrasFormateados];
+
+        if (listaTotal.length > 0) {
+          const viviendaIds = [...new Set(listaTotal.map(i => i.vivienda_id).filter(Boolean))];
 
           let viviendasMap = {};
           if (viviendaIds.length > 0) {
@@ -74,7 +98,7 @@ export default function ClienteInspeccionesLista() {
             }
           }
 
-          const inspeccionesCompletas = dataInspecciones.map(item => ({
+          const inspeccionesCompletas = listaTotal.map(item => ({
             ...item,
             viviendas: item.viviendas || viviendasMap[item.vivienda_id] || null
           }));
@@ -98,10 +122,16 @@ export default function ClienteInspeccionesLista() {
     <Menu>
       <div style={{ width: "100%", minHeight: "100vh", background: FONDO_PRINCIPAL, padding: "15px", fontFamily: "'Inter', sans-serif", color: "#fff", boxSizing: "border-box", paddingBottom: "110px" }}>
         <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <h1 style={{ fontSize: "22px", fontWeight: "800", ...TEXTO_DORADO_BRILLO, margin: 0 }}>MIS INSPECCIONES</h1>
+          <h1 style={{ fontSize: "22px", fontWeight: "800", ...TEXTO_DORADO_BRILLO, margin: 0 }}>MIS INSPECCIONES E INFORMES</h1>
         </div>
 
         {loading && <div style={{ textAlign: "center", padding: "40px 0", color: COLOR_DORADO }}>Cargando...</div>}
+
+        {errorMsg && <div style={{ color: "#ff6b6b", textAlign: "center", padding: "20px" }}>{errorMsg}</div>}
+
+        {!loading && !errorMsg && inspecciones.length === 0 && (
+          <div style={{ textAlign: "center", color: "#888", padding: "40px 0" }}>No tienes inspecciones ni informes disponibles.</div>
+        )}
 
         {!loading && !errorMsg && inspecciones.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -112,10 +142,11 @@ export default function ClienteInspeccionesLista() {
               const fechaObj = item.fecha ? new Date(item.fecha) : (item.created_at ? new Date(item.created_at) : null);
               const fechaFormateada = fechaObj ? fechaObj.toLocaleDateString("es-ES") : "Sin fecha";
 
-              // LÓGICA DE NUMERACIÓN CORREGIDA: La más antigua (última del array) es la 01
               const numeroCorrelativo = String(inspecciones.length - index).padStart(2, '0');
               
-              const titulo = `Inspección Nº ${numeroCorrelativo} (${fechaFormateada})`;
+              const titulo = item.esExtra 
+                ? `Trabajo Extra Nº ${numeroCorrelativo} (${fechaFormateada})` 
+                : `Inspección Nº ${numeroCorrelativo} (${fechaFormateada})`;
 
               return (
                 <div key={item.id} onClick={() => navigate(`/cliente/inspeccion/${item.id}`)}
@@ -124,11 +155,13 @@ export default function ClienteInspeccionesLista() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
                       <span style={{ fontSize: "14px", fontWeight: "700", color: "#4db8ff", lineHeight: "1.3" }}>{titulo}</span>
                       <span style={{ fontSize: "10px", fontWeight: "800", padding: "3px 8px", borderRadius: "12px", textTransform: "uppercase", background: "rgba(224, 176, 52, 0.2)", color: COLOR_DORADO, border: BORDE_DORADO }}>
-                        {item.estado || "Pendiente"}
+                        {item.estado || "Completado"}
                       </span>
                     </div>
-                    <div style={{ marginTop: "8px", fontSize: "13px", color: "#e2e8f0" }}><strong>Dirección:</strong> {direccionReal || "No especificada"}</div>
-                    <div style={{ marginTop: "2px", fontSize: "12px", color: "#94a3b8" }}><strong>Localidad:</strong> {localidadReal}</div>
+                    <div style={{ marginTop: "8px", fontSize: "13px", color: "#e2e8f0" }}><strong>Detalle:</strong> {direccionReal || "No especificada"}</div>
+                    {localidadReal && localidadReal !== "No especificada" && (
+                      <div style={{ marginTop: "2px", fontSize: "12px", color: "#94a3b8" }}><strong>Localidad:</strong> {localidadReal}</div>
+                    )}
                   </div>
                   <div style={{ fontSize: "11px", color: "#64748b", display: "flex", justifyContent: "space-between", marginTop: "10px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "8px" }}>
                     <span>Fecha: {fechaFormateada}</span>
