@@ -5,16 +5,6 @@ import { supabase } from "../../supabaseClient";
 
 /**
  * Detalle de una factura, con su desglose y su PDF.
- *
- * Fallos que tenía esta pantalla:
- *   · Leía el id con `window.location.pathname.split("/").pop()`. La app usa
- *     HashRouter, así que la ruta va en el hash y `pathname` es siempre "/":
- *     el id salía vacío y nunca encontraba la factura. Ahora usa useParams.
- *   · Mostraba `factura.importe`, columna que no existe (son base, iva y
- *     total), así que el importe aparecía vacío.
- *   · El contenedor era blanco con el texto blanco heredado de global.css:
- *     no se leía nada.
- *   · El botón "Descargar PDF" no tenía onClick: no hacía absolutamente nada.
  */
 export default function VerFactura() {
   const { id } = useParams();
@@ -25,6 +15,7 @@ export default function VerFactura() {
   const [cliente, setCliente] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generando, setGenerando] = useState(false);
+  const [enviandoTecnico, setEnviandoTecnico] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
@@ -92,18 +83,61 @@ export default function VerFactura() {
     setGenerando(false);
   }
 
+  // ⭐ NUEVA FUNCIÓN: APROBAR PAGO Y ENVIAR AL TÉCNICO
+  async function aprobarYEnviarATecnico() {
+    try {
+      setEnviandoTecnico(true);
+      setError("");
+      setMensaje("");
+
+      // 1. Actualizar estado de la factura a pagada
+      const { error: errorUpdate } = await supabase
+        .from("facturas")
+        .update({ estado: "pagada" })
+        .eq("id", id);
+
+      if (errorUpdate) throw errorUpdate;
+
+      // 2. Crear el registro en la tabla 'extras' para que aparezca en el Dashboard del Técnico
+      const conceptoTexto = factura.descripcion || lineas.map(l => l.concepto).join(", ") || "Servicio Extra Facturado";
+      
+      const { error: errorExtra } = await supabase
+        .from("extras")
+        .insert([
+          {
+            titulo: `Factura ${factura.numero || `#${factura.id}`}`,
+            descripcion: conceptoTexto,
+            cliente_id: factura.cliente_id || null,
+            vivienda_id: factura.vivienda_id || null,
+            estado: "pendiente",
+            factura_id: factura.id
+          }
+        ]);
+
+      if (errorExtra) {
+        console.warn("Aviso al insertar en extras (revisa si la tabla tiene restricciones):", errorExtra.message);
+      }
+
+      setFactura((prev) => ({ ...prev, estado: "pagada" }));
+      setMensaje("¡Pago aprobado y servicio enviado al técnico correctamente!");
+    } catch (err) {
+      console.error("Error al aprobar y enviar:", err);
+      setError("No se pudo completar la acción para el técnico.");
+    } finally {
+      setEnviandoTecnico(false);
+    }
+  }
+
   // ⭐ BORRAR FACTURA COMPLETA
   async function eliminarFactura() {
     const confirmar = window.confirm("¿Seguro que deseas eliminar esta factura?");
     if (!confirmar) return;
 
-    // 1. Borrar líneas de factura
     await supabase
       .from("facturas_lineas")
       .delete()
       .eq("factura_id", id);
 
-    // 2. Borrar factura
     const { error } = await supabase
       .from("facturas")
       .delete()
@@ -135,6 +169,8 @@ export default function VerFactura() {
       </Menu>
     );
   }
+
+  const esPagada = factura.estado === "pagada" || factura.estado === "pagado";
 
   return (
     <Menu>
@@ -177,6 +213,17 @@ export default function VerFactura() {
           />
         </div>
 
+        {/* ⭐ BOTÓN DE APROBAR PAGO Y ENVIAR AL TÉCNICO */}
+        {!esPagada && (
+          <button
+            onClick={aprobarYEnviarATecnico}
+            disabled={enviandoTecnico}
+            style={estilos.botonAprobar}
+          >
+            {enviandoTecnico ? "Procesando..." : "✅ Aceptar Pago y Enviar a Técnico"}
+          </button>
+        )}
+
         <button
           onClick={generarPDF}
           disabled={generando}
@@ -200,7 +247,7 @@ export default function VerFactura() {
           Volver a facturas
         </button>
 
-        {/* ⭐ BOTÓN NUEVO: BORRAR FACTURA */}
+        {/* ⭐ BOTÓN BORRAR FACTURA */}
         <button
           onClick={eliminarFactura}
           style={{
@@ -281,6 +328,19 @@ const estilos = {
   },
   clave: { color: "#9fb3c8", fontSize: 14 },
   valor: { fontWeight: 600, textAlign: "right" },
+  botonAprobar: {
+    width: "100%",
+    padding: 14,
+    background: "linear-gradient(to bottom, #2ecc71, #27ae60)",
+    color: "#fff",
+    border: "1px solid #27ae60",
+    borderRadius: 10,
+    fontWeight: 700,
+    fontSize: 16,
+    cursor: "pointer",
+    marginBottom: 10,
+    boxShadow: "0 4px 12px rgba(46, 204, 113, 0.3)",
+  },
   boton: {
     width: "100%",
     padding: 14,
