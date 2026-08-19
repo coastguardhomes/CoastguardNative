@@ -30,7 +30,7 @@ export default function VerFactura() {
         const { data: c } = await supabase.from("clientes").select("nombre, direccion, email, telefono").eq("id", dataFactura.cliente_id).maybeSingle();
         setCliente(c);
       }
-      // 3. Inspección del Técnico
+      // 3. Inspección del Técnico (Extras)
       const { data: dataExtra } = await supabase.from("extras").select("*").eq("contrato_id", dataFactura.id).maybeSingle();
       setInspeccion(dataExtra);
     }
@@ -66,13 +66,33 @@ export default function VerFactura() {
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
         {error && <p style={estilos.error}>{error}</p>}
 
-        {/* --- DETALLES DE LA FACTURA --- */}
+        {/* --- DETALLES DE LA FACTURA Y LÍNEAS --- */}
         <div style={estilos.tarjeta}>
           <Fila clave="Fecha" valor={factura?.fecha || "-"} />
-          <Fila clave="Concepto" valor={factura?.descripcion || "-"} />
-          <Fila clave="Base Imponible" valor={`${Number(factura?.base || 0).toFixed(2)} €`} />
-          <Fila clave="IVA" valor={`${Number(factura?.iva || 0).toFixed(2)} €`} />
-          <Fila clave="Total" valor={`${Number(factura?.total || 0).toFixed(2)} €`} destacado />
+          {factura?.descripcion && <Fila clave="Concepto" valor={factura.descripcion} />}
+          
+          {/* Líneas detalladas (para facturas de extras o múltiples conceptos) */}
+          {lineas && lineas.length > 0 && (
+            <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8 }}>
+              <span style={{ color: "#4db8ff", fontSize: 13, fontWeight: "bold" }}>Conceptos / Líneas:</span>
+              {lineas.map((linea, index) => (
+                <div key={index} style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 13 }}>
+                  <span style={{ color: "#9fb3c8" }}>{linea.descripcion || linea.concepto || "Extra"}</span>
+                  <span style={{ color: "#fff", fontWeight: 600 }}>{Number(linea.total || linea.precio || 0).toFixed(2)} €</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8 }}>
+            {factura?.base !== null && factura?.base !== undefined && (
+              <Fila clave="Base Imponible" valor={`${Number(factura.base || 0).toFixed(2)} €`} />
+            )}
+            {factura?.iva !== null && factura?.iva !== undefined && (
+              <Fila clave="IVA" valor={`${Number(factura.iva || 0).toFixed(2)} €`} />
+            )}
+            <Fila clave="Total" valor={`${Number(factura?.total || 0).toFixed(2)} €`} destacado />
+          </div>
         </div>
 
         {/* --- INSPECCIÓN TÉCNICA --- */}
@@ -111,8 +131,26 @@ export default function VerFactura() {
         {factura?.estado !== 'pagada' && (
           <button 
             onClick={async () => {
-              const { error } = await supabase.from('facturas').update({ estado: 'pagada', estado_pago: 'pagada' }).eq('id', factura.id);
-              if (!error) window.location.reload();
+              // 1. Actualizar factura a pagada
+              const { error: errorFactura } = await supabase
+                .from('facturas')
+                .update({ estado: 'pagada', estado_pago: 'pagada' })
+                .eq('id', factura.id);
+
+              if (errorFactura) {
+                alert("Error al actualizar la factura");
+                return;
+              }
+
+              // 2. Actualizar también el extra para que se refleje en el flujo del técnico
+              if (inspeccion?.id) {
+                await supabase
+                  .from('extras')
+                  .update({ estado: 'pagado' })
+                  .eq('id', inspeccion.id);
+              }
+
+              window.location.reload();
             }}
             style={{ ...estilos.botonAprobar, background: "#4ade80", marginBottom: "10px", border: "none" }}
           >
