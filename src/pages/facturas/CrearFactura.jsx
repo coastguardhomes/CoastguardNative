@@ -13,50 +13,109 @@ export default function CrearFactura() {
     concepto: "",
     importe: "",
     estado: "pendiente",
-    es_extra: false, // Opcional: si quieres marcar si es un extra o no
+    es_extra: false,
   });
 
   const [mensaje, setMensaje] = useState("");
 
-  async function crearFactura() {
-    // 1. Insertamos la factura principal
-    const { data: facturaCreada, error } = await supabase
-      .from("facturas")
-      .insert([
-        {
-          cliente_id: form.cliente_id || null,
-          vivienda_id: form.vivienda_id || null,
-          fecha: form.fecha,
-          descripcion: form.concepto,
-          total: form.importe,
-          estado: form.estado
-        }
-      ])
-      .select()
-      .single();
+  // Helper: intenta resolver un técnico por varios orígenes (sin fallback automático)
+  async function resolverTecnico({ facturaId = null, contratoId = null, viviendaId = null } = {}) {
+    if (facturaId) {
+      const { data: f } = await supabase.from("facturas").select("tecnico_id").eq("id", facturaId).maybeSingle();
+      if (f?.tecnico_id) return f.tecnico_id;
+    }
+    if (contratoId) {
+      const { data: c } = await supabase.from("contratos").select("tecnico_id").eq("id", contratoId).maybeSingle();
+      if (c?.tecnico_id) return c.tecnico_id;
+    }
+    if (viviendaId) {
+      const { data: v } = await supabase.from("viviendas").select("tecnico_id").eq("id", viviendaId).maybeSingle();
+      if (v?.tecnico_id) return v.tecnico_id;
+    }
+    return null; // Queda null para asignación manual
+  }
 
-    if (error || !facturaCreada) {
-      setMensaje("Error creando factura");
+  async function crearFactura() {
+    setMensaje("");
+
+    // Validaciones mínimas
+    if (!form.cliente_id) {
+      setMensaje("Selecciona el cliente.");
+      return;
+    }
+    if (!form.importe) {
+      setMensaje("Introduce el importe.");
       return;
     }
 
-    // 2. 🚀 CREAR EL REGISTRO EN 'EXTRAS' PARA QUE LE LLEGUE AL TÉCNICO
-    const { error: errorExtra } = await supabase
-      .from("extras")
-      .insert([
-        {
-          contrato_id: facturaCreada.id, // Enlazamos con el ID de la factura creada
-          descripcion: form.concepto,
-          estado: "finalizado", // O el estado inicial que requiera tu app para que aparezca
+    try {
+      // 1. Insertar la factura principal
+      const { data: facturaCreada, error } = await supabase
+        .from("facturas")
+        .insert([
+          {
+            cliente_id: form.cliente_id || null,
+            vivienda_id: form.vivienda_id || null,
+            fecha: form.fecha || new Date().toISOString().slice(0, 10),
+            descripcion: form.concepto,
+            total: form.importe,
+            estado: form.estado || "pendiente",
+          },
+        ])
+        .select()
+        .single();
+
+      if (error || !facturaCreada) {
+        console.error("Error creando factura:", error);
+        setMensaje("Error creando factura");
+        return;
+      }
+
+      // 2. Intentar resolver técnico a asignar
+      const tecnicoResuelto = await resolverTecnico({
+        facturaId: facturaCreada.id,
+        contratoId: facturaCreada.contrato_id || null,
+        viviendaId: facturaCreada.vivienda_id || null,
+      });
+
+      // 3. Crear el extra/tarea para el técnico de forma consistente
+      const extraPayload = {
+        factura_id: facturaCreada.id,
+        contrato_id: facturaCreada.contrato_id || null,
+        cliente_id: facturaCreada.cliente_id || null,
+        vivienda_id: facturaCreada.vivienda_id || null,
+        tecnico_id: tecnicoResuelto || null,
+        descripcion: form.concepto || "Servicio extra contratado",
+        estado: "pendiente",
+        creado_en: new Date().toISOString(),
+      };
+
+      const { error: errorExtra } = await supabase.from("extras").insert([extraPayload]);
+
+      if (errorExtra) {
+        console.error("Error al crear el extra para el técnico:", errorExtra);
+      }
+
+      // 4. Generación opcional de PDF por función
+      try {
+        const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
+          "factura-pdf",
+          { body: { facturaId: facturaCreada.id } }
+        );
+
+        if (!errorPdf && pdfData?.url) {
+          await supabase.from("facturas").update({ pdf_url: pdfData.url }).eq("id", facturaCreada.id);
         }
-      ]);
+      } catch (e) {
+        console.error("Error generando PDF (no crítico):", e);
+      }
 
-    if (errorExtra) {
-      console.error("Error al crear el extra para el técnico:", errorExtra);
+      setMensaje("Factura creada y extra registrado para técnico correctamente");
+      setTimeout(() => navigate("/facturas/lista"), 1200);
+    } catch (e) {
+      console.error("Error en crearFactura:", e);
+      setMensaje("Error creando factura");
     }
-
-    setMensaje("Factura creada y enviada al técnico correctamente");
-    setTimeout(() => navigate("/facturas/lista"), 1500);
   }
 
   return (
@@ -164,7 +223,7 @@ export default function CrearFactura() {
             }}
           />
 
-          <label>Importe (€)</label>
+          <label>Importe</label>
           <input
             type="number"
             value={form.importe}
@@ -180,24 +239,37 @@ export default function CrearFactura() {
             }}
           />
 
-          <button
-            onClick={crearFactura}
-            style={{
-              marginTop: "20px",
-              padding: "14px",
-              width: "100%",
-              background: "#4db8ff",
-              color: "#000",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "17px",
-              cursor: "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-            }}
-          >
-            Guardar factura y enviar al técnico
-          </button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={() => crearFactura()}
+              style={{
+                padding: "12px 18px",
+                background: "#4ade80",
+                color: "#0b1220",
+                borderRadius: "10px",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: "700",
+              }}
+            >
+              Crear Factura y Enviar a Técnico
+            </button>
+
+            <button
+              onClick={() => navigate("/facturas/lista")}
+              style={{
+                padding: "12px 18px",
+                background: "#ef4444",
+                color: "#fff",
+                borderRadius: "10px",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: "700",
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
         </div>
       </div>
     </Menu>
