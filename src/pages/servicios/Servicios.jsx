@@ -124,12 +124,6 @@ export default function Servicios() {
       return;
     }
 
-    const esInspeccion = seleccionados.includes("Inspección posterior a tormenta");
-    if (esInspeccion && (!viviendaId || !tecnicoId)) {
-      setError("Para la inspección posterior a tormenta debes seleccionar la vivienda y el técnico asignado.");
-      return;
-    }
-
     setGuardando(true);
 
     try {
@@ -166,23 +160,18 @@ export default function Servicios() {
 
       if (errorLineas) throw new Error(errorLineas.message);
 
-      // 3. Automatización de campo: Crear orden de inspección si aplica
-      let avisoInspeccion = "";
-      if (esInspeccion) {
-        const { error: errorInspeccion } = await supabase.from("inspecciones").insert({
-          vivienda_id: Number(viviendaId),
-          cliente_id: String(clienteId),
-          tecnico_id: tecnicoId,
-          estado: "pendiente",
-          fecha: new Date().toISOString(),
-          notas: `Orden automática generada desde Factura ${factura.numero}`
-        });
+      // 3. 🚀 CORREGIDO: Crear el registro en la tabla 'extras' para que aparezca correctamente en el panel de extras del técnico
+      let avisoExtra = "";
+      const { error: errorExtra } = await supabase.from("extras").insert({
+        contrato_id: factura.id,
+        descripcion: lineas.map((l) => l.nombre).join(", "),
+        estado: "pendiente" // Estado pendiente para que lo vea el técnico en su app
+      });
 
-        if (errorInspeccion) {
-          avisoInspeccion = " (Aviso: Error al sincronizar con la app del técnico).";
-        } else {
-          avisoInspeccion = " Orden enviada al panel del técnico en la app.";
-        }
+      if (errorExtra) {
+        avisoExtra = " (Aviso: Error al sincronizar el servicio extra con la app del técnico).";
+      } else {
+        avisoExtra = " Servicio extra enviado al panel del técnico.";
       }
 
       // 4. Generación y envío de PDF
@@ -209,7 +198,7 @@ export default function Servicios() {
       setPrecios({});
       setViviendaId("");
       setTecnicoId("");
-      setMensaje(`Orden y Factura ${factura.numero} creadas con éxito (${total} €).${avisoInspeccion}${avisoPdf}`);
+      setMensaje(`Factura ${factura.numero} creada con éxito (${total} €).${avisoExtra}${avisoPdf}`);
       setGuardando(false);
     } catch (e) {
       setError(`Error en el proceso: ${e.message}`);
@@ -269,36 +258,6 @@ export default function Servicios() {
             </div>
           ))}
         </div>
-
-        {seleccionados.includes("Inspección posterior a tormenta") && (
-          <div style={{ ...estilos.tarjeta, border: "1px solid #4db8ff" }}>
-            <h3 style={{ color: "#4db8ff", marginBottom: 12, fontSize: 16 }}>⚡ Asignación Técnica de Campo</h3>
-            
-            <label style={estilos.etiqueta}>Vivienda de destino</label>
-            <select
-              value={viviendaId}
-              onChange={(e) => setViviendaId(e.target.value)}
-              style={estilos.select}
-            >
-              <option value="">-- Selecciona una vivienda --</option>
-              {viviendas.map((v) => (
-                <option key={v.id} value={v.id}>{v.direccion}</option>
-              ))}
-            </select>
-
-            <label style={{ ...estilos.etiqueta, marginTop: 12 }}>Técnico responsable</label>
-            <select
-              value={tecnicoId}
-              onChange={(e) => setTecnicoId(e.target.value)}
-              style={estilos.select}
-            >
-              <option value="">-- Selecciona un técnico --</option>
-              {tecnicos.map((t) => (
-                <option key={t.id} value={t.id}>{t.nombre}</option>
-              ))}
-            </select>
-          </div>
-        )}
 
         <div style={estilos.tarjeta}>
           <div style={estilos.fila}><span>Base Imponible</span><strong>{base.toFixed(2)} €</strong></div>
