@@ -50,7 +50,6 @@ export default function ClienteInspeccionesLista() {
 
         const clienteId = clienteData.id;
 
-        // CARGAMOS AMBAS TABLAS SIN RESTRICCIONES DE ESTADO
         const [resInspecciones, resExtras] = await Promise.all([
           supabase.from("inspecciones").select("*").eq("cliente_id", clienteId),
           supabase.from("extras").select("*").eq("cliente_id", clienteId)
@@ -114,7 +113,7 @@ export default function ClienteInspeccionesLista() {
               const textoCrudo = item.observaciones || item.comentarios || item.descripcion || item.detalle || item.nota || "";
               const descripcionLimpia = textoCrudo ? textoCrudo.replace(/Factura\s*[^:]*:\s*/i, "") : "Informe disponible";
 
-              const tituloItem = esExtra ? "Trabajo Extra" : (item.titulo || item.nombre || `Inspección`);
+              const tituloItem = esExtra ? "🛠️ Servicio Extra / Trabajo" : (item.titulo || item.nombre || `📋 Inspección`);
               const fechaFormateada = item.created_at ? new Date(item.created_at).toLocaleDateString() : (item.fecha ? new Date(item.fecha).toLocaleDateString() : "Reciente");
 
               return (
@@ -135,8 +134,9 @@ export default function ClienteInspeccionesLista() {
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: "14px", fontWeight: "800", color: "#fff" }}>{tituloItem}</span>
+                    {/* Etiqueta distintiva de tipo y estado */}
                     <span style={{ fontSize: "10px", fontWeight: "800", padding: "4px 10px", borderRadius: "10px", background: esExtra ? "rgba(224, 176, 52, 0.2)" : "rgba(16, 185, 129, 0.15)", color: esExtra ? COLOR_DORADO : "#34d399", border: esExtra ? BORDE_DORADO_FINO : "1px solid rgba(16, 185, 129, 0.4)" }}>
-                      {esExtra ? "COMPLETADO" : (item.estado || "APROBADA")}
+                      {esExtra ? "⚡ EXTRA" : (item.estado || "APROBADA")}
                     </span>
                   </div>
 
