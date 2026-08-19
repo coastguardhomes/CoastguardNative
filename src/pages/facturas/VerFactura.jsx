@@ -83,7 +83,7 @@ export default function VerFactura() {
     setGenerando(false);
   }
 
-  // ⭐ FUNCIÓN CORREGIDA: APROBAR PAGO Y ENVIAR AL TÉCNICO CON DETECCIÓN DE ERRORES
+  // ⭐ APROBAR PAGO Y ENVIAR AL TÉCNICO (SIN CLIENTE_ID)
   async function aprobarYEnviarATecnico() {
     try {
       setEnviandoTecnico(true);
@@ -98,18 +98,19 @@ export default function VerFactura() {
 
       if (errorUpdate) throw new Error("Error actualizando factura: " + errorUpdate.message);
 
-      // 2. Crear el registro en la tabla 'extras'
+      // 2. Crear el registro en la tabla 'extras' (omitimos cliente_id porque la tabla no lo tiene)
       const conceptoTexto = factura.descripcion || lineas.map(l => l.concepto).join(", ") || "Servicio Extra Facturado";
       
       const payloadExtra = {
         titulo: `Factura ${factura.numero || `#${factura.id}`}`,
         descripcion: conceptoTexto,
-        estado: "pendiente"
+        estado: "pendiente",
+        factura_id: Number(id)
       };
 
-      if (factura.cliente_id) payloadExtra.cliente_id = factura.cliente_id;
-      if (factura.vivienda_id) payloadExtra.vivienda_id = factura.vivienda_id;
-      if (factura.id) payloadExtra.factura_id = factura.id;
+      if (factura.vivienda_id) {
+        payloadExtra.vivienda_id = factura.vivienda_id;
+      }
 
       const { error: errorExtra } = await supabase
         .from("extras")
