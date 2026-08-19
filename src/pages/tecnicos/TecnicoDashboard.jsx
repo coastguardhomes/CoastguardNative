@@ -8,8 +8,10 @@ export default function DashboardTecnico() {
     inspeccionesSemana: 0,
     alertasDetectadas: 0,
     viviendasAsignadas: 0,
+    extrasPendientesCount: 0,
   });
   const [inspeccionesDiarias, setInspeccionesDiarias] = useState([]);
+  const [extrasPendientes, setExtrasPendientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [debugLog, setDebugLog] = useState('Iniciando carga...');
 
@@ -22,6 +24,7 @@ export default function DashboardTecnico() {
       setLoading(true);
       setDebugLog('Conectando a Supabase...');
 
+      // 1. Cargar inspecciones pendientes normales
       const { data: inspData, error: inspError } = await supabase
         .from('inspecciones')
         .select('*')
@@ -30,8 +33,6 @@ export default function DashboardTecnico() {
 
       if (inspError) {
         setDebugLog(`Error en inspecciones: ${inspError.message}`);
-        setLoading(false);
-        return;
       }
 
       const rawLista = inspData || [];
@@ -58,6 +59,21 @@ export default function DashboardTecnico() {
 
       setInspeccionesDiarias(inspeccionesLista);
 
+      // 2. Cargar EXTRAS pendientes asignados
+      const { data: extrasData, error: extrasError } = await supabase
+        .from('extras')
+        .select('*')
+        .not('estado', 'in', '("completada","finalizada","aprobada","enviado")')
+        .order('id', { ascending: false });
+
+      if (extrasError) {
+        console.warn('Aviso al cargar extras (puede que la tabla no tenga datos aún):', extrasError.message);
+      }
+
+      const listaExtras = extrasData || [];
+      setExtrasPendientes(listaExtras);
+
+      // 3. Contar viviendas e incidencias
       const { count: countViviendas } = await supabase
         .from('viviendas')
         .select('*', { count: 'exact', head: true });
@@ -70,6 +86,7 @@ export default function DashboardTecnico() {
         inspeccionesSemana: inspeccionesLista.length,
         alertasDetectadas: countIncidencias || 0,
         viviendasAsignadas: countViviendas || 0,
+        extrasPendientesCount: listaExtras.length,
       });
 
       setDebugLog('¡Datos cargados con éxito!');
@@ -123,18 +140,54 @@ export default function DashboardTecnico() {
           </div>
         </div>
 
-        {/* BOTÓN PRINCIPAL NUEVO (REEMPLAZANDO EL ANTIGUO CHECKLIST) */}
-        <button 
-          style={styles.mainExtraActionBtn}
-          onClick={() => {
-            const extraId = prompt("Introduce el ID del trabajo extra:");
-            if (extraId) navigate(`/tecnico/extra/${extraId}`);
-          }}
-        >
-          <span style={{ fontSize: '18px' }}>⚡</span> Gestionar Inspección Extra
-        </button>
+        {/* AVISO / BOTÓN DE EXTRAS PENDIENTES */}
+        {stats.extrasPendientesCount > 0 ? (
+          <div style={styles.extraAlertBanner}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>⚡</span>
+              <div>
+                <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#fff' }}>¡Tienes {stats.extrasPendientesCount} trabajo(s) extra pendiente(s)!</div>
+                <div style={{ fontSize: '10px', color: '#ffd700' }}>Revisa la lista inferior para realizar fotos y observaciones.</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={styles.extraNoAlertBanner}>
+            <span style={{ fontSize: '14px' }}>⚡</span> No hay servicios extras pendientes.
+          </div>
+        )}
 
-        {/* LISTADO DE INSPECCIONES */}
+        {/* LISTADO DE EXTRAS PENDIENTES */}
+        {extrasPendientes.length > 0 && (
+          <div style={styles.assignedSectionExtra}>
+            <div style={styles.sectionHeaderFlex}>
+              <h3 style={styles.assignedTitleExtra}>🛠️ Trabajos Extras Asignados</h3>
+              <span style={styles.counterBadgeExtra}>{extrasPendientes.length} Pendientes</span>
+            </div>
+            <div style={styles.listScrollContainer}>
+              {extrasPendientes.map((extra) => (
+                <div key={extra.id} style={styles.assignmentItemExtra}>
+                  <div>
+                    <div style={{ color: '#3498db', fontWeight: 'bold', fontSize: '12px' }}>
+                      Extra #{String(extra.id).substring(0, 8)} - {extra.titulo || extra.nombre || 'Servicio'}
+                    </div>
+                    <div style={{ color: '#aaa', fontSize: '11px', marginTop: '3px' }}>
+                      📝 {extra.descripcion || 'Sin descripción detallada'}
+                    </div>
+                  </div>
+                  <button 
+                    style={styles.btnActionExtraItem}
+                    onClick={() => navigate(`/tecnico/extra/${extra.id}`)}
+                  >
+                    Hacer Extra →
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* LISTADO DE INSPECCIONES NORMALES */}
         <div style={styles.assignedSection}>
           <div style={styles.sectionHeaderFlex}>
             <h3 style={styles.assignedTitle}>Inspecciones Asignadas</h3>
@@ -154,23 +207,23 @@ export default function DashboardTecnico() {
                   <div>
                     <div style={{ color: '#ffd700', fontWeight: 'bold', fontSize: '12px' }}>
                       Inspección #{String(insp.id).substring(0, 8)}
-                      {insp.tipo_inspeccion === 'extra' && <span style={styles.extraBadgeTag}>EXTRA</span>}
                     </div>
                     <div style={{ color: '#aaa', fontSize: '11px', marginTop: '3px' }}>
                       📍 {insp.direccion}
                     </div>
                   </div>
                   <button 
-                    style={insp.tipo_inspeccion === 'extra' ? styles.btnActionExtraItem : styles.btnActionItem}
-                    onClick={() => navigate(insp.tipo_inspeccion === 'extra' ? `/tecnico/extra/${insp.id}` : `/tecnico/inspeccion/${insp.id}/checklist`)}
+                    style={styles.btnActionItem}
+                    onClick={() => navigate(`/tecnico/inspeccion/${insp.id}/checklist`)}
                   >
-                    {insp.tipo_inspeccion === 'extra' ? 'Ver Extra →' : 'Checklist →'}
+                    Checklist →
                   </button>
                 </div>
               ))}
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
@@ -193,19 +246,20 @@ const styles = {
   statSub: { fontSize: '7px', color: '#888', display: 'block' },
   statLabel: { fontSize: '9px', color: '#ffd700', marginTop: '2px', fontWeight: '600' },
   statLabelAlert: { fontSize: '9px', color: '#e74c3c', marginTop: '2px', fontWeight: '600' },
-  mainExtraActionBtn: {
-    width: '100%', background: 'linear-gradient(to bottom, #2980b9, #1f618d)', color: '#fff',
-    border: '1px solid #3498db', padding: '14px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
-  },
-  assignedSection: { background: '#070d17', border: '1px solid #1e3050', borderRadius: '10px', padding: '12px', flex: 1 },
+  extraAlertBanner: { backgroundColor: '#1a365d', border: '1px solid #3182ce', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  extraNoAlertBanner: { backgroundColor: '#111b2e', border: '1px solid #2a3b55', borderRadius: '8px', padding: '8px 12px', fontSize: '11px', color: '#888', display: 'flex', alignItems: 'center', gap: '8px' },
+  assignedSection: { background: '#070d17', border: '1px solid #1e3050', borderRadius: '10px', padding: '12px' },
+  assignedSectionExtra: { background: '#081b29', border: '1px solid #2980b9', borderRadius: '10px', padding: '12px' },
   sectionHeaderFlex: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
   assignedTitle: { fontSize: '11px', color: '#ffd700', margin: 0, fontWeight: 'bold', textTransform: 'uppercase' },
+  assignedTitleExtra: { fontSize: '11px', color: '#3498db', margin: 0, fontWeight: 'bold', textTransform: 'uppercase' },
   counterBadge: { backgroundColor: '#16263f', color: '#ffd700', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' },
-  listScrollContainer: { maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' },
+  counterBadgeExtra: { backgroundColor: '#1b4f72', color: '#3498db', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' },
+  listScrollContainer: { maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' },
   emptyBox: { textAlign: 'center', padding: '10px 0' },
   emptyText: { fontSize: '11px', color: '#888', marginBottom: '6px' },
   assignmentItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111b2e', padding: '10px 12px', borderRadius: '6px', border: '1px solid #2a3b55' },
+  assignmentItemExtra: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0d233a', padding: '10px 12px', borderRadius: '6px', border: '1px solid #2980b9' },
   btnActionItem: { backgroundColor: '#27ae60', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' },
-  btnActionExtraItem: { backgroundColor: '#2980b9', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' },
-  extraBadgeTag: { backgroundColor: '#e67e22', color: '#fff', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', marginLeft: '6px' }
+  btnActionExtraItem: { backgroundColor: '#2980b9', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }
 };
