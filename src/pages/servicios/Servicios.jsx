@@ -129,7 +129,7 @@ export default function Servicios() {
     try {
       const numero = await siguienteNumero();
 
-      // 1. Crear Factura Contable
+      // 1. Crear Factura Contable (Pendiente de pago)
       const { data: factura, error: errorFactura } = await supabase
         .from("facturas")
         .insert({
@@ -160,21 +160,7 @@ export default function Servicios() {
 
       if (errorLineas) throw new Error(errorLineas.message);
 
-      // 3. 🚀 CORREGIDO: Crear el registro en la tabla 'extras' para que aparezca correctamente en el panel de extras del técnico
-      let avisoExtra = "";
-      const { error: errorExtra } = await supabase.from("extras").insert({
-        contrato_id: factura.id,
-        descripcion: lineas.map((l) => l.nombre).join(", "),
-        estado: "pendiente" // Estado pendiente para que lo vea el técnico en su app
-      });
-
-      if (errorExtra) {
-        avisoExtra = " (Aviso: Error al sincronizar el servicio extra con la app del técnico).";
-      } else {
-        avisoExtra = " Servicio extra enviado al panel del técnico.";
-      }
-
-      // 4. Generación y envío de PDF
+      // 3. Generación y envío de PDF (El extra ya NO se crea aquí automáticamente)
       let avisoPdf = "";
       const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
         "factura-pdf",
@@ -198,7 +184,7 @@ export default function Servicios() {
       setPrecios({});
       setViviendaId("");
       setTecnicoId("");
-      setMensaje(`Factura ${factura.numero} creada con éxito (${total} €).${avisoExtra}${avisoPdf}`);
+      setMensaje(`Factura ${factura.numero} creada con éxito (${total} €). Se enviará al técnico en cuanto se marque como pagada.${avisoPdf}`);
       setGuardando(false);
     } catch (e) {
       setError(`Error en el proceso: ${e.message}`);
@@ -310,3 +296,4 @@ const estilos = {
   ok: { marginBottom: 15, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: 8, padding: 12 },
   error: { marginBottom: 15, color: "#ff6b6b", background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.3)", borderRadius: 8, padding: 12 }
 };
+    
