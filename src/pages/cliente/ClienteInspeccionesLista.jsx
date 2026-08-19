@@ -27,6 +27,7 @@ export default function ClienteInspeccionesLista() {
         setLoading(true);
         setErrorMsg(null);
 
+        // 1. Obtener ID del cliente
         let { data: clienteData } = await supabase
           .from("clientes")
           .select("id")
@@ -50,6 +51,7 @@ export default function ClienteInspeccionesLista() {
 
         const clienteId = clienteData.id;
 
+        // 2. Cargar inspecciones y extras
         const [resInspecciones, resExtras] = await Promise.all([
           supabase.from("inspecciones").select("*").eq("cliente_id", clienteId),
           supabase.from("extras").select("*").eq("cliente_id", clienteId)
@@ -119,7 +121,7 @@ export default function ClienteInspeccionesLista() {
               return (
                 <div
                   key={item.id}
-                  onClick={() => navigate(esExtra ? `/cliente/inspeccion/${item.id}` : `/cliente/inspecciones/${item.id}`)}
+                  onClick={() => navigate(`/cliente/inspeccion/${item.id}`)}
                   style={{
                     background: FONDO_TARJETA,
                     border: BORDE_DORADO_FINO,
@@ -134,8 +136,17 @@ export default function ClienteInspeccionesLista() {
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: "14px", fontWeight: "800", color: "#fff" }}>{tituloItem}</span>
-                    {/* Etiqueta distintiva de tipo y estado */}
-                    <span style={{ fontSize: "10px", fontWeight: "800", padding: "4px 10px", borderRadius: "10px", background: esExtra ? "rgba(224, 176, 52, 0.2)" : "rgba(16, 185, 129, 0.15)", color: esExtra ? COLOR_DORADO : "#34d399", border: esExtra ? BORDE_DORADO_FINO : "1px solid rgba(16, 185, 129, 0.4)" }}>
+                    
+                    {/* Etiqueta visual clara */}
+                    <span style={{ 
+                      fontSize: "10px", 
+                      fontWeight: "800", 
+                      padding: "4px 10px", 
+                      borderRadius: "10px", 
+                      background: esExtra ? "rgba(224, 176, 52, 0.2)" : "rgba(16, 185, 129, 0.15)", 
+                      color: esExtra ? COLOR_DORADO : "#34d399", 
+                      border: esExtra ? BORDE_DORADO_FINO : "1px solid rgba(16, 185, 129, 0.4)" 
+                    }}>
                       {esExtra ? "⚡ EXTRA" : (item.estado || "APROBADA")}
                     </span>
                   </div>
