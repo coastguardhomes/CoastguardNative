@@ -39,6 +39,7 @@ export default function ClienteDashboard() {
   const [numInspecciones, setNumInspecciones] = useState(0);
   const [numAlertas, setNumAlertas] = useState(0);
   const [numViviendas, setNumViviendas] = useState(0);
+  const [nuevosExtras, setNuevosExtras] = useState([]); // NUEVO: Estado para los informes extras enviados
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -66,8 +67,8 @@ export default function ClienteDashboard() {
           setCliente(clienteData);
           const clienteId = clienteData.id;
 
-          // 2. Consultar conteos reales en paralelo (Filtro de alertas corregido)
-          const [resInspecciones, resAlertas, resViviendas] = await Promise.all([
+          // 2. Consultar conteos reales y extras en paralelo
+          const [resInspecciones, resAlertas, resViviendas, resExtras] = await Promise.all([
             supabase
               .from("inspecciones")
               .select("*", { count: "exact", head: true })
@@ -76,16 +77,23 @@ export default function ClienteDashboard() {
               .from("alertas")
               .select("*", { count: "exact", head: true })
               .eq("cliente_id", clienteId)
-              .eq("estado", "pendiente"), // CORREGIDO: "pendiente" en lugar de "activa"
+              .eq("estado", "pendiente"),
             supabase
               .from("viviendas")
               .select("*", { count: "exact", head: true })
-              .eq("cliente_id", clienteId)
+              .eq("cliente_id", clienteId),
+            supabase
+              .from("extras")
+              .select("*")
+              .eq("estado", "enviado_cliente")
+              .order("created_at", { ascending: false })
           ]);
 
           setNumInspecciones(resInspecciones.count || 0);
           setNumAlertas(resAlertas.count || 0);
           setNumViviendas(resViviendas.count || 0);
+          setNuevosExtras(resExtras.data || []);
+
         } else if (clienteError) {
           console.error("Error cargando cliente:", clienteError);
         }
@@ -186,6 +194,49 @@ export default function ClienteDashboard() {
             <span style={{ color: "#94a3b8", fontSize: "11px", fontWeight: "600" }}>Operativo</span>
           </div>
         </div>
+
+        {/* --- NUEVO: AVISO DE INFORMES / TRABAJOS EXTRAS ENVIADOS --- */}
+        {nuevosExtras.length > 0 && (
+          <div style={{ marginBottom: "20px", background: "rgba(224, 176, 52, 0.12)", border: BORDE_DORADO_FINO, borderRadius: "16px", padding: "16px", boxShadow: "0 0 15px rgba(224, 176, 52, 0.25)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+              <span style={{ fontSize: "18px" }}>📥</span>
+              <h3 style={{ fontSize: "13px", fontWeight: "800", ...TEXTO_DORADO_BRILLO, margin: 0, textTransform: "uppercase" }}>
+                Tienes {nuevosExtras.length} {nuevosExtras.length === 1 ? "informe nuevo disponible" : "informes nuevos disponibles"}
+              </h3>
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {nuevosExtras.map((extra) => (
+                <div 
+                  key={extra.id} 
+                  onClick={() => navigate(`/cliente/inspeccion/${extra.id}`)}
+                  style={{ 
+                    background: FONDO_TARJETA_LINEAL, 
+                    border: "1px solid rgba(224, 176, 52, 0.4)", 
+                    borderRadius: "10px", 
+                    padding: "12px", 
+                    cursor: "pointer", 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "center" 
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: "13px", fontWeight: "700", color: "#fff" }}>
+                      {extra.direccion || "Trabajo Extra / Informe de Mantenimiento"}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
+                      {extra.descripcion ? extra.descripcion.substring(0, 50) + "..." : "Pulsa para ver detalles y fotos"}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: "12px", fontWeight: "700", color: COLOR_DORADO, whiteSpace: "nowrap", marginLeft: "10px" }}>
+                    Ver →
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* --- TARJETAS DE DATOS --- */}
         <div
