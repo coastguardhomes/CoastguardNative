@@ -83,7 +83,7 @@ export default function VerFactura() {
     setGenerando(false);
   }
 
-  // ⭐ NUEVA FUNCIÓN: APROBAR PAGO Y ENVIAR AL TÉCNICO
+  // ⭐ FUNCIÓN CORREGIDA: APROBAR PAGO Y ENVIAR AL TÉCNICO CON DETECCIÓN DE ERRORES
   async function aprobarYEnviarATecnico() {
     try {
       setEnviandoTecnico(true);
@@ -96,33 +96,34 @@ export default function VerFactura() {
         .update({ estado: "pagada" })
         .eq("id", id);
 
-      if (errorUpdate) throw errorUpdate;
+      if (errorUpdate) throw new Error("Error actualizando factura: " + errorUpdate.message);
 
-      // 2. Crear el registro en la tabla 'extras' para que aparezca en el Dashboard del Técnico
+      // 2. Crear el registro en la tabla 'extras'
       const conceptoTexto = factura.descripcion || lineas.map(l => l.concepto).join(", ") || "Servicio Extra Facturado";
       
+      const payloadExtra = {
+        titulo: `Factura ${factura.numero || `#${factura.id}`}`,
+        descripcion: conceptoTexto,
+        estado: "pendiente"
+      };
+
+      if (factura.cliente_id) payloadExtra.cliente_id = factura.cliente_id;
+      if (factura.vivienda_id) payloadExtra.vivienda_id = factura.vivienda_id;
+      if (factura.id) payloadExtra.factura_id = factura.id;
+
       const { error: errorExtra } = await supabase
         .from("extras")
-        .insert([
-          {
-            titulo: `Factura ${factura.numero || `#${factura.id}`}`,
-            descripcion: conceptoTexto,
-            cliente_id: factura.cliente_id || null,
-            vivienda_id: factura.vivienda_id || null,
-            estado: "pendiente",
-            factura_id: factura.id
-          }
-        ]);
+        .insert([payloadExtra]);
 
       if (errorExtra) {
-        console.warn("Aviso al insertar en extras (revisa si la tabla tiene restricciones):", errorExtra.message);
+        throw new Error("Error en tabla 'extras': " + errorExtra.message);
       }
 
       setFactura((prev) => ({ ...prev, estado: "pagada" }));
       setMensaje("¡Pago aprobado y servicio enviado al técnico correctamente!");
     } catch (err) {
       console.error("Error al aprobar y enviar:", err);
-      setError("No se pudo completar la acción para el técnico.");
+      setError(err.message);
     } finally {
       setEnviandoTecnico(false);
     }
