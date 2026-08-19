@@ -1,26 +1,29 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../context/AuthContext";
-import Menu from "../../layouts/Menu";
+import { useAuth } from "../../context/AuthContext.jsx";
+import Menu from "../../layouts/Menu.jsx";
 
+// --- CONSTANTES DE ESTILO PREMIUM ---
 const COLOR_DORADO = "#e0b034";
 const COLOR_BRILLO_DORADO = "rgba(224, 176, 52, 0.5)";
-const FONDO_TARJETA = "linear-gradient(145deg, #0d1626 0%, #05080f 100%)";
 const FONDO_PRINCIPAL = "#030509";
-const BORDE_DORADO = `1px solid ${COLOR_DORADO}`;
-const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: `0 0 8px ${COLOR_BRILLO_DORADO}` };
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const BORDE_DORADO_INTENSO = "1px solid rgba(224, 176, 52, 0.7)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
 
 export default function ClienteInspeccionesLista() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [inspecciones, setInspecciones] = useState([]);
+  const [elementos, setElementos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
 
   useEffect(() => {
-    async function cargarInspecciones() {
+    async function cargarInspeccionesYExtras() {
       if (!user) return;
 
       try {
@@ -48,124 +51,121 @@ export default function ClienteInspeccionesLista() {
           return;
         }
 
-        // 1. Cargar inspecciones normales
-        const { data: dataInspecciones, error: errInspecciones } = await supabase
-          .from("inspecciones")
-          .select("*")
-          .eq("cliente_id", clienteData.id)
-          .order("created_at", { ascending: false });
+        const clienteId = clienteData.id;
 
-        if (errInspecciones) throw errInspecciones;
+        // 1. Cargar inspecciones normales y trabajos extras en paralelo
+        const [resInspecciones, resExtras] = await Promise.all([
+          supabase.from("inspecciones").select("*").eq("cliente_id", clienteId),
+          supabase.from("extras").select("*").eq("cliente_id", clienteId)
+        ]);
 
-        // 2. Cargar trabajos extra enviados al cliente desde la tabla 'extras'
-        const { data: dataExtras, error: errExtras } = await supabase
-          .from("extras")
-          .select("*")
-          .eq("estado", "enviado_cliente")
-          .order("created_at", { ascending: false });
-
-        if (errExtras) console.error("Error al cargar extras:", errExtras);
-
-        // Mapeamos los extras para que coincidan con la estructura visual de la lista
-        const extrasFormateados = (dataExtras || []).map(extra => ({
-          id: extra.id,
-          created_at: extra.created_at,
-          fecha: extra.updated_at || extra.created_at,
-          estado: "completado", // o 'enviado_cliente'
-          direccion: extra.direccion || "Trabajo Extra / Mantenimiento",
-          localidad: "",
-          esExtra: true
+        const listaInspecciones = (resInspecciones.data || []).map(item => ({
+          ...item,
+          tipo: 'inspeccion',
+          fechaOrden: new Date(item.created_at || item.fecha || 0)
         }));
 
-        const listaInspeccionesBase = dataInspecciones || [];
-        const listaTotal = [...listaInspeccionesBase, ...extrasFormateados];
+        const listaExtras = (resExtras.data || []).map(item => ({
+          ...item,
+          tipo: 'extra',
+          fechaOrden: new Date(item.created_at || 0)
+        }));
 
-        if (listaTotal.length > 0) {
-          const viviendaIds = [...new Set(listaTotal.map(i => i.vivienda_id).filter(Boolean))];
+        // Combinar y ordenar por fecha descendente (lo más nuevo primero)
+        const combinados = [...listaInspecciones, ...listaExtras].sort((a, b) => b.fechaOrden - a.fechaOrden);
 
-          let viviendasMap = {};
-          if (viviendaIds.length > 0) {
-            const { data: dataViviendas } = await supabase
-              .from("viviendas")
-              .select("id, direccion, ciudad, localidad, alias")
-              .in("id", viviendaIds);
+        setElementos(combinados);
 
-            if (dataViviendas) {
-              viviendasMap = dataViviendas.reduce((acc, viv) => {
-                acc[viv.id] = viv;
-                return acc;
-              }, {});
-            }
-          }
-
-          const inspeccionesCompletas = listaTotal.map(item => ({
-            ...item,
-            viviendas: item.viviendas || viviendasMap[item.vivienda_id] || null
-          }));
-
-          setInspecciones(inspeccionesCompletas);
-        } else {
-          setInspecciones([]);
-        }
       } catch (err) {
-        console.error("Error al obtener inspecciones:", err);
-        setErrorMsg("Error al consultar las inspecciones en la base de datos.");
+        console.error("Error cargando inspecciones y extras:", err);
+        setErrorMsg("Hubo un error al cargar los datos.");
       } finally {
         setLoading(false);
       }
     }
 
-    cargarInspecciones();
+    cargarInspeccionesYExtras();
   }, [user]);
+
+  if (loading) {
+    return (
+      <Menu>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: COLOR_DORADO, background: FONDO_PRINCIPAL, fontFamily: "Inter" }}>
+          <h3 style={TEXTO_DORADO_BRILLO}>Cargando Listado...</h3>
+        </div>
+      </Menu>
+    );
+  }
 
   return (
     <Menu>
-      <div style={{ width: "100%", minHeight: "100vh", background: FONDO_PRINCIPAL, padding: "15px", fontFamily: "'Inter', sans-serif", color: "#fff", boxSizing: "border-box", paddingBottom: "110px" }}>
-        <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <h1 style={{ fontSize: "22px", fontWeight: "800", ...TEXTO_DORADO_BRILLO, margin: 0 }}>MIS INSPECCIONES E INFORMES</h1>
-        </div>
+      <div style={{ padding: "16px", background: FONDO_PRINCIPAL, minHeight: "100vh", color: "#fff", fontFamily: "Inter", paddingBottom: "110px", boxSizing: "border-box" }}>
+        
+        <h1 style={{ fontSize: "16px", fontWeight: "900", ...TEXTO_DORADO_BRILLO, marginBottom: "20px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          Mis Inspecciones e Informes
+        </h1>
 
-        {loading && <div style={{ textAlign: "center", padding: "40px 0", color: COLOR_DORADO }}>Cargando...</div>}
+        {errorMsg && <div style={{ color: "#ef4444", marginBottom: "15px", fontSize: "12px" }}>{errorMsg}</div>}
 
-        {errorMsg && <div style={{ color: "#ff6b6b", textAlign: "center", padding: "20px" }}>{errorMsg}</div>}
-
-        {!loading && !errorMsg && inspecciones.length === 0 && (
-          <div style={{ textAlign: "center", color: "#888", padding: "40px 0" }}>No tienes inspecciones ni informes disponibles.</div>
-        )}
-
-        {!loading && !errorMsg && inspecciones.length > 0 && (
+        {elementos.length === 0 ? (
+          <div style={{ color: "#94a3b8", fontSize: "13px", textAlign: "center", marginTop: "40px" }}>
+            No hay inspecciones ni informes disponibles.
+          </div>
+        ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {inspecciones.map((item, index) => {
-              const direccionReal = item.viviendas?.direccion || item.viviendas?.alias || item.direccion;
-              const localidadReal = item.viviendas?.ciudad || item.viviendas?.localidad || item.localidad || item.ciudad || "No especificada";
+            {elementos.map((item) => {
+              const esExtra = item.tipo === 'extra';
               
-              const fechaObj = item.fecha ? new Date(item.fecha) : (item.created_at ? new Date(item.created_at) : null);
-              const fechaFormateada = fechaObj ? fechaObj.toLocaleDateString("es-ES") : "Sin fecha";
+              // Limpiar la descripción eliminando códigos de factura si los tuviera
+              const descripcionLimpia = item.descripcion 
+                ? item.descripcion.replace(/Factura\s*[^:]*:\s*/i, "") 
+                : (item.detalle || "No especificada");
 
-              const numeroCorrelativo = String(inspecciones.length - index).padStart(2, '0');
-              
-              const titulo = item.esExtra 
-                ? `Trabajo Extra Nº ${numeroCorrelativo} (${fechaFormateada})` 
-                : `Inspección Nº ${numeroCorrelativo} (${fechaFormateada})`;
+              const fechaFormateada = item.created_at 
+                ? new Date(item.created_at).toLocaleDateString() 
+                : (item.fecha || "Reciente");
 
               return (
-                <div key={item.id} onClick={() => navigate(`/cliente/inspeccion/${item.id}`)}
-                  style={{ background: FONDO_TARJETA, border: BORDE_DORADO, borderRadius: "12px", padding: "14px", cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.5)" }}>
-                  <div style={{ marginBottom: "8px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
-                      <span style={{ fontSize: "14px", fontWeight: "700", color: "#4db8ff", lineHeight: "1.3" }}>{titulo}</span>
-                      <span style={{ fontSize: "10px", fontWeight: "800", padding: "3px 8px", borderRadius: "12px", textTransform: "uppercase", background: "rgba(224, 176, 52, 0.2)", color: COLOR_DORADO, border: BORDE_DORADO }}>
-                        {item.estado || "Completado"}
-                      </span>
-                    </div>
-                    <div style={{ marginTop: "8px", fontSize: "13px", color: "#e2e8f0" }}><strong>Detalle:</strong> {direccionReal || "No especificada"}</div>
-                    {localidadReal && localidadReal !== "No especificada" && (
-                      <div style={{ marginTop: "2px", fontSize: "12px", color: "#94a3b8" }}><strong>Localidad:</strong> {localidadReal}</div>
-                    )}
+                <div
+                  key={item.id}
+                  onClick={() => navigate(esExtra ? `/cliente/inspeccion/${item.id}` : `/cliente/inspecciones/${item.id}`)}
+                  style={{
+                    background: FONDO_TARJETA,
+                    border: BORDE_DORADO_FINO,
+                    borderRadius: "16px",
+                    padding: "16px",
+                    cursor: "pointer",
+                    boxShadow: SOMBRA_LUXURY,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                    transition: "transform 0.2s ease"
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "14px", fontWeight: "800", color: "#fff" }}>
+                      {esExtra ? "Trabajo Extra" : (item.titulo || `Inspección`)}
+                    </span>
+                    <span style={{ 
+                      fontSize: "10px", 
+                      fontWeight: "800", 
+                      padding: "4px 10px", 
+                      borderRadius: "10px", 
+                      background: esExtra ? "rgba(224, 176, 52, 0.2)" : "rgba(16, 185, 129, 0.15)",
+                      color: esExtra ? COLOR_DORADO : "#34d399",
+                      border: esExtra ? BORDE_DORADO_FINO : "1px solid rgba(16, 185, 129, 0.4)"
+                    }}>
+                      {esExtra ? "COMPLETADO" : (item.estado || "APROBADA")}
+                    </span>
                   </div>
-                  <div style={{ fontSize: "11px", color: "#64748b", display: "flex", justifyContent: "space-between", marginTop: "10px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "8px" }}>
+
+                  <div style={{ fontSize: "12px", color: "#94a3b8" }}>
+                    <strong style={{ color: "#cbd5e1" }}>Detalle:</strong> {descripcionLimpia.substring(0, 60)}...
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px", fontSize: "11px", color: "#64748b" }}>
                     <span>Fecha: {fechaFormateada}</span>
-                    <span style={{ color: COLOR_DORADO, fontWeight: "600" }}>Ver detalle →</span>
+                    <span style={{ color: COLOR_DORADO, fontWeight: "700" }}>Ver detalle →</span>
                   </div>
                 </div>
               );
