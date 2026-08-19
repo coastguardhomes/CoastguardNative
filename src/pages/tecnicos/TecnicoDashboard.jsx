@@ -59,15 +59,15 @@ export default function DashboardTecnico() {
 
       setInspeccionesDiarias(inspeccionesLista);
 
-      // 2. Cargar EXTRAS pendientes asignados
+      // 2. Cargar EXTRAS pendientes asignados (Filtro positivo robusto)
       const { data: extrasData, error: extrasError } = await supabase
         .from('extras')
         .select('*')
-        .not('estado', 'in', '("completada","finalizada","aprobada","enviado")')
+        .in('estado', ['pendiente', 'asignado', 'en_proceso'])
         .order('id', { ascending: false });
 
       if (extrasError) {
-        console.warn('Aviso al cargar extras (puede que la tabla no tenga datos aún):', extrasError.message);
+        console.warn('Aviso al cargar extras:', extrasError.message);
       }
 
       const listaExtras = extrasData || [];
