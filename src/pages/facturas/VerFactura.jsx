@@ -69,9 +69,9 @@ export default function VerFactura() {
         {/* --- DETALLES DE LA FACTURA Y LÍNEAS --- */}
         <div style={estilos.tarjeta}>
           <Fila clave="Fecha" valor={factura?.fecha || "-"} />
+          <Fila clave="Estado de pago" valor={factura?.estado_pago || factura?.estado || "-"} destacado />
           {factura?.descripcion && <Fila clave="Concepto" valor={factura.descripcion} />}
           
-          {/* Líneas detalladas (para facturas de extras o múltiples conceptos) */}
           {lineas && lineas.length > 0 && (
             <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8 }}>
               <span style={{ color: "#4db8ff", fontSize: 13, fontWeight: "bold" }}>Conceptos / Líneas:</span>
@@ -99,11 +99,13 @@ export default function VerFactura() {
         {inspeccion && (
           <div style={{ ...estilos.tarjeta, border: inspeccion.estado === "finalizado" ? "1px solid #4ade80" : "1px solid #4db8ff" }}>
             <h3 style={{ color: "#4db8ff", marginTop: 0 }}>
-              {inspeccion.estado === "finalizado" ? "✅ Inspección lista para enviar" : "📧 Informe entregado al cliente"}
+              {inspeccion.estado === "pendiente" && "⏳ Trabajo enviado al técnico (Pendiente de realización)"}
+              {inspeccion.estado === "finalizado" && "✅ Inspección lista para enviar"}
+              {inspeccion.estado === "enviado_cliente" && "📧 Informe entregado al cliente"}
             </h3>
-            <p style={estilos.clave}><strong>Descripción:</strong> {inspeccion.descripcion}</p>
-            <p style={estilos.clave}><strong>Materiales:</strong> {inspeccion.materiales}</p>
-            <p style={estilos.clave}><strong>Tiempo:</strong> {inspeccion.tiempo_empleado}</p>
+            <p style={estilos.clave}><strong>Descripción:</strong> {inspeccion.descripcion || "-"}</p>
+            <p style={estilos.clave}><strong>Materiales:</strong> {inspeccion.materiales || "-"}</p>
+            <p style={estilos.clave}><strong>Tiempo:</strong> {inspeccion.tiempo_empleado || "-"}</p>
             
             {inspeccion.fotos && inspeccion.fotos.length > 0 && (
               <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
@@ -142,11 +144,17 @@ export default function VerFactura() {
                 return;
               }
 
-              // 2. Actualizar también el extra para que se refleje en el flujo del técnico
-              if (inspeccion?.id) {
+              // 2. 🚀 AL MARCAR COMO PAGADA, MANDAMOS EL EXTRA AL TÉCNICO (Creamos o actualizamos el registro en 'extras')
+              if (!inspeccion) {
+                await supabase.from('extras').insert({
+                  contrato_id: factura.id,
+                  descripcion: factura.descripcion || "Servicio extra contratado",
+                  estado: 'pendiente'
+                });
+              } else {
                 await supabase
                   .from('extras')
-                  .update({ estado: 'pagado' })
+                  .update({ estado: 'pendiente' })
                   .eq('id', inspeccion.id);
               }
 
@@ -154,7 +162,7 @@ export default function VerFactura() {
             }}
             style={{ ...estilos.botonAprobar, background: "#4ade80", marginBottom: "10px", border: "none" }}
           >
-            Marcar como Pagada
+            Marcar como Pagada y Enviar al Técnico
           </button>
         )}
 
