@@ -39,18 +39,15 @@ export default function VerFactura() {
 
   useEffect(() => { cargarTodo(); }, [id]);
 
-  // FUNCIÓN PARA ENVIAR AL CLIENTE
   async function enviarAlCliente() {
     setEnviando(true);
     try {
-      // Actualizamos el estado del extra a 'enviado_cliente'
       const { error: updateError } = await supabase
         .from("extras")
         .update({ estado: "enviado_cliente" })
         .eq("id", inspeccion.id);
 
       if (updateError) throw updateError;
-
       setInspeccion(prev => ({ ...prev, estado: "enviado_cliente" }));
       setMensaje("¡Informe enviado al cliente correctamente!");
     } catch (err) {
@@ -67,8 +64,18 @@ export default function VerFactura() {
       <div style={estilos.pagina}>
         <h1 style={estilos.titulo}>{factura?.numero || `Factura #${factura?.id}`}</h1>
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
+        {error && <p style={estilos.error}>{error}</p>}
 
-        {/* --- BLOQUE: INSPECCIÓN TÉCNICA (Visible si existe y está terminada) --- */}
+        {/* --- DETALLES DE LA FACTURA --- */}
+        <div style={estilos.tarjeta}>
+          <Fila clave="Fecha" valor={factura?.fecha || "-"} />
+          <Fila clave="Concepto" valor={factura?.descripcion || "-"} />
+          <Fila clave="Base Imponible" valor={`${Number(factura?.base || 0).toFixed(2)} €`} />
+          <Fila clave="IVA" valor={`${Number(factura?.iva || 0).toFixed(2)} €`} />
+          <Fila clave="Total" valor={`${Number(factura?.total || 0).toFixed(2)} €`} destacado />
+        </div>
+
+        {/* --- INSPECCIÓN TÉCNICA --- */}
         {inspeccion && (
           <div style={{ ...estilos.tarjeta, border: inspeccion.estado === "finalizado" ? "1px solid #4ade80" : "1px solid #4db8ff" }}>
             <h3 style={{ color: "#4db8ff", marginTop: 0 }}>
@@ -100,16 +107,35 @@ export default function VerFactura() {
           </div>
         )}
 
-        {/* ... AQUÍ VA EL RESTO DE TU CÓDIGO (Factura, Líneas, Totales) ... */}
-        <div style={estilos.tarjeta}>
-           <Fila clave="Total" valor={`${Number(factura?.total || 0).toFixed(2)} €`} destacado />
-        </div>
+        {/* --- BOTONES DE ACCIÓN --- */}
+        {factura?.estado !== 'pagada' && (
+          <button 
+            onClick={async () => {
+              const { error } = await supabase.from('facturas').update({ estado: 'pagada', estado_pago: 'pagada' }).eq('id', factura.id);
+              if (!error) window.location.reload();
+            }}
+            style={{ ...estilos.botonAprobar, background: "#4ade80", marginBottom: "10px", border: "none" }}
+          >
+            Marcar como Pagada
+          </button>
+        )}
+
+        <button 
+          onClick={async () => {
+            if(window.confirm("¿Seguro que quieres borrar esta factura?")) {
+              await supabase.from('facturas').delete().eq('id', factura.id);
+              navigate('/admin/facturas'); 
+            }
+          }}
+          style={{ ...estilos.botonAprobar, background: "#ef4444", color: "#fff", border: "none" }}
+        >
+          Borrar Factura
+        </button>
       </div>
     </Menu>
   );
 }
 
-// Asegúrate de incluir tu componente Fila y estilos abajo como los tenías antes
 function Fila({ clave, valor, destacado }) {
   return (
     <div style={estilos.fila}>
@@ -120,13 +146,14 @@ function Fila({ clave, valor, destacado }) {
 }
 
 const estilos = {
-  // ... (tus estilos anteriores)
   pagina: { padding: 20, background: "#0a0f1a", minHeight: "100vh", color: "#fff" },
   centrado: { color: "#fff", textAlign: "center", padding: 50 },
-  titulo: { color: "#4db8ff", fontSize: 24 },
+  titulo: { color: "#4db8ff", fontSize: 24, marginBottom: 20 },
   tarjeta: { background: "rgba(255,255,255,0.05)", borderRadius: 14, padding: 16, marginBottom: 14 },
   clave: { color: "#9fb3c8", fontSize: 14, margin: "5px 0" },
   fila: { display: "flex", justifyContent: "space-between", padding: "6px 0" },
   valor: { fontWeight: 600 },
-  botonAprobar: { width: "100%", padding: 14, borderRadius: 10, fontWeight: 700, cursor: "pointer", color: "#000" }
+  botonAprobar: { width: "100%", padding: 14, borderRadius: 10, fontWeight: 700, cursor: "pointer", color: "#000" },
+  ok: { color: "#4ade80", textAlign: "center" },
+  error: { color: "#ef4444", textAlign: "center" }
 };
