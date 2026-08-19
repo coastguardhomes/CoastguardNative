@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +9,7 @@ export default function CrearFactura() {
   const [form, setForm] = useState({
     cliente_id: "",
     vivienda_id: "",
+    tecnico_id: "", // Campo para el técnico seleccionado
     fecha: "",
     concepto: "",
     importe: "",
@@ -16,24 +17,19 @@ export default function CrearFactura() {
     es_extra: false,
   });
 
+  const [tecnicos, setTecnicos] = useState([]); // Lista de técnicos para el desplegable
   const [mensaje, setMensaje] = useState("");
 
-  // Helper: intenta resolver un técnico por varios orígenes (sin fallback automático)
-  async function resolverTecnico({ facturaId = null, contratoId = null, viviendaId = null } = {}) {
-    if (facturaId) {
-      const { data: f } = await supabase.from("facturas").select("tecnico_id").eq("id", facturaId).maybeSingle();
-      if (f?.tecnico_id) return f.tecnico_id;
+  // Cargar lista de técnicos al montar el componente
+  useEffect(() => {
+    async function cargarTecnicos() {
+      const { data, error } = await supabase.from("tecnicos").select("id, nombre, email");
+      if (!error && data) {
+        setTecnicos(data);
+      }
     }
-    if (contratoId) {
-      const { data: c } = await supabase.from("contratos").select("tecnico_id").eq("id", contratoId).maybeSingle();
-      if (c?.tecnico_id) return c.tecnico_id;
-    }
-    if (viviendaId) {
-      const { data: v } = await supabase.from("viviendas").select("tecnico_id").eq("id", viviendaId).maybeSingle();
-      if (v?.tecnico_id) return v.tecnico_id;
-    }
-    return null; // Queda null para asignación manual
-  }
+    cargarTecnicos();
+  }, []);
 
   async function crearFactura() {
     setMensaje("");
@@ -49,6 +45,8 @@ export default function CrearFactura() {
     }
 
     try {
+      const tecnicoVal = form.tecnico_id ? Number(form.tecnico_id) : null;
+
       // 1. Insertar la factura principal
       const { data: facturaCreada, error } = await supabase
         .from("facturas")
@@ -56,6 +54,7 @@ export default function CrearFactura() {
           {
             cliente_id: form.cliente_id || null,
             vivienda_id: form.vivienda_id || null,
+            tecnico_id: tecnicoVal,
             fecha: form.fecha || new Date().toISOString().slice(0, 10),
             descripcion: form.concepto,
             total: form.importe,
@@ -71,20 +70,13 @@ export default function CrearFactura() {
         return;
       }
 
-      // 2. Intentar resolver técnico a asignar
-      const tecnicoResuelto = await resolverTecnico({
-        facturaId: facturaCreada.id,
-        contratoId: facturaCreada.contrato_id || null,
-        viviendaId: facturaCreada.vivienda_id || null,
-      });
-
-      // 3. Crear el extra/tarea para el técnico de forma consistente
+      // 2. Crear el extra/tarea para el técnico asignando el técnico elegido manualmente
       const extraPayload = {
         factura_id: facturaCreada.id,
         contrato_id: facturaCreada.contrato_id || null,
         cliente_id: facturaCreada.cliente_id || null,
         vivienda_id: facturaCreada.vivienda_id || null,
-        tecnico_id: tecnicoResuelto || null,
+        tecnico_id: tecnicoVal,
         descripcion: form.concepto || "Servicio extra contratado",
         estado: "pendiente",
         creado_en: new Date().toISOString(),
@@ -96,7 +88,7 @@ export default function CrearFactura() {
         console.error("Error al crear el extra para el técnico:", errorExtra);
       }
 
-      // 4. Generación opcional de PDF por función
+      // 3. Generación opcional de PDF por función
       try {
         const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
           "factura-pdf",
@@ -166,61 +158,44 @@ export default function CrearFactura() {
           <input
             value={form.cliente_id}
             onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>ID Vivienda</label>
           <input
             value={form.vivienda_id}
             onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
+
+          {/* DESPLEGABLE DE TÉCNICO */}
+          <label>Asignar Técnico</label>
+          <select
+            value={form.tecnico_id}
+            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="">-- Sin técnico asignado --</option>
+            {tecnicos.map((t) => (
+              <option key={t.id} value={t.id} style={{ background: "#0a0f1a", color: "#fff" }}>
+                {t.nombre || t.email || `Técnico #${t.id}`}
+              </option>
+            ))}
+          </select>
 
           <label>Fecha</label>
           <input
             type="date"
             value={form.fecha}
             onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>Concepto</label>
           <input
             value={form.concepto}
             onChange={(e) => setForm({ ...form, concepto: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <label>Importe</label>
@@ -228,15 +203,7 @@ export default function CrearFactura() {
             type="number"
             value={form.importe}
             onChange={(e) => setForm({ ...form, importe: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
+            style={inputStyle}
           />
 
           <div style={{ display: "flex", gap: 10 }}>
@@ -275,3 +242,13 @@ export default function CrearFactura() {
     </Menu>
   );
 }
+
+const inputStyle = {
+  padding: "12px",
+  width: "100%",
+  marginBottom: "15px",
+  borderRadius: "10px",
+  border: "1px solid rgba(255,255,255,0.2)",
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+};
