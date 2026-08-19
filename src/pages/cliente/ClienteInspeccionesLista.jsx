@@ -4,7 +4,6 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Menu from "../../layouts/Menu.jsx";
 
-// --- CONSTANTES DE ESTILO PREMIUM ---
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
 const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
@@ -21,7 +20,7 @@ export default function ClienteInspeccionesLista() {
   const [errorMsg, setErrorMsg] = useState(null);
 
   useEffect(() => {
-    async function cargarInspeccionesYExtras() {
+    async function cargarTodo() {
       if (!user) return;
 
       try {
@@ -51,7 +50,7 @@ export default function ClienteInspeccionesLista() {
 
         const clienteId = clienteData.id;
 
-        // Cargar inspecciones normales y trabajos extras
+        // CARGAMOS AMBAS TABLAS SIN RESTRICCIONES DE ESTADO
         const [resInspecciones, resExtras] = await Promise.all([
           supabase.from("inspecciones").select("*").eq("cliente_id", clienteId),
           supabase.from("extras").select("*").eq("cliente_id", clienteId)
@@ -73,20 +72,20 @@ export default function ClienteInspeccionesLista() {
         setElementos(combinados);
 
       } catch (err) {
-        console.error("Error cargando datos:", err);
+        console.error("Error:", err);
         setErrorMsg("Hubo un error al cargar los datos.");
       } finally {
         setLoading(false);
       }
     }
 
-    cargarInspeccionesYExtras();
+    cargarTodo();
   }, [user]);
 
   if (loading) {
     return (
       <Menu>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: COLOR_DORADO, background: FONDO_PRINCIPAL, fontFamily: "Inter" }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: COLOR_DORADO, background: FONDO_PRINCIPAL }}>
           <h3 style={TEXTO_DORADO_BRILLO}>Cargando Listado...</h3>
         </div>
       </Menu>
@@ -97,7 +96,7 @@ export default function ClienteInspeccionesLista() {
     <Menu>
       <div style={{ padding: "16px", background: FONDO_PRINCIPAL, minHeight: "100vh", color: "#fff", fontFamily: "Inter", paddingBottom: "110px", boxSizing: "border-box" }}>
         
-        <h1 style={{ fontSize: "16px", fontWeight: "900", ...TEXTO_DORADO_BRILLO, marginBottom: "20px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        <h1 style={{ fontSize: "16px", fontWeight: "900", ...TEXTO_DORADO_BRILLO, marginBottom: "20px", textTransform: "uppercase" }}>
           Mis Inspecciones e Informes
         </h1>
 
@@ -112,18 +111,11 @@ export default function ClienteInspeccionesLista() {
             {elementos.map((item) => {
               const esExtra = item.tipo === 'extra';
               
-              // Buscar el texto disponible en cualquier columna posible de la base de datos
               const textoCrudo = item.observaciones || item.comentarios || item.descripcion || item.detalle || item.nota || "";
-              const descripcionLimpia = textoCrudo ? textoCrudo.replace(/Factura\s*[^:]*:\s*/i, "") : "Inspección realizada correctamente";
+              const descripcionLimpia = textoCrudo ? textoCrudo.replace(/Factura\s*[^:]*:\s*/i, "") : "Informe disponible";
 
-              // Título dinámico
-              const tituloItem = esExtra 
-                ? "Trabajo Extra" 
-                : (item.titulo || item.nombre || `Inspección`);
-
-              const fechaFormateada = item.created_at 
-                ? new Date(item.created_at).toLocaleDateString() 
-                : (item.fecha ? new Date(item.fecha).toLocaleDateString() : "Reciente");
+              const tituloItem = esExtra ? "Trabajo Extra" : (item.titulo || item.nombre || `Inspección`);
+              const fechaFormateada = item.created_at ? new Date(item.created_at).toLocaleDateString() : (item.fecha ? new Date(item.fecha).toLocaleDateString() : "Reciente");
 
               return (
                 <div
@@ -138,23 +130,12 @@ export default function ClienteInspeccionesLista() {
                     boxShadow: SOMBRA_LUXURY,
                     display: "flex",
                     flexDirection: "column",
-                    gap: "8px",
-                    transition: "transform 0.2s ease"
+                    gap: "8px"
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "14px", fontWeight: "800", color: "#fff" }}>
-                      {tituloItem}
-                    </span>
-                    <span style={{ 
-                      fontSize: "10px", 
-                      fontWeight: "800", 
-                      padding: "4px 10px", 
-                      borderRadius: "10px", 
-                      background: esExtra ? "rgba(224, 176, 52, 0.2)" : "rgba(16, 185, 129, 0.15)",
-                      color: esExtra ? COLOR_DORADO : "#34d399",
-                      border: esExtra ? BORDE_DORADO_FINO : "1px solid rgba(16, 185, 129, 0.4)"
-                    }}>
+                    <span style={{ fontSize: "14px", fontWeight: "800", color: "#fff" }}>{tituloItem}</span>
+                    <span style={{ fontSize: "10px", fontWeight: "800", padding: "4px 10px", borderRadius: "10px", background: esExtra ? "rgba(224, 176, 52, 0.2)" : "rgba(16, 185, 129, 0.15)", color: esExtra ? COLOR_DORADO : "#34d399", border: esExtra ? BORDE_DORADO_FINO : "1px solid rgba(16, 185, 129, 0.4)" }}>
                       {esExtra ? "COMPLETADO" : (item.estado || "APROBADA")}
                     </span>
                   </div>
