@@ -11,8 +11,8 @@ export default function VerFactura() {
   const [lineas, setLineas] = useState([]);
   const [cliente, setCliente] = useState(null);
   const [inspeccion, setInspeccion] = useState(null); // extra/tarea relacionada
+  const [tecnicos, setTecnicos] = useState([]); // Lista de técnicos para el selector
   const [loading, setLoading] = useState(true);
-  const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
@@ -24,7 +24,6 @@ export default function VerFactura() {
     }
 
     if (!facturaRecord) return null;
-
     if (facturaRecord.tecnico_id) return facturaRecord.tecnico_id;
 
     if (facturaRecord.contrato_id) {
@@ -54,7 +53,6 @@ export default function VerFactura() {
         .maybeSingle();
 
       if (errorFactura) {
-        console.error("Error cargando factura:", errorFactura);
         setError("Error cargando factura");
         setLoading(false);
         return;
@@ -83,23 +81,20 @@ export default function VerFactura() {
           setCliente(null);
         }
 
-        // 4. Extra/tarea: buscar por factura_id o (compatibilidad) por contrato_id
-        const { data: dataExtra, error: errorExtra } = await supabase
+        // 4. Extra/tarea relacionada
+        const { data: dataExtra } = await supabase
           .from("extras")
           .select("*")
           .or(`factura_id.eq.${dataFactura.id},contrato_id.eq.${dataFactura.id}`)
           .maybeSingle();
 
-        if (!errorExtra && dataExtra) {
-          setInspeccion(dataExtra);
-        } else {
-          setInspeccion(null);
-        }
-      } else {
-        setLineas([]);
-        setCliente(null);
-        setInspeccion(null);
+        setInspeccion(dataExtra || null);
       }
+
+      // 5. Cargar técnicos para el selector manual
+      const { data: dataTecnicos } = await supabase.from("tecnicos").select("id, nombre, email");
+      setTecnicos(dataTecnicos || []);
+
     } catch (e) {
       console.error("Error en cargarTodo:", e);
       setError("Error cargando datos de la factura.");
@@ -113,23 +108,70 @@ export default function VerFactura() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function enviarAlCliente() {
-    if (!inspeccion) return setError("No hay informe para enviar.");
-    setEnviando(true);
-    try {
-      const { error: updateError } = await supabase
-        .from("extras")
-        .update({ estado: "enviado_cliente" })
-        .eq("id", inspeccion.id);
+  // FUNCIÓN DE BORRADO CORREGIDA: Borra dependencias antes para evitar errores de restricciones
+  async function borrarFactura() {
+    if (!window.confirm("¿Seguro que quieres borrar esta factura y sus datos asociados?")) return;
 
-      if (updateError) throw updateError;
-      setInspeccion((prev) => ({ ...prev, estado: "enviado_cliente" }));
-      setMensaje("¡Informe enviado al cliente correctamente!");
+    setError("");
+    setMensaje("");
+
+    try {
+      // 1. Borrar líneas de factura asociadas
+      await supabase.from("facturas_lineas").delete().eq("factura_id", id);
+
+      // 2. Borrar tarea/extra asociado
+      await supabase.from("extras").delete().eq("factura_id", id);
+
+      // 3. Borrar la factura principal
+      const { error: errorBorrado } = await supabase
+        .from("facturas")
+        .delete()
+        .eq("id", id);
+
+      if (errorBorrado) throw errorBorrado;
+
+      navigate("/facturas/lista"); // Cambia por tu ruta de listado si es /admin/facturas
+    } catch (e) {
+      console.error("Error al borrar factura:", e);
+      setError("Error al borrar la factura. Comprueba restricciones de base de datos.");
+    }
+  }
+
+  // FUNCIÓN PARA ASIGNAR O CAMBIAR TÉCNICO MANUALMENTE
+  async function cambiarTecnicoExtra(nuevoTecnicoId) {
+    const tecnicoVal = nuevoTecnicoId ? Number(nuevoTecnicoId) : null;
+
+    try {
+      if (inspeccion) {
+        const { error: updateError } = await supabase
+          .from("extras")
+          .update({ tecnico_id: tecnicoVal })
+          .eq("id", inspeccion.id);
+
+        if (updateError) throw updateError;
+        setInspeccion((prev) => ({ ...prev, tecnico_id: tecnicoVal }));
+      } else {
+        // Si no existe el registro en extras todavía, lo creamos directamente asignado al técnico
+        const { data: newExtra, error: insertError } = await supabase.from("extras").insert([
+          {
+            factura_id: factura.id,
+            contrato_id: factura.contrato_id || null,
+            cliente_id: factura.cliente_id || null,
+            vivienda_id: factura.vivienda_id || null,
+            tecnico_id: tecnicoVal,
+            descripcion: factura.descripcion || `Servicio extra ligado a factura #${factura.id}`,
+            estado: "pendiente",
+            creado_en: new Date().toISOString(),
+          },
+        ]).select().single();
+
+        if (insertError) throw insertError;
+        setInspeccion(newExtra);
+      }
+      setMensaje("Técnico asignado correctamente a la tarea.");
     } catch (err) {
-      console.error("Error enviando informe:", err);
-      setError("Error al enviar el informe.");
-    } finally {
-      setEnviando(false);
+      console.error("Error al asignar técnico:", err);
+      setError("No se pudo actualizar el técnico.");
     }
   }
 
@@ -139,37 +181,28 @@ export default function VerFactura() {
     setError("");
 
     try {
-      // 1. Actualizar factura a pagada
       const { error: errorFactura } = await supabase
         .from("facturas")
         .update({ estado: "pagada", estado_pago: "pagada" })
         .eq("id", factura.id);
 
       if (errorFactura) {
-        console.error("Error actualizando factura:", errorFactura);
         setError("Error al actualizar la factura.");
         return;
       }
 
       setFactura((prev) => ({ ...prev, estado: "pagada", estado_pago: "pagada" }));
 
-      // 2. Resolver técnico a asignar
       const tecnicoId = await resolverTecnico({ facturaRecord: factura });
 
-      // 3. Buscar extra existente
-      const { data: existingExtra, error: searchError } = await supabase
+      const { data: existingExtra } = await supabase
         .from("extras")
         .select("*")
         .or(`factura_id.eq.${factura.id},contrato_id.eq.${factura.id}`)
         .maybeSingle();
 
-      if (searchError) {
-        console.error("Error buscando extra existente:", searchError);
-      }
-
       if (!existingExtra) {
-        // Insert nuevo extra con campos completos
-        const { error: insertError } = await supabase.from("extras").insert([
+        await supabase.from("extras").insert([
           {
             factura_id: factura.id,
             contrato_id: factura.contrato_id || null,
@@ -182,13 +215,6 @@ export default function VerFactura() {
           },
         ]);
 
-        if (insertError) {
-          console.error("Error creando extra al marcar pagada:", insertError);
-          setError("La factura se marcó como pagada pero no se pudo crear la tarea para el técnico.");
-          return;
-        }
-
-        // Refrescar inspeccion (extra) local
         const { data: newExtra } = await supabase
           .from("extras")
           .select("*")
@@ -196,26 +222,12 @@ export default function VerFactura() {
           .maybeSingle();
         setInspeccion(newExtra || null);
       } else {
-        // Actualizar extra existente: asegurarse de estado y campos de enlace
-        const { error: updateExtraError } = await supabase
+        await supabase
           .from("extras")
-          .update({
-            estado: "pendiente",
-            cliente_id: existingExtra.cliente_id || factura.cliente_id || null,
-            vivienda_id: existingExtra.vivienda_id || factura.vivienda_id || null,
-            tecnico_id: existingExtra.tecnico_id || tecnicoId || null,
-            descripcion: existingExtra.descripcion || factura.descripcion || `Servicio extra ligado a factura #${factura.id}`,
-          })
+          .update({ estado: "pendiente", tecnico_id: existingExtra.tecnico_id || tecnicoId || null })
           .eq("id", existingExtra.id);
 
-        if (updateExtraError) {
-          console.error("Error actualizando extra existente:", updateExtraError);
-          setError("La factura se marcó como pagada pero no se pudo actualizar la tarea para el técnico.");
-          return;
-        }
-
-        // Actualizar inspeccion local
-        setInspeccion((prev) => (prev ? { ...prev, estado: "pendiente", tecnico_id: prev.tecnico_id || tecnicoId } : prev));
+        setInspeccion((prev) => (prev ? { ...prev, estado: "pendiente" } : prev));
       }
 
       setMensaje("Factura marcada como pagada y tarea enviada al técnico.");
@@ -238,6 +250,7 @@ export default function VerFactura() {
           <Fila clave="Fecha" valor={factura?.fecha || "-"} />
           <Fila clave="Estado de pago" valor={factura?.estado_pago || factura?.estado || "-"} destacado />
           {factura?.descripcion && <Fila clave="Concepto" valor={factura.descripcion} />}
+          <Fila clave="Total" valor={`${Number(factura?.total || 0).toFixed(2)} €`} />
 
           {lineas && lineas.length > 0 && (
             <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8 }}>
@@ -252,43 +265,56 @@ export default function VerFactura() {
           )}
         </div>
 
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
           {factura?.estado !== "pagada" ? (
             <button
               onClick={marcarComoPagadaYEnviar}
-              style={{ ...estilos.botonAprobar, background: "#4ade80", marginRight: 10 }}
+              style={{ ...estilos.botonAccion, background: "#4ade80", color: "#0b1220" }}
             >
               Marcar como Pagada y Enviar al Técnico
             </button>
           ) : (
-            <button style={{ ...estilos.botonAprobar, background: "#94a3b8", cursor: "default" }} disabled>
+            <button style={{ ...estilos.botonAccion, background: "#94a3b8", color: "#0b1220", cursor: "default" }} disabled>
               Factura Pagada
             </button>
           )}
 
           <button
-            onClick={() => {
-              if (window.confirm("¿Seguro que quieres borrar esta factura?")) {
-                supabase.from("facturas").delete().eq("id", factura.id);
-                navigate("/admin/facturas");
-              }
-            }}
-            style={{ ...estilos.botonAprobar, background: "#ef4444", color: "#fff" }}
+            onClick={borrarFactura}
+            style={{ ...estilos.botonAccion, background: "#ef4444", color: "#fff" }}
           >
-            Borrar Factura
+            🗑️ Borrar Factura
           </button>
         </div>
 
-        {inspeccion && (
-          <div style={{ marginTop: 18 }}>
-            <h3 style={{ color: "#9fb3c8" }}>Tarea para Técnico</h3>
-            <div style={{ background: "rgba(255,255,255,0.03)", padding: 12, borderRadius: 10 }}>
+        {/* SECCIÓN DE TAREA / TÉCNICO */}
+        <div style={{ marginTop: 20, background: "rgba(255,255,255,0.03)", padding: 16, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)" }}>
+          <h3 style={{ color: "#4db8ff", marginBottom: 10 }}>Tarea para Técnico / Inspección</h3>
+          {inspeccion ? (
+            <>
               <p><strong>Descripción:</strong> {inspeccion.descripcion}</p>
-              <p><strong>Estado:</strong> {inspeccion.estado}</p>
-              <p><strong>ID:</strong> {inspeccion.id}</p>
-            </div>
-          </div>
-        )}
+              <p style={{ marginBottom: 12 }}><strong>Estado:</strong> {inspeccion.estado}</p>
+            </>
+          ) : (
+            <p style={{ color: "#9fb3c8", marginBottom: 12 }}><em>No hay tarea registrada. Selecciona un técnico abajo para crearla o marca la factura como pagada.</em></p>
+          )}
+
+          <label style={{ display: "block", marginBottom: 6, color: "#9fb3c8", fontWeight: "600", fontSize: "14px" }}>
+            Asignar / Cambiar Técnico Manualmente:
+          </label>
+          <select
+            value={inspeccion?.tecnico_id || ""}
+            onChange={(e) => cambiarTecnicoExtra(e.target.value)}
+            style={estilos.input}
+          >
+            <option value="">-- Sin técnico asignado --</option>
+            {tecnicos.map((t) => (
+              <option key={t.id} value={t.id} style={{ background: "#0a0f1a", color: "#fff" }}>
+                {t.nombre || t.email || `Técnico #${t.id}`}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     </Menu>
   );
@@ -307,18 +333,25 @@ const estilos = {
   pagina: { padding: 20, background: "#0a0f1a", minHeight: "100vh", color: "#fff" },
   centrado: { display: "flex", justifyContent: "center", alignItems: "center", height: "60vh", color: "#9fb3c8" },
   titulo: { fontSize: 26, color: "#4db8ff", marginBottom: 12 },
-  ok: { color: "#4ade80", marginBottom: 12 },
-  error: { color: "#ff6b6b", marginBottom: 12 },
-  tarjeta: { background: "rgba(255,255,255,0.03)", padding: 16, borderRadius: 12 },
-  botonAprobar: {
+  ok: { color: "#4ade80", marginBottom: 12, fontWeight: "600" },
+  error: { color: "#ff6b6b", marginBottom: 12, fontWeight: "600" },
+  tarjeta: { background: "rgba(255,255,255,0.03)", padding: 16, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)" },
+  botonAccion: {
     padding: "10px 14px",
     borderRadius: 10,
     border: "none",
     cursor: "pointer",
     fontWeight: 700,
-    marginBottom: 8,
   },
   fila: { display: "flex", justifyContent: "space-between", padding: "8px 0" },
   clave: { color: "#9fb3c8" },
   valor: { color: "#fff", fontWeight: 700 },
+  input: {
+    padding: "10px",
+    width: "100%",
+    borderRadius: "8px",
+    border: "1px solid rgba(255,255,255,0.2)",
+    background: "rgba(255,255,255,0.08)",
+    color: "#fff",
+  },
 };
