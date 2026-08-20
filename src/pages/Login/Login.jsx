@@ -6,7 +6,7 @@ import logo from "../../assets/logo.jpeg";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_GRADIENTE = "radial-gradient(circle at top, #1a1f26 0%, #030509 100%)";
-const BORDE_DORADO_LUJO = "1px solid rgba(224, 176, 52, 0.3)";
+const BORDE_DORADO_LUJO = "1px solid rgba(224, 176, 52, 0.35)";
 
 export default function Login() {
   const { t } = useLanguage();
@@ -19,7 +19,6 @@ export default function Login() {
 
   useEffect(() => { setCheckingSession(false); }, []);
 
-  // ... (tu lógica redirigirSegunRol y handleLogin se mantiene igual)
   async function redirigirSegunRol(userId) {
     if (!userId) return;
     let { data: perfil } = await supabase.from("profiles").select("rol").eq("id", userId).maybeSingle();
@@ -47,44 +46,48 @@ export default function Login() {
 
   return (
     <div style={{ 
-      height: "100vh", 
-      width: "100vw", 
-      background: FONDO_GRADIENTE, // Fondo más profundo y profesional
+      minHeight: "100vh", 
+      width: "100%", 
+      background: FONDO_GRADIENTE, 
       display: "flex", 
       justifyContent: "center", 
       alignItems: "center", 
-      padding: "20px" 
+      padding: "12px", // Margen exterior mínimo para aprovechar la pantalla
+      boxSizing: "border-box"
     }}>
       
+      {/* Tarjeta con ancho adaptable a la pantalla del móvil */}
       <div style={{ 
         width: "100%", 
         maxWidth: "400px", 
-        background: "rgba(5, 8, 14, 0.7)", 
-        backdropFilter: "blur(10px)", // Efecto cristal moderno
-        padding: "40px 30px", 
-        borderRadius: "24px", 
+        background: "rgba(5, 8, 14, 0.85)", 
+        backdropFilter: "blur(12px)", 
+        padding: "28px 20px", 
+        borderRadius: "22px", 
         border: BORDE_DORADO_LUJO, 
-        boxShadow: "0 20px 40px rgba(0,0,0,0.6)" 
+        boxShadow: "0 20px 40px rgba(0,0,0,0.8), 0 0 15px rgba(224, 176, 52, 0.1)",
+        boxSizing: "border-box"
       }}>
         
-        {/* Logo con corte de bordes y brillo dorado */}
+        {/* Logo con recorte de esquinas y brillo dorado elegante */}
         <div style={{ 
-            width: "140px", 
-            height: "140px", 
-            margin: "0 auto 30px auto", 
-            borderRadius: "20px", // Esquinas suavizadas
+            width: "110px", 
+            height: "110px", 
+            margin: "0 auto 20px auto", 
+            borderRadius: "18px", 
             border: `2px solid ${COLOR_DORADO}`,
-            boxShadow: `0 0 25px rgba(224, 176, 52, 0.4)`, // Brillo dorado (Glow)
-            overflow: "hidden", // Esto oculta el "Made with AI"
+            boxShadow: `0 0 20px rgba(224, 176, 52, 0.4)`, 
+            overflow: "hidden", // Oculta la marca de agua de la esquina
             display: "flex",
             justifyContent: "center",
-            alignItems: "center"
+            alignItems: "center",
+            flexShrink: 0
         }}>
             <img 
               src={logo} 
               alt="Logo" 
               style={{ 
-                width: "115%", // Zoom para recortar esquinas
+                width: "115%", 
                 height: "115%", 
                 objectFit: "cover",
                 objectPosition: "center"
@@ -92,27 +95,90 @@ export default function Login() {
             />
         </div>
 
-        <p style={{ textAlign: "center", color: "#ddd", fontSize: "15px", marginBottom: "30px", fontWeight: "300" }}>
+        <p style={{ textAlign: "center", color: "#ccc", fontSize: "13px", marginBottom: "22px", fontWeight: "400" }}>
           {t("loginSubtitle")}
         </p>
 
         {errorMsg && (
-          <div style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "10px", borderRadius: "10px", color: "#ef4444", marginBottom: "20px", textAlign: "center", fontSize: "13px" }}>
+          <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.4)", padding: "10px", borderRadius: "10px", color: "#ef4444", marginBottom: "16px", textAlign: "center", fontSize: "12px", fontWeight: "700" }}>
             {errorMsg}
           </div>
         )}
 
-        <input type="email" placeholder={t("email")} value={email} onChange={(e) => setEmail(e.target.value)} 
-            style={{ width: "100%", padding: "16px", marginBottom: "16px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "#fff", fontSize: "16px", boxSizing: "border-box" }} />
+        <input 
+          type="email" 
+          placeholder={t("email")} 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)} 
+          style={{ 
+            width: "100%", 
+            padding: "14px 16px", 
+            marginBottom: "14px", 
+            borderRadius: "12px", 
+            border: BORDE_DORADO_LUJO, 
+            background: "rgba(11, 19, 32, 0.9)", 
+            color: "#fff", 
+            fontSize: "14px", 
+            boxSizing: "border-box",
+            outline: "none" 
+          }} 
+        />
 
-        <input type="password" placeholder={t("password")} value={password} onChange={(e) => setPassword(e.target.value)} 
-            style={{ width: "100%", padding: "16px", marginBottom: "30px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "#fff", fontSize: "16px", boxSizing: "border-box" }} />
+        <input 
+          type="password" 
+          placeholder={t("password")} 
+          value={password} 
+          onChange={(e) => setPassword(e.target.value)} 
+          style={{ 
+            width: "100%", 
+            padding: "14px 16px", 
+            marginBottom: "22px", 
+            borderRadius: "12px", 
+            border: BORDE_DORADO_LUJO, 
+            background: "rgba(11, 19, 32, 0.9)", 
+            color: "#fff", 
+            fontSize: "14px", 
+            boxSizing: "border-box",
+            outline: "none" 
+          }} 
+        />
 
-        <button onClick={handleLogin} disabled={loading} style={{ width: "100%", padding: "18px", background: `linear-gradient(135deg, ${COLOR_DORADO} 0%, #a67c00 100%)`, color: "#000", border: "none", borderRadius: "14px", fontWeight: "900", cursor: "pointer", fontSize: "15px", textTransform: "uppercase", letterSpacing: "1px" }}>
+        <button 
+          onClick={handleLogin} 
+          disabled={loading} 
+          style={{ 
+            width: "100%", 
+            padding: "15px", 
+            background: `linear-gradient(135deg, ${COLOR_DORADO} 0%, #99751e 100%)`, 
+            color: "#030509", 
+            border: BORDE_DORADO_LUJO, 
+            borderRadius: "14px", 
+            fontWeight: "900", 
+            cursor: "pointer", 
+            fontSize: "13px", 
+            textTransform: "uppercase", 
+            letterSpacing: "0.5px",
+            boxShadow: "0 4px 15px rgba(224, 176, 52, 0.3)",
+            boxSizing: "border-box" 
+          }}
+        >
           {loading ? t("loggingIn") : t("login")}
         </button>
 
-        <button onClick={() => navigate("/register")} style={{ width: "100%", marginTop: "20px", background: "transparent", border: "none", color: "#888", fontSize: "13px", cursor: "pointer", textDecoration: "underline" }}>
+        <button 
+          onClick={() => navigate("/register")} 
+          style={{ 
+            width: "100%", 
+            marginTop: "14px", 
+            background: "transparent", 
+            border: "none", 
+            color: COLOR_DORADO, 
+            fontSize: "13px", 
+            fontWeight: "700",
+            cursor: "pointer", 
+            textDecoration: "underline" 
+          }}
+        >
           {t("register")}
         </button>
       </div>
