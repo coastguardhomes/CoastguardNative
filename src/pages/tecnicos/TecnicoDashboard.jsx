@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function DashboardTecnico() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
@@ -103,80 +110,199 @@ export default function DashboardTecnico() {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.dashboardCard}>
+    <div style={{
+      backgroundColor: FONDO_PRINCIPAL,
+      minHeight: '100vh',
+      padding: '16px',
+      display: 'flex',
+      justifyContent: 'center',
+      fontFamily: 'Inter, sans-serif',
+      boxSizing: 'border-box'
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '480px',
+        background: FONDO_TARJETA,
+        border: BORDE_DORADO_FINO,
+        borderRadius: '16px',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
+        boxShadow: SOMBRA_LUXURY,
+        boxSizing: 'border-box'
+      }}>
         
         {/* ENCABEZADO */}
-        <div style={styles.header}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          borderBottom: BORDE_DORADO_FINO,
+          paddingBottom: '14px'
+        }}>
           <div>
-            <div style={styles.brandBadge}>
+            <div style={{ color: COLOR_DORADO, fontSize: '11px', fontWeight: '900', marginBottom: '4px', letterSpacing: '0.5px' }}>
               <span>⛵</span> COASTGUARD <span style={{ color: '#888', fontWeight: 'normal' }}>| TÉCNICO</span>
             </div>
-            <h2 style={styles.headerTitle}>Panel de Operaciones</h2>
+            <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '20px', fontWeight: '900', margin: 0, textTransform: 'uppercase' }}>
+              Panel de Operaciones
+            </h2>
           </div>
-          <button style={styles.btnLogout} onClick={handleLogout}>🚪 Salir</button>
+          <button 
+            onClick={handleLogout}
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              color: '#ef4444',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              fontWeight: '700',
+              cursor: 'pointer'
+            }}
+          >
+            🚪 Salir
+          </button>
         </div>
 
-        <div style={styles.debugBox}>
-          <span style={{ color: '#ffd700', fontWeight: 'bold' }}>Estado de Red:</span> {debugLog}
+        <div style={{
+          background: 'rgba(11, 19, 32, 0.8)',
+          border: BORDE_DORADO_FINO,
+          borderRadius: '10px',
+          padding: '10px 14px',
+          fontSize: '11px',
+          color: '#fff'
+        }}>
+          <span style={{ color: COLOR_DORADO, fontWeight: 'bold' }}>Estado de Red:</span> {debugLog}
         </div>
 
         {/* 3 TARJETAS SUPERIORES */}
-        <div style={styles.topCardsGrid}>
-          <div style={styles.statCard}>
-            <div style={styles.cardIcon}>📋</div>
-            <div style={styles.statNumber}>{stats.inspeccionesSemana} <span style={styles.statSub}>pendientes</span></div>
-            <div style={styles.statLabel}>Inspecciones</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+          <div style={{
+            background: FONDO_TARJETA,
+            border: BORDE_DORADO_FINO,
+            borderRadius: '12px',
+            padding: '12px 6px',
+            textAlign: 'center',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+          }}>
+            <div style={{ fontSize: '18px', marginBottom: '4px' }}>📋</div>
+            <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>
+              {stats.inspeccionesSemana} <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>pendientes</span>
+            </div>
+            <div style={{ fontSize: '10px', color: COLOR_DORADO, marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Inspecciones</div>
           </div>
-          <div style={styles.alertCard}>
-            <div style={styles.cardIcon}>⚠️</div>
-            <div style={styles.statNumberRed}>{stats.alertasDetectadas} <span style={styles.statSub}>incidencias</span></div>
-            <div style={styles.statLabelAlert}>Alertas</div>
+
+          <div style={{
+            background: 'linear-gradient(145deg, #1f0b0b 0%, #0d070a 100%)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            borderRadius: '12px',
+            padding: '12px 6px',
+            textAlign: 'center',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+          }}>
+            <div style={{ fontSize: '18px', marginBottom: '4px' }}>⚠️</div>
+            <div style={{ fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>
+              {stats.alertasDetectadas} <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>incidencias</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Alertas</div>
           </div>
-          <div style={styles.statCard}>
-            <div style={styles.cardIcon}>🏠</div>
-            <div style={styles.statNumber}>{stats.viviendasAsignadas} <span style={styles.statSub}>registradas</span></div>
-            <div style={styles.statLabel}>Viviendas</div>
+
+          <div style={{
+            background: FONDO_TARJETA,
+            border: BORDE_DORADO_FINO,
+            borderRadius: '12px',
+            padding: '12px 6px',
+            textAlign: 'center',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+          }}>
+            <div style={{ fontSize: '18px', marginBottom: '4px' }}>🏠</div>
+            <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>
+              {stats.viviendasAsignadas} <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>registradas</span>
+            </div>
+            <div style={{ fontSize: '10px', color: COLOR_DORADO, marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Viviendas</div>
           </div>
         </div>
 
         {/* AVISO / BOTÓN DE EXTRAS PENDIENTES */}
         {stats.extrasPendientesCount > 0 ? (
-          <div style={styles.extraAlertBanner}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '18px' }}>⚡</span>
+          <div style={{
+            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            borderRadius: '12px',
+            padding: '12px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '20px' }}>⚡</span>
               <div>
                 <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#fff' }}>¡Tienes {stats.extrasPendientesCount} trabajo(s) extra pendiente(s)!</div>
-                <div style={{ fontSize: '10px', color: '#ffd700' }}>Revisa la lista inferior para realizar fotos y observaciones.</div>
+                <div style={{ fontSize: '11px', color: '#38bdf8' }}>Revisa la lista inferior para realizar fotos y observaciones.</div>
               </div>
             </div>
           </div>
         ) : (
-          <div style={styles.extraNoAlertBanner}>
+          <div style={{
+            backgroundColor: 'rgba(11, 19, 32, 0.6)',
+            border: BORDE_DORADO_FINO,
+            borderRadius: '12px',
+            padding: '10px 14px',
+            fontSize: '12px',
+            color: '#888',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
             <span style={{ fontSize: '14px' }}>⚡</span> No hay servicios extras pendientes.
           </div>
         )}
 
         {/* LISTADO DE EXTRAS PENDIENTES */}
         {extrasPendientes.length > 0 && (
-          <div style={styles.assignedSectionExtra}>
-            <div style={styles.sectionHeaderFlex}>
-              <h3 style={styles.assignedTitleExtra}>🛠️ Trabajos Extras Asignados</h3>
-              <span style={styles.counterBadgeExtra}>{extrasPendientes.length} Pendientes</span>
+          <div style={{
+            background: FONDO_TARJETA,
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            borderRadius: '14px',
+            padding: '14px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h3 style={{ fontSize: '12px', color: '#38bdf8', margin: 0, fontWeight: '900', textTransform: 'uppercase' }}>🛠️ Trabajos Extras Asignados</h3>
+              <span style={{ backgroundColor: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', fontSize: '10px', padding: '3px 8px', borderRadius: '6px', fontWeight: '700' }}>{extrasPendientes.length} Pendientes</span>
             </div>
-            <div style={styles.listScrollContainer}>
+            <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {extrasPendientes.map((extra) => (
-                <div key={extra.id} style={styles.assignmentItemExtra}>
+                <div key={extra.id} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(11, 19, 32, 0.9)',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(56, 189, 248, 0.3)'
+                }}>
                   <div>
-                    <div style={{ color: '#3498db', fontWeight: 'bold', fontSize: '12px' }}>
+                    <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '12px' }}>
                       Extra #{String(extra.id).substring(0, 8)} - {extra.titulo || extra.nombre || 'Servicio'}
                     </div>
-                    <div style={{ color: '#aaa', fontSize: '11px', marginTop: '3px' }}>
+                    <div style={{ color: '#aaa', fontSize: '11px', marginTop: '4px' }}>
                       📝 {extra.descripcion || 'Sin descripción detallada'}
                     </div>
                   </div>
                   <button 
-                    style={styles.btnActionExtraItem}
+                    style={{
+                      backgroundColor: '#38bdf8',
+                      color: '#030509',
+                      border: 'none',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '11px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
                     onClick={() => navigate(`/tecnico/extra/${extra.id}`)}
                   >
                     Hacer Extra →
@@ -188,32 +314,55 @@ export default function DashboardTecnico() {
         )}
 
         {/* LISTADO DE INSPECCIONES NORMALES */}
-        <div style={styles.assignedSection}>
-          <div style={styles.sectionHeaderFlex}>
-            <h3 style={styles.assignedTitle}>Inspecciones Asignadas</h3>
-            <span style={styles.counterBadge}>{inspeccionesDiarias.length} Pendientes</span>
+        <div style={{
+          background: FONDO_TARJETA,
+          border: BORDE_DORADO_FINO,
+          borderRadius: '14px',
+          padding: '14px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h3 style={{ fontSize: '12px', color: COLOR_DORADO, margin: 0, fontWeight: '900', textTransform: 'uppercase' }}>Inspecciones Asignadas</h3>
+            <span style={{ backgroundColor: 'rgba(224, 176, 52, 0.15)', color: COLOR_DORADO, fontSize: '10px', padding: '3px 8px', borderRadius: '6px', fontWeight: '700' }}>{inspeccionesDiarias.length} Pendientes</span>
           </div>
 
           {loading ? (
-            <p style={styles.emptyText}>Cargando asignaciones...</p>
+            <p style={{ fontSize: '12px', color: '#888', textAlign: 'center', padding: '10px 0' }}>Cargando asignaciones...</p>
           ) : inspeccionesDiarias.length === 0 ? (
-            <div style={styles.emptyBox}>
-              <p style={styles.emptyText}>No hay inspecciones pendientes asignadas.</p>
+            <div style={{ textAlign: 'center', padding: '10px 0' }}>
+              <p style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>No hay inspecciones pendientes asignadas.</p>
             </div>
           ) : (
-            <div style={styles.listScrollContainer}>
+            <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {inspeccionesDiarias.map((insp) => (
-                <div key={insp.id} style={styles.assignmentItem}>
+                <div key={insp.id} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(11, 19, 32, 0.9)',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: BORDE_DORADO_FINO
+                }}>
                   <div>
-                    <div style={{ color: '#ffd700', fontWeight: 'bold', fontSize: '12px' }}>
+                    <div style={{ color: COLOR_DORADO, fontWeight: 'bold', fontSize: '12px' }}>
                       Inspección #{String(insp.id).substring(0, 8)}
                     </div>
-                    <div style={{ color: '#aaa', fontSize: '11px', marginTop: '3px' }}>
+                    <div style={{ color: '#aaa', fontSize: '11px', marginTop: '4px' }}>
                       📍 {insp.direccion}
                     </div>
                   </div>
                   <button 
-                    style={styles.btnActionItem}
+                    style={{
+                      backgroundColor: '#10b981',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '11px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
                     onClick={() => navigate(`/tecnico/inspeccion/${insp.id}/checklist`)}
                   >
                     Checklist →
@@ -228,38 +377,3 @@ export default function DashboardTecnico() {
     </div>
   );
 }
-
-const styles = {
-  container: { backgroundColor: '#04070c', minHeight: '100vh', padding: '10px 6px', display: 'flex', justifyContent: 'center', fontFamily: 'sans-serif' },
-  dashboardCard: { width: '100%', maxWidth: '480px', backgroundColor: '#09101d', border: '1px solid #c5a03e', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #c5a03e', paddingBottom: '10px' },
-  brandBadge: { color: '#ffd700', fontSize: '10px', fontWeight: 'bold', marginBottom: '4px' },
-  headerTitle: { color: '#fff', fontSize: '18px', fontWeight: 'bold', margin: 0 },
-  btnLogout: { background: 'linear-gradient(135deg, #e74c3c, #c0392b)', border: 'none', color: '#fff', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' },
-  debugBox: { backgroundColor: '#111b2e', border: '1px solid #d4af37', borderRadius: '6px', padding: '8px', fontSize: '10px', color: '#fff' },
-  topCardsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' },
-  statCard: { background: '#070d17', border: '1px solid #d4af37', borderRadius: '8px', padding: '10px 4px', textAlign: 'center' },
-  alertCard: { background: '#0d070a', border: '1px solid #e74c3c', borderRadius: '8px', padding: '10px 4px', textAlign: 'center' },
-  cardIcon: { fontSize: '16px', marginBottom: '2px' },
-  statNumber: { fontSize: '15px', fontWeight: 'bold', color: '#fff' },
-  statNumberRed: { fontSize: '15px', fontWeight: 'bold', color: '#e74c3c' },
-  statSub: { fontSize: '7px', color: '#888', display: 'block' },
-  statLabel: { fontSize: '9px', color: '#ffd700', marginTop: '2px', fontWeight: '600' },
-  statLabelAlert: { fontSize: '9px', color: '#e74c3c', marginTop: '2px', fontWeight: '600' },
-  extraAlertBanner: { backgroundColor: '#1a365d', border: '1px solid #3182ce', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  extraNoAlertBanner: { backgroundColor: '#111b2e', border: '1px solid #2a3b55', borderRadius: '8px', padding: '8px 12px', fontSize: '11px', color: '#888', display: 'flex', alignItems: 'center', gap: '8px' },
-  assignedSection: { background: '#070d17', border: '1px solid #1e3050', borderRadius: '10px', padding: '12px' },
-  assignedSectionExtra: { background: '#081b29', border: '1px solid #2980b9', borderRadius: '10px', padding: '12px' },
-  sectionHeaderFlex: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
-  assignedTitle: { fontSize: '11px', color: '#ffd700', margin: 0, fontWeight: 'bold', textTransform: 'uppercase' },
-  assignedTitleExtra: { fontSize: '11px', color: '#3498db', margin: 0, fontWeight: 'bold', textTransform: 'uppercase' },
-  counterBadge: { backgroundColor: '#16263f', color: '#ffd700', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' },
-  counterBadgeExtra: { backgroundColor: '#1b4f72', color: '#3498db', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' },
-  listScrollContainer: { maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' },
-  emptyBox: { textAlign: 'center', padding: '10px 0' },
-  emptyText: { fontSize: '11px', color: '#888', marginBottom: '6px' },
-  assignmentItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111b2e', padding: '10px 12px', borderRadius: '6px', border: '1px solid #2a3b55' },
-  assignmentItemExtra: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0d233a', padding: '10px 12px', borderRadius: '6px', border: '1px solid #2980b9' },
-  btnActionItem: { backgroundColor: '#27ae60', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' },
-  btnActionExtraItem: { backgroundColor: '#2980b9', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }
-};
