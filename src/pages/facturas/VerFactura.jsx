@@ -3,6 +3,13 @@ import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function VerFactura() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -207,7 +214,14 @@ export default function VerFactura() {
       <div style={estilos.pagina}>
         <div style={estilos.cabeceraFlex}>
           <h1 style={estilos.titulo}>{factura?.numero || `Factura #${factura?.id}`}</h1>
-          <span style={{ ...estilos.badgeEstado, background: estaPagada ? "rgba(74, 222, 128, 0.15)" : "rgba(251, 191, 36, 0.15)", color: estaPagada ? "#4ade80" : "#fbbf24" }}>
+          <span 
+            style={{ 
+              ...estilos.badgeEstado, 
+              background: estaPagada ? "rgba(16, 185, 129, 0.15)" : "rgba(224, 176, 52, 0.15)", 
+              color: estaPagada ? "#34d399" : COLOR_DORADO,
+              borderColor: estaPagada ? "rgba(16, 185, 129, 0.4)" : BORDE_DORADO_FINO
+            }}
+          >
             {estaPagada ? "Pagada" : "Pendiente"}
           </span>
         </div>
@@ -219,39 +233,39 @@ export default function VerFactura() {
           <div style={estilos.gridInfo}>
             <div>
               <span style={estilos.etiquetaChica}>Fecha</span>
-              <p style={estilos.valorTexto}>{factura?.fecha || "-"}</p>
+              <p style={estilos.valorTexto}>{factura?.fecha ? String(factura.fecha).slice(0, 10) : "-"}</p>
             </div>
             <div>
               <span style={estilos.etiquetaChica}>Total Factura</span>
-              <p style={{ ...estilos.valorTexto, color: "#4db8ff", fontSize: "18px" }}>
+              <p style={{ ...estilos.valorTexto, color: COLOR_DORADO, fontSize: "18px" }}>
                 {Number(factura?.total || 0).toFixed(2)} €
               </p>
             </div>
           </div>
 
           {cliente && (
-            <div style={{ marginTop: 14, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 12 }}>
+            <div style={{ marginTop: "14px", borderTop: BORDE_DORADO_FINO, paddingTop: "12px" }}>
               <span style={estilos.etiquetaChica}>Cliente</span>
               <p style={{ ...estilos.valorTexto, color: "#fff" }}>{cliente.nombre}</p>
-              {cliente.direccion && <p style={{ fontSize: 13, color: "#9fb3c8", marginTop: 2 }}>{cliente.direccion}</p>}
+              {cliente.direccion && <p style={{ fontSize: "12px", color: "#aaa", marginTop: "2px" }}>{cliente.direccion}</p>}
             </div>
           )}
 
           {factura?.descripcion && (
-            <div style={{ marginTop: 14, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 12 }}>
+            <div style={{ marginTop: "14px", borderTop: BORDE_DORADO_FINO, paddingTop: "12px" }}>
               <span style={estilos.etiquetaChica}>Concepto</span>
-              <p style={{ fontSize: 14, color: "#cbd5e1", marginTop: 4, lineHeight: 1.4 }}>{factura.descripcion}</p>
+              <p style={{ fontSize: "13px", color: "#ccc", marginTop: "4px", lineHeight: "1.4" }}>{factura.descripcion}</p>
             </div>
           )}
 
           {lineas && lineas.length > 0 && (
-            <div style={{ marginTop: 14, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 12 }}>
+            <div style={{ marginTop: "14px", borderTop: BORDE_DORADO_FINO, paddingTop: "12px" }}>
               <span style={estilos.etiquetaChica}>Líneas</span>
-              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
                 {lineas.map((l) => (
-                  <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                    <span style={{ color: "#cbd5e1" }}>{l.concepto}</span>
-                    <span style={{ color: "#fff", fontWeight: "700" }}>{Number(l.precio || l.subtotal || 0).toFixed(2)} €</span>
+                  <div key={l.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                    <span style={{ color: "#ccc" }}>{l.concepto}</span>
+                    <span style={{ color: COLOR_DORADO, fontWeight: "700" }}>{Number(l.precio || l.subtotal || 0).toFixed(2)} €</span>
                   </div>
                 ))}
               </div>
@@ -259,23 +273,23 @@ export default function VerFactura() {
           )}
         </div>
 
-        <div style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ marginTop: "16px", display: "flex", gap: "12px", flexWrap: "wrap" }}>
           {!estaPagada ? (
             <button
               onClick={marcarComoPagadaYEnviar}
-              style={{ ...estilos.botonAccion, background: "linear-gradient(135deg, #4ade80 0%, #22c55e 100%)", color: "#0a0f1a", flex: 1 }}
+              style={{ ...estilos.botonAccion, background: "linear-gradient(135deg, #10b981 0%, #047857 100%)", color: "#fff", flex: 1, border: "1px solid rgba(16, 185, 129, 0.6)", boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)" }}
             >
               ✓ Marcar como Pagada y Enviar al Técnico
             </button>
           ) : inspeccion?.estado === "finalizado" ? (
             <button
               onClick={() => alert("¡El técnico ha finalizado! Ya puedes enviársela al cliente.")}
-              style={{ ...estilos.botonAccion, background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)", color: "#fff", flex: 1 }}
+              style={{ ...estilos.botonAccion, background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)", color: "#fff", flex: 1, border: BORDE_DORADO_FINO, boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)" }}
             >
               🚀 Tarea Finalizada - Enviar al Cliente
             </button>
           ) : (
-            <button style={{ ...estilos.botonAccion, background: "rgba(255,255,255,0.06)", color: "#94a3b8", cursor: "default", flex: 1, border: "1px solid rgba(255,255,255,0.1)" }} disabled>
+            <button style={{ ...estilos.botonAccion, background: FONDO_TARJETA, color: COLOR_DORADO, cursor: "default", flex: 1, border: BORDE_DORADO_FINO }} disabled>
               ⏳ Factura Pagada (Esperando que el técnico finalice)
             </button>
           )}
@@ -289,19 +303,19 @@ export default function VerFactura() {
         </div>
 
         {/* SECCIÓN DE TAREA / TÉCNICO */}
-        <div style={{ ...estilos.tarjeta, marginTop: 16, background: "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)" }}>
-          <h3 style={estilos.seccionSubtitulo}>Tarea para Técnico / Inspección</h3>
+        <div style={{ ...estilos.tarjeta, marginTop: "16px" }}>
+          <h2 style={estilos.seccionSubtitulo}>Tarea para Técnico / Inspección</h2>
           
           {!estaPagada ? (
-            <p style={{ fontSize: 13, color: "#fbbf24", marginBottom: 12, lineHeight: 1.4 }}>
+            <p style={{ fontSize: "12px", color: COLOR_DORADO, marginBottom: "12px", lineHeight: "1.4" }}>
               ⚠️ Factura pendiente. El técnico <strong>no recibirá la tarea</strong> en su panel hasta que se marque la factura como pagada.
             </p>
           ) : inspeccion?.estado === "finalizado" ? (
-            <p style={{ fontSize: 13, color: "#3b82f6", marginBottom: 12, lineHeight: 1.4 }}>
+            <p style={{ fontSize: "12px", color: "#38bdf8", marginBottom: "12px", lineHeight: "1.4" }}>
               🚀 El técnico ha marcado la tarea como <strong>finalizada</strong>.
             </p>
           ) : (
-            <p style={{ fontSize: 13, color: "#4ade80", marginBottom: 12, lineHeight: 1.4 }}>
+            <p style={{ fontSize: "12px", color: "#34d399", marginBottom: "12px", lineHeight: "1.4" }}>
               ✓ Factura pagada. La tarea está activa para el técnico seleccionado.
             </p>
           )}
@@ -314,9 +328,9 @@ export default function VerFactura() {
             onChange={(e) => handleCambiarTecnico(e.target.value)}
             style={estilos.select}
           >
-            <option value="">-- Sin técnico asignado --</option>
+            <option value="" style={{ background: "#0b1320", color: "#fff" }}>-- Sin técnico asignado --</option>
             {tecnicos.map((t) => (
-              <option key={t.id} value={t.id} style={{ background: "#132033", color: "#fff" }}>
+              <option key={t.id} value={t.id} style={{ background: "#0b1320", color: "#fff" }}>
                 {t.nombre || t.email || `Técnico #${t.id}`}
               </option>
             ))}
@@ -328,59 +342,145 @@ export default function VerFactura() {
 }
 
 const estilos = {
-  pagina: { padding: "20px 16px 40px", background: "#0a0f1a", minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif" },
-  centrado: { display: "flex", justifyContent: "center", alignItems: "center", height: "60vh", color: "#9fb3c8" },
-  cabeceraFlex: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
-  titulo: { fontSize: 24, color: "#4db8ff", fontWeight: 700, letterSpacing: "-0.5px" },
-  badgeEstado: { padding: "6px 12px", borderRadius: 20, fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" },
-  ok: { marginBottom: 16, color: "#4ade80", background: "rgba(74, 222, 128, 0.12)", border: "1px solid rgba(74, 222, 128, 0.3)", borderRadius: 12, padding: 14, fontSize: 14, lineHeight: 1.4 },
-  error: { marginBottom: 16, color: "#ff6b6b", background: "rgba(255, 107, 107, 0.12)", border: "1px solid rgba(255, 107, 107, 0.3)", borderRadius: 12, padding: 14, fontSize: 14, lineHeight: 1.4 },
-  tarjeta: { 
-    background: "rgba(255, 255, 255, 0.04)", 
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-    padding: 20, 
-    borderRadius: 16, 
-    border: "1px solid rgba(255, 255, 255, 0.08)", 
-    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4)",
-    marginBottom: 16 
-  },
-  gridInfo: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 },
-  etiquetaChica: { display: "block", fontSize: 11, color: "#9fb3c8", textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 600, marginBottom: 4 },
-  valorTexto: { fontSize: 15, fontWeight: 700, color: "#fff" },
-  seccionSubtitulo: { color: "#4db8ff", marginBottom: 8, fontSize: 16, fontWeight: 600 },
-  etiqueta: { display: "block", fontSize: 12, color: "#9fb3c8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 600 },
-  select: { 
-    width: "100%", 
-    padding: "13px 14px", 
-    borderRadius: 10, 
-    border: "1px solid rgba(255, 255, 255, 0.12)", 
-    background: "#132033", 
+  pagina: { 
+    padding: "20px", 
+    background: FONDO_PRINCIPAL, 
+    minHeight: "100vh", 
     color: "#fff", 
-    fontSize: 15,
-    outline: "none",
-    boxShadow: "inset 0 2px 4px rgba(0,0,0,0.2)"
+    fontFamily: "Inter, sans-serif",
+    paddingBottom: "100px",
+    boxSizing: "border-box"
   },
-  botonAccion: {
-    padding: "15px 20px",
-    borderRadius: 12,
-    border: "none",
-    cursor: "pointer",
-    fontWeight: 700,
-    fontSize: 15,
-    boxShadow: "0 6px 20px rgba(74, 222, 128, 0.25)",
-    transition: "transform 0.1s ease, filter 0.2s",
+  centrado: { 
+    display: "flex", 
+    justifyContent: "center", 
+    alignItems: "center", 
+    height: "60vh", 
+    color: COLOR_DORADO,
+    background: FONDO_PRINCIPAL,
+    fontWeight: "700"
+  },
+  cabeceraFlex: { 
+    display: "flex", 
+    justifyContent: "space-between", 
+    alignItems: "center", 
+    marginBottom: "20px" 
+  },
+  titulo: { 
+    ...TEXTO_DORADO_BRILLO,
+    fontSize: "20px", 
+    fontWeight: "900", 
+    textTransform: "uppercase" 
+  },
+  badgeEstado: { 
+    padding: "4px 12px", 
+    borderRadius: "20px", 
+    fontSize: "11px", 
+    fontWeight: "700", 
+    textTransform: "uppercase", 
+    letterSpacing: "0.5px",
+    border: "1px solid"
+  },
+  ok: { 
+    marginBottom: "16px", 
+    color: "#34d399", 
+    background: "rgba(16, 185, 129, 0.15)", 
+    border: "1px solid rgba(16, 185, 129, 0.4)", 
+    borderRadius: "12px", 
+    padding: "12px 16px", 
+    fontSize: "13px", 
+    fontWeight: "700",
     textAlign: "center"
   },
-  botonBorrar: {
-    padding: "15px 20px",
-    borderRadius: 12,
-    border: "1px solid rgba(239, 68, 68, 0.4)",
-    background: "rgba(239, 68, 68, 0.1)",
-    color: "#ff6b6b",
+  error: { 
+    marginBottom: "16px", 
+    color: "#ef4444", 
+    background: "rgba(239, 68, 68, 0.15)", 
+    border: "1px solid rgba(239, 68, 68, 0.4)", 
+    borderRadius: "12px", 
+    padding: "12px 16px", 
+    fontSize: "13px", 
+    fontWeight: "700",
+    textAlign: "center"
+  },
+  tarjeta: { 
+    background: FONDO_TARJETA, 
+    padding: "20px", 
+    borderRadius: "16px", 
+    border: BORDE_DORADO_FINO, 
+    boxShadow: SOMBRA_LUXURY,
+    marginBottom: "16px",
+    boxSizing: "border-box"
+  },
+  gridInfo: { 
+    display: "grid", 
+    gridTemplateColumns: "1fr 1fr", 
+    gap: "16px" 
+  },
+  etiquetaChica: { 
+    display: "block", 
+    fontSize: "11px", 
+    color: COLOR_DORADO, 
+    textTransform: "uppercase", 
+    letterSpacing: "0.8px", 
+    fontWeight: "700", 
+    marginBottom: "4px" 
+  },
+  valorTexto: { 
+    fontSize: "14px", 
+    fontWeight: "700", 
+    color: "#fff" 
+  },
+  seccionSubtitulo: { 
+    ...TEXTO_DORADO_BRILLO,
+    marginBottom: "12px", 
+    fontSize: "15px", 
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  etiqueta: { 
+    display: "block", 
+    fontSize: "11px", 
+    color: COLOR_DORADO, 
+    marginBottom: "8px", 
+    textTransform: "uppercase", 
+    letterSpacing: "0.8px", 
+    fontWeight: "700" 
+  },
+  select: { 
+    backgroundColor: "rgba(11, 19, 32, 0.8)",
+    border: BORDE_DORADO_FINO,
+    borderRadius: "12px",
+    padding: "12px",
+    color: "#fff",
+    fontSize: "13px",
+    outline: "none",
+    boxSizing: "border-box",
+    width: "100%",
+    cursor: "pointer"
+  },
+  botonAccion: {
+    padding: "14px",
+    borderRadius: "16px",
     cursor: "pointer",
-    fontWeight: 700,
-    fontSize: 15,
-    transition: "background 0.2s"
+    fontWeight: "900",
+    fontSize: "13px",
+    textAlign: "center",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    boxSizing: "border-box"
+  },
+  botonBorrar: {
+    padding: "14px 20px",
+    borderRadius: "16px",
+    border: "1px solid rgba(239, 68, 68, 0.5)",
+    background: "rgba(239, 68, 68, 0.15)",
+    color: "#ef4444",
+    cursor: "pointer",
+    fontWeight: "900",
+    fontSize: "13px",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    boxSizing: "border-box"
   }
 };
