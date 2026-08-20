@@ -3,6 +3,13 @@ import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function Login() {
   const { t } = useLanguage();
 
@@ -89,13 +96,15 @@ export default function Login() {
     return (
       <div
         style={{
-          height: "100%",
-          background: "#0a0f1a",
+          height: "100vh",
+          background: FONDO_PRINCIPAL,
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          color: "#fff",
-          fontSize: 18,
+          color: COLOR_DORADO,
+          fontSize: "16px",
+          fontWeight: "700",
+          fontFamily: "Inter, sans-serif",
         }}
       >
         {t("loading")}
@@ -106,44 +115,49 @@ export default function Login() {
   return (
     <div
       style={{
-        height: "100%",
-        background: "#0a0f1a",
+        height: "100vh",
+        width: "100vw",
+        background: FONDO_PRINCIPAL,
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
         padding: "20px",
         fontFamily: "Inter, sans-serif",
+        boxSizing: "border-box",
       }}
     >
       <div
         style={{
           width: "100%",
           maxWidth: "380px",
-          background: "rgba(255,255,255,0.05)",
+          background: FONDO_TARJETA,
           padding: "30px",
-          borderRadius: "14px",
-          border: "1px solid rgba(255,255,255,0.1)",
-          boxShadow: "0 0 18px rgba(0,153,255,0.25)",
+          borderRadius: "16px",
+          border: BORDE_DORADO_FINO,
+          boxShadow: SOMBRA_LUXURY,
+          boxSizing: "border-box",
         }}
       >
         <h1
           style={{
+            ...TEXTO_DORADO_BRILLO,
             textAlign: "center",
-            color: "#4db8ff",
-            fontSize: "26px",
-            fontWeight: "700",
-            marginBottom: "25px",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            fontSize: "20px", // Ajustado ligeramente para mejor lectura
+            fontWeight: "900",
+            marginBottom: "10px",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            lineHeight: "1.3"
           }}
         >
-          CoastGuard
+          CoastGuard Home Services
         </h1>
 
         <p
           style={{
             textAlign: "center",
-            color: "#fff",
-            opacity: 0.7,
+            color: "#aaa",
+            fontSize: "13px",
             marginBottom: "25px",
           }}
         >
@@ -153,11 +167,14 @@ export default function Login() {
         {errorMsg && (
           <div
             style={{
-              background: "rgba(255,0,0,0.15)",
-              padding: "10px",
-              borderRadius: "8px",
-              color: "#ff6b6b",
-              marginBottom: "15px",
+              background: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              padding: "12px",
+              borderRadius: "12px",
+              color: "#ef4444",
+              marginBottom: "16px",
+              fontSize: "13px",
+              fontWeight: "700",
               textAlign: "center",
             }}
           >
@@ -172,13 +189,15 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
           style={{
             width: "100%",
-            padding: "12px",
-            marginBottom: "15px",
-            borderRadius: "8px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            background: "rgba(255,255,255,0.08)",
+            padding: "12px 14px",
+            marginBottom: "16px",
+            borderRadius: "12px",
+            border: BORDE_DORADO_FINO,
+            background: "rgba(11, 19, 32, 0.8)",
             color: "#fff",
-            fontSize: "15px",
+            fontSize: "14px",
+            outline: "none",
+            boxSizing: "border-box",
           }}
         />
 
@@ -189,13 +208,15 @@ export default function Login() {
           onChange={(e) => setPassword(e.target.value)}
           style={{
             width: "100%",
-            padding: "12px",
+            padding: "12px 14px",
             marginBottom: "20px",
-            borderRadius: "8px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            background: "rgba(255,255,255,0.08)",
+            borderRadius: "12px",
+            border: BORDE_DORADO_FINO,
+            background: "rgba(11, 19, 32, 0.8)",
             color: "#fff",
-            fontSize: "15px",
+            fontSize: "14px",
+            outline: "none",
+            boxSizing: "border-box",
           }}
         />
 
@@ -204,14 +225,20 @@ export default function Login() {
           disabled={loading}
           style={{
             width: "100%",
-            padding: "12px",
-            background: loading ? "#0a4a7a" : "#0077cc",
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "16px",
+            padding: "14px",
+            background: loading 
+              ? "rgba(224, 176, 52, 0.5)" 
+              : "linear-gradient(135deg, #e0b034 0%, #99751e 100%)",
+            color: "#030509",
+            border: BORDE_DORADO_FINO,
+            borderRadius: "16px",
+            fontSize: "13px",
+            fontWeight: "900",
             cursor: "pointer",
-            opacity: loading ? 0.7 : 1,
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            boxShadow: "0 4px 15px rgba(224, 176, 52, 0.3)",
+            boxSizing: "border-box",
           }}
         >
           {loading ? t("loggingIn") : t("login")}
@@ -223,10 +250,11 @@ export default function Login() {
             width: "100%",
             padding: "12px",
             background: "transparent",
-            color: "#4db8ff",
+            color: COLOR_DORADO,
             border: "none",
-            borderRadius: "8px",
-            fontSize: "16px",
+            borderRadius: "12px",
+            fontSize: "13px",
+            fontWeight: "700",
             cursor: "pointer",
             marginTop: "15px",
             textDecoration: "underline",
