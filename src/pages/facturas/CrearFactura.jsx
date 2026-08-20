@@ -3,6 +3,13 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function CrearFactura() {
   const navigate = useNavigate();
 
@@ -98,93 +105,131 @@ export default function CrearFactura() {
       <div
         style={{
           padding: "20px",
-          background: "#0a0f1a",
+          background: FONDO_PRINCIPAL,
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
+          paddingBottom: "100px",
+          boxSizing: "border-box",
         }}
       >
         <h1
           style={{
-            color: "#4db8ff",
-            marginBottom: "25px",
-            fontSize: "28px",
-            fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            ...TEXTO_DORADO_BRILLO,
+            fontSize: "20px",
+            fontWeight: "900",
+            marginBottom: "20px",
+            textAlign: "center",
+            textTransform: "uppercase",
           }}
         >
           Nueva Factura / Extra
         </h1>
 
         {mensaje && (
-          <p
+          <div
             style={{
-              marginBottom: "15px",
-              color: "#4db8ff",
-              fontWeight: "600",
+              marginBottom: "16px",
+              padding: "12px 16px",
+              background: mensaje.includes("correctamente") ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+              border: mensaje.includes("correctamente") ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(239, 68, 68, 0.4)",
+              color: mensaje.includes("correctamente") ? "#34d399" : "#ef4444",
+              borderRadius: "12px",
+              fontWeight: "700",
+              textAlign: "center",
+              fontSize: "13px",
             }}
           >
             {mensaje}
-          </p>
+          </div>
         )}
 
         <div
           style={{
-            background: "rgba(255,255,255,0.05)",
+            background: FONDO_TARJETA,
             padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            borderRadius: "16px",
+            border: BORDE_DORADO_FINO,
+            boxShadow: SOMBRA_LUXURY,
+            boxSizing: "border-box",
           }}
         >
-          <label>ID Cliente</label>
-          <input
-            value={form.cliente_id}
-            onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
-            style={inputStyle}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
+              ID Cliente
+            </label>
+            <input
+              value={form.cliente_id}
+              onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+              style={inputStyle}
+              placeholder="Introduce el ID del cliente..."
+            />
+          </div>
 
-          <label>ID Vivienda</label>
-          <input
-            value={form.vivienda_id}
-            onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
-            style={inputStyle}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
+              ID Vivienda
+            </label>
+            <input
+              value={form.vivienda_id}
+              onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
+              style={inputStyle}
+              placeholder="Introduce el ID de la vivienda..."
+            />
+          </div>
 
-          <label>Fecha</label>
-          <input
-            type="date"
-            value={form.fecha}
-            onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-            style={inputStyle}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
+              Fecha
+            </label>
+            <input
+              type="date"
+              value={form.fecha}
+              onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+              style={inputStyle}
+            />
+          </div>
 
-          <label>Concepto</label>
-          <input
-            value={form.concepto}
-            onChange={(e) => setForm({ ...form, concepto: e.target.value })}
-            style={inputStyle}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
+              Concepto
+            </label>
+            <input
+              value={form.concepto}
+              onChange={(e) => setForm({ ...form, concepto: e.target.value })}
+              style={inputStyle}
+              placeholder="Descripción del concepto o servicio..."
+            />
+          </div>
 
-          <label>Importe</label>
-          <input
-            type="number"
-            value={form.importe}
-            onChange={(e) => setForm({ ...form, importe: e.target.value })}
-            style={inputStyle}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "20px" }}>
+            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
+              Importe
+            </label>
+            <input
+              type="number"
+              value={form.importe}
+              onChange={(e) => setForm({ ...form, importe: e.target.value })}
+              style={inputStyle}
+              placeholder="0.00"
+            />
+          </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: "12px", flexDirection: "column" }}>
             <button
               onClick={() => crearFactura()}
               style={{
-                padding: "12px 18px",
-                background: "#4ade80",
-                color: "#0b1220",
-                borderRadius: "10px",
-                border: "none",
+                padding: "14px",
+                background: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+                color: "#fff",
+                borderRadius: "16px",
+                border: "1px solid rgba(16, 185, 129, 0.6)",
                 cursor: "pointer",
-                fontWeight: "700",
+                fontWeight: "900",
+                fontSize: "14px",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)",
               }}
             >
               Crear Factura
@@ -193,13 +238,16 @@ export default function CrearFactura() {
             <button
               onClick={() => navigate("/facturas/lista")}
               style={{
-                padding: "12px 18px",
-                background: "#ef4444",
+                padding: "14px",
+                background: "linear-gradient(135deg, #ef4444 0%, #991b1b 100%)",
                 color: "#fff",
-                borderRadius: "10px",
-                border: "none",
+                borderRadius: "16px",
+                border: "1px solid rgba(239, 68, 68, 0.6)",
                 cursor: "pointer",
-                fontWeight: "700",
+                fontWeight: "900",
+                fontSize: "14px",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
               }}
             >
               Cancelar
@@ -212,11 +260,13 @@ export default function CrearFactura() {
 }
 
 const inputStyle = {
+  backgroundColor: "rgba(11, 19, 32, 0.8)",
+  border: BORDE_DORADO_FINO,
+  borderRadius: "12px",
   padding: "12px",
-  width: "100%",
-  marginBottom: "15px",
-  borderRadius: "10px",
-  border: "1px solid rgba(255,255,255,0.2)",
-  background: "rgba(255,255,255,0.08)",
   color: "#fff",
+  fontSize: "13px",
+  outline: "none",
+  boxSizing: "border-box",
+  width: "100%",
 };
