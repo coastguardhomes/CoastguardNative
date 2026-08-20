@@ -3,6 +3,13 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function EditarFactura() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -49,7 +56,7 @@ export default function EditarFactura() {
     }
 
     setMensaje("Factura actualizada correctamente");
-    navigate("/facturas/lista");
+    setTimeout(() => navigate("/facturas/lista"), 1200);
   }
 
   return (
@@ -57,157 +64,175 @@ export default function EditarFactura() {
       <div
         style={{
           padding: "20px",
-          background: "#0a0f1a",
+          background: FONDO_PRINCIPAL,
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
+          paddingBottom: "100px",
+          boxSizing: "border-box",
         }}
       >
         <h1
           style={{
-            color: "#4db8ff",
-            marginBottom: "25px",
-            fontSize: "28px",
-            fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            ...TEXTO_DORADO_BRILLO,
+            fontSize: "20px",
+            fontWeight: "900",
+            marginBottom: "20px",
+            textAlign: "center",
+            textTransform: "uppercase",
           }}
         >
           Editar Factura
         </h1>
 
         {mensaje && (
-          <p
+          <div
             style={{
-              marginBottom: "15px",
-              color: "#4db8ff",
-              fontWeight: "600",
+              marginBottom: "16px",
+              padding: "12px 16px",
+              background: mensaje.includes("correctamente") ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+              border: mensaje.includes("correctamente") ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(239, 68, 68, 0.4)",
+              color: mensaje.includes("correctamente") ? "#34d399" : "#ef4444",
+              borderRadius: "12px",
+              fontWeight: "700",
+              textAlign: "center",
+              fontSize: "13px",
             }}
           >
             {mensaje}
-          </p>
+          </div>
         )}
 
         <div
           style={{
-            background: "rgba(255,255,255,0.05)",
+            background: FONDO_TARJETA,
             padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            borderRadius: "16px",
+            border: BORDE_DORADO_FINO,
+            boxShadow: SOMBRA_LUXURY,
+            boxSizing: "border-box",
           }}
         >
-          <label>ID Cliente</label>
-          <input
-            value={form.cliente_id}
-            onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
+              ID Cliente
+            </label>
+            <input
+              value={form.cliente_id || ""}
+              onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+              style={inputStyle}
+            />
+          </div>
 
-          <label>ID Vivienda</label>
-          <input
-            value={form.vivienda_id}
-            onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
+              ID Vivienda
+            </label>
+            <input
+              value={form.vivienda_id || ""}
+              onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
+              style={inputStyle}
+            />
+          </div>
 
-          <label>Fecha</label>
-          <input
-            type="date"
-            value={form.fecha}
-            onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
+              Fecha
+            </label>
+            <input
+              type="date"
+              value={form.fecha || ""}
+              onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+              style={inputStyle}
+            />
+          </div>
 
-          <label>Concepto</label>
-          <input
-            value={form.concepto}
-            onChange={(e) => setForm({ ...form, concepto: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
+              Concepto
+            </label>
+            <input
+              value={form.concepto || ""}
+              onChange={(e) => setForm({ ...form, concepto: e.target.value })}
+              style={inputStyle}
+            />
+          </div>
 
-          <label>Importe (€)</label>
-          <input
-            type="number"
-            value={form.importe}
-            onChange={(e) => setForm({ ...form, importe: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
+            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
+              Importe (€)
+            </label>
+            <input
+              type="number"
+              value={form.importe || ""}
+              onChange={(e) => setForm({ ...form, importe: e.target.value })}
+              style={inputStyle}
+            />
+          </div>
 
-          <label>Estado</label>
-          <input
-            value={form.estado}
-            onChange={(e) => setForm({ ...form, estado: e.target.value })}
-            style={{
-              padding: "12px",
-              width: "100%",
-              marginBottom: "15px",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "20px" }}>
+            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
+              Estado
+            </label>
+            <input
+              value={form.estado || ""}
+              onChange={(e) => setForm({ ...form, estado: e.target.value })}
+              style={inputStyle}
+            />
+          </div>
 
-          <button
-            onClick={guardarCambios}
-            style={{
-              marginTop: "20px",
-              padding: "14px",
-              width: "100%",
-              background: "#4db8ff",
-              color: "#000",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "17px",
-              cursor: "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-            }}
-          >
-            Guardar cambios
-          </button>
+          <div style={{ display: "flex", gap: "12px", flexDirection: "column" }}>
+            <button
+              onClick={guardarCambios}
+              style={{
+                padding: "14px",
+                background: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+                color: "#fff",
+                borderRadius: "16px",
+                border: "1px solid rgba(16, 185, 129, 0.6)",
+                cursor: "pointer",
+                fontWeight: "900",
+                fontSize: "14px",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)",
+              }}
+            >
+              Guardar cambios
+            </button>
+
+            <button
+              onClick={() => navigate("/facturas/lista")}
+              style={{
+                padding: "14px",
+                background: "linear-gradient(135deg, #ef4444 0%, #991b1b 100%)",
+                color: "#fff",
+                borderRadius: "16px",
+                border: "1px solid rgba(239, 68, 68, 0.6)",
+                cursor: "pointer",
+                fontWeight: "900",
+                fontSize: "14px",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
         </div>
       </div>
     </Menu>
   );
 }
+
+const inputStyle = {
+  backgroundColor: "rgba(11, 19, 32, 0.8)",
+  border: BORDE_DORADO_FINO,
+  borderRadius: "12px",
+  padding: "12px",
+  color: "#fff",
+  fontSize: "13px",
+  outline: "none",
+  boxSizing: "border-box",
+  width: "100%",
+};
