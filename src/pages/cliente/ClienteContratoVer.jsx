@@ -82,12 +82,31 @@ export default function ClienteContratoVer() {
     }
   };
 
-  const abrirPDF = () => {
-    if (!contrato?.pdf_url) {
+  // Función segura para abrir PDFs o data URLs evitando bloqueos de seguridad
+  const manejarAbrirPDF = (url) => {
+    if (!url) {
       alert("El administrador aún no ha generado el PDF.");
       return;
     }
-    window.open(contrato.pdf_url, "_blank");
+
+    if (url.startsWith("data:")) {
+      try {
+        // Convertimos la data URL a Blob para que el navegador/webview no la bloquee
+        fetch(url)
+          .then((res) => res.blob())
+          .then((blob) => {
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, "_blank");
+          })
+          .catch(() => {
+            window.open(url, "_blank");
+          });
+      } catch (e) {
+        window.open(url, "_blank");
+      }
+    } else {
+      window.open(url, "_blank");
+    }
   };
 
   if (!contrato) {
@@ -186,7 +205,7 @@ export default function ClienteContratoVer() {
 
           {/* Ver contrato antes de firmar */}
           <button
-            onClick={abrirPDF}
+            onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
               ...botonEstilo,
               background: "rgba(255,255,255,0.12)",
@@ -225,13 +244,7 @@ export default function ClienteContratoVer() {
 
           {/* Ver contrato firmado */}
           <button
-            onClick={() => {
-              if (!contrato?.pdf_url) {
-                alert("No hay PDF firmado todavía.");
-                return;
-              }
-              window.open(contrato.pdf_url, "_blank");
-            }}
+            onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
               ...botonEstilo,
               background: "rgba(255,255,255,0.08)",
