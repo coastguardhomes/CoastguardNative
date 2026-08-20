@@ -4,16 +4,24 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+const DEGRADADO_AZUL_BOTON = "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)";
+
 const botonEstilo = {
-  padding: "12px",
+  padding: "14px",
   width: "100%",
-  borderRadius: "8px",
+  borderRadius: "16px",
   cursor: "pointer",
   marginTop: "12px",
-  fontWeight: "600",
-  fontSize: "15px",
-  border: "1px solid rgba(255, 215, 0, 0.4)",
-  background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
+  fontWeight: "900",
+  fontSize: "14px",
+  border: BORDE_DORADO_FINO,
+  background: DEGRADADO_AZUL_BOTON,
   color: "#ffffff",
   boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
   transition: "all 0.2s ease",
@@ -86,7 +94,6 @@ export default function ClienteContratoVer() {
     }
   };
 
-  // Función segura para abrir PDFs o data URLs evitando bloqueos de seguridad
   const manejarAbrirPDF = (url) => {
     if (!url) {
       alert("El administrador aún no ha generado el PDF.");
@@ -95,7 +102,6 @@ export default function ClienteContratoVer() {
 
     if (url.startsWith("data:")) {
       try {
-        // Convertimos la data URL a Blob para que el navegador/webview no la bloquee
         fetch(url)
           .then((res) => res.blob())
           .then((blob) => {
@@ -119,15 +125,15 @@ export default function ClienteContratoVer() {
         <div
           style={{
             minHeight: "100vh",
-            background: "#0a0f1a",
-            color: "#ffd700",
+            background: FONDO_PRINCIPAL,
+            color: COLOR_DORADO,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             fontFamily: "Inter, sans-serif",
           }}
         >
-          {t("clienteContratoCargando") || "Cargando contrato..."}
+          <h3 style={TEXTO_DORADO_BRILLO}>{t("clienteContratoCargando") || "Cargando contrato..."}</h3>
         </div>
       </Menu>
     );
@@ -138,7 +144,7 @@ export default function ClienteContratoVer() {
       <div
         style={{
           minHeight: "100vh",
-          background: "#0a0f1a",
+          background: FONDO_PRINCIPAL,
           padding: "20px",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
@@ -148,11 +154,11 @@ export default function ClienteContratoVer() {
         <h2
           style={{
             textAlign: "center",
-            color: "#ffd700",
+            ...TEXTO_DORADO_BRILLO,
             marginBottom: "25px",
-            fontSize: "28px",
-            fontWeight: "700",
-            textShadow: "0 0 12px rgba(255,215,0,0.5)",
+            fontSize: "24px",
+            fontWeight: "900",
+            textTransform: "uppercase",
           }}
         >
           {t("clienteContratoTitulo") || "Contrato del Cliente"}
@@ -161,66 +167,65 @@ export default function ClienteContratoVer() {
         {/* Datos del Cliente */}
         <div
           style={{
-            background: "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))",
+            background: FONDO_TARJETA,
             padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255, 215, 0, 0.3)",
-            boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)",
+            borderRadius: "16px",
+            border: BORDE_DORADO_FINO,
+            boxShadow: SOMBRA_LUXURY,
             marginBottom: "20px",
           }}
         >
-          <h3 style={{ color: "#ffd700", marginBottom: "10px", fontSize: "20px", marginTop: 0, textShadow: "0 0 6px rgba(255,215,0,0.3)" }}>
+          <h3 style={{ ...TEXTO_DORADO_BRILLO, marginBottom: "12px", fontSize: "16px", marginTop: 0, fontWeight: "800", textTransform: "uppercase" }}>
             {t("clienteContratoDatosCliente") || "Datos del Cliente"}
           </h3>
-          <p style={{ margin: "6px 0" }}><strong>Nombre:</strong> {cliente?.nombre || contrato?.cliente_nombre || "—"}</p>
-          <p style={{ margin: "6px 0" }}><strong>Dirección:</strong> {cliente?.direccion || "—"}</p>
-          <p style={{ margin: "6px 0" }}><strong>Teléfono:</strong> {cliente?.telefono || "—"}</p>
+          <p style={{ margin: "8px 0", fontSize: "14px" }}><strong style={{ color: COLOR_DORADO }}>Nombre:</strong> {cliente?.nombre || contrato?.cliente_nombre || "—"}</p>
+          <p style={{ margin: "8px 0", fontSize: "14px" }}><strong style={{ color: COLOR_DORADO }}>Dirección:</strong> {cliente?.direccion || "—"}</p>
+          <p style={{ margin: "8px 0", fontSize: "14px" }}><strong style={{ color: COLOR_DORADO }}>Teléfono:</strong> {cliente?.telefono || "—"}</p>
         </div>
 
         {/* Detalles del Contrato */}
         <div
           style={{
-            background: "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))",
+            background: FONDO_TARJETA,
             padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255, 215, 0, 0.3)",
-            boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)",
+            borderRadius: "16px",
+            border: BORDE_DORADO_FINO,
+            boxShadow: SOMBRA_LUXURY,
           }}
         >
-          <h3 style={{ color: "#ffd700", marginBottom: "10px", fontSize: "20px", marginTop: 0, textShadow: "0 0 6px rgba(255,215,0,0.3)" }}>
+          <h3 style={{ ...TEXTO_DORADO_BRILLO, marginBottom: "12px", fontSize: "16px", marginTop: 0, fontWeight: "800", textTransform: "uppercase" }}>
             {t("clienteContratoDetalles") || "Detalles del Contrato"}
           </h3>
 
-          <p style={{ margin: "6px 0" }}>
-            <strong>Tipo de servicio:</strong> Cada {contrato.frecuencia || 30} días
+          <p style={{ margin: "8px 0", fontSize: "14px" }}>
+            <strong style={{ color: COLOR_DORADO }}>Tipo de servicio:</strong> Cada {contrato.frecuencia || 30} días
           </p>
-          <p style={{ margin: "6px 0" }}>
-            <strong>Precio mensual:</strong> {contrato.precio != null ? `${contrato.precio} €` : "—"}
+          <p style={{ margin: "8px 0", fontSize: "14px" }}>
+            <strong style={{ color: COLOR_DORADO }}>Precio mensual:</strong> {contrato.precio != null ? `${contrato.precio} €` : "—"}
           </p>
-          <p style={{ margin: "6px 0" }}>
-            <strong>Fecha inicio:</strong> {contrato.fecha_inicio || "—"}
+          <p style={{ margin: "8px 0", fontSize: "14px" }}>
+            <strong style={{ color: COLOR_DORADO }}>Fecha inicio:</strong> {contrato.fecha_inicio || "—"}
           </p>
-          <p style={{ margin: "6px 0 16px 0" }}>
-            <strong>Estado:</strong>{" "}
-            <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d", fontWeight: "bold", textShadow: esFirmado ? "0 0 8px rgba(77,255,136,0.4)" : "0 0 8px rgba(255,184,77,0.4)" }}>
+          <p style={{ margin: "8px 0 16px 0", fontSize: "14px" }}>
+            <strong style={{ color: COLOR_DORADO }}>Estado:</strong>{" "}
+            <span style={{ color: esFirmado ? "#34d399" : "#fbbf24", fontWeight: "900", textShadow: "0 0 10px rgba(0,0,0,0.5)" }}>
               {esFirmado ? "✅ Firmado" : "⏳ Pendiente de firma"}
             </span>
           </p>
 
-          {/* Ver contrato antes de firmar */}
           <button
             onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
               ...botonEstilo,
-              background: "rgba(10, 15, 26, 0.8)",
-              border: "1px solid rgba(255, 215, 0, 0.4)",
-              color: "#ffd700",
+              background: "rgba(11, 19, 32, 0.9)",
+              border: BORDE_DORADO_FINO,
+              color: COLOR_DORADO,
+              boxShadow: "0 4px 15px rgba(0,0,0,0.5)",
             }}
           >
             📄 Ver contrato antes de firmar
           </button>
 
-          {/* Firma del Cliente */}
           <button
             onClick={() => navigate(`/cliente/firma/${id}`)}
             style={botonEstilo}
@@ -228,32 +233,31 @@ export default function ClienteContratoVer() {
             ✍️ {esFirmado ? "Ver / Cambiar Firma" : "Firma del Cliente"}
           </button>
 
-          {/* Enviar al Admin */}
           <button
             onClick={enviarAlAdmin}
             disabled={!esFirmado || enviando}
             style={{
               ...botonEstilo,
               background: esFirmado
-                ? "linear-gradient(135deg, #4ade80 0%, #166534 100%)"
-                : "rgba(255,255,255,0.08)",
-              color: esFirmado ? "#ffffff" : "#888",
+                ? "linear-gradient(135deg, #10b981 0%, #047857 100%)"
+                : "rgba(255,255,255,0.05)",
+              color: esFirmado ? "#ffffff" : "#64748b",
               cursor: esFirmado ? "pointer" : "not-allowed",
-              border: esFirmado ? "1px solid rgba(74, 222, 128, 0.5)" : "1px solid rgba(255,255,255,0.1)",
-              boxShadow: esFirmado ? "0 4px 15px rgba(74, 222, 128, 0.3)" : "none",
+              border: esFirmado ? "1px solid rgba(16, 185, 129, 0.6)" : BORDE_DORADO_FINO,
+              boxShadow: esFirmado ? "0 4px 15px rgba(16, 185, 129, 0.3)" : "none",
             }}
           >
             {enviando ? "Enviando..." : "📤 Enviar contrato al Admin"}
           </button>
 
-          {/* Ver contrato firmado */}
           <button
             onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
               ...botonEstilo,
-              background: "rgba(10, 15, 26, 0.8)",
-              border: "1px solid rgba(255, 215, 0, 0.4)",
-              color: "#ffd700",
+              background: "rgba(11, 19, 32, 0.9)",
+              border: BORDE_DORADO_FINO,
+              color: COLOR_DORADO,
+              boxShadow: "0 4px 15px rgba(0,0,0,0.5)",
             }}
           >
             📄 Ver contrato firmado (PDF)
