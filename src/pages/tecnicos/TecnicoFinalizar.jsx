@@ -4,6 +4,13 @@ import { supabase } from "../../lib/supabase";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function TecnicoFinalizar() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -91,8 +98,8 @@ export default function TecnicoFinalizar() {
   if (loading) {
     return (
       <Menu>
-        <div style={{ height: "100vh", background: "#0a0f1a", color: "#4db8ff", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "18px", fontWeight: "bold" }}>
-          Cargando inspección...
+        <div style={{ minHeight: "100vh", background: FONDO_PRINCIPAL, color: COLOR_DORADO, display: "flex", justifyContent: "center", alignItems: "center", fontFamily: "Inter, sans-serif" }}>
+          <h3 style={TEXTO_DORADO_BRILLO}>Cargando inspección...</h3>
         </div>
       </Menu>
     );
@@ -100,25 +107,25 @@ export default function TecnicoFinalizar() {
 
   return (
     <Menu>
-      <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif", paddingBottom: "80px" }}>
-        <h1 style={{ color: "#4db8ff", marginBottom: "20px", fontSize: "26px", fontWeight: "700", textAlign: "center" }}>
+      <div style={{ padding: "20px", background: FONDO_PRINCIPAL, minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif", paddingBottom: "100px", boxSizing: "border-box" }}>
+        <h1 style={{ ...TEXTO_DORADO_BRILLO, marginBottom: "20px", fontSize: "20px", fontWeight: "900", textAlign: "center", textTransform: "uppercase" }}>
           Finalizar inspección
         </h1>
 
         {mensaje && (
-          <div style={{ marginBottom: "15px", padding: "12px", background: exito ? "rgba(74, 222, 128, 0.2)" : "rgba(255, 107, 107, 0.2)", border: `1px solid ${exito ? "#4ade80" : "#ff6b6b"}`, borderRadius: "8px", color: exito ? "#4ade80" : "#ff6b6b", fontSize: "15px", fontWeight: "600", textAlign: "center" }}>
+          <div style={{ marginBottom: "16px", padding: "12px 16px", background: exito ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)", border: exito ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(239, 68, 68, 0.4)", borderRadius: "12px", color: exito ? "#34d399" : "#ef4444", fontSize: "13px", fontWeight: "700", textAlign: "center" }}>
             {mensaje}
           </div>
         )}
 
         {inspeccion && (
-          <div style={{ background: "rgba(255,255,255,0.05)", padding: "18px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "20px" }}>
+          <div style={{ background: FONDO_TARJETA, padding: "16px", borderRadius: "16px", border: BORDE_DORADO_FINO, marginBottom: "20px", boxShadow: SOMBRA_LUXURY, fontSize: "13px" }}>
             <p style={{ marginBottom: "8px" }}>
-              <strong style={{ color: "#4db8ff" }}>Fecha:</strong> {inspeccion.fecha ? String(inspeccion.fecha).slice(0, 10) : "Sin fecha"}
+              <strong style={{ color: COLOR_DORADO }}>Fecha:</strong> {inspeccion.fecha ? String(inspeccion.fecha).slice(0, 10) : "Sin fecha"}
             </p>
-            <p>
-              <strong style={{ color: "#4db8ff" }}>Estado actual:</strong>{" "}
-              <span style={{ padding: "2px 6px", background: "rgba(255,255,255,0.1)", borderRadius: "4px" }}>
+            <p style={{ margin: 0 }}>
+              <strong style={{ color: COLOR_DORADO }}>Estado actual:</strong>{" "}
+              <span style={{ padding: "3px 8px", background: "rgba(11, 19, 32, 0.9)", border: BORDE_DORADO_FINO, borderRadius: "6px", color: "#fff", fontWeight: "700" }}>
                 {inspeccion.estado}
               </span>
             </p>
@@ -129,31 +136,31 @@ export default function TecnicoFinalizar() {
           value={notas}
           onChange={(e) => setNotas(e.target.value)}
           placeholder="Escribe aquí las notas de la inspección..."
-          style={{ width: "100%", height: "130px", padding: "12px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.05)", color: "#fff", fontSize: "15px", marginBottom: "20px", boxSizing: "border-box" }}
+          style={{ width: "100%", height: "130px", padding: "14px", borderRadius: "12px", border: BORDE_DORADO_FINO, background: "rgba(11, 19, 32, 0.8)", color: "#fff", fontSize: "14px", marginBottom: "20px", boxSizing: "border-box", outline: "none" }}
         />
 
         <button
           onClick={finalizarInspeccion}
           disabled={guardando || exito}
-          style={{ padding: "14px", width: "100%", background: exito ? "#10b981" : guardando ? "#666" : "#4ade80", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "16px", cursor: (guardando || exito) ? "not-allowed" : "pointer", marginBottom: "15px" }}
+          style={{ padding: "14px", width: "100%", background: exito ? "#10b981" : guardando ? "rgba(255,255,255,0.08)" : "linear-gradient(135deg, #10b981 0%, #047857 100%)", color: guardando ? "#64748b" : "#ffffff", borderRadius: "16px", border: guardando ? BORDE_DORADO_FINO : "1px solid rgba(16, 185, 129, 0.6)", fontWeight: "900", fontSize: "14px", cursor: (guardando || exito) ? "not-allowed" : "pointer", marginBottom: "16px", textTransform: "uppercase", letterSpacing: "0.5px", boxShadow: guardando ? "none" : "0 4px 15px rgba(16, 185, 129, 0.3)", transition: "all 0.2s ease" }}
         >
           {guardando ? "Guardando..." : exito ? "✔ Finalizada" : "Finalizar inspección"}
         </button>
 
         <Link to={`/tecnico/inspeccion/${id}/checklist`} style={{ textDecoration: "none" }}>
-          <button style={{ padding: "12px", width: "100%", background: "#4db8ff", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "15px", cursor: "pointer", marginBottom: "12px" }}>
+          <button style={{ padding: "12px", width: "100%", background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)", color: "#fff", borderRadius: "12px", border: BORDE_DORADO_FINO, fontWeight: "900", fontSize: "13px", cursor: "pointer", marginBottom: "12px", textTransform: "uppercase", boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)" }}>
             Checklist
           </button>
         </Link>
 
         <Link to={`/tecnico/inspeccion/${id}/fotos`} style={{ textDecoration: "none" }}>
-          <button style={{ padding: "12px", width: "100%", background: "#1e90ff", color: "#fff", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "15px", cursor: "pointer", marginBottom: "12px" }}>
+          <button style={{ padding: "12px", width: "100%", background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)", color: "#fff", borderRadius: "12px", border: BORDE_DORADO_FINO, fontWeight: "900", fontSize: "13px", cursor: "pointer", marginBottom: "12px", textTransform: "uppercase", boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)" }}>
             Fotos
           </button>
         </Link>
 
         <Link to={`/tecnico`} style={{ textDecoration: "none" }}>
-          <button style={{ padding: "12px", width: "100%", background: "#ffcc00", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}>
+          <button style={{ padding: "12px", width: "100%", background: "transparent", color: COLOR_DORADO, borderRadius: "12px", border: BORDE_DORADO_FINO, fontWeight: "900", fontSize: "13px", cursor: "pointer", textTransform: "uppercase" }}>
             Volver al panel
           </button>
         </Link>
