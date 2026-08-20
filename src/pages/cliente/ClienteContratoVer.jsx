@@ -12,7 +12,11 @@ const botonEstilo = {
   marginTop: "12px",
   fontWeight: "600",
   fontSize: "15px",
-  border: "none",
+  border: "1px solid rgba(255, 215, 0, 0.4)",
+  background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
+  color: "#ffffff",
+  boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
+  transition: "all 0.2s ease",
 };
 
 export default function ClienteContratoVer() {
@@ -116,7 +120,7 @@ export default function ClienteContratoVer() {
           style={{
             minHeight: "100vh",
             background: "#0a0f1a",
-            color: "#fff",
+            color: "#ffd700",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
@@ -144,11 +148,11 @@ export default function ClienteContratoVer() {
         <h2
           style={{
             textAlign: "center",
-            color: "#4db8ff",
+            color: "#ffd700",
             marginBottom: "25px",
             fontSize: "28px",
             fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            textShadow: "0 0 12px rgba(255,215,0,0.5)",
           }}
         >
           {t("clienteContratoTitulo") || "Contrato del Cliente"}
@@ -157,15 +161,15 @@ export default function ClienteContratoVer() {
         {/* Datos del Cliente */}
         <div
           style={{
-            background: "rgba(255,255,255,0.05)",
+            background: "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))",
             padding: "20px",
             borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            border: "1px solid rgba(255, 215, 0, 0.3)",
+            boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)",
             marginBottom: "20px",
           }}
         >
-          <h3 style={{ color: "#4db8ff", marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
+          <h3 style={{ color: "#ffd700", marginBottom: "10px", fontSize: "20px", marginTop: 0, textShadow: "0 0 6px rgba(255,215,0,0.3)" }}>
             {t("clienteContratoDatosCliente") || "Datos del Cliente"}
           </h3>
           <p style={{ margin: "6px 0" }}><strong>Nombre:</strong> {cliente?.nombre || contrato?.cliente_nombre || "—"}</p>
@@ -176,14 +180,14 @@ export default function ClienteContratoVer() {
         {/* Detalles del Contrato */}
         <div
           style={{
-            background: "rgba(255,255,255,0.05)",
+            background: "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))",
             padding: "20px",
             borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            border: "1px solid rgba(255, 215, 0, 0.3)",
+            boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)",
           }}
         >
-          <h3 style={{ color: "#4db8ff", marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
+          <h3 style={{ color: "#ffd700", marginBottom: "10px", fontSize: "20px", marginTop: 0, textShadow: "0 0 6px rgba(255,215,0,0.3)" }}>
             {t("clienteContratoDetalles") || "Detalles del Contrato"}
           </h3>
 
@@ -198,7 +202,7 @@ export default function ClienteContratoVer() {
           </p>
           <p style={{ margin: "6px 0 16px 0" }}>
             <strong>Estado:</strong>{" "}
-            <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d", fontWeight: "bold" }}>
+            <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d", fontWeight: "bold", textShadow: esFirmado ? "0 0 8px rgba(77,255,136,0.4)" : "0 0 8px rgba(255,184,77,0.4)" }}>
               {esFirmado ? "✅ Firmado" : "⏳ Pendiente de firma"}
             </span>
           </p>
@@ -208,9 +212,9 @@ export default function ClienteContratoVer() {
             onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
               ...botonEstilo,
-              background: "rgba(255,255,255,0.12)",
-              color: "#fff",
-              border: "1px solid rgba(255,255,255,0.3)",
+              background: "rgba(10, 15, 26, 0.8)",
+              border: "1px solid rgba(255, 215, 0, 0.4)",
+              color: "#ffd700",
             }}
           >
             📄 Ver contrato antes de firmar
@@ -219,11 +223,7 @@ export default function ClienteContratoVer() {
           {/* Firma del Cliente */}
           <button
             onClick={() => navigate(`/cliente/firma/${id}`)}
-            style={{
-              ...botonEstilo,
-              background: "#4db8ff",
-              color: "#0a0f1a",
-            }}
+            style={botonEstilo}
           >
             ✍️ {esFirmado ? "Ver / Cambiar Firma" : "Firma del Cliente"}
           </button>
@@ -234,9 +234,13 @@ export default function ClienteContratoVer() {
             disabled={!esFirmado || enviando}
             style={{
               ...botonEstilo,
-              background: esFirmado ? "#4cd964" : "rgba(255,255,255,0.15)",
-              color: esFirmado ? "#0a0f1a" : "#888",
+              background: esFirmado
+                ? "linear-gradient(135deg, #4ade80 0%, #166534 100%)"
+                : "rgba(255,255,255,0.08)",
+              color: esFirmado ? "#ffffff" : "#888",
               cursor: esFirmado ? "pointer" : "not-allowed",
+              border: esFirmado ? "1px solid rgba(74, 222, 128, 0.5)" : "1px solid rgba(255,255,255,0.1)",
+              boxShadow: esFirmado ? "0 4px 15px rgba(74, 222, 128, 0.3)" : "none",
             }}
           >
             {enviando ? "Enviando..." : "📤 Enviar contrato al Admin"}
@@ -247,9 +251,9 @@ export default function ClienteContratoVer() {
             onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
               ...botonEstilo,
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(10, 15, 26, 0.8)",
+              border: "1px solid rgba(255, 215, 0, 0.4)",
+              color: "#ffd700",
             }}
           >
             📄 Ver contrato firmado (PDF)
