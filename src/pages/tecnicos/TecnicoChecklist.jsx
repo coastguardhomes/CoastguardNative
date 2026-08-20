@@ -4,6 +4,28 @@ import { supabase } from "../../lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
+const botonEstilo = {
+  padding: "14px",
+  width: "100%",
+  borderRadius: "16px",
+  cursor: "pointer",
+  marginTop: "12px",
+  fontWeight: "900",
+  fontSize: "14px",
+  border: BORDE_DORADO_FINO,
+  background: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+  color: "#ffffff",
+  boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)",
+  transition: "all 0.2s ease",
+};
+
 export default function ChecklistUnificado() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -229,7 +251,6 @@ export default function ChecklistUnificado() {
     }
   }
 
-  // CORREGIDO: Redirección post-guardado correcta
   async function guardarChecklistCompleto() {
     setGuardando(true);
     const todoOk = items.length > 0 && items.every((i) => i.completado === true);
@@ -251,8 +272,6 @@ export default function ChecklistUnificado() {
     }
 
     setGuardando(false);
-    
-    // Redirección corregida al detalle principal de la inspección
     navigate(`/tecnico/inspeccion/${id}`);
   }
 
@@ -261,16 +280,16 @@ export default function ChecklistUnificado() {
       <Menu>
         <div
           style={{
-            height: "100vh",
-            background: "#04070c",
-            color: "#ffd700",
+            minHeight: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: COLOR_DORADO,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            fontWeight: "bold",
+            fontFamily: "Inter, sans-serif",
           }}
         >
-          Cargando puntos del checklist...
+          <h3 style={TEXTO_DORADO_BRILLO}>Cargando puntos del checklist...</h3>
         </div>
       </Menu>
     );
@@ -280,12 +299,13 @@ export default function ChecklistUnificado() {
     <Menu>
       <div
         style={{
-          padding: "16px",
-          background: "#04070c",
           minHeight: "100vh",
+          background: FONDO_PRINCIPAL,
+          padding: "20px",
           color: "#fff",
-          fontFamily: "sans-serif",
+          fontFamily: "Inter, sans-serif",
           paddingBottom: "100px",
+          boxSizing: "border-box",
         }}
       >
         <div
@@ -293,22 +313,23 @@ export default function ChecklistUnificado() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: "15px",
+            marginBottom: "20px",
           }}
         >
-          <h1 style={{ color: "#ffd700", fontSize: "18px", margin: 0 }}>
+          <h1 style={{ ...TEXTO_DORADO_BRILLO, fontSize: "18px", margin: 0, fontWeight: "900", textTransform: "uppercase" }}>
             Checklist Técnico ({items.length} puntos)
           </h1>
           <button
             onClick={() => navigate(`/tecnico/inspeccion/${id}`)}
             style={{
-              background: "#16263f",
-              border: "1px solid #d4af37",
-              color: "#ffd700",
-              padding: "6px 10px",
-              borderRadius: "6px",
-              fontWeight: "bold",
+              background: "transparent",
+              border: BORDE_DORADO_FINO,
+              color: COLOR_DORADO,
+              padding: "6px 12px",
+              borderRadius: "8px",
+              fontWeight: "700",
               cursor: "pointer",
+              fontSize: "11px",
             }}
           >
             ← Volver
@@ -317,24 +338,25 @@ export default function ChecklistUnificado() {
 
         <div
           style={{
-            background: "#09101d",
-            border: "1px solid #d4af37",
-            borderRadius: "10px",
-            padding: "12px",
-            marginBottom: "15px",
+            background: FONDO_TARJETA,
+            border: BORDE_DORADO_FINO,
+            borderRadius: "16px",
+            padding: "16px",
+            marginBottom: "20px",
             fontSize: "13px",
+            boxShadow: SOMBRA_LUXURY,
           }}
         >
-          <div style={{ marginBottom: "4px" }}>
-            🏠 <strong style={{ color: "#ffd700" }}>Vivienda:</strong>{" "}
+          <div style={{ marginBottom: "6px" }}>
+            🏠 <strong style={{ color: COLOR_DORADO }}>Vivienda:</strong>{" "}
             {viviendaInfo.nombre}
           </div>
-          <div style={{ marginBottom: "4px" }}>
-            📍 <strong style={{ color: "#ffd700" }}>Dirección:</strong>{" "}
+          <div style={{ marginBottom: "6px" }}>
+            📍 <strong style={{ color: COLOR_DORADO }}>Dirección:</strong>{" "}
             {viviendaInfo.direccion}
           </div>
           <div>
-            👤 <strong style={{ color: "#ffd700" }}>Cliente:</strong>{" "}
+            👤 <strong style={{ color: COLOR_DORADO }}>Cliente:</strong>{" "}
             {viviendaInfo.cliente}
           </div>
         </div>
@@ -342,33 +364,35 @@ export default function ChecklistUnificado() {
         {mensaje && (
           <div
             style={{
-              marginBottom: "12px",
-              padding: "8px",
-              background: "rgba(212,175,55,0.1)",
-              border: "1px solid #ffd700",
-              borderRadius: "6px",
-              color: "#ffd700",
-              fontSize: "12px",
-              fontWeight: "bold",
+              marginBottom: "16px",
+              padding: "12px 16px",
+              background: "rgba(224, 176, 52, 0.15)",
+              border: BORDE_DORADO_FINO,
+              borderRadius: "12px",
+              color: COLOR_DORADO,
+              fontSize: "13px",
+              fontWeight: "700",
+              textAlign: "center",
             }}
           >
             {mensaje}
           </div>
         )}
 
-        <div style={{ display: "flex", gap: "8px", marginBottom: "15px" }}>
+        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
           <button
             onClick={tomarFoto}
             style={{
               flex: 1,
-              padding: "10px",
-              background: "#d4af37",
-              color: "#070b12",
-              borderRadius: "8px",
-              border: "none",
-              fontWeight: "bold",
+              padding: "12px",
+              background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
+              color: "#fff",
+              borderRadius: "12px",
+              border: BORDE_DORADO_FINO,
+              fontWeight: "900",
               cursor: "pointer",
               fontSize: "13px",
+              boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
             }}
           >
             📸 Hacer Foto
@@ -377,14 +401,15 @@ export default function ChecklistUnificado() {
             onClick={seleccionarDeGaleria}
             style={{
               flex: 1,
-              padding: "10px",
-              background: "#27ae60",
+              padding: "12px",
+              background: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
               color: "#fff",
-              borderRadius: "8px",
-              border: "none",
-              fontWeight: "bold",
+              borderRadius: "12px",
+              border: "1px solid rgba(16, 185, 129, 0.6)",
+              fontWeight: "900",
               cursor: "pointer",
               fontSize: "13px",
+              boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)",
             }}
           >
             🖼️ Galería
@@ -395,42 +420,43 @@ export default function ChecklistUnificado() {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: "10px",
-            marginBottom: "15px",
+            gap: "12px",
+            marginBottom: "20px",
           }}
         >
           {items.map((item, index) => (
             <div
               key={item.id || index}
               style={{
-                background: "#09101d",
-                padding: "12px",
-                borderRadius: "10px",
-                border: "1px solid #1e3050",
+                background: FONDO_TARJETA,
+                padding: "16px",
+                borderRadius: "16px",
+                border: BORDE_DORADO_FINO,
+                boxShadow: SOMBRA_LUXURY,
               }}
             >
               <p
                 style={{
-                  marginBottom: "8px",
-                  fontSize: "13px",
-                  fontWeight: "600",
+                  marginBottom: "10px",
+                  fontSize: "14px",
+                  fontWeight: "700",
                   color: "#fff",
                 }}
               >
                 {index + 1}. {item.item}
               </p>
 
-              <div style={{ display: "flex", gap: "8px" }}>
+              <div style={{ display: "flex", gap: "10px" }}>
                 <button
                   onClick={() => actualizarItem(item.id, true)}
                   style={{
                     flex: 1,
-                    padding: "8px",
-                    background: item.completado ? "#27ae60" : "#111b2e",
-                    color: "#fff",
-                    borderRadius: "6px",
-                    border: "1px solid #27ae60",
-                    fontWeight: "bold",
+                    padding: "10px",
+                    background: item.completado ? "#10b981" : "rgba(11, 19, 32, 0.9)",
+                    color: item.completado ? "#fff" : COLOR_DORADO,
+                    borderRadius: "10px",
+                    border: item.completado ? "1px solid #10b981" : BORDE_DORADO_FINO,
+                    fontWeight: "900",
                     fontSize: "12px",
                     cursor: "pointer",
                   }}
@@ -442,15 +468,15 @@ export default function ChecklistUnificado() {
                   onClick={() => actualizarItem(item.id, false)}
                   style={{
                     flex: 1,
-                    padding: "8px",
+                    padding: "10px",
                     background:
                       !item.completado && item.completado !== null
-                        ? "#e74c3c"
-                        : "#111b2e",
-                    color: "#fff",
-                    borderRadius: "6px",
-                    border: "1px solid #e74c3c",
-                    fontWeight: "bold",
+                        ? "#ef4444"
+                        : "rgba(11, 19, 32, 0.9)",
+                    color: !item.completado && item.completado !== null ? "#fff" : "#ef4444",
+                    borderRadius: "10px",
+                    border: !item.completado && item.completado !== null ? "1px solid #ef4444" : "1px solid rgba(239, 68, 68, 0.4)",
+                    fontWeight: "900",
                     fontSize: "12px",
                     cursor: "pointer",
                   }}
@@ -468,14 +494,16 @@ export default function ChecklistUnificado() {
           onChange={(e) => setObservaciones(e.target.value)}
           style={{
             width: "100%",
-            minHeight: "90px",
-            marginBottom: "15px",
-            padding: "10px",
-            borderRadius: "8px",
-            background: "#09101d",
+            minHeight: "100px",
+            marginBottom: "20px",
+            padding: "14px",
+            borderRadius: "12px",
+            background: "rgba(11, 19, 32, 0.8)",
             color: "#fff",
-            border: "1px solid #1e3050",
-            fontSize: "13px",
+            border: BORDE_DORADO_FINO,
+            fontSize: "14px",
+            outline: "none",
+            boxSizing: "border-box",
           }}
         />
 
@@ -484,16 +512,21 @@ export default function ChecklistUnificado() {
           disabled={guardando}
           style={{
             width: "100%",
-            padding: "12px",
-            background:
-              "linear-gradient(to bottom, #f3e0aa 0%, #d4af37 50%, #b8860b 100%)",
-            color: "#070b12",
-            borderRadius: "8px",
-            border: "none",
-            fontWeight: "bold",
+            padding: "14px",
+            background: guardando
+              ? "rgba(255,255,255,0.08)"
+              : "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+            color: guardando ? "#64748b" : "#ffffff",
+            borderRadius: "16px",
+            border: guardando ? BORDE_DORADO_FINO : "1px solid rgba(16, 185, 129, 0.6)",
+            fontWeight: "900",
             fontSize: "14px",
-            cursor: "pointer",
+            cursor: guardando ? "not-allowed" : "pointer",
+            boxShadow: guardando ? "none" : "0 4px 15px rgba(16, 185, 129, 0.3)",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
             marginBottom: "30px",
+            transition: "all 0.2s ease",
           }}
         >
           {guardando ? "Guardando..." : "✅ Guardar y Finalizar Checklist"}
