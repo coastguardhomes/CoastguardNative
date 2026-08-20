@@ -2,6 +2,13 @@ import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function EstadisticasFacturas() {
   const [facturas, setFacturas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,8 +43,20 @@ export default function EstadisticasFacturas() {
   if (loading) {
     return (
       <Menu>
-        <div style={{ padding: "20px", textAlign: "center" }}>
-          <h3>Cargando estadísticas...</h3>
+        <div
+          style={{
+            height: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: COLOR_DORADO,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontFamily: "Inter, sans-serif",
+            fontSize: "16px",
+            fontWeight: "700",
+          }}
+        >
+          Cargando estadísticas...
         </div>
       </Menu>
     );
@@ -46,8 +65,22 @@ export default function EstadisticasFacturas() {
   if (!facturas.length) {
     return (
       <Menu>
-        <div style={{ padding: "20px", textAlign: "center" }}>
-          <h3>No hay facturas para mostrar estadísticas.</h3>
+        <div
+          style={{
+            height: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: "#fff",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontFamily: "Inter, sans-serif",
+            padding: "20px",
+            textAlign: "center",
+          }}
+        >
+          <p style={{ fontSize: "14px", color: "#aaa", margin: 0 }}>
+            No hay facturas para mostrar estadísticas.
+          </p>
         </div>
       </Menu>
     );
@@ -61,52 +94,114 @@ export default function EstadisticasFacturas() {
   const pendientes = facturas.filter((f) => f.estado === "pendiente").length;
 
   return (
-    // Antes el contenedor era blanco y el texto blanco heredado de global.css:
-    // no se leía nada. Ahora usa el tema oscuro del resto de la app.
     <Menu>
-    <div
-      style={{
-        background: "#0a0f1a",
-        minHeight: "100vh",
-        padding: "20px",
-        color: "#fff",
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
-      <h2 style={{ color: "#4db8ff", marginBottom: 18 }}>
-        Estadísticas de Facturas
-      </h2>
+      <div
+        style={{
+          background: FONDO_PRINCIPAL,
+          minHeight: "100vh",
+          padding: "20px",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+          paddingBottom: "100px",
+          boxSizing: "border-box",
+        }}
+      >
+        <h1
+          style={{
+            ...TEXTO_DORADO_BRILLO,
+            fontSize: "20px",
+            fontWeight: "900",
+            marginBottom: "20px",
+            textAlign: "center",
+            textTransform: "uppercase",
+          }}
+        >
+          Estadísticas de Facturas
+        </h1>
 
-      <div style={tarjeta}>
-        <p><strong style={clave}>Total de facturas:</strong> {totalFacturas}</p>
-        <p><strong style={clave}>Importe total:</strong> {totalImporte.toFixed(2)} €</p>
-        <p><strong style={clave}>Facturas pagadas:</strong> {pagadas}</p>
-        <p><strong style={clave}>Facturas pendientes:</strong> {pendientes}</p>
-      </div>
+        <div
+          style={{
+            background: FONDO_TARJETA,
+            padding: "20px",
+            borderRadius: "16px",
+            border: BORDE_DORADO_FINO,
+            boxShadow: SOMBRA_LUXURY,
+            marginBottom: "24px",
+            fontSize: "13px",
+            lineHeight: "1.8",
+            boxSizing: "border-box",
+          }}
+        >
+          <p style={{ margin: "0 0 8px 0" }}>
+            <strong style={{ color: COLOR_DORADO }}>Total de facturas:</strong> {totalFacturas}
+          </p>
+          <p style={{ margin: "0 0 8px 0" }}>
+            <strong style={{ color: COLOR_DORADO }}>Importe total:</strong> {totalImporte.toFixed(2)} €
+          </p>
+          <p style={{ margin: "0 0 8px 0" }}>
+            <strong style={{ color: COLOR_DORADO }}>Facturas pagadas:</strong>{" "}
+            <span style={{ color: "#34d399", fontWeight: "700" }}>{pagadas}</span>
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong style={{ color: COLOR_DORADO }}>Facturas pendientes:</strong>{" "}
+            <span style={{ color: "#facc15", fontWeight: "700" }}>{pendientes}</span>
+          </p>
+        </div>
 
-      <div style={{ marginTop: "24px" }}>
-        <h3 style={{ color: "#4db8ff", marginBottom: 12 }}>Últimas facturas</h3>
+        <div style={{ marginTop: "24px" }}>
+          <h2
+            style={{
+              fontSize: "14px",
+              marginBottom: "12px",
+              color: COLOR_DORADO,
+              fontWeight: "900",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+            }}
+          >
+            Últimas facturas
+          </h2>
 
-        {facturas.slice(0, 5).map((f) => (
-          <div key={f.id} style={tarjeta}>
-            <p><strong style={clave}>Número:</strong> {f.numero || `#${f.id}`}</p>
-            <p><strong style={clave}>Total:</strong> {Number(f.total || 0).toFixed(2)} €</p>
-            <p><strong style={clave}>Estado:</strong> {f.estado}</p>
-            <p><strong style={clave}>Fecha:</strong> {String(f.fecha || "").slice(0, 10)}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {facturas.slice(0, 5).map((f) => (
+              <div
+                key={f.id}
+                style={{
+                  background: FONDO_TARJETA,
+                  padding: "14px",
+                  borderRadius: "14px",
+                  border: BORDE_DORADO_FINO,
+                  boxShadow: SOMBRA_LUXURY,
+                  fontSize: "13px",
+                  lineHeight: "1.6",
+                  boxSizing: "border-box",
+                }}
+              >
+                <p style={{ margin: "0 0 6px 0" }}>
+                  <strong style={{ color: COLOR_DORADO }}>Número:</strong> {f.numero || `#${f.id}`}
+                </p>
+                <p style={{ margin: "0 0 6px 0" }}>
+                  <strong style={{ color: COLOR_DORADO }}>Total:</strong> {Number(f.total || 0).toFixed(2)} €
+                </p>
+                <p style={{ margin: "0 0 6px 0" }}>
+                  <strong style={{ color: COLOR_DORADO }}>Estado:</strong>{" "}
+                  <span
+                    style={{
+                      color: f.estado === "pagada" ? "#34d399" : "#facc15",
+                      fontWeight: "700",
+                    }}
+                  >
+                    {f.estado}
+                  </span>
+                </p>
+                <p style={{ margin: 0, opacity: 0.7, fontSize: "12px" }}>
+                  <strong style={{ color: COLOR_DORADO }}>Fecha:</strong> {String(f.fecha || "").slice(0, 10)}
+                </p>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
-    </div>
     </Menu>
   );
 }
-
-const tarjeta = {
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  padding: "14px",
-  borderRadius: "12px",
-  marginBottom: "10px",
-};
-
-const clave = { color: "#9fb3c8" };
