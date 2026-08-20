@@ -4,6 +4,13 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function PerfilCliente() {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
@@ -39,9 +46,9 @@ export default function PerfilCliente() {
       <Menu>
         <div
           style={{
-            height: "100%",
-            background: "#0a0f1a",
-            color: "#fff",
+            height: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: COLOR_DORADO,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
@@ -49,7 +56,7 @@ export default function PerfilCliente() {
             fontSize: "18px",
           }}
         >
-          {t("clienteDashboardCargando")}
+          <h3 style={TEXTO_DORADO_BRILLO}>{t("clienteDashboardCargando")}</h3>
         </div>
       </Menu>
     );
@@ -60,17 +67,19 @@ export default function PerfilCliente() {
       <Menu>
         <div
           style={{
-            height: "100%",
-            background: "#0a0f1a",
+            height: "100vh",
+            background: FONDO_PRINCIPAL,
             color: "#fff",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             fontFamily: "Inter, sans-serif",
             fontSize: "18px",
+            textAlign: "center",
+            padding: "20px",
           }}
         >
-          {t("clienteDashboardNoEncontrado")}
+          <h3 style={TEXTO_DORADO_BRILLO}>{t("clienteDashboardNoEncontrado")}</h3>
         </div>
       </Menu>
     );
@@ -80,7 +89,7 @@ export default function PerfilCliente() {
     <Menu>
       <div
         style={{
-          background: "#0a0f1a",
+          background: FONDO_PRINCIPAL,
           minHeight: "100vh",
           padding: "20px",
           color: "#fff",
@@ -89,11 +98,11 @@ export default function PerfilCliente() {
       >
         <h2
           style={{
-            color: "#4db8ff",
-            marginBottom: "20px",
-            fontSize: "28px",
-            fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            ...TEXTO_DORADO_BRILLO,
+            marginBottom: "25px",
+            fontSize: "24px",
+            fontWeight: "900",
+            textTransform: "uppercase",
             textAlign: "center",
           }}
         >
@@ -102,12 +111,12 @@ export default function PerfilCliente() {
 
         <div
           style={{
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            padding: "18px",
-            borderRadius: "14px",
-            marginBottom: "18px",
-            boxShadow: "0 0 12px rgba(0,153,255,0.15)",
+            background: FONDO_TARJETA,
+            border: BORDE_DORADO_FINO,
+            padding: "20px",
+            borderRadius: "16px",
+            marginBottom: "20px",
+            boxShadow: SOMBRA_LUXURY,
           }}
         >
           <Linea clave={t("clienteDashboardNombre")} valor={cliente.nombre} />
@@ -120,15 +129,16 @@ export default function PerfilCliente() {
           onClick={() => logout()}
           style={{
             width: "100%",
-            background: "#dc3545",
+            background: "linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%)",
             color: "#fff",
             padding: "14px",
-            border: "none",
-            borderRadius: "10px",
-            fontWeight: 700,
-            fontSize: 16,
+            border: BORDE_DORADO_FINO,
+            borderRadius: "16px",
+            fontWeight: 900,
+            fontSize: 15,
             cursor: "pointer",
             marginTop: "10px",
+            boxShadow: "0 4px 15px rgba(127, 29, 29, 0.4)",
           }}
         >
           {t("logout")}
@@ -147,12 +157,12 @@ function Linea({ clave, valor }) {
         display: "flex",
         justifyContent: "space-between",
         gap: 12,
-        padding: "7px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        padding: "10px 0",
+        borderBottom: "1px solid rgba(224, 176, 52, 0.15)",
       }}
     >
-      <span style={{ color: "#9fb3c8", fontSize: 14 }}>{clave}</span>
-      <span style={{ fontWeight: 600, fontSize: 14.5, textAlign: "right" }}>
+      <span style={{ color: "#94a3b8", fontSize: 13, fontWeight: "600" }}>{clave}</span>
+      <span style={{ fontWeight: 700, fontSize: 14, textAlign: "right", color: COLOR_DORADO }}>
         {valor}
       </span>
     </div>
