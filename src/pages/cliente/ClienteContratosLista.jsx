@@ -41,6 +41,23 @@ export default function ClienteContratoVer() {
   const cargarContrato = async () => {
     setCargando(true);
     try {
+      if (!id) {
+        console.warn("ClienteContratoVer: no se recibió id en la ruta");
+        setContrato({ error: true, mensaje: "ID del contrato no proporcionado." });
+        setCargando(false);
+        return;
+      }
+
+      // Opcional: comprobar sesión para depurar RLS
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
+          console.warn("No hay sesión activa (supabase). La consulta puede fallar por RLS.");
+        }
+      } catch (e) {
+        console.warn("No se pudo comprobar la sesión supabase:", e);
+      }
+
       // Usamos maybeSingle para evitar bloqueos por tiempos de respuesta en móvil
       const { data: contratoData, error: contratoError } = await supabase
         .from("contratos")
@@ -50,7 +67,7 @@ export default function ClienteContratoVer() {
 
       if (contratoError || !contratoData) {
         console.error("Error cargando contrato:", contratoError);
-        setContrato({ error: true, mensaje: contratoError?.message || "Contrato no encontrado" });
+        setContrato({ error: true, mensaje: contratoError?.message || "Contrato no encontrado o sin permisos." });
         setCargando(false);
         return;
       }
@@ -58,32 +75,41 @@ export default function ClienteContratoVer() {
       setContrato(contratoData);
 
       if (contratoData.cliente_id) {
-        const { data: clienteData } = await supabase
+        const { data: clienteData, error: clienteError } = await supabase
           .from("clientes")
           .select("*")
           .eq("id", contratoData.cliente_id)
           .maybeSingle();
 
-        if (clienteData) setCliente(clienteData);
+        if (clienteError) {
+          console.warn("Error cargando cliente asociado:", clienteError);
+        } else if (clienteData) {
+          setCliente(clienteData);
+        }
       }
     } catch (err) {
-      console.error("Excepción en contrato:", err);
-      setContrato({ error: true, mensaje: err.message });
+      console.error("Excepción en cargarContrato:", err);
+      setContrato({ error: true, mensaje: err.message || "Error interno" });
     } finally {
       setCargando(false);
     }
   };
 
   useEffect(() => {
-    if (id) {
-      cargarContrato();
+    // Si la ruta no proporciona id, no bloqueamos: mostramos mensaje inmediato
+    if (!id) {
+      setContrato({ error: true, mensaje: "ID de contrato no proporcionado en la ruta." });
+      setCargando(false);
+      return;
     }
+    cargarContrato();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, location.key]);
 
   const esFirmado = Boolean(
     (contrato?.firma_url && contrato.firma_url.trim() !== "") ||
-    contrato?.estado === "firmado" ||
-    contrato?.estado === "enviado_al_admin"
+      contrato?.estado === "firmado" ||
+      contrato?.estado === "enviado_al_admin"
   );
 
   const enviarAlAdmin = async () => {
