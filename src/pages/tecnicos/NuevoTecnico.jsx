@@ -3,6 +3,36 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
+const inputStyle = {
+  padding: "12px 14px",
+  width: "100%",
+  marginBottom: "16px",
+  borderRadius: "12px",
+  border: BORDE_DORADO_FINO,
+  background: "rgba(11, 19, 32, 0.8)",
+  color: "#fff",
+  boxSizing: "border-box",
+  fontSize: "14px",
+  outline: "none",
+};
+
+const labelStyle = {
+  display: "block",
+  fontSize: "12px",
+  fontWeight: "700",
+  color: COLOR_DORADO,
+  marginBottom: "6px",
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+};
+
 export default function NuevoTecnico() {
   const navigate = useNavigate();
 
@@ -76,68 +106,64 @@ export default function NuevoTecnico() {
     }
   }
 
-  const inputStyle = {
-    padding: "12px",
-    width: "100%",
-    marginBottom: "15px",
-    borderRadius: "10px",
-    border: "1px solid rgba(255,255,255,0.2)",
-    background: "rgba(255,255,255,0.08)",
-    color: "#fff",
-    boxSizing: "border-box", // Evita desbordamientos
-    fontSize: "15px",
-    outline: "none",
-  };
-
-  const labelStyle = {
-    display: "block",
-    marginBottom: "6px",
-    fontSize: "14px",
-    color: "#4db8ff",
-    fontWeight: "600",
-  };
-
   return (
     <Menu>
       <div
         style={{
           padding: "20px",
-          background: "#0a0f1a",
+          background: FONDO_PRINCIPAL,
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
           paddingBottom: "100px",
+          boxSizing: "border-box",
         }}
       >
-        <h1
-          style={{
-            fontSize: "26px",
-            fontWeight: "700",
-            marginBottom: "25px",
-            color: "#4db8ff",
-            textShadow: "0 0 10px rgba(0,153,255,0.6)",
-            textAlign: "center",
-          }}
-        >
-          Nuevo Técnico
-        </h1>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "25px" }}>
+          <h1
+            style={{
+              ...TEXTO_DORADO_BRILLO,
+              margin: 0,
+              fontSize: "22px",
+              fontWeight: "900",
+              textTransform: "uppercase",
+            }}
+          >
+            Nuevo Técnico
+          </h1>
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              background: "transparent",
+              border: BORDE_DORADO_FINO,
+              color: COLOR_DORADO,
+              borderRadius: "8px",
+              padding: "6px 12px",
+              fontSize: "11px",
+              fontWeight: "700",
+              cursor: "pointer",
+            }}
+          >
+            ← Volver
+          </button>
+        </div>
 
         {mensaje && (
           <div
             style={{
+              padding: "12px 16px",
+              borderRadius: "12px",
               marginBottom: "20px",
-              padding: "12px",
               background: mensaje.includes("correctamente")
-                ? "rgba(74, 222, 128, 0.1)"
-                : "rgba(255,107,107,0.1)",
-              border: `1px solid ${
-                mensaje.includes("correctamente") ? "#4ade80" : "#ff6b6b"
-              }`,
-              color: mensaje.includes("correctamente") ? "#4ade80" : "#ff6b6b",
-              borderRadius: "10px",
-              fontWeight: "600",
+                ? "rgba(16, 185, 129, 0.15)"
+                : "rgba(239, 68, 68, 0.15)",
+              border: mensaje.includes("correctamente")
+                ? "1px solid rgba(16, 185, 129, 0.4)"
+                : "1px solid rgba(239, 68, 68, 0.4)",
+              color: mensaje.includes("correctamente") ? "#34d399" : "#ef4444",
+              fontWeight: "700",
+              fontSize: "13px",
               textAlign: "center",
-              fontSize: "14px",
             }}
           >
             {mensaje}
@@ -147,11 +173,11 @@ export default function NuevoTecnico() {
         <form
           onSubmit={guardarTecnico}
           style={{
-            background: "rgba(255,255,255,0.05)",
+            background: FONDO_TARJETA,
             padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 14px rgba(0,153,255,0.2)",
+            borderRadius: "16px",
+            border: BORDE_DORADO_FINO,
+            boxShadow: SOMBRA_LUXURY,
           }}
         >
           <label style={labelStyle}>Nombre completo</label>
@@ -203,12 +229,20 @@ export default function NuevoTecnico() {
             onChange={(e) =>
               setForm({ ...form, activo: e.target.value === "true" })
             }
-            style={inputStyle}
+            style={{
+              ...inputStyle,
+              appearance: "none",
+              backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23e0b034%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 14px top 50%",
+              backgroundSize: "10px auto",
+              cursor: "pointer",
+            }}
           >
-            <option value="true" style={{ background: "#0a0f1a", color: "#fff" }}>
+            <option value="true" style={{ background: "#0b1320", color: "#fff" }}>
               Activo
             </option>
-            <option value="false" style={{ background: "#0a0f1a", color: "#fff" }}>
+            <option value="false" style={{ background: "#0b1320", color: "#fff" }}>
               Inactivo
             </option>
           </select>
@@ -217,17 +251,22 @@ export default function NuevoTecnico() {
             type="submit"
             disabled={guardando}
             style={{
-              marginTop: "15px",
+              marginTop: "10px",
               padding: "14px",
               width: "100%",
-              background: guardando ? "#666" : "#4db8ff",
-              color: "#000",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "700",
-              fontSize: "16px",
+              background: guardando
+                ? "rgba(255,255,255,0.08)"
+                : "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+              color: guardando ? "#64748b" : "#ffffff",
+              borderRadius: "16px",
+              border: guardando ? BORDE_DORADO_FINO : "1px solid rgba(16, 185, 129, 0.6)",
+              fontWeight: "900",
+              fontSize: "14px",
               cursor: guardando ? "not-allowed" : "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+              boxShadow: guardando ? "none" : "0 4px 15px rgba(16, 185, 129, 0.3)",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              transition: "all 0.2s ease",
             }}
           >
             {guardando ? "Guardando..." : "Guardar Técnico"}
