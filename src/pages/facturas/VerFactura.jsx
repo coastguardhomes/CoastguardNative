@@ -267,9 +267,16 @@ export default function VerFactura() {
             >
               ✓ Marcar como Pagada y Enviar al Técnico
             </button>
+          ) : inspeccion?.estado === "finalizado" ? (
+            <button
+              onClick={() => alert("¡El técnico ha finalizado! Ya puedes enviársela al cliente.")}
+              style={{ ...estilos.botonAccion, background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)", color: "#fff", flex: 1 }}
+            >
+              🚀 Tarea Finalizada - Enviar al Cliente
+            </button>
           ) : (
             <button style={{ ...estilos.botonAccion, background: "rgba(255,255,255,0.06)", color: "#94a3b8", cursor: "default", flex: 1, border: "1px solid rgba(255,255,255,0.1)" }} disabled>
-              ✓ Factura Pagada (Tarea enviada)
+              ⏳ Factura Pagada (Esperando que el técnico finalice)
             </button>
           )}
 
@@ -288,6 +295,10 @@ export default function VerFactura() {
           {!estaPagada ? (
             <p style={{ fontSize: 13, color: "#fbbf24", marginBottom: 12, lineHeight: 1.4 }}>
               ⚠️ Factura pendiente. El técnico <strong>no recibirá la tarea</strong> en su panel hasta que se marque la factura como pagada.
+            </p>
+          ) : inspeccion?.estado === "finalizado" ? (
+            <p style={{ fontSize: 13, color: "#3b82f6", marginBottom: 12, lineHeight: 1.4 }}>
+              🚀 El técnico ha marcado la tarea como <strong>finalizada</strong>.
             </p>
           ) : (
             <p style={{ fontSize: 13, color: "#4ade80", marginBottom: 12, lineHeight: 1.4 }}>
