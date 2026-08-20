@@ -34,7 +34,7 @@ export default function Servicios() {
   const [viviendas, setViviendas] = useState([]);
   const [viviendaId, setViviendaId] = useState("");
   const [tecnicos, setTecnicos] = useState([]);
-  const [tecnicoId, setTecnicoId] = useState("");
+  const [tecnicoId, setTecnicoId] = useState(""); // Ya tenías el estado, ahora lo usamos
 
   const [seleccionados, setSeleccionados] = useState([]);
   const [precios, setPrecios] = useState({});
@@ -135,6 +135,8 @@ export default function Servicios() {
         .insert({
           numero,
           cliente_id: Number(clienteId),
+          vivienda_id: viviendaId ? Number(viviendaId) : null,
+          tecnico_id: tecnicoId ? Number(tecnicoId) : null, // Guardamos el técnico seleccionado
           fecha: new Date().toISOString().slice(0, 10),
           base,
           iva,
@@ -160,7 +162,7 @@ export default function Servicios() {
 
       if (errorLineas) throw new Error(errorLineas.message);
 
-      // 3. Generación y envío de PDF (El extra ya NO se crea aquí automáticamente)
+      // 3. Generación y envío de PDF
       let avisoPdf = "";
       const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
         "factura-pdf",
@@ -184,7 +186,7 @@ export default function Servicios() {
       setPrecios({});
       setViviendaId("");
       setTecnicoId("");
-      setMensaje(`Factura ${factura.numero} creada con éxito (${total} €). Se enviará al técnico en cuanto se marque como pagada.${avisoPdf}`);
+      setMensaje(`Factura ${factura.numero} creada con éxito (${total} €). El técnico ha quedado vinculado a la factura.${avisoPdf}`);
       setGuardando(false);
     } catch (e) {
       setError(`Error en el proceso: ${e.message}`);
@@ -203,6 +205,7 @@ export default function Servicios() {
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
         {error && <p style={estilos.error}>{error}</p>}
 
+        {/* Sección Clientes y Viviendas */}
         <div style={estilos.tarjeta}>
           <label style={estilos.etiqueta}>Cliente</label>
           <select
@@ -214,6 +217,35 @@ export default function Servicios() {
             <option value="">{cargando ? "Cargando..." : "-- Selecciona un cliente --"}</option>
             {clientes.map((c) => (
               <option key={c.id} value={c.id}>{c.nombre} {c.direccion ? `— ${c.direccion}` : ""}</option>
+            ))}
+          </select>
+
+          {viviendas.length > 0 && (
+            <>
+              <label style={{...estilos.etiqueta, marginTop: 15}}>Vivienda</label>
+              <select
+                value={viviendaId}
+                onChange={(e) => setViviendaId(e.target.value)}
+                style={estilos.select}
+              >
+                <option value="">-- Selecciona una vivienda --</option>
+                {viviendas.map((v) => (
+                  <option key={v.id} value={v.id}>{v.direccion}</option>
+                ))}
+              </select>
+            </>
+          )}
+
+          {/* NUEVO: Selector de Técnico */}
+          <label style={{...estilos.etiqueta, marginTop: 15}}>Asignar Técnico</label>
+          <select
+            value={tecnicoId}
+            onChange={(e) => setTecnicoId(e.target.value)}
+            style={estilos.select}
+          >
+            <option value="">-- Sin técnico asignado (opcional) --</option>
+            {tecnicos.map((t) => (
+              <option key={t.id} value={t.id}>{t.nombre}</option>
             ))}
           </select>
         </div>
@@ -296,4 +328,3 @@ const estilos = {
   ok: { marginBottom: 15, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: 8, padding: 12 },
   error: { marginBottom: 15, color: "#ff6b6b", background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.3)", borderRadius: 8, padding: 12 }
 };
-    
