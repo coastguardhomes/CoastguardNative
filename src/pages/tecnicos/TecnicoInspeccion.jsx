@@ -4,6 +4,13 @@ import { supabase } from "../../lib/supabase";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function TecnicoInspeccion() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -107,18 +114,16 @@ export default function TecnicoInspeccion() {
       <Menu>
         <div
           style={{
-            height: "100vh",
-            background: "#0a0f1a",
-            color: "#4db8ff",
+            minHeight: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: COLOR_DORADO,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             fontFamily: "Inter, sans-serif",
-            fontSize: "18px",
-            fontWeight: "bold",
           }}
         >
-          Cargando inspección...
+          <h3 style={TEXTO_DORADO_BRILLO}>Cargando inspección...</h3>
         </div>
       </Menu>
     );
@@ -129,21 +134,22 @@ export default function TecnicoInspeccion() {
       <div
         style={{
           padding: "20px",
-          background: "#0a0f1a",
+          background: FONDO_PRINCIPAL,
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
           paddingBottom: "100px",
+          boxSizing: "border-box",
         }}
       >
         <h1
           style={{
-            color: "#4db8ff",
-            marginBottom: "25px",
-            fontSize: "24px",
-            fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            ...TEXTO_DORADO_BRILLO,
+            marginBottom: "20px",
+            fontSize: "20px",
+            fontWeight: "900",
             textAlign: "center",
+            textTransform: "uppercase",
           }}
         >
           Inspección #{id}
@@ -152,13 +158,14 @@ export default function TecnicoInspeccion() {
         {mensaje ? (
           <div
             style={{
-              background: "rgba(255,107,107,0.1)",
-              border: "1px solid #ff6b6b",
-              color: "#ff6b6b",
-              padding: "15px",
-              borderRadius: "10px",
+              background: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              color: "#ef4444",
+              padding: "12px 16px",
+              borderRadius: "12px",
               textAlign: "center",
-              fontWeight: "600",
+              fontWeight: "700",
+              fontSize: "13px",
               marginBottom: "20px",
             }}
           >
@@ -169,39 +176,43 @@ export default function TecnicoInspeccion() {
             <>
               <div
                 style={{
-                  background: "rgba(255,255,255,0.05)",
-                  padding: "20px",
-                  borderRadius: "14px",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-                  marginBottom: "25px",
-                  fontSize: "15px",
+                  background: FONDO_TARJETA,
+                  padding: "16px",
+                  borderRadius: "16px",
+                  border: BORDE_DORADO_FINO,
+                  boxShadow: SOMBRA_LUXURY,
+                  marginBottom: "20px",
+                  fontSize: "13px",
                   lineHeight: "1.6",
                 }}
               >
-                <p>
-                  <strong style={{ color: "#4db8ff" }}>Fecha:</strong>{" "}
+                <p style={{ marginBottom: "8px" }}>
+                  <strong style={{ color: COLOR_DORADO }}>Fecha:</strong>{" "}
                   {inspeccion.fecha || "No especificada"}
                 </p>
 
-                <p>
-                  <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
+                <p style={{ marginBottom: "8px" }}>
+                  <strong style={{ color: COLOR_DORADO }}>Estado:</strong>{" "}
                   <span
                     style={{
                       textTransform: "capitalize",
-                      fontWeight: "bold",
+                      fontWeight: "700",
+                      padding: "3px 8px",
+                      background: "rgba(11, 19, 32, 0.9)",
+                      border: BORDE_DORADO_FINO,
+                      borderRadius: "6px",
                       color:
                         inspeccion.estado === "completada"
-                          ? "#4ade80"
-                          : "#ffd700",
+                          ? "#10b981"
+                          : COLOR_DORADO,
                     }}
                   >
                     {inspeccion.estado || "Pendiente"}
                   </span>
                 </p>
 
-                <p>
-                  <strong style={{ color: "#4db8ff" }}>Vivienda:</strong>{" "}
+                <p style={{ marginBottom: "8px" }}>
+                  <strong style={{ color: COLOR_DORADO }}>Vivienda:</strong>{" "}
                   {vivienda
                     ? `${vivienda.nombre || vivienda.direccion || "Vivienda"} ${
                         vivienda.ciudad ? `(${vivienda.ciudad})` : ""
@@ -209,8 +220,8 @@ export default function TecnicoInspeccion() {
                     : inspeccion.vivienda_id}
                 </p>
 
-                <p>
-                  <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
+                <p style={{ marginBottom: "8px" }}>
+                  <strong style={{ color: COLOR_DORADO }}>Cliente:</strong>{" "}
                   {cliente
                     ? `${cliente.nombre} ${
                         cliente.telefono ? `(${cliente.telefono})` : ""
@@ -218,10 +229,10 @@ export default function TecnicoInspeccion() {
                     : "Sin cliente asignado"}
                 </p>
 
-                <p style={{ marginTop: "10px" }}>
-                  <strong style={{ color: "#4db8ff" }}>Notas / Observaciones:</strong>{" "}
+                <p style={{ margin: 0, marginTop: "10px" }}>
+                  <strong style={{ color: COLOR_DORADO }}>Notas / Observaciones:</strong>{" "}
                   <br />
-                  <span style={{ opacity: 0.9 }}>
+                  <span style={{ opacity: 0.9, fontSize: "12px" }}>
                     {inspeccion.observaciones ||
                       inspeccion.notas_tecnico ||
                       "Sin notas registradas."}
@@ -236,17 +247,19 @@ export default function TecnicoInspeccion() {
               >
                 <button
                   style={{
-                    marginBottom: "15px",
+                    marginBottom: "12px",
                     padding: "14px",
                     width: "100%",
-                    background: "#4db8ff",
-                    color: "#000",
-                    borderRadius: "10px",
-                    border: "none",
-                    fontWeight: "700",
-                    fontSize: "16px",
+                    background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
+                    color: "#fff",
+                    borderRadius: "16px",
+                    border: BORDE_DORADO_FINO,
+                    fontWeight: "900",
+                    fontSize: "14px",
                     cursor: "pointer",
-                    boxShadow: "0 0 10px rgba(0,153,255,0.3)",
+                    boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
                   }}
                 >
                   📝 Checklist ({inspeccion.checklist_completado ? "Completado" : "Pendiente"})
@@ -259,17 +272,19 @@ export default function TecnicoInspeccion() {
               >
                 <button
                   style={{
-                    marginBottom: "15px",
+                    marginBottom: "12px",
                     padding: "14px",
                     width: "100%",
-                    background: "#1e90ff",
+                    background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
                     color: "#fff",
-                    borderRadius: "10px",
-                    border: "none",
-                    fontWeight: "700",
-                    fontSize: "16px",
+                    borderRadius: "16px",
+                    border: BORDE_DORADO_FINO,
+                    fontWeight: "900",
+                    fontSize: "14px",
                     cursor: "pointer",
-                    boxShadow: "0 0 10px rgba(30,144,255,0.3)",
+                    boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
                   }}
                 >
                   📸 Galería de Fotos
@@ -282,17 +297,19 @@ export default function TecnicoInspeccion() {
               >
                 <button
                   style={{
-                    marginBottom: "15px",
+                    marginBottom: "12px",
                     padding: "14px",
                     width: "100%",
-                    background: "#4ade80",
-                    color: "#000",
-                    borderRadius: "10px",
-                    border: "none",
-                    fontWeight: "700",
-                    fontSize: "16px",
+                    background: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+                    color: "#fff",
+                    borderRadius: "16px",
+                    border: "1px solid rgba(16, 185, 129, 0.6)",
+                    fontWeight: "900",
+                    fontSize: "14px",
                     cursor: "pointer",
-                    boxShadow: "0 0 10px rgba(74,222,128,0.3)",
+                    boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
                   }}
                 >
                   ✅ Finalizar Inspección
