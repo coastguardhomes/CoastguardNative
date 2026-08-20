@@ -4,6 +4,12 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#0a0f1a";
+const FONDO_TARJETA = "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))";
+const BORDE_DORADO = "1px solid rgba(255, 215, 0, 0.3)";
+const TEXTO_DORADO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(255,215,0,0.5)" };
+
 const botonEstilo = {
   padding: "12px",
   width: "100%",
@@ -12,7 +18,7 @@ const botonEstilo = {
   marginTop: "12px",
   fontWeight: "600",
   fontSize: "15px",
-  border: "1px solid rgba(255, 215, 0, 0.4)",
+  border: BORDE_DORADO,
   background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
   color: "#ffffff",
   boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
@@ -28,34 +34,47 @@ export default function ClienteContratoVer() {
   const [contrato, setContrato] = useState(null);
   const [cliente, setCliente] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const [cargando,setCargando] = useState(true);
 
   const cargarContrato = async () => {
-    const { data: contratoData, error: contratoError } = await supabase
-      .from("contratos")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (contratoError) {
-      console.error("Error cargando contrato:", contratoError);
-      return;
-    }
-
-    setContrato(contratoData);
-
-    if (contratoData.cliente_id) {
-      const { data: clienteData } = await supabase
-        .from("clientes")
+    setCargando(true);
+    try {
+      // maybeSingle evita que la app colapse o se quede congelada por tiempos de respuesta en móvil
+      const { data: contratoData, error: contratoError } = await supabase
+        .from("contratos")
         .select("*")
-        .eq("id", contratoData.cliente_id)
-        .single();
+        .eq("id", id)
+        .maybeSingle();
 
-      if (clienteData) setCliente(clienteData);
+      if (contratoError || !contratoData) {
+        console.error("Error cargando contrato:", contratoError);
+        setContrato({ error: true, mensaje: contratoError?.message || "Contrato no encontrado" });
+        return;
+      }
+
+      setContrato(contratoData);
+
+      if (contratoData.cliente_id) {
+        const { data: clienteData } = await supabase
+          .from("clientes")
+          .select("*")
+          .eq("id", contratoData.cliente_id)
+          .maybeSingle();
+
+        if (clienteData) setCliente(clienteData);
+      }
+    } catch (err) {
+      console.error("Excepción en contrato:", err);
+      setContrato({ error: true, mensaje: err.message });
+    } finally {
+      setCargando(false);
     }
   };
 
   useEffect(() => {
-    cargarContrato();
+    if (id) {
+      cargarContrato();
+    }
   }, [id, location.key]);
 
   const esFirmado = Boolean(
@@ -86,7 +105,6 @@ export default function ClienteContratoVer() {
     }
   };
 
-  // Función segura para abrir PDFs o data URLs evitando bloqueos de seguridad
   const manejarAbrirPDF = (url) => {
     if (!url) {
       alert("El administrador aún no ha generado el PDF.");
@@ -95,7 +113,6 @@ export default function ClienteContratoVer() {
 
     if (url.startsWith("data:")) {
       try {
-        // Convertimos la data URL a Blob para que el navegador/webview no la bloquee
         fetch(url)
           .then((res) => res.blob())
           .then((blob) => {
@@ -113,21 +130,48 @@ export default function ClienteContratoVer() {
     }
   };
 
-  if (!contrato) {
+  if (cargando) {
     return (
       <Menu>
         <div
           style={{
             minHeight: "100vh",
-            background: "#0a0f1a",
-            color: "#ffd700",
+            background: FONDO_PRINCIPAL,
+            color: COLOR_DORADO,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             fontFamily: "Inter, sans-serif",
           }}
         >
-          {t("clienteContratoCargando") || "Cargando contrato..."}
+          <h3 style={TEXTO_DORADO}>{t("clienteContratoCargando") || "Cargando contrato..."}</h3>
+        </div>
+      </Menu>
+    );
+  }
+
+  if (!contrato || contrato.error) {
+    return (
+      <Menu>
+        <div
+          style={{
+            minHeight: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: "#ff4d4d",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "20px",
+            textAlign: "center",
+            fontFamily: "Inter, sans-serif",
+          }}
+        >
+          <h3 style={{ marginBottom: "10px" }}>No se pudo cargar el contrato</h3>
+          <p style={{ fontSize: "14px", color: "#aaa", marginBottom: "20px" }}>{contrato?.mensaje || "Comprueba tu conexión"}</p>
+          <button onClick={() => navigate(-1)} style={{ ...botonEstilo, width: "auto", padding: "10px 20px" }}>
+            ← Volver
+          </button>
         </div>
       </Menu>
     );
@@ -138,7 +182,7 @@ export default function ClienteContratoVer() {
       <div
         style={{
           minHeight: "100vh",
-          background: "#0a0f1a",
+          background: FONDO_PRINCIPAL,
           padding: "20px",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
@@ -148,11 +192,10 @@ export default function ClienteContratoVer() {
         <h2
           style={{
             textAlign: "center",
-            color: "#ffd700",
+            ...TEXTO_DORADO,
             marginBottom: "25px",
             fontSize: "28px",
             fontWeight: "700",
-            textShadow: "0 0 12px rgba(255,215,0,0.5)",
           }}
         >
           {t("clienteContratoTitulo") || "Contrato del Cliente"}
@@ -161,15 +204,15 @@ export default function ClienteContratoVer() {
         {/* Datos del Cliente */}
         <div
           style={{
-            background: "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))",
+            background: FONDO_TARJETA,
             padding: "20px",
             borderRadius: "14px",
-            border: "1px solid rgba(255, 215, 0, 0.3)",
+            border: BORDE_DORADO,
             boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)",
             marginBottom: "20px",
           }}
         >
-          <h3 style={{ color: "#ffd700", marginBottom: "10px", fontSize: "20px", marginTop: 0, textShadow: "0 0 6px rgba(255,215,0,0.3)" }}>
+          <h3 style={{ ...TEXTO_DORADO, marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
             {t("clienteContratoDatosCliente") || "Datos del Cliente"}
           </h3>
           <p style={{ margin: "6px 0" }}><strong>Nombre:</strong> {cliente?.nombre || contrato?.cliente_nombre || "—"}</p>
@@ -180,14 +223,14 @@ export default function ClienteContratoVer() {
         {/* Detalles del Contrato */}
         <div
           style={{
-            background: "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))",
+            background: FONDO_TARJETA,
             padding: "20px",
             borderRadius: "14px",
-            border: "1px solid rgba(255, 215, 0, 0.3)",
+            border: BORDE_DORADO,
             boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)",
           }}
         >
-          <h3 style={{ color: "#ffd700", marginBottom: "10px", fontSize: "20px", marginTop: 0, textShadow: "0 0 6px rgba(255,215,0,0.3)" }}>
+          <h3 style={{ ...TEXTO_DORADO, marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
             {t("clienteContratoDetalles") || "Detalles del Contrato"}
           </h3>
 
@@ -207,20 +250,18 @@ export default function ClienteContratoVer() {
             </span>
           </p>
 
-          {/* Ver contrato antes de firmar */}
           <button
             onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
               ...botonEstilo,
               background: "rgba(10, 15, 26, 0.8)",
-              border: "1px solid rgba(255, 215, 0, 0.4)",
-              color: "#ffd700",
+              border: BORDE_DORADO,
+              color: COLOR_DORADO,
             }}
           >
             📄 Ver contrato antes de firmar
           </button>
 
-          {/* Firma del Cliente */}
           <button
             onClick={() => navigate(`/cliente/firma/${id}`)}
             style={botonEstilo}
@@ -228,7 +269,6 @@ export default function ClienteContratoVer() {
             ✍️ {esFirmado ? "Ver / Cambiar Firma" : "Firma del Cliente"}
           </button>
 
-          {/* Enviar al Admin */}
           <button
             onClick={enviarAlAdmin}
             disabled={!esFirmado || enviando}
@@ -246,14 +286,13 @@ export default function ClienteContratoVer() {
             {enviando ? "Enviando..." : "📤 Enviar contrato al Admin"}
           </button>
 
-          {/* Ver contrato firmado */}
           <button
             onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
               ...botonEstilo,
               background: "rgba(10, 15, 26, 0.8)",
-              border: "1px solid rgba(255, 215, 0, 0.4)",
-              color: "#ffd700",
+              border: BORDE_DORADO,
+              color: COLOR_DORADO,
             }}
           >
             📄 Ver contrato firmado (PDF)
