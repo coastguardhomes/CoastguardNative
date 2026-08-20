@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useNavigate } from "react-router-dom";
@@ -9,7 +9,6 @@ export default function CrearFactura() {
   const [form, setForm] = useState({
     cliente_id: "",
     vivienda_id: "",
-    tecnico_id: "", // Campo para el técnico seleccionado
     fecha: "",
     concepto: "",
     importe: "",
@@ -17,19 +16,7 @@ export default function CrearFactura() {
     es_extra: false,
   });
 
-  const [tecnicos, setTecnicos] = useState([]); // Lista de técnicos para el desplegable
   const [mensaje, setMensaje] = useState("");
-
-  // Cargar lista de técnicos al montar el componente
-  useEffect(() => {
-    async function cargarTecnicos() {
-      const { data, error } = await supabase.from("tecnicos").select("id, nombre, email");
-      if (!error && data) {
-        setTecnicos(data);
-      }
-    }
-    cargarTecnicos();
-  }, []);
 
   async function crearFactura() {
     setMensaje("");
@@ -45,8 +32,6 @@ export default function CrearFactura() {
     }
 
     try {
-      const tecnicoVal = form.tecnico_id ? Number(form.tecnico_id) : null;
-
       // 1. Insertar la factura principal
       const { data: facturaCreada, error } = await supabase
         .from("facturas")
@@ -54,7 +39,6 @@ export default function CrearFactura() {
           {
             cliente_id: form.cliente_id || null,
             vivienda_id: form.vivienda_id || null,
-            tecnico_id: tecnicoVal,
             fecha: form.fecha || new Date().toISOString().slice(0, 10),
             descripcion: form.concepto,
             total: form.importe,
@@ -70,13 +54,12 @@ export default function CrearFactura() {
         return;
       }
 
-      // 2. Crear el extra/tarea para el técnico asignando el técnico elegido manualmente
+      // 2. Crear el extra/tarea
       const extraPayload = {
         factura_id: facturaCreada.id,
         contrato_id: facturaCreada.contrato_id || null,
         cliente_id: facturaCreada.cliente_id || null,
         vivienda_id: facturaCreada.vivienda_id || null,
-        tecnico_id: tecnicoVal,
         descripcion: form.concepto || "Servicio extra contratado",
         estado: "pendiente",
         creado_en: new Date().toISOString(),
@@ -85,7 +68,7 @@ export default function CrearFactura() {
       const { error: errorExtra } = await supabase.from("extras").insert([extraPayload]);
 
       if (errorExtra) {
-        console.error("Error al crear el extra para el técnico:", errorExtra);
+        console.error("Error al crear el extra:", errorExtra);
       }
 
       // 3. Generación opcional de PDF por función
@@ -102,7 +85,7 @@ export default function CrearFactura() {
         console.error("Error generando PDF (no crítico):", e);
       }
 
-      setMensaje("Factura creada y extra registrado para técnico correctamente");
+      setMensaje("Factura creada correctamente");
       setTimeout(() => navigate("/facturas/lista"), 1200);
     } catch (e) {
       console.error("Error en crearFactura:", e);
@@ -168,21 +151,6 @@ export default function CrearFactura() {
             style={inputStyle}
           />
 
-          {/* DESPLEGABLE DE TÉCNICO */}
-          <label>Asignar Técnico</label>
-          <select
-            value={form.tecnico_id}
-            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
-            style={inputStyle}
-          >
-            <option value="">-- Sin técnico asignado --</option>
-            {tecnicos.map((t) => (
-              <option key={t.id} value={t.id} style={{ background: "#0a0f1a", color: "#fff" }}>
-                {t.nombre || t.email || `Técnico #${t.id}`}
-              </option>
-            ))}
-          </select>
-
           <label>Fecha</label>
           <input
             type="date"
@@ -219,7 +187,7 @@ export default function CrearFactura() {
                 fontWeight: "700",
               }}
             >
-              Crear Factura y Enviar a Técnico
+              Crear Factura
             </button>
 
             <button
