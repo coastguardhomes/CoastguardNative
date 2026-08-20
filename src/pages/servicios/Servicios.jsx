@@ -34,7 +34,7 @@ export default function Servicios() {
   const [viviendas, setViviendas] = useState([]);
   const [viviendaId, setViviendaId] = useState("");
   const [tecnicos, setTecnicos] = useState([]);
-  const [tecnicoId, setTecnicoId] = useState(""); // Ya tenías el estado, ahora lo usamos
+  const [tecnicoId, setTecnicoId] = useState("");
 
   const [seleccionados, setSeleccionados] = useState([]);
   const [precios, setPrecios] = useState({});
@@ -129,14 +129,13 @@ export default function Servicios() {
     try {
       const numero = await siguienteNumero();
 
-      // 1. Crear Factura Contable (Pendiente de pago)
+      // 1. Crear Factura Contable (SIN tecnico_id porque la tabla facturas no tiene esa columna)
       const { data: factura, error: errorFactura } = await supabase
         .from("facturas")
         .insert({
           numero,
           cliente_id: Number(clienteId),
           vivienda_id: viviendaId ? Number(viviendaId) : null,
-          tecnico_id: tecnicoId ? Number(tecnicoId) : null, // Guardamos el técnico seleccionado
           fecha: new Date().toISOString().slice(0, 10),
           base,
           iva,
@@ -162,7 +161,22 @@ export default function Servicios() {
 
       if (errorLineas) throw new Error(errorLineas.message);
 
-      // 3. Generación y envío de PDF
+      // 3. Crear el registro en la tabla 'extras' asignando el técnico correctamente
+      const { error: errorExtra } = await supabase.from("extras").insert({
+        factura_id: factura.id,
+        cliente_id: Number(clienteId),
+        vivienda_id: viviendaId ? Number(viviendaId) : null,
+        tecnico_id: tecnicoId ? Number(tecnicoId) : null, // Aquí sí se guarda el técnico
+        descripcion: lineas.map((l) => l.nombre).join(", "),
+        estado: "pendiente",
+        creado_en: new Date().toISOString()
+      });
+
+      if (errorExtra) {
+        console.error("Error al registrar la tarea del técnico:", errorExtra);
+      }
+
+      // 4. Generación y envío de PDF
       let avisoPdf = "";
       const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
         "factura-pdf",
@@ -186,7 +200,7 @@ export default function Servicios() {
       setPrecios({});
       setViviendaId("");
       setTecnicoId("");
-      setMensaje(`Factura ${factura.numero} creada con éxito (${total} €). El técnico ha quedado vinculado a la factura.${avisoPdf}`);
+      setMensaje(`Factura ${factura.numero} creada con éxito (${total} €) y asignada al técnico.${avisoPdf}`);
       setGuardando(false);
     } catch (e) {
       setError(`Error en el proceso: ${e.message}`);
@@ -236,7 +250,6 @@ export default function Servicios() {
             </>
           )}
 
-          {/* NUEVO: Selector de Técnico */}
           <label style={{...estilos.etiqueta, marginTop: 15}}>Asignar Técnico</label>
           <select
             value={tecnicoId}
