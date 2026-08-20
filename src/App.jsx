@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { supabase } from "./supabaseClient"; // Asegúrate de que la ruta a tu cliente de Supabase sea correcta
 
 import PrivateRoute from "./guards/PrivateRoute.jsx";
 import ClienteRoute from "./pages/cliente/ClienteRoute.jsx";
@@ -91,6 +92,50 @@ import Ajustes from "./pages/Ajustes/Ajustes.jsx";
 import Idioma from "./pages/idioma/Idioma.jsx";
 
 export default function App() {
+  useEffect(() => {
+    // Función auxiliar para auto-vincular el cliente si su usuario_id está vacío
+    const vincularClienteSiEsNecesario = async (user) => {
+      if (!user?.email) return;
+
+      try {
+        const { data: clienteExistente } = await supabase
+          .from("clientes")
+          .select("id, usuario_id")
+          .eq("email", user.email)
+          .single();
+
+        if (clienteExistente && !clienteExistente.usuario_id) {
+          await supabase
+            .from("clientes")
+            .update({ usuario_id: user.id })
+            .eq("id", clienteExistente.id);
+          
+          console.log("Cliente vinculado automáticamente con éxito.");
+        }
+      } catch (error) {
+        console.error("Error al intentar auto-vincular el cliente:", error);
+      }
+    };
+
+    // 1. Comprobar sesión actual al cargar la app
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        vincularClienteSiEsNecesario(session.user);
+      }
+    });
+
+    // 2. Escuchar cambios de inicio/cierre de sesión en tiempo real
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        vincularClienteSiEsNecesario(session.user);
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
+
   return (
     <Routes>
       {/* ---------------- PÚBLICO ---------------- */}
