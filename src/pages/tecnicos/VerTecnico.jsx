@@ -3,6 +3,13 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useParams, useNavigate, Link } from "react-router-dom";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function VerTecnico() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -157,14 +164,14 @@ export default function VerTecnico() {
         <div
           style={{
             height: "100vh",
-            background: "#0a0f1a",
-            color: "#4db8ff",
+            background: FONDO_PRINCIPAL,
+            color: COLOR_DORADO,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             fontFamily: "Inter, sans-serif",
-            fontSize: "18px",
-            fontWeight: "bold",
+            fontSize: "16px",
+            fontWeight: "700",
           }}
         >
           Cargando datos del técnico...
@@ -188,21 +195,22 @@ export default function VerTecnico() {
       <div
         style={{
           padding: "20px",
-          background: "#0a0f1a",
+          background: FONDO_PRINCIPAL,
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
           paddingBottom: "100px",
+          boxSizing: "border-box",
         }}
       >
         <h1
           style={{
-            color: "#4db8ff",
-            marginBottom: "25px",
-            fontSize: "26px",
-            fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            ...TEXTO_DORADO_BRILLO,
+            fontSize: "20px",
+            fontWeight: "900",
+            marginBottom: "20px",
             textAlign: "center",
+            textTransform: "uppercase",
           }}
         >
           {tecnico ? tecnico.nombre : "Detalle de Técnico"}
@@ -211,14 +219,15 @@ export default function VerTecnico() {
         {mensaje && (
           <div
             style={{
-              marginBottom: "20px",
-              padding: "12px",
-              background: "rgba(255,107,107,0.1)",
-              border: "1px solid #ff6b6b",
-              color: "#ff6b6b",
-              borderRadius: "8px",
+              marginBottom: "16px",
+              padding: "12px 16px",
+              background: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              color: "#ef4444",
+              borderRadius: "12px",
+              fontWeight: "700",
               textAlign: "center",
-              fontWeight: "600",
+              fontSize: "13px",
             }}
           >
             {mensaje}
@@ -230,35 +239,36 @@ export default function VerTecnico() {
             {/* Datos del técnico */}
             <div
               style={{
-                background: "rgba(255,255,255,0.05)",
+                background: FONDO_TARJETA,
                 padding: "20px",
-                borderRadius: "14px",
-                border: "1px solid rgba(255,255,255,0.1)",
-                boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-                marginBottom: "25px",
-                fontSize: "15px",
+                borderRadius: "16px",
+                border: BORDE_DORADO_FINO,
+                boxShadow: SOMBRA_LUXURY,
+                marginBottom: "20px",
+                fontSize: "13px",
                 lineHeight: "1.6",
+                boxSizing: "border-box",
               }}
             >
-              <p>
-                <strong style={{ color: "#4db8ff" }}>Teléfono:</strong>{" "}
+              <p style={{ marginBottom: "8px" }}>
+                <strong style={{ color: COLOR_DORADO }}>Teléfono:</strong>{" "}
                 {tecnico.telefono || "Sin teléfono"}
               </p>
-              <p>
-                <strong style={{ color: "#4db8ff" }}>Email:</strong>{" "}
+              <p style={{ marginBottom: "8px" }}>
+                <strong style={{ color: COLOR_DORADO }}>Email:</strong>{" "}
                 {tecnico.email || "Sin email"}
               </p>
-              <p>
-                <strong style={{ color: "#4db8ff" }}>Especialidad:</strong>{" "}
+              <p style={{ marginBottom: "8px" }}>
+                <strong style={{ color: COLOR_DORADO }}>Especialidad:</strong>{" "}
                 {tecnico.especialidad || "General"}
               </p>
-              <p>
-                <strong style={{ color: "#4db8ff" }}>Estado:</strong>{" "}
-                <span style={{ color: tecnico.activo ? "#4ade80" : "#ff6b6b", fontWeight: "bold" }}>
-                  {tecnico.activo ? "Activo" : "Inactivo"}
+              <p style={{ marginBottom: "8px" }}>
+                <strong style={{ color: COLOR_DORADO }}>Estado:</strong>{" "}
+                <span style={{ color: tecnico.activo ? "#34d399" : "#ef4444", fontWeight: "700" }}>
+                  {tecnico.activo ? "● Activo" : "○ Inactivo"}
                 </span>
               </p>
-              <p style={{ opacity: 0.6, fontSize: "12px", marginTop: "8px" }}>
+              <p style={{ opacity: 0.6, fontSize: "12px", marginTop: "10px", margin: 0 }}>
                 Creado el: {tecnico.created_at ? new Date(tecnico.created_at).toLocaleDateString() : "N/A"}
               </p>
             </div>
@@ -266,7 +276,7 @@ export default function VerTecnico() {
             {/* Inspecciones separadas por categoría */}
             <Bloque titulo={`Pendientes / Asignadas (${pendientes.length})`}>
               {pendientes.length === 0 ? (
-                <p style={{ opacity: 0.7, fontSize: "14px" }}>
+                <p style={{ opacity: 0.7, fontSize: "13px", color: "#aaa", margin: 0 }}>
                   No hay inspecciones pendientes.
                 </p>
               ) : (
@@ -282,7 +292,7 @@ export default function VerTecnico() {
 
             <Bloque titulo={`Completadas por el Técnico (${completadasTecnico.length})`}>
               {completadasTecnico.length === 0 ? (
-                <p style={{ opacity: 0.7, fontSize: "14px" }}>
+                <p style={{ opacity: 0.7, fontSize: "13px", color: "#aaa", margin: 0 }}>
                   No hay inspecciones completadas.
                 </p>
               ) : (
@@ -298,7 +308,7 @@ export default function VerTecnico() {
 
             <Bloque titulo={`Aceptadas por Admin (${completadasAdmin.length})`}>
               {completadasAdmin.length === 0 ? (
-                <p style={{ opacity: 0.7, fontSize: "14px" }}>
+                <p style={{ opacity: 0.7, fontSize: "13px", color: "#aaa", margin: 0 }}>
                   No hay inspecciones aceptadas.
                 </p>
               ) : (
@@ -313,7 +323,7 @@ export default function VerTecnico() {
             </Bloque>
 
             {/* Botones de acción */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "20px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "24px" }}>
               <Link
                 to={`/tecnicos/editar/${id}`}
                 style={{
@@ -326,14 +336,17 @@ export default function VerTecnico() {
                   style={{
                     padding: "14px",
                     width: "100%",
-                    background: "#4db8ff",
-                    color: "#000",
-                    borderRadius: "10px",
-                    border: "none",
-                    fontWeight: "700",
-                    fontSize: "16px",
+                    background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
+                    color: "#fff",
+                    borderRadius: "16px",
+                    border: BORDE_DORADO_FINO,
+                    fontWeight: "900",
+                    fontSize: "14px",
                     cursor: procesando ? "not-allowed" : "pointer",
-                    boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+                    boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    boxSizing: "border-box",
                   }}
                 >
                   Editar Técnico
@@ -346,13 +359,16 @@ export default function VerTecnico() {
                 style={{
                   padding: "14px",
                   width: "100%",
-                  background: tecnico.activo ? "#ff6b6b" : "#4ade80",
-                  color: tecnico.activo ? "#fff" : "#000",
-                  borderRadius: "10px",
-                  border: "none",
-                  fontWeight: "700",
-                  fontSize: "16px",
+                  background: tecnico.activo ? "linear-gradient(135deg, #ef4444 0%, #991b1b 100%)" : "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+                  color: "#fff",
+                  borderRadius: "16px",
+                  border: tecnico.activo ? "1px solid rgba(239, 68, 68, 0.6)" : "1px solid rgba(16, 185, 129, 0.6)",
+                  fontWeight: "900",
+                  fontSize: "14px",
                   cursor: procesando ? "not-allowed" : "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  boxSizing: "border-box",
                 }}
               >
                 {tecnico.activo ? "Desactivar Técnico" : "Activar Técnico"}
@@ -364,13 +380,16 @@ export default function VerTecnico() {
                 style={{
                   padding: "14px",
                   width: "100%",
-                  background: "#ef4444",
+                  background: "linear-gradient(135deg, #ef4444 0%, #991b1b 100%)",
                   color: "#fff",
-                  borderRadius: "10px",
-                  border: "none",
-                  fontWeight: "700",
-                  fontSize: "16px",
+                  borderRadius: "16px",
+                  border: "1px solid rgba(239, 68, 68, 0.6)",
+                  fontWeight: "900",
+                  fontSize: "14px",
                   cursor: procesando ? "not-allowed" : "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  boxSizing: "border-box",
                 }}
               >
                 Eliminar Técnico
@@ -388,10 +407,12 @@ function Bloque({ titulo, children }) {
     <div style={{ marginBottom: "20px" }}>
       <h2
         style={{
-          fontSize: "16px",
+          fontSize: "14px",
           marginBottom: "10px",
-          color: "#4db8ff",
-          fontWeight: "600",
+          color: COLOR_DORADO,
+          fontWeight: "900",
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
         }}
       >
         {titulo}
@@ -399,10 +420,12 @@ function Bloque({ titulo, children }) {
 
       <div
         style={{
-          background: "rgba(255,255,255,0.04)",
-          padding: "12px",
-          borderRadius: "10px",
-          border: "1px solid rgba(255,255,255,0.08)",
+          background: FONDO_TARJETA,
+          padding: "14px",
+          borderRadius: "14px",
+          border: BORDE_DORADO_FINO,
+          boxShadow: SOMBRA_LUXURY,
+          boxSizing: "border-box",
         }}
       >
         {children}
@@ -418,11 +441,12 @@ function Item({ to, titulo }) {
         style={{
           padding: "12px",
           marginBottom: "8px",
-          background: "rgba(255,255,255,0.06)",
-          borderRadius: "8px",
-          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(11, 19, 32, 0.8)",
+          borderRadius: "10px",
+          border: BORDE_DORADO_FINO,
           color: "#fff",
-          fontSize: "14px",
+          fontSize: "13px",
+          fontWeight: "600",
           cursor: "pointer",
         }}
       >
