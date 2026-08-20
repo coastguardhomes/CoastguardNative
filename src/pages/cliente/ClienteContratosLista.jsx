@@ -36,34 +36,48 @@ export default function ClienteContratoVer() {
   const [contrato, setContrato] = useState(null);
   const [cliente, setCliente] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const [cargando, setCargando] = useState(true);
 
   const cargarContrato = async () => {
-    const { data: contratoData, error: contratoError } = await supabase
-      .from("contratos")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (contratoError) {
-      console.error("Error cargando contrato:", contratoError);
-      return;
-    }
-
-    setContrato(contratoData);
-
-    if (contratoData.cliente_id) {
-      const { data: clienteData } = await supabase
-        .from("clientes")
+    setCargando(true);
+    try {
+      // Usamos maybeSingle para evitar bloqueos por tiempos de respuesta en móvil
+      const { data: contratoData, error: contratoError } = await supabase
+        .from("contratos")
         .select("*")
-        .eq("id", contratoData.cliente_id)
-        .single();
+        .eq("id", id)
+        .maybeSingle();
 
-      if (clienteData) setCliente(clienteData);
+      if (contratoError || !contratoData) {
+        console.error("Error cargando contrato:", contratoError);
+        setContrato({ error: true, mensaje: contratoError?.message || "Contrato no encontrado" });
+        setCargando(false);
+        return;
+      }
+
+      setContrato(contratoData);
+
+      if (contratoData.cliente_id) {
+        const { data: clienteData } = await supabase
+          .from("clientes")
+          .select("*")
+          .eq("id", contratoData.cliente_id)
+          .maybeSingle();
+
+        if (clienteData) setCliente(clienteData);
+      }
+    } catch (err) {
+      console.error("Excepción en contrato:", err);
+      setContrato({ error: true, mensaje: err.message });
+    } finally {
+      setCargando(false);
     }
   };
 
   useEffect(() => {
-    cargarContrato();
+    if (id) {
+      cargarContrato();
+    }
   }, [id, location.key]);
 
   const esFirmado = Boolean(
@@ -119,7 +133,7 @@ export default function ClienteContratoVer() {
     }
   };
 
-  if (!contrato) {
+  if (cargando) {
     return (
       <Menu>
         <div
@@ -134,6 +148,33 @@ export default function ClienteContratoVer() {
           }}
         >
           <h3 style={TEXTO_DORADO_BRILLO}>{t("clienteContratoCargando") || "Cargando contrato..."}</h3>
+        </div>
+      </Menu>
+    );
+  }
+
+  if (!contrato || contrato.error) {
+    return (
+      <Menu>
+        <div
+          style={{
+            minHeight: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: "#ef4444",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "20px",
+            textAlign: "center",
+            fontFamily: "Inter, sans-serif",
+          }}
+        >
+          <h3 style={{ marginBottom: "10px" }}>No se pudo cargar el contrato</h3>
+          <p style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "20px" }}>{contrato?.mensaje || "Comprueba tu conexión"}</p>
+          <button onClick={() => navigate(-1)} style={{ ...botonEstilo, width: "auto", padding: "10px 20px" }}>
+            ← Volver
+          </button>
         </div>
       </Menu>
     );
