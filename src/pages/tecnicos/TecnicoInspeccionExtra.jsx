@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function TecnicoInspeccionExtra() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -25,7 +32,6 @@ export default function TecnicoInspeccionExtra() {
       setLoading(true);
       setError('');
       
-      // ⭐ CORREGIDO: Consultamos la tabla 'extras' que es donde están estos trabajos
       const { data, error: err } = await supabase
         .from('extras')
         .select('*')
@@ -67,7 +73,7 @@ export default function TecnicoInspeccionExtra() {
         const filePath = `extras/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('extras') // Asegúrate de tener un bucket llamado 'extras' en Supabase Storage
+          .from('extras')
           .upload(filePath, file);
 
         if (uploadError) throw uploadError;
@@ -97,7 +103,6 @@ export default function TecnicoInspeccionExtra() {
       setSaving(true);
       setError('');
 
-      // ⭐ Actualizamos la tabla 'extras' y cambiamos estado a 'finalizado'
       const { error: updateError } = await supabase
         .from('extras')
         .update({
@@ -122,30 +127,104 @@ export default function TecnicoInspeccionExtra() {
   };
 
   if (loading) {
-    return <div style={{ color: '#fff', padding: 20, background: '#04070c', minHeight: '100vh', fontFamily: 'sans-serif' }}>Cargando datos del trabajo...</div>;
+    return (
+      <div style={{ backgroundColor: FONDO_PRINCIPAL, minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Inter, sans-serif' }}>
+        <h3 style={TEXTO_DORADO_BRILLO}>Cargando datos del trabajo...</h3>
+      </div>
+    );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.header}>
-          <button onClick={() => navigate('/tecnico')} style={styles.btnBack}>← Volver</button>
-          <h2 style={styles.title}>Inspección de Extra</h2>
+    <div style={{
+      backgroundColor: FONDO_PRINCIPAL,
+      minHeight: '100vh',
+      padding: '16px',
+      display: 'flex',
+      justifyContent: 'center',
+      fontFamily: 'Inter, sans-serif',
+      boxSizing: 'border-box'
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '480px',
+        background: FONDO_TARJETA,
+        border: BORDE_DORADO_FINO,
+        borderRadius: '16px',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
+        boxShadow: SOMBRA_LUXURY,
+        boxSizing: 'border-box'
+      }}>
+        
+        {/* ENCABEZADO */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: BORDE_DORADO_FINO,
+          paddingBottom: '14px'
+        }}>
+          <button 
+            onClick={() => navigate('/tecnico')} 
+            style={{
+              background: 'transparent',
+              border: BORDE_DORADO_FINO,
+              color: COLOR_DORADO,
+              padding: '6px 12px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: '700'
+            }}
+          >
+            ← Volver
+          </button>
+          <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '18px', fontWeight: '900', margin: 0, textTransform: 'uppercase' }}>
+            Inspección de Extra
+          </h2>
         </div>
 
-        {mensaje && <p style={styles.ok}>{mensaje}</p>}
-        {error && <p style={styles.errorText}>{error}</p>}
+        {mensaje && (
+          <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', padding: '12px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', color: '#34d399', textAlign: 'center' }}>
+            {mensaje}
+          </div>
+        )}
+
+        {error && (
+          <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', padding: '12px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', color: '#ef4444', textAlign: 'center' }}>
+            {error}
+          </div>
+        )}
 
         {extraData && (
-          <div style={styles.infoBox}>
-            <p style={styles.infoText}>🆔 <strong>Ref ID:</strong> #{String(extraData.id).substring(0, 8)}</p>
-            <p style={styles.infoText}>📄 <strong>Detalle:</strong> {extraData.descripcion || 'Sin descripción previa'}</p>
+          <div style={{ backgroundColor: 'rgba(11, 19, 32, 0.9)', padding: '14px', borderRadius: '12px', border: BORDE_DORADO_FINO }}>
+            <p style={{ fontSize: '12px', margin: '4px 0', color: '#ccc' }}>
+              <strong style={{ color: COLOR_DORADO }}>Ref ID:</strong> #{String(extraData.id).substring(0, 8)}
+            </p>
+            <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: '#ccc' }}>
+              <strong style={{ color: COLOR_DORADO }}>Detalle:</strong> {extraData.descripcion || 'Sin descripción previa'}
+            </p>
           </div>
         )}
 
         {/* Botones de Cámara y Galería */}
-        <div style={styles.contenedorBotonesFoto}>
-          <label style={styles.botonFoto}>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <label style={{
+            flex: 1,
+            textAlign: 'center',
+            background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
+            color: '#fff',
+            padding: '12px',
+            borderRadius: '12px',
+            fontWeight: '900',
+            fontSize: '12px',
+            cursor: 'pointer',
+            border: BORDE_DORADO_FINO,
+            boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)',
+            textTransform: 'uppercase'
+          }}>
             📸 Hacer Foto
             <input
               type="file"
@@ -156,7 +235,20 @@ export default function TecnicoInspeccionExtra() {
             />
           </label>
 
-          <label style={styles.botonGaleria}>
+          <label style={{
+            flex: 1,
+            textAlign: 'center',
+            background: 'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)',
+            color: '#fff',
+            padding: '12px',
+            borderRadius: '12px',
+            fontWeight: '900',
+            fontSize: '12px',
+            cursor: 'pointer',
+            border: BORDE_DORADO_FINO,
+            boxShadow: '0 4px 15px rgba(56, 189, 248, 0.3)',
+            textTransform: 'uppercase'
+          }}>
             🖼️ Galería
             <input
               type="file"
@@ -170,18 +262,35 @@ export default function TecnicoInspeccionExtra() {
 
         {/* Vista previa de las fotos subidas */}
         {fotos.length > 0 && (
-          <div style={styles.gridFotos}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {fotos.map((url, index) => (
-              <img key={index} src={url} alt={`Evidencia ${index}`} style={styles.miniatura} />
+              <img 
+                key={index} 
+                src={url} 
+                alt={`Evidencia ${index}`} 
+                style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: BORDE_DORADO_FINO }} 
+              />
             ))}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Descripción del trabajo realizado:</label>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>
+              Descripción del trabajo realizado:
+            </label>
             <textarea
-              style={styles.textarea}
+              style={{
+                backgroundColor: 'rgba(11, 19, 32, 0.8)',
+                border: BORDE_DORADO_FINO,
+                borderRadius: '12px',
+                padding: '12px',
+                color: '#fff',
+                fontSize: '13px',
+                resize: 'vertical',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
               rows="4"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
@@ -190,56 +299,74 @@ export default function TecnicoInspeccionExtra() {
             />
           </div>
 
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Materiales usados:</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>
+              Materiales usados:
+            </label>
             <input
               type="text"
-              style={styles.input}
+              style={{
+                backgroundColor: 'rgba(11, 19, 32, 0.8)',
+                border: BORDE_DORADO_FINO,
+                borderRadius: '12px',
+                padding: '12px',
+                color: '#fff',
+                fontSize: '13px',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
               value={materiales}
               onChange={(e) => setMateriales(e.target.value)}
               placeholder="Ej: Tubo de PVC, silicona, tornillos..."
             />
           </div>
 
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Tiempo empleado:</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>
+              Tiempo empleado:
+            </label>
             <input
               type="text"
-              style={styles.input}
+              style={{
+                backgroundColor: 'rgba(11, 19, 32, 0.8)',
+                border: BORDE_DORADO_FINO,
+                borderRadius: '12px',
+                padding: '12px',
+                color: '#fff',
+                fontSize: '13px',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
               value={tiempo}
               onChange={(e) => setTiempo(e.target.value)}
               placeholder="Ej: 2 horas"
             />
           </div>
 
-          <button type="submit" style={styles.btnSubmit} disabled={saving}>
+          <button 
+            type="submit" 
+            disabled={saving}
+            style={{
+              background: saving ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+              color: saving ? '#64748b' : '#fff',
+              border: saving ? BORDE_DORADO_FINO : '1px solid rgba(16, 185, 129, 0.6)',
+              padding: '14px',
+              borderRadius: '16px',
+              fontSize: '14px',
+              fontWeight: '900',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              marginTop: '10px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              boxShadow: saving ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.3)',
+              transition: 'all 0.2s ease'
+            }}
+          >
             {saving ? 'Enviando...' : '✅ Guardar y Enviar Inspección al Admin'}
           </button>
         </form>
       </div>
     </div>
   );
-}
-
-const styles = {
-  container: { backgroundColor: '#04070c', minHeight: '100vh', padding: '16px', display: 'flex', justifyContent: 'center', fontFamily: 'sans-serif' },
-  card: { width: '100%', maxWidth: '480px', backgroundColor: '#09101d', border: '1px solid #c5a03e', borderRadius: '14px', padding: '16px', color: '#fff', display: 'flex', flexDirection: 'column', gap: '14px' },
-  header: { display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '2px solid #c5a03e', paddingBottom: '10px' },
-  btnBack: { background: 'transparent', border: '1px solid #d4af37', color: '#ffd700', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' },
-  title: { fontSize: '16px', fontWeight: 'bold', margin: 0, color: '#ffd700' },
-  infoBox: { backgroundColor: '#111b2e', padding: '10px', borderRadius: '8px', border: '1px solid #2a3b55' },
-  infoText: { fontSize: '12px', margin: '4px 0', color: '#ccc' },
-  form: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  fieldGroup: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  label: { fontSize: '12px', color: '#ffd700', fontWeight: '600' },
-  input: { backgroundColor: '#132033', border: '1px solid #2a3b55', borderRadius: '8px', padding: '10px', color: '#fff', fontSize: '13px' },
-  textarea: { backgroundColor: '#132033', border: '1px solid #2a3b55', borderRadius: '8px', padding: '10px', color: '#fff', fontSize: '13px', resize: 'vertical' },
-  contenedorBotonesFoto: { display: 'flex', gap: '10px' },
-  botonFoto: { flex: 1, textAlign: 'center', background: '#f59e0b', color: '#000', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' },
-  botonGaleria: { flex: 1, textAlign: 'center', background: '#10b981', color: '#fff', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' },
-  gridFotos: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
-  miniatura: { width: '60px', height: '60px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #c5a03e' },
-  btnSubmit: { background: 'linear-gradient(to bottom, #27ae60 0%, #219653 100%)', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' },
-  ok: { color: '#4ade80', backgroundColor: 'rgba(74,222,128,0.1)', padding: '8px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' },
-  errorText: { color: '#f87171', backgroundColor: 'rgba(248,113,113,0.1)', padding: '8px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }
-};
+                      }
+          
