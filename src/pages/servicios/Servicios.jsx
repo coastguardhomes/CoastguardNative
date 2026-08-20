@@ -126,7 +126,7 @@ export default function Servicios() {
     try {
       const numero = await siguienteNumero();
       const descripcionServicios = lineas.map((l) => l.nombre).join(", ");
-      const viviendaSeleccionada = viviendas.find((v) => v.id === Number(viviendaId));
+      const viviendaSeleccionada = viviendas.find((v) => v.id == viviendaId);
       const direccionTexto = viviendaSeleccionada ? viviendaSeleccionada.direccion : null;
 
       // 1. Crear Factura Contable (estado pendiente por defecto)
@@ -134,7 +134,7 @@ export default function Servicios() {
         .from("facturas")
         .insert({
           numero,
-          cliente_id: Number(clienteId),
+          cliente_id: clienteId, // Corregido: UUID limpio sin Number()
           fecha: new Date().toISOString().slice(0, 10),
           base,
           iva,
@@ -162,7 +162,7 @@ export default function Servicios() {
 
       // 3. Registrar en la tabla 'extras'
       await supabase.from("extras").insert({
-        cliente_id: Number(clienteId),
+        cliente_id: clienteId, // Corregido: UUID limpio sin Number()
         direccion: direccionTexto,
         descripcion: descripcionServicios,
         precio: total,
@@ -179,7 +179,7 @@ export default function Servicios() {
 
       if (!errorPdf && pdfData?.url && (await pdfDisponible(pdfData.url))) {
         await supabase.from("facturas").update({ pdf_url: pdfData.url }).eq("id", factura.id);
-        const cliente = clientes.find((c) => c.id === Number(clienteId));
+        const cliente = clientes.find((c) => c.id == clienteId);
 
         if (enviarEmail && cliente?.email) {
           const { error: errorEmail } = await supabase.functions.invoke(
