@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -10,201 +11,86 @@ const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
 const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
 const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
-const DEGRADADO_AZUL_BOTON = "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)";
 
-const botonEstilo = {
-  padding: "14px",
-  width: "100%",
-  borderRadius: "16px",
-  cursor: "pointer",
-  marginTop: "12px",
-  fontWeight: "900",
-  fontSize: "14px",
-  border: BORDE_DORADO_FINO,
-  background: DEGRADADO_AZUL_BOTON,
-  color: "#ffffff",
-  boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
-  transition: "all 0.2s ease",
-};
-
-export default function ClienteContratoVer() {
+export default function ClienteContratosLista() {
   const { t } = useLanguage();
-  const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
+  const { user } = useAuth();
 
-  const [contrato, setContrato] = useState(null);
-  const [cliente, setCliente] = useState(null);
-  const [enviando, setEnviando] = useState(false);
-  const [cargando, setCargando] = useState(true);
+  const [contratos, setContratos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const cargarContrato = async () => {
-    setCargando(true);
-    try {
-      if (!id) {
-        console.warn("ClienteContratoVer: no se recibió id en la ruta");
-        setContrato({ error: true, mensaje: "ID del contrato no proporcionado." });
-        setCargando(false);
-        return;
-      }
+  useEffect(() => {
+    let mounted = true;
 
-      // Opcional: comprobar sesión para depurar RLS
+    async function cargarContratos() {
+      setLoading(true);
+      setErrorMsg("");
+
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData?.session) {
-          console.warn("No hay sesión activa (supabase). La consulta puede fallar por RLS.");
+        if (!user) {
+          setErrorMsg("Usuario no autenticado.");
+          setContratos([]);
+          setLoading(false);
+          return;
         }
-      } catch (e) {
-        console.warn("No se pudo comprobar la sesión supabase:", e);
-      }
 
-      // Usamos maybeSingle para evitar bloqueos por tiempos de respuesta en móvil
-      const { data: contratoData, error: contratoError } = await supabase
-        .from("contratos")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-
-      if (contratoError || !contratoData) {
-        console.error("Error cargando contrato:", contratoError);
-        setContrato({ error: true, mensaje: contratoError?.message || "Contrato no encontrado o sin permisos." });
-        setCargando(false);
-        return;
-      }
-
-      setContrato(contratoData);
-
-      if (contratoData.cliente_id) {
+        // Obtener cliente asociado al usuario (si existe)
         const { data: clienteData, error: clienteError } = await supabase
           .from("clientes")
-          .select("*")
-          .eq("id", contratoData.cliente_id)
+          .select("id")
+          .eq("usuario_id", user.id)
           .maybeSingle();
 
         if (clienteError) {
-          console.warn("Error cargando cliente asociado:", clienteError);
-        } else if (clienteData) {
-          setCliente(clienteData);
+          console.error("Error cargando cliente:", clienteError);
+          setErrorMsg("No se pudo identificar el cliente asociado.");
+          setContratos([]);
+          setLoading(false);
+          return;
         }
-      }
-    } catch (err) {
-      console.error("Excepción en cargarContrato:", err);
-      setContrato({ error: true, mensaje: err.message || "Error interno" });
-    } finally {
-      setCargando(false);
-    }
-  };
 
-  useEffect(() => {
-    // Si la ruta no proporciona id, no bloqueamos: mostramos mensaje inmediato
-    if (!id) {
-      setContrato({ error: true, mensaje: "ID de contrato no proporcionado en la ruta." });
-      setCargando(false);
-      return;
-    }
-    cargarContrato();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, location.key]);
+        const clienteId = clienteData?.id || user.id;
 
-  const esFirmado = Boolean(
-    (contrato?.firma_url && contrato.firma_url.trim() !== "") ||
-      contrato?.estado === "firmado" ||
-      contrato?.estado === "enviado_al_admin"
-  );
+        const { data: contratosData, error: contratosError } = await supabase
+          .from("contratos")
+          .select("*")
+          .eq("cliente_id", clienteId)
+          .order("id", { ascending: false });
 
-  const enviarAlAdmin = async () => {
-    if (!esFirmado) {
-      alert("Debes firmar el contrato antes de enviarlo.");
-      return;
-    }
+        if (contratosError) {
+          console.error("Error cargando contratos:", contratosError);
+          setErrorMsg("Error cargando contratos.");
+          setContratos([]);
+          setLoading(false);
+          return;
+        }
 
-    setEnviando(true);
-    const { error } = await supabase
-      .from("contratos")
-      .update({ estado: "enviado_al_admin" })
-      .eq("id", id);
-
-    setEnviando(false);
-
-    if (error) {
-      alert("Error notificando al administrador: " + error.message);
-    } else {
-      alert("¡Contrato firmado enviado al administrador!");
-      cargarContrato();
-    }
-  };
-
-  const manejarAbrirPDF = (url) => {
-    if (!url) {
-      alert("El administrador aún no ha generado el PDF.");
-      return;
-    }
-
-    if (url.startsWith("data:")) {
-      try {
-        fetch(url)
-          .then((res) => res.blob())
-          .then((blob) => {
-            const blobUrl = URL.createObjectURL(blob);
-            window.open(blobUrl, "_blank");
-          })
-          .catch(() => {
-            window.open(url, "_blank");
-          });
+        if (mounted) {
+          setContratos(contratosData || []);
+        }
       } catch (e) {
-        window.open(url, "_blank");
+        console.error("Excepción al cargar contratos:", e);
+        if (mounted) {
+          setErrorMsg("Error inesperado cargando contratos.");
+          setContratos([]);
+        }
+      } finally {
+        if (mounted) setLoading(false);
       }
-    } else {
-      window.open(url, "_blank");
     }
+
+    cargarContratos();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  const abrirContrato = (id) => {
+    navigate(`/cliente/contrato/${id}`);
   };
-
-  if (cargando) {
-    return (
-      <Menu>
-        <div
-          style={{
-            minHeight: "100vh",
-            background: FONDO_PRINCIPAL,
-            color: COLOR_DORADO,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            fontFamily: "Inter, sans-serif",
-          }}
-        >
-          <h3 style={TEXTO_DORADO_BRILLO}>{t("clienteContratoCargando") || "Cargando contrato..."}</h3>
-        </div>
-      </Menu>
-    );
-  }
-
-  if (!contrato || contrato.error) {
-    return (
-      <Menu>
-        <div
-          style={{
-            minHeight: "100vh",
-            background: FONDO_PRINCIPAL,
-            color: "#ef4444",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: "20px",
-            textAlign: "center",
-            fontFamily: "Inter, sans-serif",
-          }}
-        >
-          <h3 style={{ marginBottom: "10px" }}>No se pudo cargar el contrato</h3>
-          <p style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "20px" }}>{contrato?.mensaje || "Comprueba tu conexión"}</p>
-          <button onClick={() => navigate(-1)} style={{ ...botonEstilo, width: "auto", padding: "10px 20px" }}>
-            ← Volver
-          </button>
-        </div>
-      </Menu>
-    );
-  }
 
   return (
     <Menu>
@@ -223,113 +109,75 @@ export default function ClienteContratoVer() {
             textAlign: "center",
             ...TEXTO_DORADO_BRILLO,
             marginBottom: "25px",
-            fontSize: "24px",
+            fontSize: "28px",
             fontWeight: "900",
-            textTransform: "uppercase",
           }}
         >
-          {t("clienteContratoTitulo") || "Contrato del Cliente"}
+          {t("clienteListaTitulo") || "Mis Contratos"}
         </h2>
 
-        {/* Datos del Cliente */}
-        <div
-          style={{
-            background: FONDO_TARJETA,
-            padding: "20px",
-            borderRadius: "16px",
-            border: BORDE_DORADO_FINO,
-            boxShadow: SOMBRA_LUXURY,
-            marginBottom: "20px",
-          }}
-        >
-          <h3 style={{ ...TEXTO_DORADO_BRILLO, marginBottom: "12px", fontSize: "16px", marginTop: 0, fontWeight: "800", textTransform: "uppercase" }}>
-            {t("clienteContratoDatosCliente") || "Datos del Cliente"}
-          </h3>
-          <p style={{ margin: "8px 0", fontSize: "14px" }}><strong style={{ color: COLOR_DORADO }}>Nombre:</strong> {cliente?.nombre || contrato?.cliente_nombre || "—"}</p>
-          <p style={{ margin: "8px 0", fontSize: "14px" }}><strong style={{ color: COLOR_DORADO }}>Dirección:</strong> {cliente?.direccion || "—"}</p>
-          <p style={{ margin: "8px 0", fontSize: "14px" }}><strong style={{ color: COLOR_DORADO }}>Teléfono:</strong> {cliente?.telefono || "—"}</p>
-        </div>
-
-        {/* Detalles del Contrato */}
-        <div
-          style={{
-            background: FONDO_TARJETA,
-            padding: "20px",
-            borderRadius: "16px",
-            border: BORDE_DORADO_FINO,
-            boxShadow: SOMBRA_LUXURY,
-          }}
-        >
-          <h3 style={{ ...TEXTO_DORADO_BRILLO, marginBottom: "12px", fontSize: "16px", marginTop: 0, fontWeight: "800", textTransform: "uppercase" }}>
-            {t("clienteContratoDetalles") || "Detalles del Contrato"}
-          </h3>
-
-          <p style={{ margin: "8px 0", fontSize: "14px" }}>
-            <strong style={{ color: COLOR_DORADO }}>Tipo de servicio:</strong> Cada {contrato.frecuencia || 30} días
+        {loading ? (
+          <p style={{ textAlign: "center", color: "#94a3b8" }}>Cargando contratos...</p>
+        ) : errorMsg ? (
+          <div style={{ textAlign: "center", padding: "20px" }}>
+            <p style={{ color: "#ff6b6b", marginBottom: 8 }}>{errorMsg}</p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.06)",
+                color: "#fff",
+                border: "1px solid rgba(255,255,255,0.08)",
+                cursor: "pointer",
+              }}
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : contratos.length === 0 ? (
+          <p style={{ textAlign: "center", color: "#94a3b8" }}>
+            {t("clienteListaVacio") || "No tienes contratos registrados."}
           </p>
-          <p style={{ margin: "8px 0", fontSize: "14px" }}>
-            <strong style={{ color: COLOR_DORADO }}>Precio mensual:</strong> {contrato.precio != null ? `${contrato.precio} €` : "—"}
-          </p>
-          <p style={{ margin: "8px 0", fontSize: "14px" }}>
-            <strong style={{ color: COLOR_DORADO }}>Fecha inicio:</strong> {contrato.fecha_inicio || "—"}
-          </p>
-          <p style={{ margin: "8px 0 16px 0", fontSize: "14px" }}>
-            <strong style={{ color: COLOR_DORADO }}>Estado:</strong>{" "}
-            <span style={{ color: esFirmado ? "#34d399" : "#fbbf24", fontWeight: "900", textShadow: "0 0 10px rgba(0,0,0,0.5)" }}>
-              {esFirmado ? "✅ Firmado" : "⏳ Pendiente de firma"}
-            </span>
-          </p>
+        ) : (
+          <div style={{ display: "grid", gap: 12 }}>
+            {contratos.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => abrirContrato(c.id)}
+                style={{
+                  background: FONDO_TARJETA,
+                  padding: "16px",
+                  borderRadius: 12,
+                  border: BORDE_DORADO_FINO,
+                  boxShadow: SOMBRA_LUXURY,
+                  cursor: "pointer",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", marginBottom: 6 }}>
+                    {c.modalidad ? `${c.modalidad}` : `Contrato #${c.id}`}
+                  </div>
+                  <div style={{ color: "#9fb3c8", fontSize: 14 }}>
+                    {c.descripcion || c.notas || "Servicio contratado"}
+                  </div>
+                </div>
 
-          <button
-            onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
-            style={{
-              ...botonEstilo,
-              background: "rgba(11, 19, 32, 0.9)",
-              border: BORDE_DORADO_FINO,
-              color: COLOR_DORADO,
-              boxShadow: "0 4px 15px rgba(0,0,0,0.5)",
-            }}
-          >
-            📄 Ver contrato antes de firmar
-          </button>
-
-          <button
-            onClick={() => navigate(`/cliente/firma/${id}`)}
-            style={botonEstilo}
-          >
-            ✍️ {esFirmado ? "Ver / Cambiar Firma" : "Firma del Cliente"}
-          </button>
-
-          <button
-            onClick={enviarAlAdmin}
-            disabled={!esFirmado || enviando}
-            style={{
-              ...botonEstilo,
-              background: esFirmado
-                ? "linear-gradient(135deg, #10b981 0%, #047857 100%)"
-                : "rgba(255,255,255,0.05)",
-              color: esFirmado ? "#ffffff" : "#64748b",
-              cursor: esFirmado ? "pointer" : "not-allowed",
-              border: esFirmado ? "1px solid rgba(16, 185, 129, 0.6)" : BORDE_DORADO_FINO,
-              boxShadow: esFirmado ? "0 4px 15px rgba(16, 185, 129, 0.3)" : "none",
-            }}
-          >
-            {enviando ? "Enviando..." : "📤 Enviar contrato al Admin"}
-          </button>
-
-          <button
-            onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
-            style={{
-              ...botonEstilo,
-              background: "rgba(11, 19, 32, 0.9)",
-              border: BORDE_DORADO_FINO,
-              color: COLOR_DORADO,
-              boxShadow: "0 4px 15px rgba(0,0,0,0.5)",
-            }}
-          >
-            📄 Ver contrato firmado (PDF)
-          </button>
-        </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontWeight: 900, color: "#fff", marginBottom: 6 }}>
+                    {c.precio != null ? `${c.precio} €` : "—"}
+                  </div>
+                  <div style={{ color: c.estado === "firmado" ? "#34d399" : "#94a3b8", fontSize: 13 }}>
+                    {c.estado ? c.estado.replace("_", " ") : "Pendiente"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Menu>
   );
