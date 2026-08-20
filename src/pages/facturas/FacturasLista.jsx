@@ -2,6 +2,13 @@ import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
 
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+
 export default function FacturasLista() {
   const [facturas, setFacturas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,8 +62,20 @@ export default function FacturasLista() {
   if (loading) {
     return (
       <Menu>
-        <div style={{ padding: "20px", textAlign: "center" }}>
-          <h3>Cargando lista de facturas...</h3>
+        <div
+          style={{
+            height: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: COLOR_DORADO,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontFamily: "Inter, sans-serif",
+            fontSize: "16px",
+            fontWeight: "700",
+          }}
+        >
+          Cargando lista de facturas...
         </div>
       </Menu>
     );
@@ -65,8 +84,22 @@ export default function FacturasLista() {
   if (!facturas.length) {
     return (
       <Menu>
-        <div style={{ padding: "20px", textAlign: "center" }}>
-          <h3>No hay facturas registradas.</h3>
+        <div
+          style={{
+            height: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: "#fff",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontFamily: "Inter, sans-serif",
+            padding: "20px",
+            textAlign: "center",
+          }}
+        >
+          <p style={{ fontSize: "14px", color: "#aaa", margin: 0 }}>
+            No hay facturas registradas.
+          </p>
         </div>
       </Menu>
     );
@@ -76,50 +109,89 @@ export default function FacturasLista() {
     <Menu>
       <div
         style={{
-          background: "#0a0f1a",
+          background: FONDO_PRINCIPAL,
           minHeight: "100vh",
           padding: "20px",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
+          paddingBottom: "100px",
+          boxSizing: "border-box",
         }}
       >
-        <h2 style={{ color: "#4db8ff", marginBottom: 18 }}>Lista de Facturas</h2>
+        <h1
+          style={{
+            ...TEXTO_DORADO_BRILLO,
+            fontSize: "20px",
+            fontWeight: "900",
+            marginBottom: "20px",
+            textAlign: "center",
+            textTransform: "uppercase",
+          }}
+        >
+          Lista de Facturas
+        </h1>
 
-        {facturas.map((f) => (
-          <div
-            key={f.id}
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              padding: "14px",
-              borderRadius: "12px",
-              marginBottom: "10px",
-            }}
-          >
-            <p><strong style={{ color: "#9fb3c8" }}>Número:</strong> {f.numero || `#${f.id}`}</p>
-            <p><strong style={{ color: "#9fb3c8" }}>Total:</strong> {Number(f.total || 0).toFixed(2)} €</p>
-            <p><strong style={{ color: "#9fb3c8" }}>Estado:</strong> {f.estado}</p>
-            <p><strong style={{ color: "#9fb3c8" }}>Fecha:</strong> {String(f.fecha || "").slice(0, 10)}</p>
-
-            <button
-              onClick={() => handleVerPDF(f.id)}
-              disabled={pdfCargandoId === f.id}
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {facturas.map((f) => (
+            <div
+              key={f.id}
               style={{
-                marginTop: "10px",
-                background: "#4db8ff",
-                color: "#0a0f1a",
-                border: "none",
-                padding: "8px 14px",
-                borderRadius: "6px",
-                fontWeight: "bold",
-                cursor: "pointer",
-                opacity: pdfCargandoId === f.id ? 0.6 : 1,
+                background: FONDO_TARJETA,
+                border: BORDE_DORADO_FINO,
+                padding: "16px",
+                borderRadius: "16px",
+                boxShadow: SOMBRA_LUXURY,
+                boxSizing: "border-box",
+                fontSize: "13px",
+                lineHeight: "1.6",
               }}
             >
-              {pdfCargandoId === f.id ? "Generando..." : "📄 Ver PDF"}
-            </button>
-          </div>
-        ))}
+              <p style={{ margin: "0 0 6px 0" }}>
+                <strong style={{ color: COLOR_DORADO }}>Número:</strong> {f.numero || `#${f.id}`}
+              </p>
+              <p style={{ margin: "0 0 6px 0" }}>
+                <strong style={{ color: COLOR_DORADO }}>Total:</strong> {Number(f.total || 0).toFixed(2)} €
+              </p>
+              <p style={{ margin: "0 0 6px 0" }}>
+                <strong style={{ color: COLOR_DORADO }}>Estado:</strong>{" "}
+                <span
+                  style={{
+                    color: f.estado === "pagada" ? "#34d399" : COLOR_DORADO,
+                    fontWeight: "700",
+                  }}
+                >
+                  {f.estado}
+                </span>
+              </p>
+              <p style={{ margin: "0 0 12px 0", opacity: 0.7, fontSize: "12px" }}>
+                <strong style={{ color: COLOR_DORADO }}>Fecha:</strong> {String(f.fecha || "").slice(0, 10)}
+              </p>
+
+              <button
+                onClick={() => handleVerPDF(f.id)}
+                disabled={pdfCargandoId === f.id}
+                style={{
+                  width: "100%",
+                  background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
+                  color: "#fff",
+                  border: BORDE_DORADO_FINO,
+                  padding: "12px",
+                  borderRadius: "12px",
+                  fontWeight: "900",
+                  fontSize: "12px",
+                  cursor: pdfCargandoId === f.id ? "not-allowed" : "pointer",
+                  opacity: pdfCargandoId === f.id ? 0.6 : 1,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
+                  boxSizing: "border-box",
+                }}
+              >
+                {pdfCargandoId === f.id ? "Generando..." : "📄 Ver PDF"}
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
     </Menu>
   );
