@@ -129,7 +129,7 @@ export default function Servicios() {
     try {
       const numero = await siguienteNumero();
 
-      // 1. Crear Factura Contable
+      // 1. Crear Factura Contable (respetando las columnas reales de la tabla facturas)
       const { data: factura, error: errorFactura } = await supabase
         .from("facturas")
         .insert({
@@ -160,7 +160,7 @@ export default function Servicios() {
 
       if (errorLineas) throw new Error(errorLineas.message);
 
-      // 3. Registrar en la tabla 'extras' incluyendo el técnico asignado
+      // 3. Registrar el servicio/extra en la tabla 'extras'
       const viviendaSeleccionada = viviendas.find((v) => v.id === Number(viviendaId));
       const { error: errorExtra } = await supabase.from("extras").insert({
         cliente_id: Number(clienteId),
@@ -173,7 +173,7 @@ export default function Servicios() {
       });
 
       if (errorExtra) {
-        console.error("Error al registrar el extra:", errorExtra);
+        console.error("Aviso al registrar el extra:", errorExtra);
       }
 
       // 4. Generación y envío de PDF
