@@ -33,8 +33,6 @@ export default function Servicios() {
   const [clienteId, setClienteId] = useState("");
   const [viviendas, setViviendas] = useState([]);
   const [viviendaId, setViviendaId] = useState("");
-  const [tecnicos, setTecnicos] = useState([]);
-  const [tecnicoId, setTecnicoId] = useState("");
 
   const [seleccionados, setSeleccionados] = useState([]);
   const [precios, setPrecios] = useState({});
@@ -45,17 +43,16 @@ export default function Servicios() {
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    async function cargarDatosIniciales() {
-      const [resClientes, resTecnicos] = await Promise.all([
-        supabase.from("clientes").select("id, nombre, direccion, email").order("nombre"),
-        supabase.from("tecnicos").select("id, nombre").eq("activo", true).order("nombre")
-      ]);
+    async function cargarClientes() {
+      const { data, error } = await supabase
+        .from("clientes")
+        .select("id, nombre, direccion, email")
+        .order("nombre");
 
-      if (!resClientes.error) setClientes(resClientes.data || []);
-      if (!resTecnicos.error) setTecnicos(resTecnicos.data || []);
+      if (!error) setClientes(data || []);
       setCargando(false);
     }
-    cargarDatosIniciales();
+    cargarClientes();
   }, []);
 
   useEffect(() => {
@@ -129,13 +126,12 @@ export default function Servicios() {
     try {
       const numero = await siguienteNumero();
 
-      // 1. Crear Factura Contable (SIN tecnico_id porque la tabla facturas no tiene esa columna)
+      // 1. Crear Factura Contable (columnas reales de la tabla facturas)
       const { data: factura, error: errorFactura } = await supabase
         .from("facturas")
         .insert({
           numero,
           cliente_id: Number(clienteId),
-          vivienda_id: viviendaId ? Number(viviendaId) : null,
           fecha: new Date().toISOString().slice(0, 10),
           base,
           iva,
@@ -161,19 +157,19 @@ export default function Servicios() {
 
       if (errorLineas) throw new Error(errorLineas.message);
 
-      // 3. Crear el registro en la tabla 'extras' asignando el técnico correctamente
+      // 3. Registrar en la tabla 'extras' (usando las columnas reales: cliente_id, direccion, descripcion, precio, estado)
+      const viviendaSeleccionada = viviendas.find((v) => v.id === Number(viviendaId));
       const { error: errorExtra } = await supabase.from("extras").insert({
-        factura_id: factura.id,
         cliente_id: Number(clienteId),
-        vivienda_id: viviendaId ? Number(viviendaId) : null,
-        tecnico_id: tecnicoId ? Number(tecnicoId) : null, // Aquí sí se guarda el técnico
+        direccion: viviendaSeleccionada ? viviendaSeleccionada.direccion : null,
         descripcion: lineas.map((l) => l.nombre).join(", "),
+        precio: total,
         estado: "pendiente",
         creado_en: new Date().toISOString()
       });
 
       if (errorExtra) {
-        console.error("Error al registrar la tarea del técnico:", errorExtra);
+        console.error("Error al registrar el extra:", errorExtra);
       }
 
       // 4. Generación y envío de PDF
@@ -199,8 +195,7 @@ export default function Servicios() {
       setSeleccionados([]);
       setPrecios({});
       setViviendaId("");
-      setTecnicoId("");
-      setMensaje(`Factura ${factura.numero} creada con éxito (${total} €) y asignada al técnico.${avisoPdf}`);
+      setMensaje(`Factura ${factura.numero} creada con éxito (${total} €).${avisoPdf}`);
       setGuardando(false);
     } catch (e) {
       setError(`Error en el proceso: ${e.message}`);
@@ -213,13 +208,12 @@ export default function Servicios() {
       <div style={estilos.pagina}>
         <h1 style={estilos.titulo}>Gestión de Servicios y Órdenes</h1>
         <p style={estilos.subtitulo}>
-          Emite servicios de campo, asigna técnicos automáticamente y genera su contabilidad.
+          Emite servicios de campo y genera su contabilidad automáticamente.
         </p>
 
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
         {error && <p style={estilos.error}>{error}</p>}
 
-        {/* Sección Clientes y Viviendas */}
         <div style={estilos.tarjeta}>
           <label style={estilos.etiqueta}>Cliente</label>
           <select
@@ -249,18 +243,6 @@ export default function Servicios() {
               </select>
             </>
           )}
-
-          <label style={{...estilos.etiqueta, marginTop: 15}}>Asignar Técnico</label>
-          <select
-            value={tecnicoId}
-            onChange={(e) => setTecnicoId(e.target.value)}
-            style={estilos.select}
-          >
-            <option value="">-- Sin técnico asignado (opcional) --</option>
-            {tecnicos.map((t) => (
-              <option key={t.id} value={t.id}>{t.nombre}</option>
-            ))}
-          </select>
         </div>
 
         <div style={estilos.tarjeta}>
