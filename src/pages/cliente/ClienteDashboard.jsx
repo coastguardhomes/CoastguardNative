@@ -65,7 +65,7 @@ export default function ClienteDashboard() {
 
           const [resInspecciones, resAlertas, resViviendas, resExtras] = await Promise.all([
             supabase.from("inspecciones").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
-            supabase.from("alertas").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId).eq("estado", "pendiente"),
+            supabase.from("alertas").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
             supabase.from("viviendas").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
             supabase.from("extras").select("*").eq("cliente_id", clienteId).order("created_at", { ascending: false })
           ]);
@@ -189,7 +189,7 @@ export default function ClienteDashboard() {
           </div>
         </div>
 
-        {/* CONFIGURACIÓN (BOTÓN PRINCIPAL CON DEGRADADO AZUL Y DETALLES DORADOS) */}
+        {/* CONFIGURACIÓN */}
         <div style={{ display: "flex", justifyContent: "center" }}>
           <Link to="/cliente/configuracion" style={{ width: "100%", maxWidth: "420px", background: DEGRADADO_AZUL_BOTON, border: BORDE_DORADO_INTENSO, borderRadius: "30px", padding: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", textDecoration: "none", boxShadow: "0 6px 20px rgba(56, 189, 248, 0.4), 0 0 15px rgba(224, 176, 52, 0.3)" }}>
             <span>⚙️</span>
