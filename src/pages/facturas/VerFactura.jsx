@@ -18,7 +18,6 @@ export default function VerFactura() {
   const [lineas, setLineas] = useState([]);
   const [cliente, setCliente] = useState(null);
   const [inspeccion, setInspeccion] = useState(null);
-  const [tecnicoId, setTecnicoId] = useState("");
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
@@ -42,7 +41,6 @@ export default function VerFactura() {
       }
 
       setFactura(dataFactura);
-      setTecnicoId(dataFactura.tecnico_id || "");
 
       const { data: detalle } = await supabase
         .from("facturas_lineas")
@@ -62,7 +60,7 @@ export default function VerFactura() {
       const { data: dataExtra } = await supabase
         .from("extras")
         .select("*")
-        .or(`factura_id.eq.${dataFactura.id},contrato_id.eq.${dataFactura.id}`)
+        .eq("factura_id", dataFactura.id)
         .maybeSingle();
       setInspeccion(dataExtra || null);
 
@@ -112,8 +110,6 @@ export default function VerFactura() {
 
       setFactura((prev) => ({ ...prev, estado: "pagada", estado_pago: "pagada" }));
 
-      const tecnicoAAsignar = tecnicoId || factura.tecnico_id || null;
-
       if (!inspeccion) {
         const { data: newExtra, error: insError } = await supabase.from("extras").insert([
           {
@@ -121,7 +117,7 @@ export default function VerFactura() {
             contrato_id: factura.contrato_id || null,
             cliente_id: factura.cliente_id || null,
             vivienda_id: factura.vivienda_id || null,
-            tecnico_id: tecnicoAAsignar,
+            tecnico_id: factura.tecnico_id || null,
             descripcion: factura.descripcion || `Servicio ligado a factura #${factura.numero}`,
             estado: "pendiente",
             creado_en: new Date().toISOString(),
@@ -130,16 +126,6 @@ export default function VerFactura() {
 
         if (insError) throw new Error(insError.message);
         setInspeccion(newExtra || null);
-      } else {
-        await supabase
-          .from("extras")
-          .update({ 
-            estado: "pendiente", 
-            tecnico_id: inspeccion.tecnico_id || tecnicoAAsignar 
-          })
-          .eq("id", inspeccion.id);
-
-        setInspeccion((prev) => (prev ? { ...prev, estado: "pendiente", tecnico_id: prev.tecnico_id || tecnicoAAsignar } : prev));
       }
 
       setMensaje("¡Factura marcada como pagada y tarea enviada al técnico con éxito!");
