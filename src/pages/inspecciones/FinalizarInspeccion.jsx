@@ -20,10 +20,9 @@ export default function FinalizarInspeccion() {
   async function cargarInspeccion() {
     setLoading(true);
     try {
-      // Ampliamos la consulta para obtener también el email del cliente y la dirección de la vivienda
       const { data, error } = await supabase
         .from("inspecciones")
-        .select("*, clientes(nombre, email), viviendas(direccion)")
+        .select("*")
         .eq("id", String(id))
         .single();
 
@@ -61,33 +60,19 @@ export default function FinalizarInspeccion() {
       // 2. Ejecutar funciones de Supabase para PDF y Email
       let pdfOk = false;
       let emailOk = false;
-      let pdfUrl = null;
 
       try {
         const resPdf = await supabase.functions.invoke("pdf-inspeccion", { body: { inspeccion_id: id } });
-        if (!resPdf.error && resPdf.data?.url) {
-          pdfUrl = resPdf.data.url;
-          pdfOk = true;
-        }
+        if (!resPdf.error) pdfOk = true;
       } catch (e) {
         console.error("Error al invocar pdf-inspeccion:", e);
       }
 
       try {
-        if (pdfUrl && inspeccion?.clientes?.email) {
-          const resEmail = await supabase.functions.invoke("enviar-email", { 
-            body: { 
-              email: inspeccion.clientes.email,
-              pdfUrl: pdfUrl,
-              cliente_nombre: inspeccion.clientes.nombre || "Estimado cliente",
-              direccion: inspeccion.viviendas?.direccion || "Dirección no especificada",
-              fecha: inspeccion.fecha ? String(inspeccion.fecha).slice(0, 10) : "",
-              tipo_servicio: inspeccion.tipo_servicio || "Inspección",
-              observaciones: inspeccion.notas_tecnico || inspeccion.observaciones || ""
-            } 
-          });
-          if (!resEmail.error) emailOk = true;
-        }
+        const resEmail = await supabase.functions.invoke("enviar-email", { 
+          body: { inspeccion_id: id, tipo: "inspeccion_aprobada" } 
+        });
+        if (!resEmail.error) emailOk = true;
       } catch (e) {
         console.error("Error al invocar enviar-email:", e);
       }
@@ -187,4 +172,4 @@ export default function FinalizarInspeccion() {
       </div>
     </Menu>
   );
-              }
+}
