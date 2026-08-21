@@ -45,14 +45,12 @@ export default function VerFactura() {
       setFactura(dataFactura);
       setTecnicoId(dataFactura.tecnico_id || "");
 
-      // Líneas
       const { data: detalle } = await supabase
         .from("facturas_lineas")
         .select("*")
         .eq("factura_id", dataFactura.id);
       setLineas(detalle || []);
 
-      // Cliente
       if (dataFactura.cliente_id) {
         const { data: c } = await supabase
           .from("clientes")
@@ -62,7 +60,6 @@ export default function VerFactura() {
         setCliente(c || null);
       }
 
-      // Extra / Tarea
       const { data: dataExtra } = await supabase
         .from("extras")
         .select("*")
@@ -70,7 +67,6 @@ export default function VerFactura() {
         .maybeSingle();
       setInspeccion(dataExtra || null);
 
-      // Técnicos
       const { data: dataTecnicos } = await supabase.from("tecnicos").select("id, nombre, email");
       setTecnicos(dataTecnicos || []);
     } catch (e) {
@@ -104,54 +100,12 @@ export default function VerFactura() {
     }
   }
 
-  async function handleCambiarTecnico(nuevoTecnicoId) {
-    const tecnicoVal = nuevoTecnicoId ? Number(nuevoTecnicoId) : null;
-    setTecnicoId(tecnicoVal);
-
-    try {
-      // Guardar el técnico seleccionado en la factura
-      await supabase
-        .from("facturas")
-        .update({ tecnico_id: tecnicoVal })
-        .eq("id", id);
-
-      // Si la factura YA está pagada, actualizamos también la tarea en extras de inmediato
-      const estaPagada = factura?.estado === "pagada" || factura?.estado_pago === "pagada";
-      if (estaPagada) {
-        if (inspeccion) {
-          await supabase.from("extras").update({ tecnico_id: tecnicoVal }).eq("id", inspeccion.id);
-          setInspeccion((prev) => ({ ...prev, tecnico_id: tecnicoVal }));
-        } else if (tecnicoVal) {
-          const { data: newExtra, error: insErr } = await supabase.from("extras").insert([
-            {
-              factura_id: factura.id,
-              contrato_id: factura.contrato_id || null,
-              cliente_id: factura.cliente_id || null,
-              vivienda_id: factura.vivienda_id || null,
-              tecnico_id: tecnicoVal,
-              descripcion: factura.descripcion || `Servicio ligado a factura #${factura.numero}`,
-              estado: "pendiente",
-              creado_en: new Date().toISOString(),
-            },
-          ]).select().single();
-          if (!insErr) setInspeccion(newExtra);
-        }
-      }
-
-      setMensaje("Técnico guardado correctamente.");
-    } catch (err) {
-      console.error("Error al actualizar técnico:", err);
-      setError("No se pudo actualizar el técnico.");
-    }
-  }
-
   async function marcarComoPagadaYEnviar() {
     if (!factura) return;
     setMensaje("");
     setError("");
 
     try {
-      // 1. Marcar factura como pagada
       const { error: errorFactura } = await supabase
         .from("facturas")
         .update({ estado: "pagada", estado_pago: "pagada" })
@@ -161,7 +115,6 @@ export default function VerFactura() {
 
       setFactura((prev) => ({ ...prev, estado: "pagada", estado_pago: "pagada" }));
 
-      // 2. Crear o activar la tarea en 'extras' para que le llegue al técnico ahora sí
       const tecnicoAAsignar = tecnicoId || factura.tecnico_id || null;
 
       if (!inspeccion) {
@@ -319,22 +272,6 @@ export default function VerFactura() {
               ✓ Factura pagada. La tarea está activa para el técnico seleccionado.
             </p>
           )}
-
-          <label style={estilos.etiqueta}>
-            Asignar / Cambiar Técnico Manualmente:
-          </label>
-          <select
-            value={tecnicoId}
-            onChange={(e) => handleCambiarTecnico(e.target.value)}
-            style={estilos.select}
-          >
-            <option value="" style={{ background: "#0b1320", color: "#fff" }}>-- Sin técnico asignado --</option>
-            {tecnicos.map((t) => (
-              <option key={t.id} value={t.id} style={{ background: "#0b1320", color: "#fff" }}>
-                {t.nombre || t.email || `Técnico #${t.id}`}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
     </Menu>
@@ -438,27 +375,6 @@ const estilos = {
     fontWeight: "900",
     textTransform: "uppercase"
   },
-  etiqueta: { 
-    display: "block", 
-    fontSize: "11px", 
-    color: COLOR_DORADO, 
-    marginBottom: "8px", 
-    textTransform: "uppercase", 
-    letterSpacing: "0.8px", 
-    fontWeight: "700" 
-  },
-  select: { 
-    backgroundColor: "rgba(11, 19, 32, 0.8)",
-    border: BORDE_DORADO_FINO,
-    borderRadius: "12px",
-    padding: "12px",
-    color: "#fff",
-    fontSize: "13px",
-    outline: "none",
-    boxSizing: "border-box",
-    width: "100%",
-    cursor: "pointer"
-  },
   botonAccion: {
     padding: "14px",
     borderRadius: "16px",
@@ -471,16 +387,4 @@ const estilos = {
     boxSizing: "border-box"
   },
   botonBorrar: {
-    padding: "14px 20px",
-    borderRadius: "16px",
-    border: "1px solid rgba(239, 68, 68, 0.5)",
-    background: "rgba(239, 68, 68, 0.15)",
-    color: "#ef4444",
-    cursor: "pointer",
-    fontWeight: "900",
-    fontSize: "13px",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-    boxSizing: "border-box"
-  }
-};
+    padding: "14px
