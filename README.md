@@ -5,8 +5,10 @@ Aplicación móvil y web desarrollada con **React + Vite + Capacitor**, diseñad
 ---
 
 ## 🚀 Tecnologías principales
-
-- React 18
+git p
+- React 18cwq
+- git push origin main
+- 
 - Vite 5
 - Capacitor 6
 - Android SDK
