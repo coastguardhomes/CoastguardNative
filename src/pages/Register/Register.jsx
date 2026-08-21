@@ -27,7 +27,7 @@ export default function Register() {
 
     setLoading(true);
 
-    // 1️⃣ Registrar usuario en Supabase
+    // 1️⃣ Registrar usuario en Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -56,34 +56,35 @@ export default function Register() {
       console.error("Error creando perfil:", perfilError);
     }
 
-    // ⭐ 3️⃣ Vincular cliente existente por email
-    const { error: clienteError } = await supabase
+    // ⭐ 3️⃣ Crear cliente si NO existe
+    const { data: clienteExistente } = await supabase
       .from("clientes")
-      .update({ usuario_id: user.id })
-      .eq("email", user.email);
+      .select("id")
+      .eq("email", user.email)
+      .single();
 
-    if (clienteError) {
-      console.error("Error vinculando cliente:", clienteError);
-    }
+    if (!clienteExistente) {
+      // Crear cliente nuevo
+      const { error: crearClienteError } = await supabase
+        .from("clientes")
+        .insert({
+          email: user.email,
+          usuario_id: user.id,
+        });
 
-    // ⭐ 4️⃣ Notificar al admin del nuevo técnico (CORREGIDO)
-    try {
-      await fetch(
-        "https://wjomazuymbayceilvfku.supabase.co/functions/v1/notificar_admin_nuevo_tecnico",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": supabase.supabaseKey,
-            "Authorization": `Bearer ${
-              supabase.auth.getSession().data.session.access_token
-            }`,
-          },
-          body: JSON.stringify({ tecnico_id: user.id }),
-        }
-      );
-    } catch (e) {
-      console.error("Error notificando admin:", e);
+      if (crearClienteError) {
+        console.error("Error creando cliente:", crearClienteError);
+      }
+    } else {
+      // ⭐ 4️⃣ Vincular cliente existente
+      const { error: vincularError } = await supabase
+        .from("clientes")
+        .update({ usuario_id: user.id })
+        .eq("email", user.email);
+
+      if (vincularError) {
+        console.error("Error vinculando cliente:", vincularError);
+      }
     }
 
     // 5️⃣ Mensaje final + redirección
