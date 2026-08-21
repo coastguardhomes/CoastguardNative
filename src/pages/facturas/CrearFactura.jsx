@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useNavigate } from "react-router-dom";
@@ -13,24 +13,53 @@ const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(22
 export default function CrearFactura() {
   const navigate = useNavigate();
 
+  const [clientes, setClientes] = useState([]);
+  const [viviendas, setViviendas] = useState([]);
+
   const [form, setForm] = useState({
     cliente_id: "",
     vivienda_id: "",
-    fecha: "",
+    fecha: new Date().toISOString().slice(0, 10),
     concepto: "",
     importe: "",
     estado: "pendiente",
-    es_extra: false,
   });
 
   const [mensaje, setMensaje] = useState("");
 
+  // Cargar clientes y viviendas reales
+  useEffect(() => {
+    cargarClientes();
+    cargarViviendas();
+  }, []);
+
+  async function cargarClientes() {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("id, nombre")
+      .order("nombre", { ascending: true });
+
+    if (!error) setClientes(data);
+  }
+
+  async function cargarViviendas() {
+    const { data, error } = await supabase
+      .from("viviendas")
+      .select("id, direccion, ciudad")
+      .order("id", { ascending: true });
+
+    if (!error) setViviendas(data);
+  }
+
   async function crearFactura() {
     setMensaje("");
 
-    // Validaciones mínimas
     if (!form.cliente_id) {
-      setMensaje("Selecciona el cliente.");
+      setMensaje("Selecciona un cliente.");
+      return;
+    }
+    if (!form.vivienda_id) {
+      setMensaje("Selecciona una vivienda.");
       return;
     }
     if (!form.importe) {
@@ -39,17 +68,17 @@ export default function CrearFactura() {
     }
 
     try {
-      // 1. Insertar la factura principal
+      // Crear factura
       const { data: facturaCreada, error } = await supabase
         .from("facturas")
         .insert([
           {
-            cliente_id: form.cliente_id || null,
-            vivienda_id: form.vivienda_id || null,
-            fecha: form.fecha || new Date().toISOString().slice(0, 10),
+            cliente_id: form.cliente_id,
+            vivienda_id: Number(form.vivienda_id),
+            fecha: form.fecha,
             descripcion: form.concepto,
-            total: form.importe,
-            estado: form.estado || "pendiente",
+            total: Number(form.importe),
+            estado: form.estado,
           },
         ])
         .select()
@@ -61,36 +90,17 @@ export default function CrearFactura() {
         return;
       }
 
-      // 2. Crear el extra/tarea
+      // Crear extra asociado
       const extraPayload = {
         factura_id: facturaCreada.id,
-        contrato_id: facturaCreada.contrato_id || null,
-        cliente_id: facturaCreada.cliente_id || null,
-        vivienda_id: facturaCreada.vivienda_id || null,
-        descripcion: form.concepto || "Servicio extra contratado",
+        cliente_id: facturaCreada.cliente_id,
+        vivienda_id: facturaCreada.vivienda_id,
+        descripcion: form.concepto || "Servicio extra",
         estado: "pendiente",
         creado_en: new Date().toISOString(),
       };
 
-      const { error: errorExtra } = await supabase.from("extras").insert([extraPayload]);
-
-      if (errorExtra) {
-        console.error("Error al crear el extra:", errorExtra);
-      }
-
-      // 3. Generación opcional de PDF por función
-      try {
-        const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
-          "factura-pdf",
-          { body: { facturaId: facturaCreada.id } }
-        );
-
-        if (!errorPdf && pdfData?.url) {
-          await supabase.from("facturas").update({ pdf_url: pdfData.url }).eq("id", facturaCreada.id);
-        }
-      } catch (e) {
-        console.error("Error generando PDF (no crítico):", e);
-      }
+      await supabase.from("extras").insert([extraPayload]);
 
       setMensaje("Factura creada correctamente");
       setTimeout(() => navigate("/facturas/lista"), 1200);
@@ -131,8 +141,12 @@ export default function CrearFactura() {
             style={{
               marginBottom: "16px",
               padding: "12px 16px",
-              background: mensaje.includes("correctamente") ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-              border: mensaje.includes("correctamente") ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(239, 68, 68, 0.4)",
+              background: mensaje.includes("correctamente")
+                ? "rgba(16, 185, 129, 0.15)"
+                : "rgba(239, 68, 68, 0.15)",
+              border: mensaje.includes("correctamente")
+                ? "1px solid rgba(16, 185, 129, 0.4)"
+                : "1px solid rgba(239, 68, 68, 0.4)",
               color: mensaje.includes("correctamente") ? "#34d399" : "#ef4444",
               borderRadius: "12px",
               fontWeight: "700",
@@ -154,110 +168,96 @@ export default function CrearFactura() {
             boxSizing: "border-box",
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
-            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
-              ID Cliente
-            </label>
-            <input
-              value={form.cliente_id}
-              onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
-              style={inputStyle}
-              placeholder="Introduce el ID del cliente..."
-            />
-          </div>
+          {/* SELECT CLIENTE */}
+          <label style={labelStyle}>Cliente</label>
+          <select
+            value={form.cliente_id}
+            onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="">Selecciona un cliente...</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
-            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
-              ID Vivienda
-            </label>
-            <input
-              value={form.vivienda_id}
-              onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
-              style={inputStyle}
-              placeholder="Introduce el ID de la vivienda..."
-            />
-          </div>
+          {/* SELECT VIVIENDA */}
+          <label style={labelStyle}>Vivienda</label>
+          <select
+            value={form.vivienda_id}
+            onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="">Selecciona una vivienda...</option>
+            {viviendas.map((v) => (
+              <option key={v.id} value={v.id}>
+                #{v.id} — {v.direccion} ({v.ciudad})
+              </option>
+            ))}
+          </select>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
-            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
-              Fecha
-            </label>
-            <input
-              type="date"
-              value={form.fecha}
-              onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-              style={inputStyle}
-            />
-          </div>
+          {/* FECHA */}
+          <label style={labelStyle}>Fecha</label>
+          <input
+            type="date"
+            value={form.fecha}
+            onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+            style={inputStyle}
+          />
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
-            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
-              Concepto
-            </label>
-            <input
-              value={form.concepto}
-              onChange={(e) => setForm({ ...form, concepto: e.target.value })}
-              style={inputStyle}
-              placeholder="Descripción del concepto o servicio..."
-            />
-          </div>
+          {/* CONCEPTO */}
+          <label style={labelStyle}>Concepto</label>
+          <input
+            value={form.concepto}
+            onChange={(e) => setForm({ ...form, concepto: e.target.value })}
+            style={inputStyle}
+            placeholder="Descripción del servicio..."
+          />
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "20px" }}>
-            <label style={{ fontSize: "12px", color: COLOR_DORADO, fontWeight: "700", textTransform: "uppercase" }}>
-              Importe
-            </label>
-            <input
-              type="number"
-              value={form.importe}
-              onChange={(e) => setForm({ ...form, importe: e.target.value })}
-              style={inputStyle}
-              placeholder="0.00"
-            />
-          </div>
+          {/* IMPORTE */}
+          <label style={labelStyle}>Importe</label>
+          <input
+            type="number"
+            value={form.importe}
+            onChange={(e) => setForm({ ...form, importe: e.target.value })}
+            style={inputStyle}
+            placeholder="0.00"
+          />
 
-          <div style={{ display: "flex", gap: "12px", flexDirection: "column" }}>
-            <button
-              onClick={() => crearFactura()}
-              style={{
-                padding: "14px",
-                background: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
-                color: "#fff",
-                borderRadius: "16px",
-                border: "1px solid rgba(16, 185, 129, 0.6)",
-                cursor: "pointer",
-                fontWeight: "900",
-                fontSize: "14px",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-                boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)",
-              }}
-            >
-              Crear Factura
-            </button>
-
-            <button
-              onClick={() => navigate("/facturas/lista")}
-              style={{
-                padding: "14px",
-                background: "linear-gradient(135deg, #ef4444 0%, #991b1b 100%)",
-                color: "#fff",
-                borderRadius: "16px",
-                border: "1px solid rgba(239, 68, 68, 0.6)",
-                cursor: "pointer",
-                fontWeight: "900",
-                fontSize: "14px",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-              }}
-            >
-              Cancelar
-            </button>
-          </div>
+          <button
+            onClick={crearFactura}
+            style={{
+              padding: "14px",
+              background: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+              color: "#fff",
+              borderRadius: "16px",
+              border: "1px solid rgba(16, 185, 129, 0.6)",
+              cursor: "pointer",
+              fontWeight: "900",
+              fontSize: "14px",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              marginTop: "20px",
+            }}
+          >
+            Crear Factura
+          </button>
         </div>
       </div>
     </Menu>
   );
 }
+
+const labelStyle = {
+  fontSize: "12px",
+  color: COLOR_DORADO,
+  fontWeight: "700",
+  textTransform: "uppercase",
+  marginTop: "14px",
+  marginBottom: "6px",
+};
 
 const inputStyle = {
   backgroundColor: "rgba(11, 19, 32, 0.8)",
