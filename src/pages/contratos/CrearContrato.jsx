@@ -37,7 +37,6 @@ export default function CrearContrato() {
   }, []);
 
   async function cargarDatos() {
-    // Añadido 'email' para que la función de correo disponga de él
     const { data: clientesData } = await supabase
       .from("clientes")
       .select("id, nombre, dni, cif, email");
@@ -218,24 +217,11 @@ export default function CrearContrato() {
       console.error("Error creando inspecciones:", e);
     }
 
-    // 6️⃣ Enviar email al cliente con los parámetros exigidos por la Edge Function
+    // 6️⃣ Enviar email al cliente usando únicamente contratoId (gestionado por la Edge Function)
     try {
-      const clienteSeleccionado = clientes.find((c) => String(c.id) === String(form.cliente_id));
-      const viviendaSeleccionada = viviendas.find((v) => String(v.id) === String(form.vivienda_id));
-
       await supabase.functions.invoke(
         "enviar-email",
-        { 
-          body: { 
-            email: clienteSeleccionado?.email,
-            pdfUrl: pdfUrl,
-            cliente_nombre: clienteSeleccionado?.nombre || "Estimado cliente",
-            direccion: viviendaSeleccionada?.direccion || "Dirección no especificada",
-            fecha: form.fecha_inicio,
-            tipo_servicio: form.modalidad,
-            observaciones: form.notas,
-          } 
-        }
+        { body: { contratoId } }
       );
     } catch (e) {
       console.error("Error enviando email:", e);
