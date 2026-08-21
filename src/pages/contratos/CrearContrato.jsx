@@ -37,9 +37,10 @@ export default function CrearContrato() {
   }, []);
 
   async function cargarDatos() {
+    // Añadido 'email' para que la función de correo disponga de él
     const { data: clientesData } = await supabase
       .from("clientes")
-      .select("id, nombre, dni, cif");
+      .select("id, nombre, dni, cif, email");
 
     const { data: viviendasData } = await supabase
       .from("viviendas")
@@ -81,7 +82,6 @@ export default function CrearContrato() {
     });
   }
 
-  // Auto-calcular fecha_fin opcionalmente si cambia fecha_inicio o duracion_meses y no se ha puesto manual
   function handleFechaInicioChange(e) {
     const nuevaFechaInicio = e.target.value;
     let nuevaFechaFin = form.fecha_fin;
@@ -218,11 +218,24 @@ export default function CrearContrato() {
       console.error("Error creando inspecciones:", e);
     }
 
-    // 6️⃣ Enviar email al cliente
+    // 6️⃣ Enviar email al cliente con los parámetros exigidos por la Edge Function
     try {
+      const clienteSeleccionado = clientes.find((c) => String(c.id) === String(form.cliente_id));
+      const viviendaSeleccionada = viviendas.find((v) => String(v.id) === String(form.vivienda_id));
+
       await supabase.functions.invoke(
         "enviar-email",
-        { body: { contratoId } }
+        { 
+          body: { 
+            email: clienteSeleccionado?.email,
+            pdfUrl: pdfUrl,
+            cliente_nombre: clienteSeleccionado?.nombre || "Estimado cliente",
+            direccion: viviendaSeleccionada?.direccion || "Dirección no especificada",
+            fecha: form.fecha_inicio,
+            tipo_servicio: form.modalidad,
+            observaciones: form.notas,
+          } 
+        }
       );
     } catch (e) {
       console.error("Error enviando email:", e);
