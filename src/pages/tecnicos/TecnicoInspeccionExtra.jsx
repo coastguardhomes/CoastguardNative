@@ -112,7 +112,7 @@ export default function TecnicoInspeccionExtra() {
           fotos,
           estado: 'finalizado'
         })
-        .eq('id', id);
+        .eq('id', extraData.id);   // ✔ FIX APLICADO
 
       if (updateError) throw updateError;
 
@@ -158,7 +158,6 @@ export default function TecnicoInspeccionExtra() {
         boxSizing: 'border-box'
       }}>
         
-        {/* ENCABEZADO */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -209,7 +208,6 @@ export default function TecnicoInspeccionExtra() {
           </div>
         )}
 
-        {/* Botones de Cámara y Galería */}
         <div style={{ display: 'flex', gap: '10px' }}>
           <label style={{
             flex: 1,
@@ -260,7 +258,6 @@ export default function TecnicoInspeccionExtra() {
           </label>
         </div>
 
-        {/* Vista previa de las fotos subidas */}
         {fotos.length > 0 && (
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {fotos.map((url, index) => (
@@ -368,5 +365,4 @@ export default function TecnicoInspeccionExtra() {
       </div>
     </div>
   );
-                      }
-          
+}
