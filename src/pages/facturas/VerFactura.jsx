@@ -55,7 +55,7 @@ export default function VerFactura() {
     }
   };
 
-  // Marcar como pagada y asegurar el envío al técnico
+  // Marcar como pagada y asegurar el envío al técnico (Usando UPSERT para evitar que falle)
   const marcarPagadaYEnviarTecnico = async () => {
     try {
       setSaving(true);
@@ -67,27 +67,16 @@ export default function VerFactura() {
 
       if (errFactura) throw errFactura;
 
-      // Comprobar si existe en la tabla extras, si no, crearlo
-      const { data: existingExtra } = await supabase
+      // Upsert en la tabla extras para asegurar que siempre exista el registro
+      const { error: errExtra } = await supabase
         .from('extras')
-        .select('id')
-        .eq('factura_id', id)
-        .maybeSingle();
+        .upsert({
+          factura_id: id,
+          descripcion: factura.descripcion || 'Trabajo extra',
+          estado: 'pendiente_tecnico'
+        }, { onConflict: 'factura_id' });
 
-      if (existingExtra) {
-        await supabase
-          .from('extras')
-          .update({ estado: 'pendiente_tecnico' })
-          .eq('factura_id', id);
-      } else {
-        await supabase
-          .from('extras')
-          .insert([{
-            factura_id: id,
-            descripcion: factura.descripcion || 'Trabajo extra',
-            estado: 'pendiente_tecnico'
-          }]);
-      }
+      if (errExtra) console.warn('Aviso en extras upsert:', errExtra);
 
       alert('¡Factura marcada como pagada y extra enviado al técnico con éxito!');
       cargarDatos();
@@ -160,10 +149,13 @@ export default function VerFactura() {
     );
   }
 
-  // COMPROBACIÓN ROBUSTA: Se considera finalizado si lo está en 'extras' O si la factura está en 'finalizado'
   const tecnicoFinalizado = 
     (extra && (extra.estado === 'finalizado' || extra.estado === 'revisado')) || 
     (factura.estado === 'finalizado');
+
+  // Obtener la descripción y las fotos combinando extra y factura de forma inteligente
+  const descripcionFinal = extra?.descripcion || factura.descripcion || 'Sin descripción';
+  const fotosFinales = (extra?.fotos && extra.fotos.length > 0) ? extra.fotos : (factura?.fotos || []);
 
   return (
     <div style={estilos.pagina}>
@@ -197,10 +189,6 @@ export default function VerFactura() {
               {Number(factura.total || 0).toFixed(2)} €
             </span>
           </div>
-          <div style={estilos.filaInfo}>
-            <span style={estilos.etiqueta}>Concepto inicial:</span>
-            <span style={estilos.valor}>{factura.descripcion || 'Sin descripción'}</span>
-          </div>
 
           {/* Botón de Pagada / Enviar a Técnico */}
           {factura.estado !== 'pagada' && factura.estado !== 'enviado_cliente' && (
@@ -233,22 +221,25 @@ export default function VerFactura() {
           </div>
 
           {tecnicoFinalizado ? (
-            <div style={{ background: 'rgba(11, 19, 32, 0.7)', padding: '12px', borderRadius: '10px', border: BORDE_DORADO_FINO, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <p style={{ fontSize: '12px', color: '#fff', margin: 0 }}>
-                <strong style={{ color: COLOR_DORADO }}>Comentarios del técnico:</strong>
-                <br />
-                {extra?.descripcion || factura.descripcion}
-              </p>
+            <div style={{ background: 'rgba(11, 19, 32, 0.7)', padding: '12px', borderRadius: '10px', border: BORDE_DORADO_FINO, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Detalles y Observaciones:</span>
+                <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0 0 0', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                  {descripcionFinal}
+                </p>
+              </div>
 
-              {extra?.fotos && extra.fotos.length > 0 && (
+              {fotosFinales.length > 0 ? (
                 <div>
                   <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Fotos de evidencia:</span>
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
-                    {extra.fotos.map((url, idx) => (
-                      <img key={idx} src={url} alt={`Evidencia ${idx}`} style={{ width: '55px', height: '55px', objectFit: 'cover', borderRadius: '8px', border: BORDE_DORADO_FINO }} />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {fotosFinales.map((url, idx) => (
+                      <img key={idx} src={url} alt={`Evidencia ${idx}`} style={{ width: '65px', height: '65px', objectFit: 'cover', borderRadius: '8px', border: BORDE_DORADO_FINO }} />
                     ))}
                   </div>
                 </div>
+              ) : (
+                <p style={{ fontSize: '11px', color: '#888', fontStyle: 'italic', margin: 0 }}>No se adjuntaron fotos en esta inspección.</p>
               )}
             </div>
           ) : (
