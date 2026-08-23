@@ -133,7 +133,7 @@ export default function CrearContrato() {
       return;
     }
 
-    // 0️⃣ Guardar o actualizar el DNI/NIE en la tabla de clientes
+    // Guardar DNI/NIE si se ha editado
     if (form.dni && form.cliente_id) {
       await supabase
         .from("clientes")
@@ -141,7 +141,7 @@ export default function CrearContrato() {
         .eq("id", form.cliente_id);
     }
 
-    // 1️⃣ Calcular fecha_fin definitiva si está vacía
+    // Calcular fecha_fin si falta
     let fechaFinFinal = form.fecha_fin;
     if (!fechaFinFinal && form.fecha_inicio) {
       const fechaInicioObj = new Date(form.fecha_inicio);
@@ -150,7 +150,7 @@ export default function CrearContrato() {
       fechaFinFinal = fechaInicioObj.toISOString().split("T")[0];
     }
 
-    // 2️⃣ Crear contrato inicial
+    // Crear contrato
     const { data, error } = await supabase
       .from("contratos")
       .insert([
@@ -180,7 +180,7 @@ export default function CrearContrato() {
 
     const contratoId = data[0].id;
 
-    // 3️⃣ Generar PDF
+    // Generar PDF legal
     let pdfUrl = null;
     try {
       const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
@@ -191,13 +191,13 @@ export default function CrearContrato() {
       if (pdfError) {
         console.error(pdfError);
       } else {
-        pdfUrl = pdfData.url;
+        pdfUrl = pdfData.pdf_url; // ← CORREGIDO
       }
     } catch (e) {
       console.error("Error generando PDF:", e);
     }
 
-    // 4️⃣ Guardar pdf_url actualizado
+    // Guardar pdf_url en la tabla contratos
     if (pdfUrl) {
       await supabase
         .from("contratos")
@@ -207,7 +207,7 @@ export default function CrearContrato() {
         .eq("id", contratoId);
     }
 
-    // 5️⃣ Crear inspecciones automáticas
+    // Crear inspecciones automáticas
     try {
       await supabase.functions.invoke(
         "crear_inspecciones_programadas",
@@ -217,7 +217,7 @@ export default function CrearContrato() {
       console.error("Error creando inspecciones:", e);
     }
 
-    // 6️⃣ Enviar email al cliente usando únicamente contratoId (gestionado por la Edge Function)
+    // Enviar email al cliente
     try {
       await supabase.functions.invoke(
         "enviar-email",
@@ -302,7 +302,7 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          {/* DNI / NIE (Editable) */}
+          {/* DNI */}
           <label>DNI / NIE:</label>
           <input
             type="text"
@@ -377,7 +377,7 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          {/* Fecha finalización */}
+          {/* Fecha fin */}
           <label>Fecha de finalización:</label>
           <input
             type="date"
