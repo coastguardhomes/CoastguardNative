@@ -32,8 +32,9 @@ export default function TecnicoInspeccionExtra() {
       setLoading(true);
       setError('');
       
+      // CAMBIO CLAVE: Consultamos la tabla 'facturas' donde está el registro real (ej: id 19)
       const { data, error: err } = await supabase
-        .from('extras')
+        .from('facturas')
         .select('*')
         .eq('id', id)
         .maybeSingle();
@@ -43,15 +44,13 @@ export default function TecnicoInspeccionExtra() {
       if (data) {
         setExtraData(data);
         setDescripcion(data.descripcion || '');
-        setMateriales(data.materiales || '');
-        setTiempo(data.tiempo_empleado || '');
-        setFotos(data.fotos || []);
+        // Si en el futuro añades columnas de materiales en facturas, puedes mapearlas aquí.
       } else {
-        setError('No se encontró el trabajo extra.');
+        setError('No se encontró el trabajo extra en facturas.');
       }
     } catch (err) {
       console.error('Error al cargar extra:', err);
-      setError('Error al cargar los datos del trabajo extra.');
+      setError('Error al cargar los datos de la factura/extra.');
     } finally {
       setLoading(false);
     }
@@ -99,20 +98,27 @@ export default function TecnicoInspeccionExtra() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // PROTECCIÓN ESTRICTA: Evita el error 'Cannot read properties of null (reading 'id')'
+    if (!extraData || !extraData.id) {
+      alert("Error: Los datos aún no se han cargado correctamente.");
+      return;
+    }
+
     try {
       setSaving(true);
       setError('');
 
+      // Unificamos la info de materiales y tiempo dentro de la descripción para que encaje perfectamente en la tabla facturas
+      const descripcionCompleta = `Trabajo: ${descripcion} | Materiales: ${materiales || 'Ninguno'} | Tiempo: ${tiempo || 'No especificado'}`;
+
       const { error: updateError } = await supabase
-        .from('extras')
+        .from('facturas') // Actualizamos la tabla correcta
         .update({
-          descripcion,
-          materiales,
-          tiempo_empleado: tiempo,
-          fotos,
-          estado: 'finalizado'
+          descripcion: descripcionCompleta,
+          estado: 'completado' // Estado que devuelve el flujo al admin
         })
-        .eq('id', extraData.id);   // ✔ FIX APLICADO
+        .eq('id', extraData.id);   // ID seguro (ej: 19)
 
       if (updateError) throw updateError;
 
@@ -166,6 +172,7 @@ export default function TecnicoInspeccionExtra() {
           paddingBottom: '14px'
         }}>
           <button 
+            type="button"
             onClick={() => navigate('/tecnico')} 
             style={{
               background: 'transparent',
@@ -200,10 +207,10 @@ export default function TecnicoInspeccionExtra() {
         {extraData && (
           <div style={{ backgroundColor: 'rgba(11, 19, 32, 0.9)', padding: '14px', borderRadius: '12px', border: BORDE_DORADO_FINO }}>
             <p style={{ fontSize: '12px', margin: '4px 0', color: '#ccc' }}>
-              <strong style={{ color: COLOR_DORADO }}>Ref ID:</strong> #{String(extraData.id).substring(0, 8)}
+              <strong style={{ color: COLOR_DORADO }}>Factura / Ref:</strong> {extraData.numero || `#${extraData.id}`}
             </p>
             <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: '#ccc' }}>
-              <strong style={{ color: COLOR_DORADO }}>Detalle:</strong> {extraData.descripcion || 'Sin descripción previa'}
+              <strong style={{ color: COLOR_DORADO }}>Concepto inicial:</strong> {extraData.descripcion || 'Sin descripción previa'}
             </p>
           </div>
         )}
@@ -342,20 +349,20 @@ export default function TecnicoInspeccionExtra() {
 
           <button 
             type="submit" 
-            disabled={saving}
+            disabled={saving || !extraData}
             style={{
-              background: saving ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
-              color: saving ? '#64748b' : '#fff',
-              border: saving ? BORDE_DORADO_FINO : '1px solid rgba(16, 185, 129, 0.6)',
+              background: (saving || !extraData) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+              color: (saving || !extraData) ? '#64748b' : '#fff',
+              border: (saving || !extraData) ? BORDE_DORADO_FINO : '1px solid rgba(16, 185, 129, 0.6)',
               padding: '14px',
               borderRadius: '16px',
               fontSize: '14px',
               fontWeight: '900',
-              cursor: saving ? 'not-allowed' : 'pointer',
+              cursor: (saving || !extraData) ? 'not-allowed' : 'pointer',
               marginTop: '10px',
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
-              boxShadow: saving ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.3)',
+              boxShadow: (saving || !extraData) ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.3)',
               transition: 'all 0.2s ease'
             }}
           >
