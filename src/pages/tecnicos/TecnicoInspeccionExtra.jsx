@@ -32,7 +32,6 @@ export default function TecnicoInspeccionExtra() {
       setLoading(true);
       setError('');
       
-      // CAMBIO CLAVE: Consultamos la tabla 'facturas' donde está el registro real (ej: id 19)
       const { data, error: err } = await supabase
         .from('facturas')
         .select('*')
@@ -44,7 +43,6 @@ export default function TecnicoInspeccionExtra() {
       if (data) {
         setExtraData(data);
         setDescripcion(data.descripcion || '');
-        // Si en el futuro añades columnas de materiales en facturas, puedes mapearlas aquí.
       } else {
         setError('No se encontró el trabajo extra en facturas.');
       }
@@ -99,7 +97,6 @@ export default function TecnicoInspeccionExtra() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // PROTECCIÓN ESTRICTA: Evita el error 'Cannot read properties of null (reading 'id')'
     if (!extraData || !extraData.id) {
       alert("Error: Los datos aún no se han cargado correctamente.");
       return;
@@ -109,16 +106,15 @@ export default function TecnicoInspeccionExtra() {
       setSaving(true);
       setError('');
 
-      // Unificamos la info de materiales y tiempo dentro de la descripción para que encaje perfectamente en la tabla facturas
       const descripcionCompleta = `Trabajo: ${descripcion} | Materiales: ${materiales || 'Ninguno'} | Tiempo: ${tiempo || 'No especificado'}`;
 
       const { error: updateError } = await supabase
-        .from('facturas') // Actualizamos la tabla correcta
+        .from('facturas')
         .update({
           descripcion: descripcionCompleta,
-          estado: 'completado' // Estado que devuelve el flujo al admin
+          estado: 'finalizado' // 👈 CAMBIADO A 'finalizado' PARA QUE EL ADMIN LO RECONOZCA
         })
-        .eq('id', extraData.id);   // ID seguro (ej: 19)
+        .eq('id', extraData.id);
 
       if (updateError) throw updateError;
 
