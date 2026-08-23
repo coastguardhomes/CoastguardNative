@@ -133,7 +133,104 @@ export default function TecnicoDashboard() {
         gap: '16px',
         boxShadow: SOMBRA_LUXURY,
         boxSizing: 'border-box'
-      }}>{/* AVISO / BOTÓN DE EXTRAS PENDIENTES */}
+      }}>
+
+        {/* ENCABEZADO */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          borderBottom: BORDE_DORADO_FINO,
+          paddingBottom: '14px'
+        }}>
+          <div>
+            <div style={{ color: COLOR_DORADO, fontSize: '11px', fontWeight: '900', marginBottom: '4px', letterSpacing: '0.5px' }}>
+              <span>⛵</span> COASTGUARD <span style={{ color: '#888', fontWeight: 'normal' }}>| TÉCNICO</span>
+            </div>
+            <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '20px', fontWeight: '900', margin: 0, textTransform: 'uppercase' }}>
+              Panel de Operaciones
+            </h2>
+          </div>
+          <button 
+            onClick={handleLogout}
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              color: '#ef4444',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              fontWeight: '700',
+              cursor: 'pointer'
+            }}
+          >
+            🚪 Salir
+          </button>
+        </div>
+
+        <div style={{
+          background: 'rgba(11, 19, 32, 0.8)',
+          border: BORDE_DORADO_FINO,
+          borderRadius: '10px',
+          padding: '10px 14px',
+          fontSize: '11px',
+          color: '#fff'
+        }}>
+          <span style={{ color: COLOR_DORADO, fontWeight: 'bold' }}>Estado de Red:</span> {debugLog}
+        </div>
+
+        {/* 3 TARJETAS SUPERIORES */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+          <div style={{
+            background: FONDO_TARJETA,
+            border: BORDE_DORADO_FINO,
+            borderRadius: '12px',
+            padding: '12px 6px',
+            textAlign: 'center',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+          }}>
+            <div style={{ fontSize: '18px', marginBottom: '4px' }}>📋</div>
+            <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>
+              {stats.inspeccionesSemana}
+              <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>pendientes</span>
+            </div>
+            <div style={{ fontSize: '10px', color: COLOR_DORADO, marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Inspecciones</div>
+          </div>
+
+          <div style={{
+            background: 'linear-gradient(145deg, #1f0b0b 0%, #0d070a 100%)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            borderRadius: '12px',
+            padding: '12px 6px',
+            textAlign: 'center',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+          }}>
+            <div style={{ fontSize: '18px', marginBottom: '4px' }}>⚠️</div>
+            <div style={{ fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>
+              {stats.alertasDetectadas}
+              <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>incidencias</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Alertas</div>
+          </div>
+
+          <div style={{
+            background: FONDO_TARJETA,
+            border: BORDE_DORADO_FINO,
+            borderRadius: '12px',
+            padding: '12px 6px',
+            textAlign: 'center',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+          }}>
+            <div style={{ fontSize: '18px', marginBottom: '4px' }}>🏠</div>
+            <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>
+              {stats.viviendasAsignadas}
+              <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>registradas</span>
+            </div>
+            <div style={{ fontSize: '10px', color: COLOR_DORADO, marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Viviendas</div>
+          </div>
+        </div>
+
+        {/* AVISO / BOTÓN DE EXTRAS PENDIENTES */}
         {stats.extrasPendientesCount > 0 ? (
           <div style={{
             backgroundColor: 'rgba(56, 189, 248, 0.1)',
@@ -341,40 +438,3 @@ export default function TecnicoDashboard() {
                       fontSize: '12px'
                     }}>
                       Inspección #{String(insp.id).substring(0, 8)}
-                    </div>
-                    <div style={{
-                      color: '#aaa',
-                      fontSize: '11px',
-                      marginTop: '4px'
-                    }}>
-                      📍 {insp.direccion}
-                    </div>
-                  </div>
-
-                  <button
-                    style={{
-                      backgroundColor: '#10b981',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      fontSize: '11px',
-                      fontWeight: '900',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap'
-                    }}
-                    onClick={() => navigate(`/tecnico/inspeccion/${insp.id}/checklist`)}
-                  >
-                    Checklist →
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
-}
-        
