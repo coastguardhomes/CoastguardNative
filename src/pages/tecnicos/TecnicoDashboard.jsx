@@ -31,7 +31,7 @@ export default function DashboardTecnico() {
       setLoading(true);
       setDebugLog('Conectando a Supabase...');
 
-      // 1. Cargar inspecciones pendientes normales
+      // 1. INSPECCIONES NORMALES
       const { data: inspData, error: inspError } = await supabase
         .from('inspecciones')
         .select('*')
@@ -66,11 +66,12 @@ export default function DashboardTecnico() {
 
       setInspeccionesDiarias(inspeccionesLista);
 
-      // 2. Cargar EXTRAS pendientes asignados (Filtro positivo robusto)
+      // ⭐ 2. EXTRAS PENDIENTES — FIX APLICADO
       const { data: extrasData, error: extrasError } = await supabase
         .from('extras')
         .select('*')
-        .in('estado', ['pendiente', 'asignado', 'en_proceso'])
+        .not('factura_id', 'is', null)   // ⭐ SOLO extras reales con factura
+        .in('estado', ['pendiente', 'asignado', 'en_proceso'])  // ⭐ NO mostrar finalizados
         .order('id', { ascending: false });
 
       if (extrasError) {
@@ -80,7 +81,7 @@ export default function DashboardTecnico() {
       const listaExtras = extrasData || [];
       setExtrasPendientes(listaExtras);
 
-      // 3. Contar viviendas e incidencias
+      // 3. CONTADORES
       const { count: countViviendas } = await supabase
         .from('viviendas')
         .select('*', { count: 'exact', head: true });
@@ -358,22 +359,4 @@ export default function DashboardTecnico() {
                       border: 'none',
                       padding: '8px 12px',
                       borderRadius: '8px',
-                      fontSize: '11px',
-                      fontWeight: '900',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap'
-                    }}
-                    onClick={() => navigate(`/tecnico/inspeccion/${insp.id}/checklist`)}
-                  >
-                    Checklist →
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
-}
+                      fontSize: '11
