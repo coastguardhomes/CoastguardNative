@@ -57,11 +57,13 @@ export default function VerFactura() {
         setCliente(c || null);
       }
 
+      // Buscar si ya existe un extra asociado a esta factura
       const { data: dataExtra } = await supabase
         .from("extras")
         .select("*")
         .eq("factura_id", dataFactura.id)
         .maybeSingle();
+
       setInspeccion(dataExtra || null);
 
     } catch (e) {
@@ -101,6 +103,7 @@ export default function VerFactura() {
     setError("");
 
     try {
+      // Marcar factura como pagada
       const { error: errorFactura } = await supabase
         .from("facturas")
         .update({ estado: "pagada", estado_pago: "pagada" })
@@ -110,25 +113,13 @@ export default function VerFactura() {
 
       setFactura((prev) => ({ ...prev, estado: "pagada", estado_pago: "pagada" }));
 
-      if (!inspeccion) {
-        const { data: newExtra, error: insError } = await supabase.from("extras").insert([
-          {
-            factura_id: factura.id,
-            contrato_id: factura.contrato_id || null,
-            cliente_id: factura.cliente_id || null,
-            vivienda_id: factura.vivienda_id || null,
-            tecnico_id: factura.tecnico_id || null,
-            descripcion: factura.descripcion || `Servicio ligado a factura #${factura.numero}`,
-            estado: "pendiente",
-            creado_en: new Date().toISOString(),
-          },
-        ]).select().single();
-
-        if (insError) throw new Error(insError.message);
-        setInspeccion(newExtra || null);
+      // NO crear extras aquí. Solo usar el existente.
+      if (inspeccion) {
+        setMensaje("¡Factura marcada como pagada y tarea enviada al técnico con éxito!");
+      } else {
+        setMensaje("Factura marcada como pagada. Crea un extra desde la pantalla correspondiente.");
       }
 
-      setMensaje("¡Factura marcada como pagada y tarea enviada al técnico con éxito!");
     } catch (e) {
       console.error("Error en marcarComoPagadaYEnviar:", e);
       setError(`Error procesando la petición: ${e.message}`);
@@ -381,6 +372,3 @@ const estilos = {
     fontSize: "13px",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
-    boxSizing: "border-box"
-  }
-};
