@@ -133,9 +133,7 @@ export default function TecnicoDashboard() {
         gap: '16px',
         boxShadow: SOMBRA_LUXURY,
         boxSizing: 'border-box'
-      }}>
-
-        {/* AVISO / BOTÓN DE EXTRAS PENDIENTES */}
+      }}>{/* AVISO / BOTÓN DE EXTRAS PENDIENTES */}
         {stats.extrasPendientesCount > 0 ? (
           <div style={{
             backgroundColor: 'rgba(56, 189, 248, 0.1)',
@@ -379,3 +377,4 @@ export default function TecnicoDashboard() {
     </div>
   );
 }
+        
