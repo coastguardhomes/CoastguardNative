@@ -77,7 +77,7 @@ export default function Facturas() {
             {facturas.map((f) => (
               <Link
                 key={f.id}
-                to={`/facturas/${f.id}`}
+                to={`/facturas/ver/${f.id}`}
                 style={{ textDecoration: "none" }}
               >
                 <div style={estilos.tarjeta}>
