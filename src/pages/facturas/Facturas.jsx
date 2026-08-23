@@ -10,18 +10,6 @@ const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
 const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
 
-/**
- * Listado de facturas.
- *
- * Dos fallos que tenía esta pantalla:
- *   · Filtraba por `cliente_id = 2` escrito a mano, así que sólo se veían las
- *     facturas de ese cliente y faltaban las demás. La política RLS
- *     facturas_select ya devuelve lo que corresponde a cada rol (el admin
- *     todas, el cliente las suyas), por lo que no hace falta filtrar aquí.
- *   · El contenedor era blanco (`background: #fff`) pero global.css fija
- *     `color: #ffffff` en el body: el texto salía blanco sobre blanco y no se
- *     leía nada. Ahora usa el tema oscuro del resto de la app.
- */
 export default function Facturas() {
   const navigate = useNavigate();
 
@@ -89,7 +77,7 @@ export default function Facturas() {
             {facturas.map((f) => (
               <Link
                 key={f.id}
-                to={`/facturas/ver/${f.id}`}
+                to={`/facturas/${f.id}`}
                 style={{ textDecoration: "none" }}
               >
                 <div style={estilos.tarjeta}>
@@ -98,9 +86,9 @@ export default function Facturas() {
                     <span
                       style={{
                         ...estilos.estado,
-                        color: f.estado === "pagada" ? "#34d399" : COLOR_DORADO,
+                        color: f.estado === "pagada" || f.estado === "finalizado" ? "#34d399" : COLOR_DORADO,
                         borderColor:
-                          f.estado === "pagada"
+                          f.estado === "pagada" || f.estado === "finalizado"
                             ? "rgba(52, 211, 153, 0.4)"
                             : "rgba(224, 176, 52, 0.4)",
                       }}
