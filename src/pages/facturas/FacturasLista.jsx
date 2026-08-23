@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
 
@@ -13,6 +14,7 @@ export default function FacturasLista() {
   const [facturas, setFacturas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pdfCargandoId, setPdfCargandoId] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function cargarFacturas() {
@@ -37,7 +39,8 @@ export default function FacturasLista() {
     cargarFacturas();
   }, []);
 
-  const handleVerPDF = async (facturaId) => {
+  const handleVerPDF = async (facturaId, e) => {
+    e.stopPropagation(); // Evita que se abra la tarjeta al pulsar el PDF
     setPdfCargandoId(facturaId);
     try {
       const { data, error } = await supabase.functions.invoke("factura-pdf", {
@@ -135,6 +138,7 @@ export default function FacturasLista() {
           {facturas.map((f) => (
             <div
               key={f.id}
+              onClick={() => navigate(`/facturas/${f.id}`)}
               style={{
                 background: FONDO_TARJETA,
                 border: BORDE_DORADO_FINO,
@@ -144,6 +148,8 @@ export default function FacturasLista() {
                 boxSizing: "border-box",
                 fontSize: "13px",
                 lineHeight: "1.6",
+                cursor: "pointer",
+                transition: "transform 0.1s ease",
               }}
             >
               <p style={{ margin: "0 0 6px 0" }}>
@@ -156,8 +162,9 @@ export default function FacturasLista() {
                 <strong style={{ color: COLOR_DORADO }}>Estado:</strong>{" "}
                 <span
                   style={{
-                    color: f.estado === "pagada" ? "#34d399" : COLOR_DORADO,
+                    color: f.estado === "pagada" || f.estado === "finalizado" ? "#34d399" : COLOR_DORADO,
                     fontWeight: "700",
+                    textTransform: "uppercase"
                   }}
                 >
                   {f.estado}
@@ -168,7 +175,7 @@ export default function FacturasLista() {
               </p>
 
               <button
-                onClick={() => handleVerPDF(f.id)}
+                onClick={(e) => handleVerPDF(f.id, e)}
                 disabled={pdfCargandoId === f.id}
                 style={{
                   width: "100%",
