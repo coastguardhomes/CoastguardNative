@@ -108,15 +108,30 @@ export default function TecnicoInspeccionExtra() {
 
       const descripcionCompleta = `Trabajo: ${descripcion} | Materiales: ${materiales || 'Ninguno'} | Tiempo: ${tiempo || 'No especificado'}`;
 
+      // 1. Actualizar la tabla facturas (como ya lo tenías)
       const { error: updateError } = await supabase
         .from('facturas')
         .update({
           descripcion: descripcionCompleta,
-          estado: 'finalizado' // 👈 CAMBIADO A 'finalizado' PARA QUE EL ADMIN LO RECONOZCA
+          estado: 'finalizado'
         })
         .eq('id', extraData.id);
 
       if (updateError) throw updateError;
+
+      // 2. Guardar también en la tabla 'extras' asegurando el factura_id y las fotos
+      const { error: extraError } = await supabase
+        .from('extras')
+        .upsert({
+          factura_id: extraData.id,
+          descripcion: descripcionCompleta,
+          materiales: materiales || '',
+          tiempo_empleado: tiempo || '',
+          fotos: fotos,
+          estado: 'finalizado'
+        }, { onConflict: 'factura_id' });
+
+      if (extraError) throw extraError;
 
       alert('Inspección de extra enviada al admin con éxito.');
       navigate('/tecnico');
