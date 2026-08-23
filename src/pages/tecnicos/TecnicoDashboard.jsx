@@ -438,3 +438,38 @@ export default function TecnicoDashboard() {
                       fontSize: '12px'
                     }}>
                       Inspección #{String(insp.id).substring(0, 8)}
+                    <div style={{
+                      color: '#aaa',
+                      fontSize: '11px',
+                      marginTop: '4px'
+                    }}>
+                      📍 {insp.direccion}
+                    </div>
+                  </div>
+
+                  <button
+                    style={{
+                      backgroundColor: '#10b981',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '11px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onClick={() => navigate(`/tecnico/inspeccion/${insp.id}/checklist`)}
+                  >
+                    Checklist →
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+}
