@@ -68,15 +68,15 @@ export default function TecnicoDashboard() {
 
       setInspeccionesDiarias(inspeccionesLista);
 
-      // EXTRAS (Corregido: sin bloqueo de factura_id y abarcando todos los estados activos/pagados)
+      // EXTRAS / FACTURAS (Corregido: consultando la tabla 'facturas' que es donde el admin genera los extras)
       const { data: extrasData, error: extrasError } = await supabase
-        .from('extras')
+        .from('facturas')
         .select('*')
-        .in('estado', ['pendiente', 'asignado', 'en_proceso', 'pagada', 'activa', 'pagado'])
+        .in('estado', ['pagada', 'pagado', 'activa', 'en_proceso', 'pendiente'])
         .order('id', { ascending: false });
 
       if (extrasError) {
-        setDebugLog("Error extras: " + extrasError.message);
+        setDebugLog("Error facturas/extras: " + extrasError.message);
         console.error(extrasError);
       }
 
@@ -284,10 +284,10 @@ export default function TecnicoDashboard() {
                 }}>
                   <div>
                     <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '12px' }}>
-                      Extra #{String(extra.id).substring(0, 8)}
+                      Factura #{extra.codigo || String(extra.id).substring(0, 8)}
                     </div>
                     <div style={{ color: '#aaa', fontSize: '11px', marginTop: '4px' }}>
-                      📝 {extra.descripcion || extra.concepto || 'Sin descripción'}
+                      📝 {extra.concepto || extra.descripcion || 'Sin concepto'}
                     </div>
                   </div>
 
@@ -373,7 +373,7 @@ export default function TecnicoDashboard() {
                       color: '#fff',
                       border: 'none',
                       padding: '8px 12px',
-                    borderRadius: '8px',
+                      borderRadius: '8px',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: 'pointer'
