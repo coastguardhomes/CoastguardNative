@@ -55,12 +55,11 @@ export default function VerFactura() {
     }
   };
 
-  // 1. Marcar como pagada y AUTOMÁTICAMENTE mandar el extra al técnico
+  // Marcar como pagada y asegurar el envío al técnico
   const marcarPagadaYEnviarTecnico = async () => {
     try {
       setSaving(true);
 
-      // Actualizar factura a pagada
       const { error: errFactura } = await supabase
         .from('facturas')
         .update({ estado: 'pagada' })
@@ -68,35 +67,39 @@ export default function VerFactura() {
 
       if (errFactura) throw errFactura;
 
-      // Crear o actualizar el extra a pendiente_tecnico automáticamente
-      if (extra) {
-        const { error: errExtra } = await supabase
+      // Comprobar si existe en la tabla extras, si no, crearlo
+      const { data: existingExtra } = await supabase
+        .from('extras')
+        .select('id')
+        .eq('factura_id', id)
+        .maybeSingle();
+
+      if (existingExtra) {
+        await supabase
           .from('extras')
           .update({ estado: 'pendiente_tecnico' })
-          .eq('id', extra.id);
-        if (errExtra) throw errExtra;
+          .eq('factura_id', id);
       } else {
-        const { error: errExtra } = await supabase
+        await supabase
           .from('extras')
           .insert([{
             factura_id: id,
             descripcion: factura.descripcion || 'Trabajo extra',
             estado: 'pendiente_tecnico'
           }]);
-        if (errExtra) throw errExtra;
       }
 
-      alert('¡Factura marcada como pagada y extra enviado al técnico automáticamente!');
+      alert('¡Factura marcada como pagada y extra enviado al técnico con éxito!');
       cargarDatos();
     } catch (err) {
-      console.error('Error al procesar pago y envío:', err);
+      console.error('Error al procesar:', err);
       alert('Error: ' + err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  // 2. Enviar la factura / extra al cliente final
+  // Enviar al cliente final
   const enviarAlCliente = async () => {
     try {
       setSaving(true);
@@ -117,7 +120,7 @@ export default function VerFactura() {
     }
   };
 
-  // 3. Borrar factura y su extra asociado
+  // Borrar factura y extra
   const borrarFacturaExtra = async () => {
     if (!window.confirm('¿Estás seguro de que deseas eliminar esta factura y su trabajo extra asociado?')) {
       return;
@@ -125,27 +128,15 @@ export default function VerFactura() {
 
     try {
       setSaving(true);
-
-      // Borrar extra si existe
-      if (extra) {
-        await supabase
-          .from('extras')
-          .delete()
-          .eq('factura_id', id);
-      }
-
-      // Borrar factura
-      const { error: err } = await supabase
-        .from('facturas')
-        .delete()
-        .eq('id', id);
+      await supabase.from('extras').delete().eq('factura_id', id);
+      const { error: err } = await supabase.from('facturas').delete().eq('id', id);
 
       if (err) throw err;
 
       alert('Factura eliminada correctamente.');
       navigate('/facturas');
     } catch (err) {
-      console.error('Error al borrar factura:', err);
+      console.error('Error al borrar:', err);
       alert('No se pudo borrar la factura.');
     } finally {
       setSaving(false);
@@ -169,7 +160,10 @@ export default function VerFactura() {
     );
   }
 
-  const tecnicoFinalizado = extra && (extra.estado === 'finalizado' || extra.estado === 'revisado');
+  // COMPROBACIÓN ROBUSTA: Se considera finalizado si lo está en 'extras' O si la factura está en 'finalizado'
+  const tecnicoFinalizado = 
+    (extra && (extra.estado === 'finalizado' || extra.estado === 'revisado')) || 
+    (factura.estado === 'finalizado');
 
   return (
     <div style={estilos.pagina}>
@@ -208,7 +202,7 @@ export default function VerFactura() {
             <span style={estilos.valor}>{factura.descripcion || 'Sin descripción'}</span>
           </div>
 
-          {/* Botón de Pagada (Dispara el envío automático al técnico) */}
+          {/* Botón de Pagada / Enviar a Técnico */}
           {factura.estado !== 'pagada' && factura.estado !== 'enviado_cliente' && (
             <div style={{ marginTop: '8px' }}>
               <button 
@@ -228,45 +222,39 @@ export default function VerFactura() {
             Inspección / Trabajo del Técnico
           </h3>
 
-          {!extra ? (
-            <p style={{ fontSize: '12px', color: '#888' }}>No hay registros de extras asociados a esta factura todavía.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={estilos.filaInfo}>
-                <span style={estilos.etiqueta}>Estado Técnico:</span>
-                <span style={{ 
-                  ...estilos.valorEstado, 
-                  color: tecnicoFinalizado ? '#34d399' : '#f59e0b' 
-                }}>
-                  {tecnicoFinalizado ? 'Finalizado / Revisado' : extra.estado}
-                </span>
-              </div>
+          <div style={estilos.filaInfo}>
+            <span style={estilos.etiqueta}>Estado Técnico:</span>
+            <span style={{ 
+              ...estilos.valorEstado, 
+              color: tecnicoFinalizado ? '#34d399' : '#f59e0b' 
+            }}>
+              {tecnicoFinalizado ? 'Finalizado / Revisado' : (extra?.estado || 'Pendiente')}
+            </span>
+          </div>
 
-              {tecnicoFinalizado ? (
-                <div style={{ background: 'rgba(11, 19, 32, 0.7)', padding: '12px', borderRadius: '10px', border: BORDE_DORADO_FINO, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <p style={{ fontSize: '12px', color: '#fff', margin: 0 }}>
-                    <strong style={{ color: COLOR_DORADO }}>Comentarios del técnico:</strong>
-                    <br />
-                    {extra.descripcion}
-                  </p>
+          {tecnicoFinalizado ? (
+            <div style={{ background: 'rgba(11, 19, 32, 0.7)', padding: '12px', borderRadius: '10px', border: BORDE_DORADO_FINO, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <p style={{ fontSize: '12px', color: '#fff', margin: 0 }}>
+                <strong style={{ color: COLOR_DORADO }}>Comentarios del técnico:</strong>
+                <br />
+                {extra?.descripcion || factura.descripcion}
+              </p>
 
-                  {extra.fotos && extra.fotos.length > 0 && (
-                    <div>
-                      <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Fotos de evidencia:</span>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
-                        {extra.fotos.map((url, idx) => (
-                          <img key={idx} src={url} alt={`Evidencia ${idx}`} style={{ width: '55px', height: '55px', objectFit: 'cover', borderRadius: '8px', border: BORDE_DORADO_FINO }} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
+              {extra?.fotos && extra.fotos.length > 0 && (
+                <div>
+                  <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Fotos de evidencia:</span>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {extra.fotos.map((url, idx) => (
+                      <img key={idx} src={url} alt={`Evidencia ${idx}`} style={{ width: '55px', height: '55px', objectFit: 'cover', borderRadius: '8px', border: BORDE_DORADO_FINO }} />
+                    ))}
+                  </div>
                 </div>
-              ) : (
-                <p style={{ fontSize: '12px', color: '#f59e0b', margin: 0 }}>
-                  ⏳ El técnico aún está realizando la inspección o no la ha enviado.
-                </p>
               )}
             </div>
+          ) : (
+            <p style={{ fontSize: '12px', color: '#f59e0b', margin: 0 }}>
+              ⏳ El técnico aún está realizando la inspección o no la ha enviado.
+            </p>
           )}
         </div>
 
