@@ -68,12 +68,12 @@ export default function TecnicoDashboard() {
 
       setInspeccionesDiarias(inspeccionesLista);
 
-      // EXTRAS
+      // EXTRAS (Actualizado para incluir 'pagada' y 'activa' para que lleguen los nuevos)
       const { data: extrasData, error: extrasError } = await supabase
         .from('extras')
         .select('*')
         .not('factura_id', 'is', null)
-        .in('estado', ['pendiente','asignado','en_proceso'])
+        .in('estado', ['pendiente', 'asignado', 'en_proceso', 'pagada', 'activa'])
         .order('id', { ascending: false });
 
       if (extrasError) {
