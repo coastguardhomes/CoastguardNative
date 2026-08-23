@@ -37,7 +37,7 @@ export default function VerFactura() {
       if (facturaErr) throw facturaErr;
       setFactura(facturaData);
 
-      // 2. Cargar el extra asociado (si lo hay)
+      // 2. Cargar el extra asociado
       const { data: extraData, error: extraErr } = await supabase
         .from('extras')
         .select('*')
@@ -48,67 +48,55 @@ export default function VerFactura() {
         setExtra(extraData);
       }
     } catch (err) {
-      console.error('Error al cargar detalles:', err);
-      setError('No se pudieron cargar los datos de la factura o el extra.');
+      console.error('Error al cargar datos:', err);
+      setError('No se pudieron cargar los datos de la factura.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Cambiar estado de la factura (ej: pagada) y enviar/gestionar el extra al técnico
-  const actualizarEstadoFactura = async (nuevoEstado) => {
+  // 1. Marcar como pagada y AUTOMÁTICAMENTE mandar el extra al técnico
+  const marcarPagadaYEnviarTecnico = async () => {
     try {
       setSaving(true);
-      const { error: err } = await supabase
+
+      // Actualizar factura a pagada
+      const { error: errFactura } = await supabase
         .from('facturas')
-        .update({ estado: nuevoEstado })
+        .update({ estado: 'pagada' })
         .eq('id', id);
 
-      if (err) throw err;
-      setFactura(prev => ({ ...prev, estado: nuevoEstado }));
-      alert('Estado de la factura actualizado correctamente.');
-    } catch (err) {
-      console.error('Error al actualizar factura:', err);
-      alert('Error al actualizar la factura.');
-    } finally {
-      setSaving(false);
-    }
-  };
+      if (errFactura) throw errFactura;
 
-  // Enviar el extra al técnico (crea o marca el registro en la tabla extras)
-  const enviarExtraATecnico = async () => {
-    try {
-      setSaving(true);
+      // Crear o actualizar el extra a pendiente_tecnico automáticamente
       if (extra) {
-        // Actualizar existente
-        const { error: err } = await supabase
+        const { error: errExtra } = await supabase
           .from('extras')
           .update({ estado: 'pendiente_tecnico' })
           .eq('id', extra.id);
-        if (err) throw err;
+        if (errExtra) throw errExtra;
       } else {
-        // Crear nuevo registro en tabla extras vinculado a esta factura
-        const { error: err } = await supabase
+        const { error: errExtra } = await supabase
           .from('extras')
           .insert([{
             factura_id: id,
             descripcion: factura.descripcion || 'Trabajo extra',
             estado: 'pendiente_tecnico'
           }]);
-        if (err) throw err;
+        if (errExtra) throw errExtra;
       }
-      
-      alert('Trabajo extra enviado al técnico con éxito.');
+
+      alert('¡Factura marcada como pagada y extra enviado al técnico automáticamente!');
       cargarDatos();
     } catch (err) {
-      console.error('Error al enviar extra:', err);
-      alert('No se pudo enviar el extra al técnico.');
+      console.error('Error al procesar pago y envío:', err);
+      alert('Error: ' + err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  // Mandar factura / extra al cliente final
+  // 2. Enviar la factura / extra al cliente final
   const enviarAlCliente = async () => {
     try {
       setSaving(true);
@@ -118,8 +106,9 @@ export default function VerFactura() {
         .eq('id', id);
 
       if (err) throw err;
+      
       setFactura(prev => ({ ...prev, estado: 'enviado_cliente' }));
-      alert('¡Factura / Extra enviado al cliente con éxito!');
+      alert('¡Factura y trabajo extra enviados al cliente con éxito!');
     } catch (err) {
       console.error('Error al enviar al cliente:', err);
       alert('No se pudo enviar al cliente.');
@@ -128,10 +117,45 @@ export default function VerFactura() {
     }
   };
 
+  // 3. Borrar factura y su extra asociado
+  const borrarFacturaExtra = async () => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar esta factura y su trabajo extra asociado?')) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      // Borrar extra si existe
+      if (extra) {
+        await supabase
+          .from('extras')
+          .delete()
+          .eq('factura_id', id);
+      }
+
+      // Borrar factura
+      const { error: err } = await supabase
+        .from('facturas')
+        .delete()
+        .eq('id', id);
+
+      if (err) throw err;
+
+      alert('Factura eliminada correctamente.');
+      navigate('/facturas');
+    } catch (err) {
+      console.error('Error al borrar factura:', err);
+      alert('No se pudo borrar la factura.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ backgroundColor: FONDO_PRINCIPAL, minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Inter, sans-serif' }}>
-        <h3 style={TEXTO_DORADO_BRILLO}>Cargando detalles de la factura...</h3>
+        <h3 style={TEXTO_DORADO_BRILLO}>Cargando detalle de la factura...</h3>
       </div>
     );
   }
@@ -145,7 +169,7 @@ export default function VerFactura() {
     );
   }
 
-  const esRevisadoPorTecnico = extra && (extra.estado === 'finalizado' || extra.estado === 'revisado');
+  const tecnicoFinalizado = extra && (extra.estado === 'finalizado' || extra.estado === 'revisado');
 
   return (
     <div style={estilos.pagina}>
@@ -161,12 +185,15 @@ export default function VerFactura() {
 
         {/* Tarjeta de Datos de la Factura */}
         <div style={estilos.tarjeta}>
-          <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '14px', margin: '0 0 10px 0', textTransform: 'uppercase' }}>
-            Detalles Financieros
+          <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '13px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>
+            Información Financiera
           </h3>
           <div style={estilos.filaInfo}>
             <span style={estilos.etiqueta}>Estado Factura:</span>
-            <span style={{ ...estilos.valorEstado, color: factura.estado === 'pagada' ? '#34d399' : COLOR_DORADO }}>
+            <span style={{ 
+              ...estilos.valorEstado, 
+              color: factura.estado === 'pagada' || factura.estado === 'enviado_cliente' ? '#34d399' : COLOR_DORADO 
+            }}>
               {factura.estado}
             </span>
           </div>
@@ -177,88 +204,90 @@ export default function VerFactura() {
             </span>
           </div>
           <div style={estilos.filaInfo}>
-            <span style={estilos.etiqueta}>Concepto:</span>
+            <span style={estilos.etiqueta}>Concepto inicial:</span>
             <span style={estilos.valor}>{factura.descripcion || 'Sin descripción'}</span>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-            {factura.estado !== 'pagada' && (
+          {/* Botón de Pagada (Dispara el envío automático al técnico) */}
+          {factura.estado !== 'pagada' && factura.estado !== 'enviado_cliente' && (
+            <div style={{ marginTop: '8px' }}>
               <button 
-                onClick={() => actualizarEstadoFactura('pagada')} 
+                onClick={marcarPagadaYEnviarTecnico} 
                 disabled={saving}
                 style={estilos.botonVerde}
               >
-                💳 Aceptar como Pagada
+                💳 Marcar Pagada y Enviar al Técnico
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Sección de Gestión del Extra / Técnico */}
+        {/* Sección del Trabajo Extra del Técnico */}
         <div style={estilos.tarjeta}>
-          <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '14px', margin: '0 0 10px 0', textTransform: 'uppercase' }}>
-            Gestión de Trabajo Extra (Técnico)
+          <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '13px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>
+            Inspección / Trabajo del Técnico
           </h3>
 
           {!extra ? (
-            <div>
-              <p style={{ fontSize: '12px', color: '#aaa', marginBottom: '12px' }}>
-                Este elemento no tiene un flujo de extra activo asignado todavía.
-              </p>
-              <button 
-                onClick={enviarExtraATecnico} 
-                disabled={saving}
-                style={estilos.botonAzul}
-              >
-                🛠️ Enviar Extra al Técnico
-              </button>
-            </div>
+            <p style={{ fontSize: '12px', color: '#888' }}>No hay registros de extras asociados a esta factura todavía.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={estilos.filaInfo}>
                 <span style={estilos.etiqueta}>Estado Técnico:</span>
                 <span style={{ 
                   ...estilos.valorEstado, 
-                  color: esRevisadoPorTecnico ? '#34d399' : '#f59e0b' 
+                  color: tecnicoFinalizado ? '#34d399' : '#f59e0b' 
                 }}>
-                  {esRevisadoPorTecnico ? 'Revisado / Finalizado' : extra.estado}
+                  {tecnicoFinalizado ? 'Finalizado / Revisado' : extra.estado}
                 </span>
               </div>
 
-              {esRevisadoPorTecnico ? (
-                <div style={{ background: 'rgba(11, 19, 32, 0.6)', padding: '10px', borderRadius: '8px', border: BORDE_DORADO_FINO }}>
-                  <p style={{ fontSize: '12px', color: '#ccc', margin: '4px 0' }}>
-                    <strong style={{ color: COLOR_DORADO }}>Informe Técnico:</strong> {extra.descripcion}
+              {tecnicoFinalizado ? (
+                <div style={{ background: 'rgba(11, 19, 32, 0.7)', padding: '12px', borderRadius: '10px', border: BORDE_DORADO_FINO, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <p style={{ fontSize: '12px', color: '#fff', margin: 0 }}>
+                    <strong style={{ color: COLOR_DORADO }}>Comentarios del técnico:</strong>
+                    <br />
+                    {extra.descripcion}
                   </p>
+
                   {extra.fotos && extra.fotos.length > 0 && (
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
-                      {extra.fotos.map((url, idx) => (
-                        <img key={idx} src={url} alt="Evidencia" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', border: BORDE_DORADO_FINO }} />
-                      ))}
+                    <div>
+                      <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Fotos de evidencia:</span>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                        {extra.fotos.map((url, idx) => (
+                          <img key={idx} src={url} alt={`Evidencia ${idx}`} style={{ width: '55px', height: '55px', objectFit: 'cover', borderRadius: '8px', border: BORDE_DORADO_FINO }} />
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <p style={{ fontSize: '12px', color: '#f59e0b' }}>
-                  ⏳ Esperando a que el técnico complete la inspección del extra...
+                <p style={{ fontSize: '12px', color: '#f59e0b', margin: 0 }}>
+                  ⏳ El técnico aún está realizando la inspección o no la ha enviado.
                 </p>
               )}
             </div>
           )}
         </div>
 
-        {/* Botón Final para Enviar al Cliente */}
-        <div style={{ marginTop: '4px' }}>
+        {/* Acciones Finales: Enviar al cliente / Borrar */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+          {tecnicoFinalizado && factura.estado !== 'enviado_cliente' && (
+            <button 
+              onClick={enviarAlCliente} 
+              disabled={saving}
+              style={estilos.botonDorado}
+            >
+              📤 Enviar Factura y Extra al Cliente
+            </button>
+          )}
+
           <button 
-            onClick={enviarAlCliente} 
+            onClick={borrarFacturaExtra} 
             disabled={saving}
-            style={{
-              ...estilos.botonDoradoGris,
-              width: '100%',
-              opacity: saving ? 0.6 : 1
-            }}
+            style={estilos.botonRojo}
           >
-            📤 Enviar Factura / Extra al Cliente
+            🗑️ Borrar Factura y Extra
           </button>
         </div>
 
@@ -282,7 +311,7 @@ const estilos = {
     maxWidth: '480px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
+    gap: '14px',
     boxSizing: 'border-box'
   },
   cabecera: {
@@ -290,11 +319,11 @@ const estilos = {
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottom: BORDE_DORADO_FINO,
-    paddingBottom: '14px'
+    paddingBottom: '12px'
   },
   titulo: {
     ...TEXTO_DORADO_BRILLO,
-    fontSize: '18px',
+    fontSize: '17px',
     fontWeight: '900',
     margin: 0,
     textTransform: 'uppercase'
@@ -339,7 +368,7 @@ const estilos = {
     maxWidth: '65%'
   },
   valorEstado: {
-    fontSize: '12px',
+    fontSize: '11px',
     fontWeight: '900',
     textTransform: 'uppercase',
     border: '1px solid',
@@ -347,8 +376,8 @@ const estilos = {
     padding: '2px 8px'
   },
   botonVerde: {
-    flex: 1,
-    padding: '10px',
+    width: '100%',
+    padding: '12px',
     background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
     color: '#fff',
     border: '1px solid rgba(16, 185, 129, 0.6)',
@@ -359,20 +388,8 @@ const estilos = {
     textTransform: 'uppercase',
     boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)'
   },
-  botonAzul: {
+  botonDorado: {
     width: '100%',
-    padding: '10px',
-    background: 'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)',
-    color: '#fff',
-    border: '1px solid rgba(56, 189, 248, 0.6)',
-    borderRadius: '12px',
-    fontWeight: '900',
-    fontSize: '12px',
-    cursor: 'pointer',
-    textTransform: 'uppercase',
-    boxShadow: '0 4px 15px rgba(56, 189, 248, 0.3)'
-  },
-  botonDoradoGris: {
     padding: '14px',
     background: 'linear-gradient(135deg, #e0b034 0%, #8b6508 100%)',
     color: '#030509',
@@ -383,5 +400,17 @@ const estilos = {
     cursor: 'pointer',
     textTransform: 'uppercase',
     boxShadow: SOMBRA_LUXURY
+  },
+  botonRojo: {
+    width: '100%',
+    padding: '12px',
+    background: 'rgba(239, 68, 68, 0.15)',
+    color: '#ef4444',
+    border: '1px solid rgba(239, 68, 68, 0.4)',
+    borderRadius: '14px',
+    fontWeight: '900',
+    fontSize: '12px',
+    cursor: 'pointer',
+    textTransform: 'uppercase'
   }
 };
