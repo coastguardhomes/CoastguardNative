@@ -30,12 +30,19 @@ export default function TecnicoDashboard() {
   const cargarDatosDashboard = async () => {
     try {
       setLoading(true);
+      setDebugLog("Conectando a Supabase...");
 
-      const { data: inspData } = await supabase
+      // INSPECCIONES
+      const { data: inspData, error: inspError } = await supabase
         .from('inspecciones')
         .select('*')
-        .not('estado', 'in', '("completada_admin","finalizada","completada","aprobada")')
+        .not('estado', 'in', ['completada_admin','finalizada','completada','aprobada'])
         .order('fecha', { ascending: false });
+
+      if (inspError) {
+        setDebugLog("Error inspecciones: " + inspError.message);
+        console.error(inspError);
+      }
 
       const rawLista = inspData || [];
       const viviendaIds = [...new Set(rawLista.map((i) => i.vivienda_id).filter(Boolean))];
@@ -61,16 +68,23 @@ export default function TecnicoDashboard() {
 
       setInspeccionesDiarias(inspeccionesLista);
 
-      const { data: extrasData } = await supabase
+      // EXTRAS
+      const { data: extrasData, error: extrasError } = await supabase
         .from('extras')
         .select('*')
         .not('factura_id', 'is', null)
-        .in('estado', ['pendiente', 'asignado', 'en_proceso'])
+        .in('estado', ['pendiente','asignado','en_proceso'])
         .order('id', { ascending: false });
+
+      if (extrasError) {
+        setDebugLog("Error extras: " + extrasError.message);
+        console.error(extrasError);
+      }
 
       const listaExtras = extrasData || [];
       setExtrasPendientes(listaExtras);
 
+      // CONTADORES
       const { count: countViviendas } = await supabase
         .from('viviendas')
         .select('*', { count: 'exact', head: true });
@@ -86,8 +100,11 @@ export default function TecnicoDashboard() {
         extrasPendientesCount: listaExtras.length,
       });
 
+      setDebugLog("¡Datos cargados!");
+
     } catch (error) {
       console.error(error);
+      setDebugLog("Error general: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -168,7 +185,7 @@ export default function TecnicoDashboard() {
           <span style={{ color: COLOR_DORADO, fontWeight: 'bold' }}>Estado de Red:</span> {debugLog}
         </div>
 
-        {/* TARJETAS SUPERIORES */}
+        {/* TARJETAS */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
           <div style={{
             background: FONDO_TARJETA,
@@ -213,7 +230,7 @@ export default function TecnicoDashboard() {
           </div>
         </div>
 
-        {/* AVISO EXTRAS */}
+        {/* EXTRAS */}
         {stats.extrasPendientesCount > 0 ? (
           <div style={{
             backgroundColor: 'rgba(56, 189, 248, 0.1)',
