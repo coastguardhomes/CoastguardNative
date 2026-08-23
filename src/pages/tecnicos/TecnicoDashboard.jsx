@@ -68,12 +68,11 @@ export default function TecnicoDashboard() {
 
       setInspeccionesDiarias(inspeccionesLista);
 
-      // EXTRAS (Actualizado para incluir 'pagada' y 'activa' para que lleguen los nuevos)
+      // EXTRAS (Corregido: sin bloqueo de factura_id y abarcando todos los estados activos/pagados)
       const { data: extrasData, error: extrasError } = await supabase
         .from('extras')
         .select('*')
-        .not('factura_id', 'is', null)
-        .in('estado', ['pendiente', 'asignado', 'en_proceso', 'pagada', 'activa'])
+        .in('estado', ['pendiente', 'asignado', 'en_proceso', 'pagada', 'activa', 'pagado'])
         .order('id', { ascending: false });
 
       if (extrasError) {
@@ -288,7 +287,7 @@ export default function TecnicoDashboard() {
                       Extra #{String(extra.id).substring(0, 8)}
                     </div>
                     <div style={{ color: '#aaa', fontSize: '11px', marginTop: '4px' }}>
-                      📝 {extra.descripcion || 'Sin descripción'}
+                      📝 {extra.descripcion || extra.concepto || 'Sin descripción'}
                     </div>
                   </div>
 
@@ -374,7 +373,7 @@ export default function TecnicoDashboard() {
                       color: '#fff',
                       border: 'none',
                       padding: '8px 12px',
-                      borderRadius: '8px',
+                    borderRadius: '8px',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: 'pointer'
