@@ -358,7 +358,7 @@ export default function TecnicoDashboard() {
               ))}
             </div>
           </div>
-        )}
+        )
 
         {/* LISTADO DE INSPECCIONES NORMALES */}
         <div style={{
