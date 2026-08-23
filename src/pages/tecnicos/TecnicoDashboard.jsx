@@ -30,18 +30,12 @@ export default function TecnicoDashboard() {
   const cargarDatosDashboard = async () => {
     try {
       setLoading(true);
-      setDebugLog('Conectando a Supabase...');
 
-      // 1. INSPECCIONES NORMALES
-      const { data: inspData, error: inspError } = await supabase
+      const { data: inspData } = await supabase
         .from('inspecciones')
         .select('*')
         .not('estado', 'in', '("completada_admin","finalizada","completada","aprobada")')
         .order('fecha', { ascending: false });
-
-      if (inspError) {
-        setDebugLog(`Error en inspecciones: ${inspError.message}`);
-      }
 
       const rawLista = inspData || [];
       const viviendaIds = [...new Set(rawLista.map((i) => i.vivienda_id).filter(Boolean))];
@@ -67,22 +61,16 @@ export default function TecnicoDashboard() {
 
       setInspeccionesDiarias(inspeccionesLista);
 
-      // ⭐ 2. EXTRAS PENDIENTES — FIX APLICADO
-      const { data: extrasData, error: extrasError } = await supabase
+      const { data: extrasData } = await supabase
         .from('extras')
         .select('*')
-        .not('factura_id', 'is', null)   // SOLO extras reales con factura
-        .in('estado', ['pendiente', 'asignado', 'en_proceso'])  // NO mostrar finalizados
+        .not('factura_id', 'is', null)
+        .in('estado', ['pendiente', 'asignado', 'en_proceso'])
         .order('id', { ascending: false });
-
-      if (extrasError) {
-        console.warn('Aviso al cargar extras:', extrasError.message);
-      }
 
       const listaExtras = extrasData || [];
       setExtrasPendientes(listaExtras);
 
-      // 3. CONTADORES
       const { count: countViviendas } = await supabase
         .from('viviendas')
         .select('*', { count: 'exact', head: true });
@@ -98,9 +86,8 @@ export default function TecnicoDashboard() {
         extrasPendientesCount: listaExtras.length,
       });
 
-      setDebugLog('¡Datos cargados con éxito!');
     } catch (error) {
-      setDebugLog(`Excepción: ${error.message}`);
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -144,13 +131,14 @@ export default function TecnicoDashboard() {
           paddingBottom: '14px'
         }}>
           <div>
-            <div style={{ color: COLOR_DORADO, fontSize: '11px', fontWeight: '900', marginBottom: '4px', letterSpacing: '0.5px' }}>
-              <span>⛵</span> COASTGUARD <span style={{ color: '#888', fontWeight: 'normal' }}>| TÉCNICO</span>
+            <div style={{ color: COLOR_DORADO, fontSize: '11px', fontWeight: '900', marginBottom: '4px' }}>
+              ⛵ COASTGUARD <span style={{ color: '#888' }}>| TÉCNICO</span>
             </div>
-            <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '20px', fontWeight: '900', margin: 0, textTransform: 'uppercase' }}>
+            <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '20px', fontWeight: '900', margin: 0 }}>
               Panel de Operaciones
             </h2>
           </div>
+
           <button 
             onClick={handleLogout}
             style={{
@@ -168,6 +156,7 @@ export default function TecnicoDashboard() {
           </button>
         </div>
 
+        {/* ESTADO DE RED */}
         <div style={{
           background: 'rgba(11, 19, 32, 0.8)',
           border: BORDE_DORADO_FINO,
@@ -179,22 +168,20 @@ export default function TecnicoDashboard() {
           <span style={{ color: COLOR_DORADO, fontWeight: 'bold' }}>Estado de Red:</span> {debugLog}
         </div>
 
-        {/* 3 TARJETAS SUPERIORES */}
+        {/* TARJETAS SUPERIORES */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
           <div style={{
             background: FONDO_TARJETA,
             border: BORDE_DORADO_FINO,
             borderRadius: '12px',
             padding: '12px 6px',
-            textAlign: 'center',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+            textAlign: 'center'
           }}>
-            <div style={{ fontSize: '18px', marginBottom: '4px' }}>📋</div>
+            <div style={{ fontSize: '18px' }}>📋</div>
             <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>
               {stats.inspeccionesSemana}
-              <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>pendientes</span>
             </div>
-            <div style={{ fontSize: '10px', color: COLOR_DORADO, marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Inspecciones</div>
+            <div style={{ fontSize: '10px', color: COLOR_DORADO }}>Inspecciones</div>
           </div>
 
           <div style={{
@@ -202,15 +189,13 @@ export default function TecnicoDashboard() {
             border: '1px solid rgba(239, 68, 68, 0.4)',
             borderRadius: '12px',
             padding: '12px 6px',
-            textAlign: 'center',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+            textAlign: 'center'
           }}>
-            <div style={{ fontSize: '18px', marginBottom: '4px' }}>⚠️</div>
+            <div style={{ fontSize: '18px' }}>⚠️</div>
             <div style={{ fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>
               {stats.alertasDetectadas}
-              <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>incidencias</span>
             </div>
-            <div style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Alertas</div>
+            <div style={{ fontSize: '10px', color: '#ef4444' }}>Alertas</div>
           </div>
 
           <div style={{
@@ -218,40 +203,27 @@ export default function TecnicoDashboard() {
             border: BORDE_DORADO_FINO,
             borderRadius: '12px',
             padding: '12px 6px',
-            textAlign: 'center',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+            textAlign: 'center'
           }}>
-            <div style={{ fontSize: '18px', marginBottom: '4px' }}>🏠</div>
+            <div style={{ fontSize: '18px' }}>🏠</div>
             <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>
               {stats.viviendasAsignadas}
-              <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>registradas</span>
             </div>
-            <div style={{ fontSize: '10px', color: COLOR_DORADO, marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Viviendas</div>
+            <div style={{ fontSize: '10px', color: COLOR_DORADO }}>Viviendas</div>
           </div>
         </div>
 
-        {/* AVISO / BOTÓN DE EXTRAS PENDIENTES */}
+        {/* AVISO EXTRAS */}
         {stats.extrasPendientesCount > 0 ? (
           <div style={{
             backgroundColor: 'rgba(56, 189, 248, 0.1)',
             border: '1px solid rgba(56, 189, 248, 0.4)',
             borderRadius: '12px',
-            padding: '12px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
+            padding: '12px 14px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '20px' }}>⚡</span>
-              <div>
-                <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#fff' }}>
-                  ¡Tienes {stats.extrasPendientesCount} trabajo(s) extra pendiente(s)!
-                </div>
-                <div style={{ fontSize: '11px', color: '#38bdf8' }}>
-                  Revisa la lista inferior para realizar fotos y observaciones.
-                </div>
-              </div>
-            </div>
+            <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>
+              ⚡ Tienes {stats.extrasPendientesCount} extras pendientes
+            </span>
           </div>
         ) : (
           <div style={{
@@ -259,17 +231,13 @@ export default function TecnicoDashboard() {
             border: BORDE_DORADO_FINO,
             borderRadius: '12px',
             padding: '10px 14px',
-            fontSize: '12px',
-            color: '#888',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
+            color: '#888'
           }}>
-            <span style={{ fontSize: '14px' }}>⚡</span> No hay servicios extras pendientes.
+            ⚡ No hay servicios extras pendientes.
           </div>
         )}
 
-        {/* LISTADO DE EXTRAS PENDIENTES */}
+        {/* LISTADO EXTRAS */}
         {extrasPendientes.length > 0 && (
           <div style={{
             background: FONDO_TARJETA,
@@ -277,32 +245,9 @@ export default function TecnicoDashboard() {
             borderRadius: '14px',
             padding: '14px'
           }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '10px'
-            }}>
-              <h3 style={{
-                fontSize: '12px',
-                color: '#38bdf8',
-                margin: 0,
-                fontWeight: '900',
-                textTransform: 'uppercase'
-              }}>
-                🛠️ Trabajos Extras Asignados
-              </h3>
-              <span style={{
-                backgroundColor: 'rgba(56, 189, 248, 0.2)',
-                color: '#38bdf8',
-                fontSize: '10px',
-                padding: '3px 8px',
-                borderRadius: '6px',
-                fontWeight: '700'
-              }}>
-                {extrasPendientes.length} Pendientes
-              </span>
-            </div>
+            <h3 style={{ color: '#38bdf8', fontSize: '12px', marginBottom: '10px' }}>
+              🛠️ Trabajos Extras Asignados
+            </h3>
 
             <div style={{
               maxHeight: '180px',
@@ -322,19 +267,11 @@ export default function TecnicoDashboard() {
                   border: '1px solid rgba(56, 189, 248, 0.3)'
                 }}>
                   <div>
-                    <div style={{
-                      color: '#38bdf8',
-                      fontWeight: 'bold',
-                      fontSize: '12px'
-                    }}>
-                      Extra #{String(extra.id).substring(0, 8)} - {extra.titulo || extra.nombre || 'Servicio'}
+                    <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '12px' }}>
+                      Extra #{String(extra.id).substring(0, 8)}
                     </div>
-                    <div style={{
-                      color: '#aaa',
-                      fontSize: '11px',
-                      marginTop: '4px'
-                    }}>
-                      📝 {extra.descripcion || 'Sin descripción detallada'}
+                    <div style={{ color: '#aaa', fontSize: '11px', marginTop: '4px' }}>
+                      📝 {extra.descripcion || 'Sin descripción'}
                     </div>
                   </div>
 
@@ -347,8 +284,7 @@ export default function TecnicoDashboard() {
                       borderRadius: '8px',
                       fontSize: '11px',
                       fontWeight: '900',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap'
+                      cursor: 'pointer'
                     }}
                     onClick={() => navigate(`/tecnico/extra/${extra.id}`)}
                   >
@@ -358,61 +294,27 @@ export default function TecnicoDashboard() {
               ))}
             </div>
           </div>
-        )
+        )}
 
-        {/* LISTADO DE INSPECCIONES NORMALES */}
+        {/* LISTADO INSPECCIONES */}
         <div style={{
           background: FONDO_TARJETA,
           border: BORDE_DORADO_FINO,
           borderRadius: '14px',
           padding: '14px'
         }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+          <h3 style={{
+            fontSize: '12px',
+            color: COLOR_DORADO,
             marginBottom: '10px'
           }}>
-            <h3 style={{
-              fontSize: '12px',
-              color: COLOR_DORADO,
-              margin: 0,
-              fontWeight: '900',
-              textTransform: 'uppercase'
-            }}>
-              Inspecciones Asignadas
-            </h3>
-            <span style={{
-              backgroundColor: 'rgba(224, 176, 52, 0.15)',
-              color: COLOR_DORADO,
-              fontSize: '10px',
-              padding: '3px 8px',
-              borderRadius: '6px',
-              fontWeight: '700'
-            }}>
-              {inspeccionesDiarias.length} Pendientes
-            </span>
-          </div>
+            Inspecciones Asignadas
+          </h3>
 
           {loading ? (
-            <p style={{
-              fontSize: '12px',
-              color: '#888',
-              textAlign: 'center',
-              padding: '10px 0'
-            }}>
-              Cargando asignaciones...
-            </p>
+            <p style={{ color: '#888', textAlign: 'center' }}>Cargando asignaciones...</p>
           ) : inspeccionesDiarias.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '10px 0' }}>
-              <p style={{
-                fontSize: '12px',
-                color: '#888',
-                marginBottom: '6px'
-              }}>
-                No hay inspecciones pendientes asignadas.
-              </p>
-            </div>
+            <p style={{ color: '#888', textAlign: 'center' }}>No hay inspecciones pendientes asignadas.</p>
           ) : (
             <div style={{
               maxHeight: '180px',
@@ -438,6 +340,8 @@ export default function TecnicoDashboard() {
                       fontSize: '12px'
                     }}>
                       Inspección #{String(insp.id).substring(0, 8)}
+                    </div>
+
                     <div style={{
                       color: '#aaa',
                       fontSize: '11px',
@@ -456,8 +360,7 @@ export default function TecnicoDashboard() {
                       borderRadius: '8px',
                       fontSize: '11px',
                       fontWeight: '900',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap'
+                      cursor: 'pointer'
                     }}
                     onClick={() => navigate(`/tecnico/inspeccion/${insp.id}/checklist`)}
                   >
