@@ -9,7 +9,7 @@ const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
 const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
 
-export default function DashboardTecnico() {
+export default function TecnicoDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     inspeccionesSemana: 0,
@@ -17,6 +17,7 @@ export default function DashboardTecnico() {
     viviendasAsignadas: 0,
     extrasPendientesCount: 0,
   });
+
   const [inspeccionesDiarias, setInspeccionesDiarias] = useState([]);
   const [extrasPendientes, setExtrasPendientes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,8 +71,8 @@ export default function DashboardTecnico() {
       const { data: extrasData, error: extrasError } = await supabase
         .from('extras')
         .select('*')
-        .not('factura_id', 'is', null)   // ⭐ SOLO extras reales con factura
-        .in('estado', ['pendiente', 'asignado', 'en_proceso'])  // ⭐ NO mostrar finalizados
+        .not('factura_id', 'is', null)   // SOLO extras reales con factura
+        .in('estado', ['pendiente', 'asignado', 'en_proceso'])  // NO mostrar finalizados
         .order('id', { ascending: false });
 
       if (extrasError) {
@@ -133,98 +134,6 @@ export default function DashboardTecnico() {
         boxShadow: SOMBRA_LUXURY,
         boxSizing: 'border-box'
       }}>
-        
-        {/* ENCABEZADO */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          borderBottom: BORDE_DORADO_FINO,
-          paddingBottom: '14px'
-        }}>
-          <div>
-            <div style={{ color: COLOR_DORADO, fontSize: '11px', fontWeight: '900', marginBottom: '4px', letterSpacing: '0.5px' }}>
-              <span>⛵</span> COASTGUARD <span style={{ color: '#888', fontWeight: 'normal' }}>| TÉCNICO</span>
-            </div>
-            <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '20px', fontWeight: '900', margin: 0, textTransform: 'uppercase' }}>
-              Panel de Operaciones
-            </h2>
-          </div>
-          <button 
-            onClick={handleLogout}
-            style={{
-              background: 'transparent',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              color: '#ef4444',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              fontSize: '11px',
-              fontWeight: '700',
-              cursor: 'pointer'
-            }}
-          >
-            🚪 Salir
-          </button>
-        </div>
-
-        <div style={{
-          background: 'rgba(11, 19, 32, 0.8)',
-          border: BORDE_DORADO_FINO,
-          borderRadius: '10px',
-          padding: '10px 14px',
-          fontSize: '11px',
-          color: '#fff'
-        }}>
-          <span style={{ color: COLOR_DORADO, fontWeight: 'bold' }}>Estado de Red:</span> {debugLog}
-        </div>
-
-        {/* 3 TARJETAS SUPERIORES */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-          <div style={{
-            background: FONDO_TARJETA,
-            border: BORDE_DORADO_FINO,
-            borderRadius: '12px',
-            padding: '12px 6px',
-            textAlign: 'center',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
-          }}>
-            <div style={{ fontSize: '18px', marginBottom: '4px' }}>📋</div>
-            <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>
-              {stats.inspeccionesSemana} <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>pendientes</span>
-            </div>
-            <div style={{ fontSize: '10px', color: COLOR_DORADO, marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Inspecciones</div>
-          </div>
-
-          <div style={{
-            background: 'linear-gradient(145deg, #1f0b0b 0%, #0d070a 100%)',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            borderRadius: '12px',
-            padding: '12px 6px',
-            textAlign: 'center',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
-          }}>
-            <div style={{ fontSize: '18px', marginBottom: '4px' }}>⚠️</div>
-            <div style={{ fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>
-              {stats.alertasDetectadas} <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>incidencias</span>
-            </div>
-            <div style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Alertas</div>
-          </div>
-
-          <div style={{
-            background: FONDO_TARJETA,
-            border: BORDE_DORADO_FINO,
-            borderRadius: '12px',
-            padding: '12px 6px',
-            textAlign: 'center',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
-          }}>
-            <div style={{ fontSize: '18px', marginBottom: '4px' }}>🏠</div>
-            <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>
-              {stats.viviendasAsignadas} <span style={{ fontSize: '8px', color: '#888', display: 'block', fontWeight: 'normal' }}>registradas</span>
-            </div>
-            <div style={{ fontSize: '10px', color: COLOR_DORADO, marginTop: '4px', fontWeight: '700', textTransform: 'uppercase' }}>Viviendas</div>
-          </div>
-        </div>
 
         {/* AVISO / BOTÓN DE EXTRAS PENDIENTES */}
         {stats.extrasPendientesCount > 0 ? (
@@ -240,8 +149,12 @@ export default function DashboardTecnico() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '20px' }}>⚡</span>
               <div>
-                <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#fff' }}>¡Tienes {stats.extrasPendientesCount} trabajo(s) extra pendiente(s)!</div>
-                <div style={{ fontSize: '11px', color: '#38bdf8' }}>Revisa la lista inferior para realizar fotos y observaciones.</div>
+                <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#fff' }}>
+                  ¡Tienes {stats.extrasPendientesCount} trabajo(s) extra pendiente(s)!
+                </div>
+                <div style={{ fontSize: '11px', color: '#38bdf8' }}>
+                  Revisa la lista inferior para realizar fotos y observaciones.
+                </div>
               </div>
             </div>
           </div>
@@ -269,11 +182,40 @@ export default function DashboardTecnico() {
             borderRadius: '14px',
             padding: '14px'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <h3 style={{ fontSize: '12px', color: '#38bdf8', margin: 0, fontWeight: '900', textTransform: 'uppercase' }}>🛠️ Trabajos Extras Asignados</h3>
-              <span style={{ backgroundColor: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', fontSize: '10px', padding: '3px 8px', borderRadius: '6px', fontWeight: '700' }}>{extrasPendientes.length} Pendientes</span>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '10px'
+            }}>
+              <h3 style={{
+                fontSize: '12px',
+                color: '#38bdf8',
+                margin: 0,
+                fontWeight: '900',
+                textTransform: 'uppercase'
+              }}>
+                🛠️ Trabajos Extras Asignados
+              </h3>
+              <span style={{
+                backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                color: '#38bdf8',
+                fontSize: '10px',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                fontWeight: '700'
+              }}>
+                {extrasPendientes.length} Pendientes
+              </span>
             </div>
-            <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+
+            <div style={{
+              maxHeight: '180px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
               {extrasPendientes.map((extra) => (
                 <div key={extra.id} style={{
                   display: 'flex',
@@ -285,14 +227,23 @@ export default function DashboardTecnico() {
                   border: '1px solid rgba(56, 189, 248, 0.3)'
                 }}>
                   <div>
-                    <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '12px' }}>
+                    <div style={{
+                      color: '#38bdf8',
+                      fontWeight: 'bold',
+                      fontSize: '12px'
+                    }}>
                       Extra #{String(extra.id).substring(0, 8)} - {extra.titulo || extra.nombre || 'Servicio'}
                     </div>
-                    <div style={{ color: '#aaa', fontSize: '11px', marginTop: '4px' }}>
+                    <div style={{
+                      color: '#aaa',
+                      fontSize: '11px',
+                      marginTop: '4px'
+                    }}>
                       📝 {extra.descripcion || 'Sin descripción detallada'}
                     </div>
                   </div>
-                  <button 
+
+                  <button
                     style={{
                       backgroundColor: '#38bdf8',
                       color: '#030509',
@@ -321,19 +272,60 @@ export default function DashboardTecnico() {
           borderRadius: '14px',
           padding: '14px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <h3 style={{ fontSize: '12px', color: COLOR_DORADO, margin: 0, fontWeight: '900', textTransform: 'uppercase' }}>Inspecciones Asignadas</h3>
-            <span style={{ backgroundColor: 'rgba(224, 176, 52, 0.15)', color: COLOR_DORADO, fontSize: '10px', padding: '3px 8px', borderRadius: '6px', fontWeight: '700' }}>{inspeccionesDiarias.length} Pendientes</span>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '10px'
+          }}>
+            <h3 style={{
+              fontSize: '12px',
+              color: COLOR_DORADO,
+              margin: 0,
+              fontWeight: '900',
+              textTransform: 'uppercase'
+            }}>
+              Inspecciones Asignadas
+            </h3>
+            <span style={{
+              backgroundColor: 'rgba(224, 176, 52, 0.15)',
+              color: COLOR_DORADO,
+              fontSize: '10px',
+              padding: '3px 8px',
+              borderRadius: '6px',
+              fontWeight: '700'
+            }}>
+              {inspeccionesDiarias.length} Pendientes
+            </span>
           </div>
 
           {loading ? (
-            <p style={{ fontSize: '12px', color: '#888', textAlign: 'center', padding: '10px 0' }}>Cargando asignaciones...</p>
+            <p style={{
+              fontSize: '12px',
+              color: '#888',
+              textAlign: 'center',
+              padding: '10px 0'
+            }}>
+              Cargando asignaciones...
+            </p>
           ) : inspeccionesDiarias.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '10px 0' }}>
-              <p style={{ fontSize: '12px', color: '#888', marginBottom: '6px' }}>No hay inspecciones pendientes asignadas.</p>
+              <p style={{
+                fontSize: '12px',
+                color: '#888',
+                marginBottom: '6px'
+              }}>
+                No hay inspecciones pendientes asignadas.
+              </p>
             </div>
           ) : (
-            <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{
+              maxHeight: '180px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
               {inspeccionesDiarias.map((insp) => (
                 <div key={insp.id} style={{
                   display: 'flex',
@@ -345,18 +337,45 @@ export default function DashboardTecnico() {
                   border: BORDE_DORADO_FINO
                 }}>
                   <div>
-                    <div style={{ color: COLOR_DORADO, fontWeight: 'bold', fontSize: '12px' }}>
+                    <div style={{
+                      color: COLOR_DORADO,
+                      fontWeight: 'bold',
+                      fontSize: '12px'
+                    }}>
                       Inspección #{String(insp.id).substring(0, 8)}
                     </div>
-                    <div style={{ color: '#aaa', fontSize: '11px', marginTop: '4px' }}>
+                    <div style={{
+                      color: '#aaa',
+                      fontSize: '11px',
+                      marginTop: '4px'
+                    }}>
                       📍 {insp.direccion}
                     </div>
                   </div>
-                  <button 
+
+                  <button
                     style={{
                       backgroundColor: '#10b981',
                       color: '#fff',
                       border: 'none',
-                      padding: '8px 12px',                                
-                      borderRadius: '8px',  
+                      padding: '8px 12px',
+                      borderRadius: '8px',
                       fontSize: '11px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onClick={() => navigate(`/tecnico/inspeccion/${insp.id}/checklist`)}
+                  >
+                    Checklist →
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+}
