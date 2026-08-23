@@ -57,7 +57,6 @@ export default function VerFactura() {
         setCliente(c || null);
       }
 
-      // Buscar si ya existe un extra asociado a esta factura
       const { data: dataExtra } = await supabase
         .from("extras")
         .select("*")
@@ -74,9 +73,10 @@ export default function VerFactura() {
     }
   }
 
+  // ⭐ FIX AÑADIDO — refresca cuando el técnico finaliza
   useEffect(() => {
     cargarTodo();
-  }, [id]);
+  }, [id, factura?.estado, inspeccion?.estado]);
 
   async function borrarFactura() {
     if (!window.confirm("¿Seguro que quieres borrar esta factura y sus datos asociados?")) return;
@@ -103,7 +103,6 @@ export default function VerFactura() {
     setError("");
 
     try {
-      // Marcar factura como pagada
       const { error: errorFactura } = await supabase
         .from("facturas")
         .update({ estado: "pagada", estado_pago: "pagada" })
@@ -113,7 +112,6 @@ export default function VerFactura() {
 
       setFactura((prev) => ({ ...prev, estado: "pagada", estado_pago: "pagada" }));
 
-      // NO crear extras aquí. Solo usar el existente.
       if (inspeccion) {
         setMensaje("¡Factura marcada como pagada y tarea enviada al técnico con éxito!");
       } else {
@@ -371,4 +369,6 @@ const estilos = {
     fontWeight: "900",
     fontSize: "13px",
     textTransform: "uppercase",
-    letterSpacing: "0.5px",
+    letterSpacing: "0.5px"
+  }
+};
