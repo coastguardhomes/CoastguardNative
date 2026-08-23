@@ -357,6 +357,6 @@ export default function DashboardTecnico() {
                       backgroundColor: '#10b981',
                       color: '#fff',
                       border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      fontSize: '11
+                      padding: '8px 12px',                                
+                      borderRadius: '8px',  
+                      fontSize: '11px',
