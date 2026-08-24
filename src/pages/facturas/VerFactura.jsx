@@ -13,7 +13,6 @@ export default function VerFactura() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [factura, setFactura] = useState(null);
-  const [extra, setExtra] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -27,7 +26,6 @@ export default function VerFactura() {
       setLoading(true);
       setError('');
 
-      // 1. Cargar la factura
       const { data: facturaData, error: facturaErr } = await supabase
         .from('facturas')
         .select('*')
@@ -36,17 +34,6 @@ export default function VerFactura() {
 
       if (facturaErr) throw facturaErr;
       setFactura(facturaData);
-
-      // 2. Cargar el extra asociado
-      const { data: extraData, error: extraErr } = await supabase
-        .from('extras')
-        .select('*')
-        .eq('factura_id', id)
-        .maybeSingle();
-
-      if (!extraErr && extraData) {
-        setExtra(extraData);
-      }
     } catch (err) {
       console.error('Error al cargar datos:', err);
       setError('No se pudieron cargar los datos de la factura.');
@@ -55,8 +42,7 @@ export default function VerFactura() {
     }
   };
 
-  // Marcar como pagada y asegurar el envío al técnico (Usando UPSERT para evitar que falle)
-  const marcarPagadaYEnviarTecnico = async () => {
+  const marcarPagada = async () => {
     try {
       setSaving(true);
 
@@ -67,18 +53,7 @@ export default function VerFactura() {
 
       if (errFactura) throw errFactura;
 
-      // Upsert en la tabla extras para asegurar que siempre exista el registro
-      const { error: errExtra } = await supabase
-        .from('extras')
-        .upsert({
-          factura_id: id,
-          descripcion: factura.descripcion || 'Trabajo extra',
-          estado: 'pendiente_tecnico'
-        }, { onConflict: 'factura_id' });
-
-      if (errExtra) console.warn('Aviso en extras upsert:', errExtra);
-
-      alert('¡Factura marcada como pagada y extra enviado al técnico con éxito!');
+      alert('¡Factura marcada como pagada correctamente!');
       cargarDatos();
     } catch (err) {
       console.error('Error al procesar:', err);
@@ -88,7 +63,6 @@ export default function VerFactura() {
     }
   };
 
-  // Enviar al cliente final
   const enviarAlCliente = async () => {
     try {
       setSaving(true);
@@ -100,7 +74,7 @@ export default function VerFactura() {
       if (err) throw err;
       
       setFactura(prev => ({ ...prev, estado: 'enviado_cliente' }));
-      alert('¡Factura y trabajo extra enviados al cliente con éxito!');
+      alert('¡Factura enviada al cliente con éxito!');
     } catch (err) {
       console.error('Error al enviar al cliente:', err);
       alert('No se pudo enviar al cliente.');
@@ -109,15 +83,13 @@ export default function VerFactura() {
     }
   };
 
-  // Borrar factura y extra
-  const borrarFacturaExtra = async () => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta factura y su trabajo extra asociado?')) {
+  const borrarFactura = async () => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar esta factura?')) {
       return;
     }
 
     try {
       setSaving(true);
-      await supabase.from('extras').delete().eq('factura_id', id);
       const { error: err } = await supabase.from('facturas').delete().eq('id', id);
 
       if (err) throw err;
@@ -149,13 +121,8 @@ export default function VerFactura() {
     );
   }
 
-  const tecnicoFinalizado = 
-    (extra && (extra.estado === 'finalizado' || extra.estado === 'revisado')) || 
-    (factura.estado === 'finalizado');
-
-  // Obtener la descripción y las fotos combinando extra y factura de forma inteligente
-  const descripcionFinal = extra?.descripcion || factura.descripcion || 'Sin descripción';
-  const fotosFinales = (extra?.fotos && extra.fotos.length > 0) ? extra.fotos : (factura?.fotos || []);
+  const tecnicoFinalizado = factura.estado_tecnico === 'completado' || factura.estado === 'finalizado';
+  const fotosFinales = Array.isArray(factura.fotos) ? factura.fotos : [];
 
   return (
     <div style={estilos.pagina}>
@@ -190,21 +157,20 @@ export default function VerFactura() {
             </span>
           </div>
 
-          {/* Botón de Pagada / Enviar a Técnico */}
           {factura.estado !== 'pagada' && factura.estado !== 'enviado_cliente' && (
             <div style={{ marginTop: '8px' }}>
               <button 
-                onClick={marcarPagadaYEnviarTecnico} 
+                onClick={marcarPagada} 
                 disabled={saving}
                 style={estilos.botonVerde}
               >
-                💳 Marcar Pagada y Enviar al Técnico
+                💳 Marcar como Pagada
               </button>
             </div>
           )}
         </div>
 
-        {/* Sección del Trabajo Extra del Técnico */}
+        {/* Sección del Trabajo / Inspección del Técnico */}
         <div style={estilos.tarjeta}>
           <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '13px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>
             Inspección / Trabajo del Técnico
@@ -216,25 +182,41 @@ export default function VerFactura() {
               ...estilos.valorEstado, 
               color: tecnicoFinalizado ? '#34d399' : '#f59e0b' 
             }}>
-              {tecnicoFinalizado ? 'Finalizado / Revisado' : (extra?.estado || 'Pendiente')}
+              {tecnicoFinalizado ? 'Completado' : (factura.estado_tecnico || 'Pendiente')}
             </span>
           </div>
 
           {tecnicoFinalizado ? (
             <div style={{ background: 'rgba(11, 19, 32, 0.7)', padding: '12px', borderRadius: '10px', border: BORDE_DORADO_FINO, display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
-                <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Detalles y Observaciones:</span>
+                <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Descripción del Trabajo:</span>
                 <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0 0 0', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
-                  {descripcionFinal}
+                  {factura.descripcion || 'Sin descripción'}
                 </p>
               </div>
+
+              {factura.materiales && (
+                <div>
+                  <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Materiales Usados:</span>
+                  <p style={{ fontSize: '13px', color: '#fff', margin: '2px 0 0 0' }}>{factura.materiales}</p>
+                </div>
+              )}
+
+              {factura.tiempo_empleado && (
+                <div>
+                  <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Tiempo Empleado:</span>
+                  <p style={{ fontSize: '13px', color: '#fff', margin: '2px 0 0 0' }}>{factura.tiempo_empleado}</p>
+                </div>
+              )}
 
               {fotosFinales.length > 0 ? (
                 <div>
                   <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Fotos de evidencia:</span>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
                     {fotosFinales.map((url, idx) => (
-                      <img key={idx} src={url} alt={`Evidencia ${idx}`} style={{ width: '65px', height: '65px', objectFit: 'cover', borderRadius: '8px', border: BORDE_DORADO_FINO }} />
+                      <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+                        <img src={url} alt={`Evidencia ${idx}`} style={{ width: '65px', height: '65px', objectFit: 'cover', borderRadius: '8px', border: BORDE_DORADO_FINO }} />
+                      </a>
                     ))}
                   </div>
                 </div>
@@ -249,7 +231,7 @@ export default function VerFactura() {
           )}
         </div>
 
-        {/* Acciones Finales: Enviar al cliente / Borrar */}
+        {/* Acciones Finales */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
           {tecnicoFinalizado && factura.estado !== 'enviado_cliente' && (
             <button 
@@ -257,16 +239,16 @@ export default function VerFactura() {
               disabled={saving}
               style={estilos.botonDorado}
             >
-              📤 Enviar Factura y Extra al Cliente
+              📤 Enviar Factura al Cliente
             </button>
           )}
 
           <button 
-            onClick={borrarFacturaExtra} 
+            onClick={borrarFactura} 
             disabled={saving}
             style={estilos.botonRojo}
           >
-            🗑️ Borrar Factura y Extra
+            🗑️ Borrar Factura
           </button>
         </div>
 
