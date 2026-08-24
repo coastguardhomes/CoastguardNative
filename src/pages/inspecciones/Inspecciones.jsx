@@ -20,7 +20,7 @@ export default function Inspecciones() {
       const { data, error } = await supabase
         .from("inspecciones")
         .select("*")
-        .order("fecha", { ascending: true }); // Cambiado a true para que la más antigua sea la primera (Nº 01)
+        .order("fecha", { ascending: true });
 
       if (error) {
         setErrorMsg("Error al obtener inspecciones: " + error.message);
@@ -131,7 +131,7 @@ export default function Inspecciones() {
                   </p>
                   <p style={{ color: "#ccc", fontSize: "14px" }}>
                     <strong>Estado:</strong>{" "}
-                    <span style={{ color: insp.estado === "completada_tecnico" ? "#4ade80" : insp.estado === "aprobada" ? "#60a5fa" : "#facc15" }}>
+                    <span style={{ color: insp.estado === "completada_tecnico" ? "#4ade80" : insp.estado === "finalizada" ? "#60a5fa" : "#facc15" }}>
                       {insp.estado || "pendiente"}
                     </span>
                   </p>
