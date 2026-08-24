@@ -42,13 +42,16 @@ export default function TecnicoInspeccionExtra() {
 
       if (data) {
         setExtraData(data);
-        setDescripcion(data.descripcion || '');
+        setDescripcion(data.descripcion || data.concepto || '');
+        setMateriales(data.materiales || '');
+        setTiempo(data.tiempo_empleado || '');
+        if (Array.isArray(data.fotos)) setFotos(data.fotos);
       } else {
         setError('No se encontró el trabajo extra en facturas.');
       }
     } catch (err) {
       console.error('Error al cargar extra:', err);
-      setError('Error al cargar los datos de la factura/extra.');
+      setError('Error al cargar los datos de la factura.');
     } finally {
       setLoading(false);
     }
@@ -106,74 +109,22 @@ export default function TecnicoInspeccionExtra() {
       setSaving(true);
       setError('');
 
-      const facturaId = extraData.id;
-      const inspeccionUuid = extraData.inspeccion_id || null;
-      const viviendaId = extraData.vivienda_id || null;
-      const clienteUuid = extraData.cliente_id || null;
-
-      const descripcionCompleta = `Trabajo: ${descripcion} | Materiales: ${materiales || 'Ninguno'} | Tiempo: ${tiempo || 'No especificado'}`;
-
-      // 1. Actualizar la tabla facturas: estado_tecnico completado para el admin, estado pendiente para no enviarlo aún al cliente
+      // Guardado 100% unificado en la tabla 'facturas'
       const { error: updateError } = await supabase
         .from('facturas')
         .update({
-          descripcion: descripcionCompleta,
-          estado_tecnico: 'completado',
-          estado: 'pendiente'
+          descripcion: descripcion,
+          materiales: materiales || null,
+          tiempo_empleado: tiempo || null,
+          fotos: fotos,
+          estado_tecnico: 'completado', // Marca el trabajo del técnico como resuelto
+          estado: 'pendiente'          // Mantiene la factura pendiente para revisión del Admin
         })
-        .eq('id', facturaId);
+        .eq('id', extraData.id);
 
       if (updateError) throw updateError;
 
-      // 2. Sincronizar con la tabla 'extras'
-      const datosExtra = {
-        factura_id: facturaId,
-        inspeccion_id: inspeccionUuid,
-        vivienda_id: viviendaId,
-        cliente_id: clienteUuid,
-        descripcion: descripcionCompleta,
-        materiales: materiales || '',
-        tiempo_empleado: tiempo || '',
-        fotos: fotos,
-        estado_tecnico: 'completado',
-        estado: 'pendiente'
-      };
-
-      let existingExtra = null;
-      const { data: extraByFactura } = await supabase
-        .from('extras')
-        .select('id')
-        .eq('factura_id', facturaId)
-        .maybeSingle();
-
-      if (extraByFactura) {
-        existingExtra = extraByFactura;
-      } else if (inspeccionUuid) {
-        const { data: extraByInspeccion } = await supabase
-          .from('extras')
-          .select('id')
-          .eq('inspeccion_id', inspeccionUuid)
-          .maybeSingle();
-        existingExtra = extraByInspeccion;
-      }
-
-      let extraError;
-      if (existingExtra) {
-        const { error: errUpd } = await supabase
-          .from('extras')
-          .update(datosExtra)
-          .eq('id', existingExtra.id);
-        extraError = errUpd;
-      } else {
-        const { error: errIns } = await supabase
-          .from('extras')
-          .insert([datosExtra]);
-        extraError = errIns;
-      }
-
-      if (extraError) throw extraError;
-
-      alert('Inspección de extra enviada al administrador correctamente.');
+      alert('Inspección enviada al administrador correctamente.');
       navigate('/tecnico');
     } catch (err) {
       console.error('Error al guardar:', err);
@@ -258,10 +209,10 @@ export default function TecnicoInspeccionExtra() {
         {extraData && (
           <div style={{ backgroundColor: 'rgba(11, 19, 32, 0.9)', padding: '14px', borderRadius: '12px', border: BORDE_DORADO_FINO }}>
             <p style={{ fontSize: '12px', margin: '4px 0', color: '#ccc' }}>
-              <strong style={{ color: COLOR_DORADO }}>Factura / Ref:</strong> {extraData.numero || `#${extraData.id}`}
+              <strong style={{ color: COLOR_DORADO }}>Factura / Ref:</strong> {extraData.numero || extraData.codigo || `#${extraData.id}`}
             </p>
             <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: '#ccc' }}>
-              <strong style={{ color: COLOR_DORADO }}>Concepto inicial:</strong> {extraData.descripcion || 'Sin descripción previa'}
+              <strong style={{ color: COLOR_DORADO }}>Concepto inicial:</strong> {extraData.descripcion || extraData.concepto || 'Sin descripción previa'}
             </p>
           </div>
         )}
