@@ -103,7 +103,7 @@ export default function FinalizarInspeccion() {
         throw new Error("Error en PDF: " + detalleError);
       }
 
-      // 4. Invocar Edge Function de Email enviando las mismas variantes
+      // 4. Invocar Edge Function de Email capturando el error detallado
       const resEmail = await supabase.functions.invoke("enviar-email", { 
         body: { 
           inspeccionId: id, 
@@ -115,7 +115,14 @@ export default function FinalizarInspeccion() {
       });
 
       if (resEmail.error) {
-        throw new Error("Error en Email: " + (resEmail.error.message || JSON.stringify(resEmail.error)));
+        let detalleEmailError = resEmail.error.message;
+        if (resEmail.error.context && typeof resEmail.error.context.text === "function") {
+          try {
+            const textBody = await resEmail.error.context.text();
+            if (textBody) detalleEmailError += ` -> ${textBody}`;
+          } catch {}
+        }
+        throw new Error("Error en Email: " + detalleEmailError);
       }
 
       setMensaje("¡Inspección finalizada, PDF generado y email enviado con éxito! ✔");
