@@ -42,10 +42,11 @@ export default function VerFactura() {
     }
   };
 
-  const marcarPagada = async () => {
+  const marcarPagadaYEnviarEmail = async () => {
     try {
       setSaving(true);
 
+      // 1. Marcar como pagada en Supabase
       const { error: errFactura } = await supabase
         .from('facturas')
         .update({ estado: 'pagada' })
@@ -54,7 +55,22 @@ export default function VerFactura() {
       if (errFactura) throw errFactura;
 
       setFactura(prev => ({ ...prev, estado: 'pagada' }));
-      alert('¡Factura marcada como pagada correctamente!');
+
+      // 2. Disparar automáticamente la función de envío de email con el PDF de la factura
+      const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
+        body: { 
+          id: id, 
+          tipo: 'factura' // o 'extra' según maneje tu función de backend
+        }
+      });
+
+      if (errEmail) {
+        console.warn('Aviso: La factura se marcó como pagada, pero hubo un detalle al disparar el correo:', errEmail);
+        alert('¡Factura marcada como pagada, pero revisa el envío del correo!');
+      } else {
+        alert('¡Factura marcada como pagada y enviada por email al cliente correctamente!');
+      }
+
     } catch (err) {
       console.error('Error al procesar:', err);
       alert('Error: ' + err.message);
@@ -67,7 +83,6 @@ export default function VerFactura() {
     try {
       setSaving(true);
       
-      // Si la factura ya está PAGADA, mantenemos 'pagada' para no sobrescribir el cobro
       const nuevoEstado = factura.estado === 'pagada' ? 'pagada' : 'enviado_cliente';
 
       const { error: err } = await supabase
@@ -77,11 +92,21 @@ export default function VerFactura() {
 
       if (err) throw err;
       
+      // Llamar también a la Edge Function de correo al pulsar este botón de envío
+      const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
+        body: { 
+          id: id, 
+          tipo: 'factura' 
+        }
+      });
+
+      if (errEmail) throw errEmail;
+
       setFactura(prev => ({ ...prev, estado: nuevoEstado }));
-      alert('¡Factura enviada al cliente con éxito!');
+      alert('¡Factura enviada al cliente por email con éxito!');
     } catch (err) {
       console.error('Error al enviar al cliente:', err);
-      alert('No se pudo enviar al cliente.');
+      alert('No se pudo enviar el correo al cliente: ' + (err.message || ''));
     } finally {
       setSaving(false);
     }
@@ -175,15 +200,15 @@ export default function VerFactura() {
             </span>
           </div>
 
-          {/* Permitir marcar como pagada si NO está pagada aún */}
+          {/* Botón para marcar pagada y enviar factura por correo automáticamente */}
           {factura.estado !== 'pagada' && (
             <div style={{ marginTop: '8px' }}>
               <button 
-                onClick={marcarPagada} 
+                onClick={marcarPagadaYEnviarEmail} 
                 disabled={saving}
                 style={estilos.botonVerde}
               >
-                💳 Marcar como Pagada
+                💳 Marcar Pagada y Enviar Factura
               </button>
             </div>
           )}
@@ -259,7 +284,7 @@ export default function VerFactura() {
               disabled={saving}
               style={estilos.botonDorado}
             >
-              📤 Enviar Factura al Cliente
+              📤 Reenviar Factura por Email
             </button>
           )}
 
@@ -395,4 +420,3 @@ const estilos = {
     textTransform: 'uppercase'
   }
 };
-          
