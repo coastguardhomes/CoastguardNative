@@ -106,6 +106,7 @@ export default function TecnicoInspeccionExtra() {
       setSaving(true);
       setError('');
 
+      const facturaIdNum = parseInt(extraData.id, 10);
       const descripcionCompleta = `Trabajo: ${descripcion} | Materiales: ${materiales || 'Ninguno'} | Tiempo: ${tiempo || 'No especificado'}`;
 
       // 1. Actualizar la tabla facturas
@@ -119,45 +120,40 @@ export default function TecnicoInspeccionExtra() {
 
       if (updateError) throw updateError;
 
-      // 2. Comprobar si ya existe un registro en la tabla 'extras' para esta factura
+      // 2. Datos exactos para la tabla 'extras' asegurando el array de fotos y el factura_id numérico
+      const datosExtra = {
+        factura_id: facturaIdNum,
+        descripcion: descripcionCompleta,
+        materiales: materiales || '',
+        tiempo_empleado: tiempo || '',
+        fotos: fotos, // Formato ARRAY que espera tu tabla
+        estado: 'finalizado'
+      };
+
+      // Comprobar si ya existe un registro en 'extras' con este factura_id
       const { data: existingExtra } = await supabase
         .from('extras')
         .select('id')
-        .eq('factura_id', extraData.id)
+        .eq('factura_id', facturaIdNum)
         .maybeSingle();
 
       let extraError;
       if (existingExtra) {
-        // Si ya existe, actualizamos
         const { error: errUpd } = await supabase
           .from('extras')
-          .update({
-            descripcion: descripcionCompleta,
-            materiales: materiales || '',
-            tiempo_empleado: tiempo || '',
-            fotos: fotos,
-            estado: 'finalizado'
-          })
-          .eq('factura_id', extraData.id);
+          .update(datosExtra)
+          .eq('factura_id', facturaIdNum);
         extraError = errUpd;
       } else {
-        // Si no existe, insertamos uno nuevo
         const { error: errIns } = await supabase
           .from('extras')
-          .insert({
-            factura_id: extraData.id,
-            descripcion: descripcionCompleta,
-            materiales: materiales || '',
-            tiempo_empleado: tiempo || '',
-            fotos: fotos,
-            estado: 'finalizado'
-          });
+          .insert([datosExtra]);
         extraError = errIns;
       }
 
       if (extraError) throw extraError;
 
-      alert('Inspección de extra enviada al admin con éxito.');
+      alert('Inspección de extra enviada y fotos guardadas con éxito.');
       navigate('/tecnico');
     } catch (err) {
       console.error('Error al guardar:', err);
