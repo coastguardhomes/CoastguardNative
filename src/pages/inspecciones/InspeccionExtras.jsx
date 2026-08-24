@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../supabaseClient"; // Ajusta tu ruta al cliente de Supabase
+import { supabase } from "../../supabaseClient";
 
 export default function InspeccionExtra() {
-  const { id } = useParams(); // ID del extra/trabajo
+  const { id } = useParams(); // ID de la factura/trabajo
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -17,13 +17,13 @@ export default function InspeccionExtra() {
   const [tiempoEmpleado, setTiempoEmpleado] = useState("");
   const [fotos, setFotos] = useState([]); // Array de URLs de fotos
 
-  // 1. Cargar los datos del extra al abrir la pantalla
+  // 1. Cargar los datos de la factura al abrir la pantalla
   useEffect(() => {
-    async function cargarExtra() {
+    async function cargarInspeccion() {
       try {
         setLoading(true);
         const { data, error: err } = await supabase
-          .from("extras")
+          .from("facturas")
           .select("*")
           .eq("id", id)
           .maybeSingle();
@@ -36,17 +36,17 @@ export default function InspeccionExtra() {
           setTiempoEmpleado(data.tiempo_empleado || "");
           setFotos(data.fotos || []);
         } else {
-          setError("No se encontró el trabajo extra.");
+          setError("No se encontró el registro de la factura.");
         }
       } catch (err) {
-        console.error("Error cargando extra:", err);
-        setError("Error al cargar los datos del trabajo extra.");
+        console.error("Error cargando inspección:", err);
+        setError("Error al cargar los datos del trabajo.");
       } finally {
         setLoading(false);
       }
     }
 
-    if (id) cargarExtra();
+    if (id) cargarInspeccion();
   }, [id]);
 
   // 2. Función para subir fotos (Cámara o Galería)
@@ -62,11 +62,11 @@ export default function InspeccionExtra() {
         const file = files[i];
         const fileExt = file.name.split(".").pop();
         const fileName = `${Date.now()}_${Math.random()}.${fileExt}`;
-        const filePath = `extras/${fileName}`;
+        const filePath = `inspecciones/${fileName}`;
 
-        // Sube al bucket de Supabase (asegúrate de tener un bucket llamado 'extras' o 'fotos')
+        // Sube al bucket de Supabase
         const { error: uploadError } = await supabase.storage
-          .from("extras") 
+          .from("facturas") 
           .upload(filePath, file);
 
         if (uploadError) {
@@ -75,7 +75,7 @@ export default function InspeccionExtra() {
 
         // Obtener la URL pública de la foto
         const { data: publicUrlData } = supabase.storage
-          .from("extras")
+          .from("facturas")
           .getPublicUrl(filePath);
 
         if (publicUrlData?.publicUrl) {
@@ -93,7 +93,7 @@ export default function InspeccionExtra() {
     }
   };
 
-  // 3. Guardar y enviar al Administrador (cambia el estado a 'finalizado')
+  // 3. Guardar y enviar al Administrador (marca estado_tecnico como 'completado')
   const guardarYEnviarAlAdmin = async () => {
     try {
       setGuardando(true);
@@ -101,13 +101,13 @@ export default function InspeccionExtra() {
       setMensaje("");
 
       const { error: updateError } = await supabase
-        .from("extras")
+        .from("facturas")
         .update({
           descripcion,
           materiales,
           tiempo_empleado: tiempoEmpleado,
           fotos,
-          estado: "finalizado", // 👈 Esto hace que pase al Admin como completado
+          estado_tecnico: "completado", // Sincroniza con los badges del admin y cliente
         })
         .eq("id", id);
 
@@ -135,7 +135,7 @@ export default function InspeccionExtra() {
         ← Volver
       </button>
 
-      <h2 style={estilos.titulo}>Inspección de Extra</h2>
+      <h2 style={estilos.titulo}>Inspección de Trabajo</h2>
 
       {mensaje && <p style={estilos.ok}>{mensaje}</p>}
       {error && <p style={estilos.error}>{error}</p>}
