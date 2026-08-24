@@ -37,6 +37,9 @@ export default function ClienteFacturasLista() {
     switch (estado?.toLowerCase()) {
       case "pagada":
         return { label: "PAGADA", bg: "rgba(16, 185, 129, 0.2)", border: "1px solid #10b981", color: "#34d399" };
+      case "enviado_cliente":
+      case "enviada":
+        return { label: "ENVIADA AL CLIENTE", bg: "rgba(59, 130, 246, 0.2)", border: "1px solid #3b82f6", color: "#60a5fa" };
       case "cancelada":
         return { label: "CANCELADA", bg: "rgba(239, 68, 68, 0.2)", border: "1px solid #ef4444", color: "#f87171" };
       default:
