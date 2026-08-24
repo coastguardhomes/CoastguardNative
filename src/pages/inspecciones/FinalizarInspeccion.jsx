@@ -20,9 +20,18 @@ export default function FinalizarInspeccion() {
   async function cargarInspeccion() {
     setLoading(true);
     try {
+      // Traemos la inspección junto con los datos de la tabla viviendas directamente por relación
       const { data, error } = await supabase
         .from("inspecciones")
-        .select("*")
+        .select(`
+          *,
+          viviendas (
+            id,
+            direccion,
+            ciudad,
+            localidad
+          )
+        `)
         .eq("id", String(id))
         .single();
 
@@ -30,25 +39,11 @@ export default function FinalizarInspeccion() {
         setMensaje("No se encontró la inspección.");
         setEsError(true);
       } else {
-        let inspeccionEnriquecida = data;
-
-        // Cruzar con la tabla viviendas para obtener dirección y localidad reales
-        if (data.vivienda_id) {
-          const { data: vivData } = await supabase
-            .from("viviendas")
-            .select("id, direccion, ciudad, localidad")
-            .eq("id", data.vivienda_id)
-            .single();
-
-          if (vivData) {
-            inspeccionEnriquecida.viviendas = vivData;
-          }
-        }
-
-        setInspeccion(inspeccionEnriquecida);
+        setInspeccion(data);
       }
-    } catch {
-      setMensaje("Error de conexión.");
+    } catch (e) {
+      console.error(e);
+      setMensaje("Error de conexión al cargar la inspección.");
       setEsError(true);
     } finally {
       setLoading(false);
@@ -72,22 +67,29 @@ export default function FinalizarInspeccion() {
 
       if (updateErr) throw updateErr;
 
-      // 2. Obtener la sesión del usuario actual para enviar el token JWT en las Edge Functions
+      // 2. Obtener token de sesión para autorizar las Edge Functions
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       const headersAuth = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // 3. Invocar la Edge Function de PDF
+      // 3. Invocar Edge Function de PDF
       const resPdf = await supabase.functions.invoke("pdf-inspeccion", { 
         body: { inspeccion_id: id, id: id },
         headers: headersAuth
       });
 
       if (resPdf.error) {
-        throw new Error("Error en PDF: " + (resPdf.error.message || JSON.stringify(resPdf.error)));
+        let detalleError = resPdf.error.message;
+        if (resPdf.error.context && typeof resPdf.error.context.text === "function") {
+          try {
+            const textBody = await resPdf.error.context.text();
+            if (textBody) detalleError += ` -> ${textBody}`;
+          } catch {}
+        }
+        throw new Error("Error en PDF: " + detalleError);
       }
 
-      // 4. Invocar la Edge Function de Email
+      // 4. Invocar Edge Function de Email
       const resEmail = await supabase.functions.invoke("enviar-email", { 
         body: { inspeccion_id: id, id: id, tipo: "inspeccion_aprobada" },
         headers: headersAuth
@@ -113,7 +115,6 @@ export default function FinalizarInspeccion() {
     }
   }
 
-  // 🚀 FUNCIÓN: Eliminar inspección y sus datos relacionados (checklist y fotos)
   async function eliminarInspeccion() {
     const confirmar = window.confirm("¿Seguro que deseas eliminar esta inspección?");
     if (!confirmar) return;
@@ -145,7 +146,7 @@ export default function FinalizarInspeccion() {
     );
   }
 
-  // Obtener dirección y localidad reales
+  // Extraer dirección y ciudad de la relación SQL obtenida
   const direccionReal = inspeccion?.viviendas?.direccion || inspeccion?.direccion || "Dirección no especificada";
   const localidadReal = inspeccion?.viviendas?.ciudad || inspeccion?.viviendas?.localidad || inspeccion?.localidad || "No especificada";
 
@@ -157,7 +158,7 @@ export default function FinalizarInspeccion() {
         </h1>
 
         {mensaje && (
-          <div style={{ marginBottom: "20px", padding: "12px", background: esError ? "rgba(255,107,107,0.15)" : "rgba(74,222,128,0.15)", border: `1px solid ${esError ? "#ff6b6b" : "#4ade80"}`, borderRadius: "10px", color: esError ? "#ff6b6b" : "#4ade80", textAlign: "center", fontSize: "14px" }}>
+          <div style={{ marginBottom: "20px", padding: "12px", background: esError ? "rgba(255,107,107,0.15)" : "rgba(74,222,128,0.15)", border: `1px solid ${esError ? "#ff6b6b" : "#4ade80"}`, borderRadius: "10px", color: esError ? "#ff6b6b" : "#4ade80", textAlign: "center", fontSize: "14px", wordBreak: "break-word" }}>
             {mensaje}
           </div>
         )}
@@ -180,7 +181,6 @@ export default function FinalizarInspeccion() {
               {procesando ? "Procesando..." : "✔ Finalizar y Enviar al Cliente"}
             </button>
 
-            {/* 🚀 BOTÓN DE ELIMINAR */}
             <button
               onClick={eliminarInspeccion}
               disabled={procesando}
