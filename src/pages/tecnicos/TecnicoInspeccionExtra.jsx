@@ -33,7 +33,7 @@ export default function TecnicoInspeccionExtra() {
       setLoading(true);
       setError('');
       
-      let { data, error: err } = await supabase
+      let { data } = await supabase
         .from('facturas')
         .select('*')
         .eq('id', id)
@@ -59,7 +59,16 @@ export default function TecnicoInspeccionExtra() {
         setDescripcion(data.descripcion || data.concepto || '');
         setMateriales(data.materiales || '');
         setTiempo(data.tiempo_empleado || '');
-        if (Array.isArray(data.fotos)) setFotos(data.fotos);
+        if (Array.isArray(data.fotos)) {
+          setFotos(data.fotos);
+        } else if (typeof data.fotos === 'string') {
+          try {
+            const parsed = JSON.parse(data.fotos);
+            if (Array.isArray(parsed)) setFotos(parsed);
+          } catch {
+            if (data.fotos.trim()) setFotos([data.fotos]);
+          }
+        }
       } else {
         setError('No se encontró el trabajo extra.');
       }
@@ -78,40 +87,38 @@ export default function TecnicoInspeccionExtra() {
     try {
       setSaving(true);
       setError('');
+      setMensaje('');
       const nuevasUrls = [...fotos];
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random()}.${fileExt}`;
-        const filePath = `extras/${fileName}`;
+        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+        const fileName = `${Date.now()}_${Math.floor(Math.random() * 1000)}_${cleanFileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        // Intentar subir al bucket 'extras'
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('extras')
-          .upload(filePath, file);
+          .upload(fileName, file, { cacheControl: '3600', upsert: true });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("Error al subir imagen a Supabase Storage:", uploadError);
+          throw new Error(uploadError.message || "Error en storage");
+        }
 
         const { data: publicUrlData } = supabase.storage
           .from('extras')
-          .getPublicUrl(filePath);
+          .getPublicUrl(uploadData?.path || fileName);
 
-        const urlFinal = publicUrlData?.publicUrl || filePath;
-        if (urlFinal) {
-          nuevasUrls.push(urlFinal);
-          await supabase.from('fotos').insert([{
-            extra_id: extraData.id,
-            url_foto: urlFinal,
-            creado_en: new Date()
-          }]).catch(() => {});
+        if (publicUrlData?.publicUrl) {
+          nuevasUrls.push(publicUrlData.publicUrl);
         }
       }
 
       setFotos(nuevasUrls);
       setMensaje('¡Fotos subidas con éxito!');
     } catch (err) {
-      console.error('Error al subir fotos:', err);
-      setError('No se pudieron subir las fotos.');
+      console.error('Error detallado al subir fotos:', err);
+      setError(`No se pudieron subir las fotos (${err.message || 'Error de red o permisos'}).`);
     } finally {
       setSaving(false);
     }
@@ -137,10 +144,6 @@ export default function TecnicoInspeccionExtra() {
         estado_tecnico: 'completado'
       };
 
-      if (origenTabla === 'facturas' && extraData.estado) {
-        updatePayload.estado = extraData.estado;
-      }
-
       const { error: updateError } = await supabase
         .from(origenTabla)
         .update(updatePayload)
@@ -148,7 +151,7 @@ export default function TecnicoInspeccionExtra() {
 
       if (updateError) throw updateError;
 
-      alert('Inspección enviada al administrador correctamente.');
+      alert('Inspección enviada correctamente.');
       navigate('/tecnico');
     } catch (err) {
       console.error('Error al guardar:', err);
@@ -262,6 +265,7 @@ export default function TecnicoInspeccionExtra() {
               accept="image/*"
               capture="environment"
               onChange={manejarSubidaFotos}
+              disabled={saving}
               style={{ display: 'none' }}
             />
           </label>
@@ -286,6 +290,7 @@ export default function TecnicoInspeccionExtra() {
               accept="image/*"
               multiple
               onChange={manejarSubidaFotos}
+              disabled={saving}
               style={{ display: 'none' }}
             />
           </label>
