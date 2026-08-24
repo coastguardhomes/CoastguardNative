@@ -20,8 +20,8 @@ export default function FinalizarInspeccion() {
   async function cargarInspeccion() {
     setLoading(true);
     try {
-      // Traemos la inspección junto con los datos de la tabla viviendas directamente por relación
-      const { data, error } = await supabase
+      // 1. Intentamos buscar primero con la relación de viviendas
+      let { data, error } = await supabase
         .from("inspecciones")
         .select(`
           *,
@@ -32,11 +32,23 @@ export default function FinalizarInspeccion() {
             localidad
           )
         `)
-        .eq("id", String(id))
-        .single();
+        .eq("id", id)
+        .maybeSingle();
+
+      // 2. Si falla la relación (por restricciones de clave foránea), buscamos la inspección sola
+      if (error || !data) {
+        const resSimple = await supabase
+          .from("inspecciones")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+        
+        data = resSimple.data;
+        error = resSimple.error;
+      }
 
       if (error || !data) {
-        setMensaje("No se encontró la inspección.");
+        setMensaje("No se encontró la inspección con ID: " + id);
         setEsError(true);
       } else {
         setInspeccion(data);
@@ -56,23 +68,20 @@ export default function FinalizarInspeccion() {
     setEsError(false);
 
     try {
-      // 1. Cambiar estado a finalizada en la base de datos
       const { error: updateErr } = await supabase
         .from("inspecciones")
         .update({
           estado: "finalizada",
           fecha_finalizacion: new Date().toISOString(),
         })
-        .eq("id", String(id));
+        .eq("id", id);
 
       if (updateErr) throw updateErr;
 
-      // 2. Obtener token de sesión para autorizar las Edge Functions
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       const headersAuth = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // 3. Invocar Edge Function de PDF
       const resPdf = await supabase.functions.invoke("pdf-inspeccion", { 
         body: { inspeccion_id: id, id: id },
         headers: headersAuth
@@ -89,7 +98,6 @@ export default function FinalizarInspeccion() {
         throw new Error("Error en PDF: " + detalleError);
       }
 
-      // 4. Invocar Edge Function de Email
       const resEmail = await supabase.functions.invoke("enviar-email", { 
         body: { inspeccion_id: id, id: id, tipo: "inspeccion_aprobada" },
         headers: headersAuth
@@ -99,7 +107,6 @@ export default function FinalizarInspeccion() {
         throw new Error("Error en Email: " + (resEmail.error.message || JSON.stringify(resEmail.error)));
       }
 
-      // 5. Éxito total
       setMensaje("¡Inspección finalizada, PDF generado y email enviado con éxito! ✔");
       setEsError(false);
 
@@ -146,7 +153,6 @@ export default function FinalizarInspeccion() {
     );
   }
 
-  // Extraer dirección y ciudad de la relación SQL obtenida
   const direccionReal = inspeccion?.viviendas?.direccion || inspeccion?.direccion || "Dirección no especificada";
   const localidadReal = inspeccion?.viviendas?.ciudad || inspeccion?.viviendas?.localidad || inspeccion?.localidad || "No especificada";
 
