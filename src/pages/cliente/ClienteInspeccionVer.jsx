@@ -31,11 +31,25 @@ export default function ClienteInspeccionVer() {
     if (id && user) cargarDetalles();
   }, [id, user]);
 
+  const parsearFotos = (fotosRaw) => {
+    if (!fotosRaw) return [];
+    if (Array.isArray(fotosRaw)) return fotosRaw;
+    if (typeof fotosRaw === "string") {
+      try {
+        const parsed = JSON.parse(fotosRaw);
+        if (Array.isArray(parsed)) return parsed;
+        return [parsed];
+      } catch {
+        return fotosRaw.trim() ? [fotosRaw] : [];
+      }
+    }
+    return [];
+  };
+
   async function cargarDetalles() {
     setLoading(true);
     setErrorMsg("");
     try {
-      // 1. Obtener cliente_id del usuario logueado para seguridad
       const { data: clienteData } = await supabase
         .from("clientes")
         .select("id")
@@ -50,7 +64,6 @@ export default function ClienteInspeccionVer() {
 
       const clienteId = clienteData.id;
 
-      // 2. Intentamos buscar primero en la tabla 'inspecciones' validando dueño
       let { data: insp } = await supabase
         .from("inspecciones")
         .select("*")
@@ -58,7 +71,8 @@ export default function ClienteInspeccionVer() {
         .eq("cliente_id", clienteId)
         .maybeSingle();
 
-      // Si no está en inspecciones, buscamos en la tabla 'extras'
+      let fotosEncontradas = [];
+
       if (!insp) {
         const { data: dataExtra } = await supabase
           .from("extras")
@@ -79,7 +93,40 @@ export default function ClienteInspeccionVer() {
             pdf_url: dataExtra.pdf_url
           };
           setEsExtra(true);
-          setFotos(dataExtra.fotos || []);
+          fotosEncontradas = parsearFotos(dataExtra.fotos);
+
+          if (fotosEncontradas.length === 0) {
+            const { data: fotosTabla } = await supabase
+              .from("fotos")
+              .select("*")
+              .or(`extra_id.eq.${id},inspeccion_id.eq.${id}`);
+            if (fotosTabla && fotosTabla.length > 0) {
+              fotosEncontradas = fotosTabla;
+            }
+          }
+        }
+      } else {
+        if (insp.fotos) {
+          fotosEncontradas = parsearFotos(insp.fotos);
+        }
+
+        if (fotosEncontradas.length === 0) {
+          try {
+            const fotosCargadas = await cargarFotosInspeccion(id);
+            if (fotosCargadas && fotosCargadas.length > 0) {
+              fotosEncontradas = fotosCargadas;
+            }
+          } catch {
+            // Ignorar fallback de helper
+          }
+        }
+
+        if (fotosEncontradas.length === 0) {
+          const { data: fotosData } = await supabase
+            .from("fotos")
+            .select("*")
+            .eq("inspeccion_id", String(id));
+          if (fotosData) fotosEncontradas = fotosData;
         }
       }
 
@@ -90,8 +137,8 @@ export default function ClienteInspeccionVer() {
       }
 
       setInspeccion(insp);
+      setFotos(fotosEncontradas);
 
-      // 3. Cargar la vivienda/dirección asociada (si aplica y no es extra)
       if (!esExtra && insp.vivienda_id) {
         const { data: viv } = await supabase
           .from("viviendas")
@@ -100,28 +147,6 @@ export default function ClienteInspeccionVer() {
           .maybeSingle();
 
         setVivienda(viv);
-      }
-
-      // 4. Si no es extra, cargamos las fotos mediante helper o tabla
-      if (!esExtra) {
-        try {
-          const fotosCargadas = await cargarFotosInspeccion(id);
-          if (fotosCargadas && fotosCargadas.length > 0) {
-            setFotos(fotosCargadas);
-          } else {
-            const { data: fotosData } = await supabase
-              .from("fotos")
-              .select("*")
-              .eq("inspeccion_id", String(id));
-            setFotos(fotosData || []);
-          }
-        } catch {
-          const { data: fotosData } = await supabase
-            .from("fotos")
-            .select("*")
-            .eq("inspeccion_id", String(id));
-          setFotos(fotosData || []);
-        }
       }
 
     } catch (err) {
@@ -157,11 +182,12 @@ export default function ClienteInspeccionVer() {
     const rawUrl = typeof foto === "string" ? foto : (foto.url_foto || foto.url || foto.path || foto.foto_url || "");
     if (!rawUrl) return "";
     
-    if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+    if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://") || rawUrl.startsWith("data:")) {
       return rawUrl;
     }
     
-    const { data } = supabase.storage.from("extras").getPublicUrl(rawUrl);
+    const bucket = esExtra ? "extras" : "inspecciones";
+    const { data } = supabase.storage.from(bucket).getPublicUrl(rawUrl);
     return data?.publicUrl || rawUrl;
   }
 
@@ -255,6 +281,29 @@ export default function ClienteInspeccionVer() {
                 </div>
               )}
             </div>
+
+            {inspeccion.pdf_url && (
+              <a
+                href={inspeccion.pdf_url}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "block",
+                  textAlign: "center",
+                  padding: "14px",
+                  background: DEGRADADO_AZUL_BOTON,
+                  border: BORDE_DORADO_INTENSO,
+                  color: "#ffffff",
+                  borderRadius: "16px",
+                  fontWeight: "900",
+                  textDecoration: "none",
+                  boxShadow: "0 6px 20px rgba(56, 189, 248, 0.4), 0 0 15px rgba(224, 176, 52, 0.3)",
+                  marginBottom: "16px"
+                }}
+              >
+                📄 Ver Informe PDF
+              </a>
+            )}
 
             <button 
               onClick={borrarInforme}
