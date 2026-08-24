@@ -32,11 +32,13 @@ export default function TecnicoDashboard() {
       setLoading(true);
       setDebugLog("Conectando a Supabase...");
 
-      // 1. INSPECCIONES
+      // 1. INSPECCIONES (Filtro seguro que no bloquea si el estado es diferente)
       const { data: inspData, error: inspError } = await supabase
         .from('inspecciones')
         .select('*')
-        .not('estado', 'in', ['completada_admin','finalizada','completada','aprobada'])
+        .not('estado', 'eq', 'finalizada')
+        .not('estado', 'eq', 'aprobada')
+        .not('estado', 'eq', 'completada_admin')
         .order('fecha', { ascending: false });
 
       if (inspError) console.error("Error inspecciones:", inspError);
@@ -63,7 +65,7 @@ export default function TecnicoDashboard() {
 
       setInspeccionesDiarias(inspeccionesLista);
 
-      // 2. EXTRAS / FACTURAS (Filtra solo las pendientes de resolución técnica)
+      // 2. EXTRAS / FACTURAS (Intacto, igual que en tu código original)
       const { data: extrasData, error: extrasError } = await supabase
         .from('facturas')
         .select('*')
