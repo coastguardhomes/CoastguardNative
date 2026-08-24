@@ -30,7 +30,22 @@ export default function FinalizarInspeccion() {
         setMensaje("No se encontró la inspección.");
         setEsError(true);
       } else {
-        setInspeccion(data);
+        let inspeccionEnriquecida = data;
+
+        // Cruzar con la tabla viviendas para obtener dirección y localidad reales
+        if (data.vivienda_id) {
+          const { data: vivData } = await supabase
+            .from("viviendas")
+            .select("id, direccion, ciudad, localidad")
+            .eq("id", data.vivienda_id)
+            .single();
+
+          if (vivData) {
+            inspeccionEnriquecida.viviendas = vivData;
+          }
+        }
+
+        setInspeccion(inspeccionEnriquecida);
       }
     } catch {
       setMensaje("Error de conexión.");
@@ -42,57 +57,57 @@ export default function FinalizarInspeccion() {
 
   async function aprobarInspeccion() {
     setProcesando(true);
-    setMensaje("Aprobando inspección...");
+    setMensaje("Finalizando inspección, generando PDF y enviando correo...");
     setEsError(false);
 
     try {
-      // 1. Cambiar estado a aprobada
+      // 1. Cambiar estado a finalizada en la base de datos
       const { error: updateErr } = await supabase
         .from("inspecciones")
         .update({
-          estado: "aprobada",
+          estado: "finalizada",
           fecha_finalizacion: new Date().toISOString(),
         })
         .eq("id", String(id));
 
       if (updateErr) throw updateErr;
 
-      // 2. Ejecutar funciones de Supabase para PDF y Email
-      let pdfOk = false;
-      let emailOk = false;
+      // 2. Obtener la sesión del usuario actual para enviar el token JWT en las Edge Functions
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const headersAuth = token ? { Authorization: `Bearer ${token}` } : {};
 
-      try {
-        const resPdf = await supabase.functions.invoke("pdf-inspeccion", { body: { inspeccion_id: id } });
-        if (!resPdf.error) pdfOk = true;
-      } catch (e) {
-        console.error("Error al invocar pdf-inspeccion:", e);
+      // 3. Invocar la Edge Function de PDF
+      const resPdf = await supabase.functions.invoke("pdf-inspeccion", { 
+        body: { inspeccion_id: id, id: id },
+        headers: headersAuth
+      });
+
+      if (resPdf.error) {
+        throw new Error("Error en PDF: " + (resPdf.error.message || JSON.stringify(resPdf.error)));
       }
 
-      try {
-        const resEmail = await supabase.functions.invoke("enviar-email", { 
-          body: { inspeccion_id: id, tipo: "inspeccion_aprobada" } 
-        });
-        if (!resEmail.error) emailOk = true;
-      } catch (e) {
-        console.error("Error al invocar enviar-email:", e);
+      // 4. Invocar la Edge Function de Email
+      const resEmail = await supabase.functions.invoke("enviar-email", { 
+        body: { inspeccion_id: id, id: id, tipo: "inspeccion_aprobada" },
+        headers: headersAuth
+      });
+
+      if (resEmail.error) {
+        throw new Error("Error en Email: " + (resEmail.error.message || JSON.stringify(resEmail.error)));
       }
 
-      // 3. Feedback real al administrador
-      if (pdfOk && emailOk) {
-        setMensaje("¡Inspección aprobada, PDF generado y email enviado con éxito! ✔");
-      } else if (!pdfOk && !emailOk) {
-        setMensaje("Inspección aprobada en BD, pero falló la generación de PDF y el envío de Email (Revisa las Edge Functions de Supabase).");
-        setEsError(true);
-      } else {
-        setMensaje("Inspección aprobada. Revisa los servicios de correo/PDF.");
-      }
+      // 5. Éxito total
+      setMensaje("¡Inspección finalizada, PDF generado y email enviado con éxito! ✔");
+      setEsError(false);
 
       setTimeout(() => {
         navigate("/inspecciones");
       }, 2500);
 
     } catch (e) {
-      setMensaje("Error al aprobar: " + e.message);
+      console.error("Fallo detallado:", e);
+      setMensaje(e.message);
       setEsError(true);
       setProcesando(false);
     }
@@ -130,15 +145,19 @@ export default function FinalizarInspeccion() {
     );
   }
 
+  // Obtener dirección y localidad reales
+  const direccionReal = inspeccion?.viviendas?.direccion || inspeccion?.direccion || "Dirección no especificada";
+  const localidadReal = inspeccion?.viviendas?.ciudad || inspeccion?.viviendas?.localidad || inspeccion?.localidad || "No especificada";
+
   return (
     <Menu>
       <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif" }}>
         <h1 style={{ color: "#4db8ff", marginBottom: "25px", fontSize: "24px", textAlign: "center" }}>
-          Revisión y Aprobación
+          Revisión y Finalización
         </h1>
 
         {mensaje && (
-          <div style={{ marginBottom: "20px", padding: "12px", background: esError ? "rgba(255,107,107,0.15)" : "rgba(0,153,255,0.15)", border: `1px solid ${esError ? "#ff6b6b" : "#4db8ff"}`, borderRadius: "10px", color: esError ? "#ff6b6b" : "#4db8ff", textAlign: "center", fontSize: "14px" }}>
+          <div style={{ marginBottom: "20px", padding: "12px", background: esError ? "rgba(255,107,107,0.15)" : "rgba(74,222,128,0.15)", border: `1px solid ${esError ? "#ff6b6b" : "#4ade80"}`, borderRadius: "10px", color: esError ? "#ff6b6b" : "#4ade80", textAlign: "center", fontSize: "14px" }}>
             {mensaje}
           </div>
         )}
@@ -146,8 +165,10 @@ export default function FinalizarInspeccion() {
         {inspeccion && (
           <>
             <div style={{ background: "rgba(255,255,255,0.05)", padding: "20px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "25px" }}>
+              <p style={{ marginBottom: "10px" }}><strong style={{ color: "#4db8ff" }}>Dirección:</strong> {direccionReal}</p>
+              <p style={{ marginBottom: "10px" }}><strong style={{ color: "#4db8ff" }}>Localidad:</strong> {localidadReal}</p>
               <p style={{ marginBottom: "10px" }}><strong style={{ color: "#4db8ff" }}>Fecha:</strong> {inspeccion.fecha ? String(inspeccion.fecha).slice(0, 10) : "-"}</p>
-              <p style={{ marginBottom: "10px" }}><strong style={{ color: "#4db8ff" }}>Estado actual:</strong> {inspeccion.estado}</p>
+              <p style={{ marginBottom: "10px" }}><strong style={{ color: "#4db8ff" }}>Estado actual:</strong> {inspeccion.estado || "pendiente"}</p>
               <p><strong style={{ color: "#4db8ff" }}>Notas del técnico:</strong> {inspeccion.notas_tecnico || inspeccion.observaciones || "Sin observaciones"}</p>
             </div>
 
@@ -156,7 +177,7 @@ export default function FinalizarInspeccion() {
               disabled={procesando}
               style={{ padding: "14px", width: "100%", background: "#4ade80", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "16px", cursor: "pointer", opacity: procesando ? 0.6 : 1 }}
             >
-              {procesando ? "Procesando..." : "✔ Aprobar y Enviar al Cliente"}
+              {procesando ? "Procesando..." : "✔ Finalizar y Enviar al Cliente"}
             </button>
 
             {/* 🚀 BOTÓN DE ELIMINAR */}
