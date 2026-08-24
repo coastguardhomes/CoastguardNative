@@ -21,8 +21,6 @@ export default function ClienteFacturasLista() {
     async function cargar() {
       if (!user) return;
 
-      // RLS (facturas_select) ya limita esto a las facturas del cliente
-      // logueado vía mi_cliente_id().
       const { data, error } = await supabase
         .from("facturas")
         .select("*")
@@ -34,6 +32,24 @@ export default function ClienteFacturasLista() {
 
     cargar();
   }, [user]);
+
+  const obtenerBadgeEstadoAdmin = (estado) => {
+    switch (estado?.toLowerCase()) {
+      case "pagada":
+        return { label: "PAGADA", bg: "rgba(16, 185, 129, 0.2)", border: "1px solid #10b981", color: "#34d399" };
+      case "cancelada":
+        return { label: "CANCELADA", bg: "rgba(239, 68, 68, 0.2)", border: "1px solid #ef4444", color: "#f87171" };
+      default:
+        return { label: "PENDIENTE", bg: "rgba(245, 158, 11, 0.2)", border: "1px solid #f59e0b", color: "#fbbf24" };
+    }
+  };
+
+  const obtenerBadgeTecnico = (estadoTecnico) => {
+    if (estadoTecnico === "completado") {
+      return { label: "TRABAJO COMPLETADO", bg: "rgba(59, 130, 246, 0.2)", border: "1px solid #3b82f6", color: "#60a5fa" };
+    }
+    return { label: "PENDIENTE DE REVISIÓN", bg: "rgba(148, 163, 184, 0.15)", border: "1px solid #64748b", color: "#94a3b8" };
+  };
 
   return (
     <Menu>
@@ -48,7 +64,7 @@ export default function ClienteFacturasLista() {
       >
         <h1
           style={{
-            fontSize: "28px",
+            fontSize: "26px",
             fontWeight: "900",
             marginBottom: "25px",
             ...TEXTO_DORADO_BRILLO,
@@ -60,43 +76,89 @@ export default function ClienteFacturasLista() {
         </h1>
 
         {loading ? (
-          <p style={{ textAlign: "center", ...TEXTO_DORADO_BRILLO }}>Cargando...</p>
+          <p style={{ textAlign: "center", ...TEXTO_DORADO_BRILLO }}>Cargando facturas...</p>
         ) : facturas.length === 0 ? (
           <p style={{ textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
             No hay facturas registradas.
           </p>
         ) : (
-          facturas.map((f) => (
-            <div
-              key={f.id}
-              onClick={() => navigate(`/cliente/factura/${f.id}`)}
-              style={{
-                background: FONDO_TARJETA,
-                padding: "18px",
-                borderRadius: "16px",
-                border: BORDE_DORADO_FINO,
-                boxShadow: SOMBRA_LUXURY,
-                marginBottom: "15px",
-                cursor: "pointer",
-              }}
-            >
-              <p style={{ marginBottom: 6 }}>
-                <strong style={{ color: COLOR_DORADO }}>Nº Factura:</strong>{" "}
-                {f.numero}
-              </p>
-              <p style={{ marginBottom: 6 }}>
-                <strong style={{ color: COLOR_DORADO }}>Fecha:</strong> {f.fecha}
-              </p>
-              <p style={{ marginBottom: 6 }}>
-                <strong style={{ color: COLOR_DORADO }}>Total:</strong>{" "}
-                <span style={{ fontWeight: "700", color: COLOR_DORADO }}>{f.total != null ? `${f.total} €` : "—"}</span>
-              </p>
-              <p style={{ marginBottom: 0 }}>
-                <strong style={{ color: COLOR_DORADO }}>Estado:</strong>{" "}
-                <span style={{ color: "#34d399", fontWeight: "bold" }}>{f.estado}</span>
-              </p>
-            </div>
-          ))
+          facturas.map((f) => {
+            const badgeAdmin = obtenerBadgeEstadoAdmin(f.estado);
+            const badgeTec = obtenerBadgeTecnico(f.estado_tecnico);
+
+            return (
+              <div
+                key={f.id}
+                onClick={() => navigate(`/cliente/factura/${f.id}`)}
+                style={{
+                  background: FONDO_TARJETA,
+                  padding: "18px",
+                  borderRadius: "16px",
+                  border: BORDE_DORADO_FINO,
+                  boxShadow: SOMBRA_LUXURY,
+                  marginBottom: "16px",
+                  cursor: "pointer",
+                  transition: "transform 0.2s ease",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "14px", fontWeight: "800", color: COLOR_DORADO }}>
+                    {f.numero ? `Nº ${f.numero}` : `#FAC-${f.id}`}
+                  </span>
+                  <span
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "8px",
+                      fontSize: "11px",
+                      fontWeight: "800",
+                      background: badgeAdmin.bg,
+                      border: badgeAdmin.border,
+                      color: badgeAdmin.color,
+                    }}
+                  >
+                    {badgeAdmin.label}
+                  </span>
+                </div>
+
+                {f.descripcion && (
+                  <p style={{ fontSize: "13px", color: "#e2e8f0", marginBottom: "10px" }}>
+                    {f.descripcion}
+                  </p>
+                )}
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", paddingTop: "10px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div>
+                    <span style={{ fontSize: "11px", color: "#94a3b8", display: "block" }}>Fecha</span>
+                    <span style={{ fontSize: "13px", color: "#fff" }}>{f.fecha || "—"}</span>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", textAlign: "right" }}>Total</span>
+                    <span style={{ fontSize: "16px", fontWeight: "900", color: COLOR_DORADO }}>
+                      {f.total != null ? `${f.total} €` : "—"}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "10px", textAlign: "right" }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "3px 8px",
+                      borderRadius: "6px",
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      background: badgeTec.bg,
+                      border: badgeTec.border,
+                      color: badgeTec.color,
+                    }}
+                  >
+                    {badgeTec.label}
+                  </span>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
     </Menu>
