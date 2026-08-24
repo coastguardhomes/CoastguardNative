@@ -113,18 +113,18 @@ export default function TecnicoInspeccionExtra() {
 
       const descripcionCompleta = `Trabajo: ${descripcion} | Materiales: ${materiales || 'Ninguno'} | Tiempo: ${tiempo || 'No especificado'}`;
 
-      // 1. Actualizar la tabla facturas
+      // 1. Actualizar la tabla facturas dejando el estado en 'pendiente' para el admin
       const { error: updateError } = await supabase
         .from('facturas')
         .update({
           descripcion: descripcionCompleta,
-          estado: 'enviado_cliente'
+          estado: 'pendiente' // Va al admin para su revisión
         })
         .eq('id', extraData.id);
 
       if (updateError) throw updateError;
 
-      // 2. Datos unificados para la tabla 'extras' (vinculando factura e inspección a la vez)
+      // 2. Sincronizar la tabla 'extras' vinculando factura e inspección a la vez
       const datosExtra = {
         factura_id: isNaN(facturaIdNum) ? null : facturaIdNum,
         inspeccion_id: inspeccionUuid,
@@ -133,8 +133,8 @@ export default function TecnicoInspeccionExtra() {
         descripcion: descripcionCompleta,
         materiales: materiales || '',
         tiempo_empleado: tiempo || '',
-        fotos: fotos, // Array de URLs
-        estado: 'enviado_cliente'
+        fotos: fotos, // Array con las URLs de las fotos
+        estado: 'pendiente' // Estado pendiente para revisión del administrador
       };
 
       // Comprobar si ya existe un registro previo en 'extras'
@@ -164,7 +164,7 @@ export default function TecnicoInspeccionExtra() {
 
       if (extraError) throw extraError;
 
-      alert('Inspección de extra enviada y fotos guardadas correctamente.');
+      alert('Inspección de extra enviada al administrador correctamente.');
       navigate('/tecnico');
     } catch (err) {
       console.error('Error al guardar:', err);
@@ -408,7 +408,7 @@ export default function TecnicoInspeccionExtra() {
               transition: 'all 0.2s ease'
             }}
           >
-            {saving ? 'Enviando...' : '✅ Guardar y Enviar Inspección al Admin'}
+            {saving ? 'Enviando...' : '✅ Enviar Inspección al Administrador'}
           </button>
         </form>
       </div>
