@@ -32,17 +32,14 @@ export default function TecnicoDashboard() {
       setLoading(true);
       setDebugLog("Conectando a Supabase...");
 
-      // INSPECCIONES
+      // 1. INSPECCIONES
       const { data: inspData, error: inspError } = await supabase
         .from('inspecciones')
         .select('*')
         .not('estado', 'in', ['completada_admin','finalizada','completada','aprobada'])
         .order('fecha', { ascending: false });
 
-      if (inspError) {
-        setDebugLog("Error inspecciones: " + inspError.message);
-        console.error(inspError);
-      }
+      if (inspError) console.error("Error inspecciones:", inspError);
 
       const rawLista = inspData || [];
       const viviendaIds = [...new Set(rawLista.map((i) => i.vivienda_id).filter(Boolean))];
@@ -55,9 +52,7 @@ export default function TecnicoDashboard() {
           .in('id', viviendaIds);
 
         if (vivData) {
-          vivData.forEach((v) => {
-            viviendasMap[v.id] = v.direccion;
-          });
+          vivData.forEach((v) => { viviendasMap[v.id] = v.direccion; });
         }
       }
 
@@ -68,22 +63,20 @@ export default function TecnicoDashboard() {
 
       setInspeccionesDiarias(inspeccionesLista);
 
-      // EXTRAS / FACTURAS (Corregido: consultando la tabla 'facturas' que es donde el admin genera los extras)
+      // 2. EXTRAS / FACTURAS (Filtra solo las pendientes de resolución técnica)
       const { data: extrasData, error: extrasError } = await supabase
         .from('facturas')
         .select('*')
         .in('estado', ['pagada', 'pagado', 'activa', 'en_proceso', 'pendiente'])
+        .or('estado_tecnico.is.null,estado_tecnico.neq.completado')
         .order('id', { ascending: false });
 
-      if (extrasError) {
-        setDebugLog("Error facturas/extras: " + extrasError.message);
-        console.error(extrasError);
-      }
+      if (extrasError) console.error("Error facturas/extras:", extrasError);
 
       const listaExtras = extrasData || [];
       setExtrasPendientes(listaExtras);
 
-      // CONTADORES
+      // 3. CONTADORES
       const { count: countViviendas } = await supabase
         .from('viviendas')
         .select('*', { count: 'exact', head: true });
@@ -138,7 +131,6 @@ export default function TecnicoDashboard() {
         boxSizing: 'border-box'
       }}>
 
-        {/* ENCABEZADO */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -172,7 +164,6 @@ export default function TecnicoDashboard() {
           </button>
         </div>
 
-        {/* ESTADO DE RED */}
         <div style={{
           background: 'rgba(11, 19, 32, 0.8)',
           border: BORDE_DORADO_FINO,
@@ -184,104 +175,47 @@ export default function TecnicoDashboard() {
           <span style={{ color: COLOR_DORADO, fontWeight: 'bold' }}>Estado de Red:</span> {debugLog}
         </div>
 
-        {/* TARJETAS */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-          <div style={{
-            background: FONDO_TARJETA,
-            border: BORDE_DORADO_FINO,
-            borderRadius: '12px',
-            padding: '12px 6px',
-            textAlign: 'center'
-          }}>
+          <div style={{ background: FONDO_TARJETA, border: BORDE_DORADO_FINO, borderRadius: '12px', padding: '12px 6px', textAlign: 'center' }}>
             <div style={{ fontSize: '18px' }}>📋</div>
-            <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>
-              {stats.inspeccionesSemana}
-            </div>
+            <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>{stats.inspeccionesSemana}</div>
             <div style={{ fontSize: '10px', color: COLOR_DORADO }}>Inspecciones</div>
           </div>
 
-          <div style={{
-            background: 'linear-gradient(145deg, #1f0b0b 0%, #0d070a 100%)',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            borderRadius: '12px',
-            padding: '12px 6px',
-            textAlign: 'center'
-          }}>
+          <div style={{ background: 'linear-gradient(145deg, #1f0b0b 0%, #0d070a 100%)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '12px', padding: '12px 6px', textAlign: 'center' }}>
             <div style={{ fontSize: '18px' }}>⚠️</div>
-            <div style={{ fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>
-              {stats.alertasDetectadas}
-            </div>
+            <div style={{ fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>{stats.alertasDetectadas}</div>
             <div style={{ fontSize: '10px', color: '#ef4444' }}>Alertas</div>
           </div>
 
-          <div style={{
-            background: FONDO_TARJETA,
-            border: BORDE_DORADO_FINO,
-            borderRadius: '12px',
-            padding: '12px 6px',
-            textAlign: 'center'
-          }}>
+          <div style={{ background: FONDO_TARJETA, border: BORDE_DORADO_FINO, borderRadius: '12px', padding: '12px 6px', textAlign: 'center' }}>
             <div style={{ fontSize: '18px' }}>🏠</div>
-            <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>
-              {stats.viviendasAsignadas}
-            </div>
+            <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff' }}>{stats.viviendasAsignadas}</div>
             <div style={{ fontSize: '10px', color: COLOR_DORADO }}>Viviendas</div>
           </div>
         </div>
 
-        {/* EXTRAS */}
         {stats.extrasPendientesCount > 0 ? (
-          <div style={{
-            backgroundColor: 'rgba(56, 189, 248, 0.1)',
-            border: '1px solid rgba(56, 189, 248, 0.4)',
-            borderRadius: '12px',
-            padding: '12px 14px'
-          }}>
+          <div style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.4)', borderRadius: '12px', padding: '12px 14px' }}>
             <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>
               ⚡ Tienes {stats.extrasPendientesCount} extras pendientes
             </span>
           </div>
         ) : (
-          <div style={{
-            backgroundColor: 'rgba(11, 19, 32, 0.6)',
-            border: BORDE_DORADO_FINO,
-            borderRadius: '12px',
-            padding: '10px 14px',
-            color: '#888'
-          }}>
+          <div style={{ backgroundColor: 'rgba(11, 19, 32, 0.6)', border: BORDE_DORADO_FINO, borderRadius: '12px', padding: '10px 14px', color: '#888' }}>
             ⚡ No hay servicios extras pendientes.
           </div>
         )}
 
-        {/* LISTADO EXTRAS */}
         {extrasPendientes.length > 0 && (
-          <div style={{
-            background: FONDO_TARJETA,
-            border: '1px solid rgba(56, 189, 248, 0.4)',
-            borderRadius: '14px',
-            padding: '14px'
-          }}>
+          <div style={{ background: FONDO_TARJETA, border: '1px solid rgba(56, 189, 248, 0.4)', borderRadius: '14px', padding: '14px' }}>
             <h3 style={{ color: '#38bdf8', fontSize: '12px', marginBottom: '10px' }}>
               🛠️ Trabajos Extras Asignados
             </h3>
 
-            <div style={{
-              maxHeight: '180px',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
+            <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {extrasPendientes.map((extra) => (
-                <div key={extra.id} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(11, 19, 32, 0.9)',
-                  padding: '12px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(56, 189, 248, 0.3)'
-                }}>
+                <div key={extra.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(11, 19, 32, 0.9)', padding: '12px', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
                   <div>
                     <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '12px' }}>
                       Factura #{extra.codigo || String(extra.id).substring(0, 8)}
@@ -292,16 +226,7 @@ export default function TecnicoDashboard() {
                   </div>
 
                   <button
-                    style={{
-                      backgroundColor: '#38bdf8',
-                      color: '#030509',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      fontSize: '11px',
-                      fontWeight: '900',
-                      cursor: 'pointer'
-                    }}
+                    style={{ backgroundColor: '#38bdf8', color: '#030509', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}
                     onClick={() => navigate(`/tecnico/extra/${extra.id}`)}
                   >
                     Hacer Extra →
@@ -312,18 +237,8 @@ export default function TecnicoDashboard() {
           </div>
         )}
 
-        {/* LISTADO INSPECCIONES */}
-        <div style={{
-          background: FONDO_TARJETA,
-          border: BORDE_DORADO_FINO,
-          borderRadius: '14px',
-          padding: '14px'
-        }}>
-          <h3 style={{
-            fontSize: '12px',
-            color: COLOR_DORADO,
-            marginBottom: '10px'
-          }}>
+        <div style={{ background: FONDO_TARJETA, border: BORDE_DORADO_FINO, borderRadius: '14px', padding: '14px' }}>
+          <h3 style={{ fontSize: '12px', color: COLOR_DORADO, marginBottom: '10px' }}>
             Inspecciones Asignadas
           </h3>
 
@@ -332,52 +247,20 @@ export default function TecnicoDashboard() {
           ) : inspeccionesDiarias.length === 0 ? (
             <p style={{ color: '#888', textAlign: 'center' }}>No hay inspecciones pendientes asignadas.</p>
           ) : (
-            <div style={{
-              maxHeight: '180px',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
+            <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {inspeccionesDiarias.map((insp) => (
-                <div key={insp.id} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(11, 19, 32, 0.9)',
-                  padding: '12px',
-                  borderRadius: '10px',
-                  border: BORDE_DORADO_FINO
-                }}>
+                <div key={insp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(11, 19, 32, 0.9)', padding: '12px', borderRadius: '10px', border: BORDE_DORADO_FINO }}>
                   <div>
-                    <div style={{
-                      color: COLOR_DORADO,
-                      fontWeight: 'bold',
-                      fontSize: '12px'
-                    }}>
+                    <div style={{ color: COLOR_DORADO, fontWeight: 'bold', fontSize: '12px' }}>
                       Inspección #{String(insp.id).substring(0, 8)}
                     </div>
-
-                    <div style={{
-                      color: '#aaa',
-                      fontSize: '11px',
-                      marginTop: '4px'
-                    }}>
+                    <div style={{ color: '#aaa', fontSize: '11px', marginTop: '4px' }}>
                       📍 {insp.direccion}
                     </div>
                   </div>
 
                   <button
-                    style={{
-                      backgroundColor: '#10b981',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      fontSize: '11px',
-                      fontWeight: '900',
-                      cursor: 'pointer'
-                    }}
+                    style={{ backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}
                     onClick={() => navigate(`/tecnico/inspeccion/${insp.id}/checklist`)}
                   >
                     Checklist →
