@@ -82,7 +82,12 @@ export default function Facturas() {
               >
                 <div style={estilos.tarjeta}>
                   <div style={estilos.cabeceraTarjeta}>
-                    <span style={estilos.numero}>{f.numero || `#${f.id}`}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={estilos.numero}>{f.numero || `#${f.id}`}</span>
+                      {f.estado_tecnico === "completado" && (
+                        <span style={estilos.badgeTecnico}>📸 Inspección Lista</span>
+                      )}
+                    </div>
                     <span
                       style={{
                         ...estilos.estado,
@@ -217,6 +222,15 @@ const estilos = {
     fontSize: "15px", 
     fontWeight: "900", 
     color: COLOR_DORADO 
+  },
+  badgeTecnico: {
+    fontSize: "10px",
+    fontWeight: "800",
+    backgroundColor: "rgba(56, 189, 248, 0.2)",
+    color: "#38bdf8",
+    border: "1px solid rgba(56, 189, 248, 0.5)",
+    borderRadius: "12px",
+    padding: "2px 8px",
   },
   estado: {
     fontSize: "11px",
