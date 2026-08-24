@@ -53,8 +53,8 @@ export default function VerFactura() {
 
       if (errFactura) throw errFactura;
 
+      setFactura(prev => ({ ...prev, estado: 'pagada' }));
       alert('¡Factura marcada como pagada correctamente!');
-      cargarDatos();
     } catch (err) {
       console.error('Error al procesar:', err);
       alert('Error: ' + err.message);
@@ -66,14 +66,18 @@ export default function VerFactura() {
   const enviarAlCliente = async () => {
     try {
       setSaving(true);
+      
+      // Si la factura ya está PAGADA, mantenemos 'pagada' para no sobrescribir el cobro
+      const nuevoEstado = factura.estado === 'pagada' ? 'pagada' : 'enviado_cliente';
+
       const { error: err } = await supabase
         .from('facturas')
-        .update({ estado: 'enviado_cliente' })
+        .update({ estado: nuevoEstado })
         .eq('id', id);
 
       if (err) throw err;
       
-      setFactura(prev => ({ ...prev, estado: 'enviado_cliente' }));
+      setFactura(prev => ({ ...prev, estado: nuevoEstado }));
       alert('¡Factura enviada al cliente con éxito!');
     } catch (err) {
       console.error('Error al enviar al cliente:', err);
@@ -104,6 +108,18 @@ export default function VerFactura() {
     }
   };
 
+  const obtenerTextoEstado = (estado) => {
+    switch (estado?.toLowerCase()) {
+      case 'pagada':
+        return { texto: 'PAGADA', color: '#34d399' };
+      case 'enviado_cliente':
+      case 'enviada':
+        return { texto: 'ENVIADA AL CLIENTE', color: '#60a5fa' };
+      default:
+        return { texto: 'PENDIENTE', color: COLOR_DORADO };
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ backgroundColor: FONDO_PRINCIPAL, minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Inter, sans-serif' }}>
@@ -123,6 +139,7 @@ export default function VerFactura() {
 
   const tecnicoFinalizado = factura.estado_tecnico === 'completado' || factura.estado === 'finalizado';
   const fotosFinales = Array.isArray(factura.fotos) ? factura.fotos : [];
+  const infoEstado = obtenerTextoEstado(factura.estado);
 
   return (
     <div style={estilos.pagina}>
@@ -145,9 +162,10 @@ export default function VerFactura() {
             <span style={estilos.etiqueta}>Estado Factura:</span>
             <span style={{ 
               ...estilos.valorEstado, 
-              color: factura.estado === 'pagada' || factura.estado === 'enviado_cliente' ? '#34d399' : COLOR_DORADO 
+              color: infoEstado.color,
+              borderColor: infoEstado.color
             }}>
-              {factura.estado}
+              {infoEstado.texto}
             </span>
           </div>
           <div style={estilos.filaInfo}>
@@ -157,7 +175,8 @@ export default function VerFactura() {
             </span>
           </div>
 
-          {factura.estado !== 'pagada' && factura.estado !== 'enviado_cliente' && (
+          {/* Permitir marcar como pagada si NO está pagada aún */}
+          {factura.estado !== 'pagada' && (
             <div style={{ marginTop: '8px' }}>
               <button 
                 onClick={marcarPagada} 
@@ -180,7 +199,8 @@ export default function VerFactura() {
             <span style={estilos.etiqueta}>Estado Técnico:</span>
             <span style={{ 
               ...estilos.valorEstado, 
-              color: tecnicoFinalizado ? '#34d399' : '#f59e0b' 
+              color: tecnicoFinalizado ? '#34d399' : '#f59e0b',
+              borderColor: tecnicoFinalizado ? '#34d399' : '#f59e0b'
             }}>
               {tecnicoFinalizado ? 'Completado' : (factura.estado_tecnico || 'Pendiente')}
             </span>
@@ -233,7 +253,7 @@ export default function VerFactura() {
 
         {/* Acciones Finales */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
-          {tecnicoFinalizado && factura.estado !== 'enviado_cliente' && (
+          {tecnicoFinalizado && (
             <button 
               onClick={enviarAlCliente} 
               disabled={saving}
@@ -375,3 +395,4 @@ const estilos = {
     textTransform: 'uppercase'
   }
 };
+          
