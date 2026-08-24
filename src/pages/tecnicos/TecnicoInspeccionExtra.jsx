@@ -15,6 +15,7 @@ export default function TecnicoInspeccionExtra() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [extraData, setExtraData] = useState(null);
+  const [origenTabla, setOrigenTabla] = useState('facturas');
   
   const [descripcion, setDescripcion] = useState('');
   const [materiales, setMateriales] = useState('');
@@ -32,13 +33,26 @@ export default function TecnicoInspeccionExtra() {
       setLoading(true);
       setError('');
       
-      const { data, error: err } = await supabase
+      let { data, error: err } = await supabase
         .from('facturas')
         .select('*')
         .eq('id', id)
         .maybeSingle();
 
-      if (err) throw err;
+      if (data) {
+        setOrigenTabla('facturas');
+      } else {
+        const { data: extraRes } = await supabase
+          .from('extras')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+        
+        if (extraRes) {
+          data = extraRes;
+          setOrigenTabla('extras');
+        }
+      }
 
       if (data) {
         setExtraData(data);
@@ -47,11 +61,11 @@ export default function TecnicoInspeccionExtra() {
         setTiempo(data.tiempo_empleado || '');
         if (Array.isArray(data.fotos)) setFotos(data.fotos);
       } else {
-        setError('No se encontró el trabajo extra en facturas.');
+        setError('No se encontró el trabajo extra.');
       }
     } catch (err) {
       console.error('Error al cargar extra:', err);
-      setError('Error al cargar los datos de la factura.');
+      setError('Error al cargar los datos del trabajo.');
     } finally {
       setLoading(false);
     }
@@ -82,8 +96,14 @@ export default function TecnicoInspeccionExtra() {
           .from('extras')
           .getPublicUrl(filePath);
 
-        if (publicUrlData?.publicUrl) {
-          nuevasUrls.push(publicUrlData.publicUrl);
+        const urlFinal = publicUrlData?.publicUrl || filePath;
+        if (urlFinal) {
+          nuevasUrls.push(urlFinal);
+          await supabase.from('fotos').insert([{
+            extra_id: extraData.id,
+            url_foto: urlFinal,
+            creado_en: new Date()
+          }]).catch(() => {});
         }
       }
 
@@ -109,17 +129,21 @@ export default function TecnicoInspeccionExtra() {
       setSaving(true);
       setError('');
 
-      // Guardado 100% unificado en la tabla 'facturas'
+      const updatePayload = {
+        descripcion: descripcion,
+        materiales: materiales || null,
+        tiempo_empleado: tiempo || null,
+        fotos: fotos,
+        estado_tecnico: 'completado'
+      };
+
+      if (origenTabla === 'facturas' && extraData.estado) {
+        updatePayload.estado = extraData.estado;
+      }
+
       const { error: updateError } = await supabase
-        .from('facturas')
-        .update({
-          descripcion: descripcion,
-          materiales: materiales || null,
-          tiempo_empleado: tiempo || null,
-          fotos: fotos,
-          estado_tecnico: 'completado', // Marca el trabajo del técnico como resuelto
-          estado: 'pendiente'          // Mantiene la factura pendiente para revisión del Admin
-        })
+        .from(origenTabla)
+        .update(updatePayload)
         .eq('id', extraData.id);
 
       if (updateError) throw updateError;
@@ -209,7 +233,7 @@ export default function TecnicoInspeccionExtra() {
         {extraData && (
           <div style={{ backgroundColor: 'rgba(11, 19, 32, 0.9)', padding: '14px', borderRadius: '12px', border: BORDE_DORADO_FINO }}>
             <p style={{ fontSize: '12px', margin: '4px 0', color: '#ccc' }}>
-              <strong style={{ color: COLOR_DORADO }}>Factura / Ref:</strong> {extraData.numero || extraData.codigo || `#${extraData.id}`}
+              <strong style={{ color: COLOR_DORADO }}>Ref:</strong> {extraData.numero || extraData.codigo || `#${extraData.id}`}
             </p>
             <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: '#ccc' }}>
               <strong style={{ color: COLOR_DORADO }}>Concepto inicial:</strong> {extraData.descripcion || extraData.concepto || 'Sin descripción previa'}
