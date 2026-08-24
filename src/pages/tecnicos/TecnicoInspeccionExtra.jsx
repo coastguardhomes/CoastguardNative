@@ -106,46 +106,55 @@ export default function TecnicoInspeccionExtra() {
       setSaving(true);
       setError('');
 
-      const facturaIdNum = parseInt(extraData.id, 10);
+      const facturaId = extraData.id;
       const inspeccionUuid = extraData.inspeccion_id || null;
-      const viviendaIdNum = extraData.vivienda_id ? parseInt(extraData.vivienda_id, 10) : null;
+      const viviendaId = extraData.vivienda_id || null;
       const clienteUuid = extraData.cliente_id || null;
 
       const descripcionCompleta = `Trabajo: ${descripcion} | Materiales: ${materiales || 'Ninguno'} | Tiempo: ${tiempo || 'No especificado'}`;
 
-      // 1. Actualizar la tabla facturas dejando el estado en 'pendiente' para el admin
+      // 1. Actualizar la tabla facturas: estado_tecnico completado para el admin, estado pendiente para no enviarlo aún al cliente
       const { error: updateError } = await supabase
         .from('facturas')
         .update({
           descripcion: descripcionCompleta,
-          estado: 'pendiente' // Va al admin para su revisión
+          estado_tecnico: 'completado',
+          estado: 'pendiente'
         })
-        .eq('id', extraData.id);
+        .eq('id', facturaId);
 
       if (updateError) throw updateError;
 
-      // 2. Sincronizar la tabla 'extras' vinculando factura e inspección a la vez
+      // 2. Sincronizar con la tabla 'extras'
       const datosExtra = {
-        factura_id: isNaN(facturaIdNum) ? null : facturaIdNum,
+        factura_id: facturaId,
         inspeccion_id: inspeccionUuid,
-        vivienda_id: viviendaIdNum,
+        vivienda_id: viviendaId,
         cliente_id: clienteUuid,
         descripcion: descripcionCompleta,
         materiales: materiales || '',
         tiempo_empleado: tiempo || '',
-        fotos: fotos, // Array con las URLs de las fotos
-        estado: 'pendiente' // Estado pendiente para revisión del administrador
+        fotos: fotos,
+        estado_tecnico: 'completado',
+        estado: 'pendiente'
       };
 
-      // Comprobar si ya existe un registro previo en 'extras'
       let existingExtra = null;
-      if (!isNaN(facturaIdNum)) {
-        const { data } = await supabase.from('extras').select('id').eq('factura_id', facturaIdNum).maybeSingle();
-        existingExtra = data;
-      }
-      if (!existingExtra && inspeccionUuid) {
-        const { data } = await supabase.from('extras').select('id').eq('inspeccion_id', inspeccionUuid).maybeSingle();
-        existingExtra = data;
+      const { data: extraByFactura } = await supabase
+        .from('extras')
+        .select('id')
+        .eq('factura_id', facturaId)
+        .maybeSingle();
+
+      if (extraByFactura) {
+        existingExtra = extraByFactura;
+      } else if (inspeccionUuid) {
+        const { data: extraByInspeccion } = await supabase
+          .from('extras')
+          .select('id')
+          .eq('inspeccion_id', inspeccionUuid)
+          .maybeSingle();
+        existingExtra = extraByInspeccion;
       }
 
       let extraError;
