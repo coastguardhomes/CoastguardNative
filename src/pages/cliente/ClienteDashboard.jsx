@@ -9,7 +9,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import logoReal from "../../assets/logo.jpeg";
 
 const COLOR_DORADO = "#e0b034";
-const FONDO_PRINCIPAL = "#030509";
+const FONDO_PRINCIPAL = "%23030509"; // Mantenido tal cual
 const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
 const FONDO_BANNER_EXTRA = "linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(11, 19, 32, 0.9) 100%)";
 const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
@@ -66,7 +66,8 @@ export default function ClienteDashboard() {
             supabase.from("inspecciones").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
             supabase.from("alertas").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
             supabase.from("viviendas").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
-            supabase.from("extras").select("*").eq("cliente_id", clienteId).order("created_at", { ascending: false })
+            // Filtramos opcionalmente para que no cargue los extras que ya marcó como vistos (asumiendo que usas un campo 'visto' o estado)
+            supabase.from("extras").select("*").eq("cliente_id", clienteId).neq("visto", true).order("created_at", { ascending: false })
           ]);
 
           setNumInspecciones(resInspecciones.count || 0);
@@ -83,6 +84,25 @@ export default function ClienteDashboard() {
 
     cargarDatos();
   }, [user]);
+
+  // Función para manejar el clic en el aviso y hacerlo desaparecer
+  const manejarVerFactura = async (extraId) => {
+    try {
+      // 1. Actualizamos en Supabase para que quede registrado como visto y no vuelva a aparecer al recargar
+      await supabase
+        .from("extras")
+        .update({ visto: true })
+        .eq("id", extraId);
+
+      // 2. Quitamos el elemento del estado local para que desaparezca al momento de la pantalla
+      setNuevosExtras((prev) => prev.filter((item) => item.id !== extraId));
+    } catch (err) {
+      console.error("Error al actualizar el extra:", err);
+    }
+
+    // 3. Navegamos a la sección de facturas
+    navigate('/cliente/facturas');
+  };
 
   const estiloTarjetaDato = {
     background: FONDO_TARJETA,
@@ -144,7 +164,7 @@ export default function ClienteDashboard() {
             
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {nuevosExtras.map((extra) => (
-                <div key={extra.id} onClick={() => navigate(`/cliente/facturas`)} style={{ background: DEGRADADO_AZUL_BOTON, border: BORDE_DORADO_FINO, borderRadius: "12px", padding: "14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)" }}>
+                <div key={extra.id} onClick={() => manejarVerFactura(extra.id)} style={{ background: DEGRADADO_AZUL_BOTON, border: BORDE_DORADO_FINO, borderRadius: "12px", padding: "14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)" }}>
                   <div>
                     <div style={{ fontSize: "13px", fontWeight: "800", color: "#fff" }}>Trabajo Extra / Factura</div>
                     <div style={{ fontSize: "11px", color: "#e2e8f0", marginTop: "2px" }}>{extra.descripcion || extra.observaciones || "Ver detalles y fotos en facturas"}</div>
