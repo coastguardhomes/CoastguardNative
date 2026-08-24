@@ -9,7 +9,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import logoReal from "../../assets/logo.jpeg";
 
 const COLOR_DORADO = "#e0b034";
-const COLOR_BRILLO_DORADO = "rgba(224, 176, 52, 0.7)";
 const FONDO_PRINCIPAL = "#030509";
 const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
 const FONDO_BANNER_EXTRA = "linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(11, 19, 32, 0.9) 100%)";
@@ -145,12 +144,12 @@ export default function ClienteDashboard() {
             
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {nuevosExtras.map((extra) => (
-                <div key={extra.id} onClick={() => navigate(`/cliente/inspeccion/${extra.id}`)} style={{ background: DEGRADADO_AZUL_BOTON, border: BORDE_DORADO_FINO, borderRadius: "12px", padding: "14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)" }}>
+                <div key={extra.id} onClick={() => navigate(`/cliente/facturas`)} style={{ background: DEGRADADO_AZUL_BOTON, border: BORDE_DORADO_FINO, borderRadius: "12px", padding: "14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)" }}>
                   <div>
-                    <div style={{ fontSize: "13px", fontWeight: "800", color: "#fff" }}>Trabajo Extra</div>
-                    <div style={{ fontSize: "11px", color: "#e2e8f0", marginTop: "2px" }}>{extra.descripcion || extra.observaciones || "Ver detalles completos"}</div>
+                    <div style={{ fontSize: "13px", fontWeight: "800", color: "#fff" }}>Trabajo Extra / Factura</div>
+                    <div style={{ fontSize: "11px", color: "#e2e8f0", marginTop: "2px" }}>{extra.descripcion || extra.observaciones || "Ver detalles y fotos en facturas"}</div>
                   </div>
-                  <span style={{ fontSize: "11px", fontWeight: "900", color: COLOR_DORADO, textShadow: "0 0 8px rgba(224,176,52,0.8)" }}>Ver →</span>
+                  <span style={{ fontSize: "11px", fontWeight: "900", color: COLOR_DORADO, textShadow: "0 0 8px rgba(224,176,52,0.8)" }}>Ver Factura →</span>
                 </div>
               ))}
             </div>
