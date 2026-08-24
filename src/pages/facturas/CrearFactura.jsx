@@ -27,7 +27,6 @@ export default function CrearFactura() {
 
   const [mensaje, setMensaje] = useState("");
 
-  // Cargar clientes y viviendas reales
   useEffect(() => {
     cargarClientes();
     cargarViviendas();
@@ -68,7 +67,6 @@ export default function CrearFactura() {
     }
 
     try {
-      // Crear factura
       const { data: facturaCreada, error } = await supabase
         .from("facturas")
         .insert([
@@ -79,6 +77,7 @@ export default function CrearFactura() {
             descripcion: form.concepto,
             total: Number(form.importe),
             estado: form.estado,
+            estado_tecnico: "pendiente",
           },
         ])
         .select()
@@ -90,20 +89,8 @@ export default function CrearFactura() {
         return;
       }
 
-      // Crear extra asociado
-      const extraPayload = {
-        factura_id: facturaCreada.id,
-        cliente_id: facturaCreada.cliente_id,
-        vivienda_id: facturaCreada.vivienda_id,
-        descripcion: form.concepto || "Servicio extra",
-        estado: "pendiente",
-        creado_en: new Date().toISOString(),
-      };
-
-      await supabase.from("extras").insert([extraPayload]);
-
       setMensaje("Factura creada correctamente");
-      setTimeout(() => navigate("/facturas/lista"), 1200);
+      setTimeout(() => navigate("/facturas"), 1200);
     } catch (e) {
       console.error("Error en crearFactura:", e);
       setMensaje("Error creando factura");
@@ -168,7 +155,6 @@ export default function CrearFactura() {
             boxSizing: "border-box",
           }}
         >
-          {/* SELECT CLIENTE */}
           <label style={labelStyle}>Cliente</label>
           <select
             value={form.cliente_id}
@@ -183,7 +169,6 @@ export default function CrearFactura() {
             ))}
           </select>
 
-          {/* SELECT VIVIENDA */}
           <label style={labelStyle}>Vivienda</label>
           <select
             value={form.vivienda_id}
@@ -198,7 +183,6 @@ export default function CrearFactura() {
             ))}
           </select>
 
-          {/* FECHA */}
           <label style={labelStyle}>Fecha</label>
           <input
             type="date"
@@ -207,7 +191,6 @@ export default function CrearFactura() {
             style={inputStyle}
           />
 
-          {/* CONCEPTO */}
           <label style={labelStyle}>Concepto</label>
           <input
             value={form.concepto}
@@ -216,7 +199,6 @@ export default function CrearFactura() {
             placeholder="Descripción del servicio..."
           />
 
-          {/* IMPORTE */}
           <label style={labelStyle}>Importe</label>
           <input
             type="number"
@@ -229,6 +211,7 @@ export default function CrearFactura() {
           <button
             onClick={crearFactura}
             style={{
+              width: "100%",
               padding: "14px",
               background: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
               color: "#fff",
@@ -240,6 +223,7 @@ export default function CrearFactura() {
               textTransform: "uppercase",
               letterSpacing: "0.5px",
               marginTop: "20px",
+              boxSizing: "border-box",
             }}
           >
             Crear Factura
@@ -257,6 +241,7 @@ const labelStyle = {
   textTransform: "uppercase",
   marginTop: "14px",
   marginBottom: "6px",
+  display: "block",
 };
 
 const inputStyle = {
