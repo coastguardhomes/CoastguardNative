@@ -35,7 +35,7 @@ export default function FinalizarInspeccion() {
         .eq("id", id)
         .maybeSingle();
 
-      // 2. Si falla la relación (por restricciones de clave foránea), buscamos la inspección sola
+      // 2. Si falla la relación, buscamos la inspección sola
       if (error || !data) {
         const resSimple = await supabase
           .from("inspecciones")
@@ -82,8 +82,13 @@ export default function FinalizarInspeccion() {
       const token = sessionData?.session?.access_token;
       const headersAuth = token ? { Authorization: `Bearer ${token}` } : {};
 
+      // 3. Invocar Edge Function de PDF enviando todas las variantes de nombres de ID
       const resPdf = await supabase.functions.invoke("pdf-inspeccion", { 
-        body: { inspeccion_id: id, id: id },
+        body: { 
+          inspeccionId: id, 
+          inspeccion_id: id, 
+          id: id 
+        },
         headers: headersAuth
       });
 
@@ -98,8 +103,14 @@ export default function FinalizarInspeccion() {
         throw new Error("Error en PDF: " + detalleError);
       }
 
+      // 4. Invocar Edge Function de Email enviando las mismas variantes
       const resEmail = await supabase.functions.invoke("enviar-email", { 
-        body: { inspeccion_id: id, id: id, tipo: "inspeccion_aprobada" },
+        body: { 
+          inspeccionId: id, 
+          inspeccion_id: id, 
+          id: id, 
+          tipo: "inspeccion_aprobada" 
+        },
         headers: headersAuth
       });
 
