@@ -25,7 +25,10 @@ export default function FacturasLista() {
         return;
       }
 
-      const { data, error } = await supabase.from("facturas").select("*");
+      const { data, error } = await supabase
+        .from("facturas")
+        .select("*")
+        .order("fecha", { ascending: false });
 
       if (error) {
         console.error("Error cargando facturas:", error);
@@ -138,7 +141,7 @@ export default function FacturasLista() {
           {facturas.map((f) => (
             <div
               key={f.id}
-              onClick={() => navigate(`/facturas/${f.id}`)}
+              onClick={() => navigate(`/facturas/ver/${f.id}`)}
               style={{
                 background: FONDO_TARJETA,
                 border: BORDE_DORADO_FINO,
@@ -152,9 +155,27 @@ export default function FacturasLista() {
                 transition: "transform 0.1s ease",
               }}
             >
-              <p style={{ margin: "0 0 6px 0" }}>
-                <strong style={{ color: COLOR_DORADO }}>Número:</strong> {f.numero || `#${f.id}`}
-              </p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <span style={{ fontWeight: "900", color: COLOR_DORADO, fontSize: "15px" }}>
+                  {f.numero || `#${f.id}`}
+                </span>
+                {f.estado_tecnico === "completado" && (
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: "800",
+                      backgroundColor: "rgba(56, 189, 248, 0.2)",
+                      color: "#38bdf8",
+                      border: "1px solid rgba(56, 189, 248, 0.5)",
+                      borderRadius: "12px",
+                      padding: "2px 8px",
+                    }}
+                  >
+                    📸 Inspección Lista
+                  </span>
+                )}
+              </div>
+
               <p style={{ margin: "0 0 6px 0" }}>
                 <strong style={{ color: COLOR_DORADO }}>Total:</strong> {Number(f.total || 0).toFixed(2)} €
               </p>
