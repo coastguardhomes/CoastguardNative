@@ -108,7 +108,7 @@ export default function TecnicoInspeccionExtra() {
 
       const descripcionCompleta = `Trabajo: ${descripcion} | Materiales: ${materiales || 'Ninguno'} | Tiempo: ${tiempo || 'No especificado'}`;
 
-      // 1. Actualizar la tabla facturas (como ya lo tenías)
+      // 1. Actualizar la tabla facturas
       const { error: updateError } = await supabase
         .from('facturas')
         .update({
@@ -119,17 +119,41 @@ export default function TecnicoInspeccionExtra() {
 
       if (updateError) throw updateError;
 
-      // 2. Guardar también en la tabla 'extras' asegurando el factura_id y las fotos
-      const { error: extraError } = await supabase
+      // 2. Comprobar si ya existe un registro en la tabla 'extras' para esta factura
+      const { data: existingExtra } = await supabase
         .from('extras')
-        .upsert({
-          factura_id: extraData.id,
-          descripcion: descripcionCompleta,
-          materiales: materiales || '',
-          tiempo_empleado: tiempo || '',
-          fotos: fotos,
-          estado: 'finalizado'
-        }, { onConflict: 'factura_id' });
+        .select('id')
+        .eq('factura_id', extraData.id)
+        .maybeSingle();
+
+      let extraError;
+      if (existingExtra) {
+        // Si ya existe, actualizamos
+        const { error: errUpd } = await supabase
+          .from('extras')
+          .update({
+            descripcion: descripcionCompleta,
+            materiales: materiales || '',
+            tiempo_empleado: tiempo || '',
+            fotos: fotos,
+            estado: 'finalizado'
+          })
+          .eq('factura_id', extraData.id);
+        extraError = errUpd;
+      } else {
+        // Si no existe, insertamos uno nuevo
+        const { error: errIns } = await supabase
+          .from('extras')
+          .insert({
+            factura_id: extraData.id,
+            descripcion: descripcionCompleta,
+            materiales: materiales || '',
+            tiempo_empleado: tiempo || '',
+            fotos: fotos,
+            estado: 'finalizado'
+          });
+        extraError = errIns;
+      }
 
       if (extraError) throw extraError;
 
