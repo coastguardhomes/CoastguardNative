@@ -107,6 +107,10 @@ export default function TecnicoInspeccionExtra() {
       setError('');
 
       const facturaIdNum = parseInt(extraData.id, 10);
+      const inspeccionUuid = extraData.inspeccion_id || null;
+      const viviendaIdNum = extraData.vivienda_id ? parseInt(extraData.vivienda_id, 10) : null;
+      const clienteUuid = extraData.cliente_id || null;
+
       const descripcionCompleta = `Trabajo: ${descripcion} | Materiales: ${materiales || 'Ninguno'} | Tiempo: ${tiempo || 'No especificado'}`;
 
       // 1. Actualizar la tabla facturas
@@ -114,35 +118,42 @@ export default function TecnicoInspeccionExtra() {
         .from('facturas')
         .update({
           descripcion: descripcionCompleta,
-          estado: 'finalizado'
+          estado: 'enviado_cliente'
         })
         .eq('id', extraData.id);
 
       if (updateError) throw updateError;
 
-      // 2. Datos exactos para la tabla 'extras' asegurando el array de fotos y el factura_id numérico
+      // 2. Datos unificados para la tabla 'extras' (vinculando factura e inspección a la vez)
       const datosExtra = {
-        factura_id: facturaIdNum,
+        factura_id: isNaN(facturaIdNum) ? null : facturaIdNum,
+        inspeccion_id: inspeccionUuid,
+        vivienda_id: viviendaIdNum,
+        cliente_id: clienteUuid,
         descripcion: descripcionCompleta,
         materiales: materiales || '',
         tiempo_empleado: tiempo || '',
-        fotos: fotos, // Formato ARRAY que espera tu tabla
-        estado: 'finalizado'
+        fotos: fotos, // Array de URLs
+        estado: 'enviado_cliente'
       };
 
-      // Comprobar si ya existe un registro en 'extras' con este factura_id
-      const { data: existingExtra } = await supabase
-        .from('extras')
-        .select('id')
-        .eq('factura_id', facturaIdNum)
-        .maybeSingle();
+      // Comprobar si ya existe un registro previo en 'extras'
+      let existingExtra = null;
+      if (!isNaN(facturaIdNum)) {
+        const { data } = await supabase.from('extras').select('id').eq('factura_id', facturaIdNum).maybeSingle();
+        existingExtra = data;
+      }
+      if (!existingExtra && inspeccionUuid) {
+        const { data } = await supabase.from('extras').select('id').eq('inspeccion_id', inspeccionUuid).maybeSingle();
+        existingExtra = data;
+      }
 
       let extraError;
       if (existingExtra) {
         const { error: errUpd } = await supabase
           .from('extras')
           .update(datosExtra)
-          .eq('factura_id', facturaIdNum);
+          .eq('id', existingExtra.id);
         extraError = errUpd;
       } else {
         const { error: errIns } = await supabase
@@ -153,7 +164,7 @@ export default function TecnicoInspeccionExtra() {
 
       if (extraError) throw extraError;
 
-      alert('Inspección de extra enviada y fotos guardadas con éxito.');
+      alert('Inspección de extra enviada y fotos guardadas correctamente.');
       navigate('/tecnico');
     } catch (err) {
       console.error('Error al guardar:', err);
