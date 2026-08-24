@@ -70,6 +70,9 @@ export default function ClienteFacturaVer() {
     );
   }
 
+  const fotos = Array.isArray(factura.fotos) ? factura.fotos : [];
+  const tieneInfoTecnica = factura.materiales || factura.tiempo_empleado || fotos.length > 0;
+
   return (
     <Menu>
       <div
@@ -90,9 +93,10 @@ export default function ClienteFacturaVer() {
             textTransform: "uppercase",
           }}
         >
-          Factura {factura.numero}
+          Factura {factura.numero || `#${factura.id}`}
         </h1>
 
+        {/* Información Principal */}
         <div style={{ background: FONDO_TARJETA, border: BORDE_DORADO_FINO, borderRadius: "16px", padding: "16px", marginBottom: "20px", boxShadow: SOMBRA_LUXURY }}>
           <p style={{ marginBottom: 8 }}>
             <strong style={{ color: COLOR_DORADO }}>Fecha:</strong> {factura.fecha}
@@ -107,6 +111,51 @@ export default function ClienteFacturaVer() {
           </p>
         </div>
 
+        {/* Sección de Evidencias e Inspección Técnica */}
+        {tieneInfoTecnica && (
+          <div style={{ background: FONDO_TARJETA, border: BORDE_DORADO_FINO, borderRadius: "16px", padding: "16px", marginBottom: "20px", boxShadow: SOMBRA_LUXURY }}>
+            <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: "15px", marginBottom: 12, fontWeight: "800", textTransform: "uppercase" }}>
+              Evidencia del Trabajo
+            </h2>
+
+            {factura.materiales && (
+              <p style={{ marginBottom: 8, fontSize: "13px" }}>
+                <strong style={{ color: COLOR_DORADO }}>Materiales utlizados:</strong> {factura.materiales}
+              </p>
+            )}
+
+            {factura.tiempo_empleado && (
+              <p style={{ marginBottom: 8, fontSize: "13px" }}>
+                <strong style={{ color: COLOR_DORADO }}>Tiempo empleado:</strong> {factura.tiempo_empleado}
+              </p>
+            )}
+
+            {fotos.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <strong style={{ color: COLOR_DORADO, fontSize: "12px", textTransform: "uppercase" }}>Fotografías de Inspección:</strong>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "8px" }}>
+                  {fotos.map((url, idx) => (
+                    <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={url}
+                        alt={`Evidencia ${idx}`}
+                        style={{
+                          width: "70px",
+                          height: "70px",
+                          objectFit: "cover",
+                          borderRadius: "10px",
+                          border: BORDE_DORADO_FINO,
+                        }}
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Detalle de Líneas de Factura */}
         {lineas.length > 0 && (
           <div style={{ margin: "20px 0" }}>
             <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: 18, marginBottom: 12, fontWeight: "800" }}>
@@ -127,12 +176,13 @@ export default function ClienteFacturaVer() {
                 }}
               >
                 <span>{l.descripcion}</span>
-                <span style={{ fontWeight: "700", color: COLOR_DORADO }}>{l.total != null ? `${l.total} €` : ""}</span>
+                <span style={{ fontWeight: "700", color: COLOR_DORADO }}>{l.total != null ? `${Number(l.total).toFixed(2)} €` : ""}</span>
               </div>
             ))}
           </div>
         )}
 
+        {/* Desglose de Totales */}
         <div
           style={{
             background: FONDO_TARJETA,
@@ -143,13 +193,14 @@ export default function ClienteFacturaVer() {
             boxShadow: SOMBRA_LUXURY,
           }}
         >
-          <p style={{ marginBottom: 6 }}>Base: {factura.base} €</p>
-          <p style={{ marginBottom: 8 }}>IVA: {factura.iva} €</p>
+          <p style={{ marginBottom: 6 }}>Base: {Number(factura.base || 0).toFixed(2)} €</p>
+          <p style={{ marginBottom: 8 }}>IVA: {Number(factura.iva || 0).toFixed(2)} €</p>
           <p style={{ fontWeight: 900, fontSize: "18px", color: COLOR_DORADO, textShadow: "0 0 10px rgba(224,176,52,0.5)" }}>
-            Total: {factura.total} €
+            Total: {Number(factura.total || 0).toFixed(2)} €
           </p>
         </div>
 
+        {/* Descarga / Visualización de PDF */}
         {factura.pdf_url ? (
           <a
             href={factura.pdf_url}
