@@ -47,6 +47,18 @@ export default function ClienteFacturaVer() {
     cargar();
   }, [id]);
 
+  const obtenerBadgesEstado = (estado) => {
+    switch (estado?.toLowerCase()) {
+      case "pagada":
+        return { label: "PAGADA", color: "#34d399", bg: "rgba(16, 185, 129, 0.15)", border: "1px solid #10b981" };
+      case "enviado_cliente":
+      case "enviada":
+        return { label: "ENVIADA AL CLIENTE", color: "#60a5fa", bg: "rgba(59, 130, 246, 0.15)", border: "1px solid #3b82f6" };
+      default:
+        return { label: "PENDIENTE", color: "#fbbf24", bg: "rgba(245, 158, 11, 0.15)", border: "1px solid #f59e0b" };
+    }
+  };
+
   if (loading) {
     return (
       <Menu>
@@ -70,8 +82,35 @@ export default function ClienteFacturaVer() {
     );
   }
 
-  const fotos = Array.isArray(factura.fotos) ? factura.fotos : [];
-  const tieneInfoTecnica = factura.materiales || factura.tiempo_empleado || fotos.length > 0;
+  // Parseo seguro de fotografías
+  let fotos = [];
+  if (Array.isArray(factura.fotos)) {
+    fotos = factura.fotos;
+  } else if (typeof factura.fotos === "string") {
+    try {
+      fotos = JSON.parse(factura.fotos);
+    } catch (e) {
+      fotos = [factura.fotos];
+    }
+  }
+
+  const tieneInfoTecnica = factura.materiales || factura.tiempo_empleado || (Array.isArray(fotos) && fotos.length > 0);
+  const badgeEstado = obtenerBadgesEstado(factura.estado);
+
+  // Generación de líneas para detalle si no hay registros explícitos en facturas_lineas
+  const lineasParaMostrar = lineas.length > 0
+    ? lineas.map((l) => ({
+        id: l.id,
+        concepto: l.descripcion || l.concepto || "Servicio / Inspección",
+        precio: l.total ?? l.importe ?? l.precio ?? 0,
+      }))
+    : factura.descripcion
+    ? factura.descripcion.split(",").map((desc, idx) => ({
+        id: `desc-${idx}`,
+        concepto: desc.trim(),
+        precio: (Number(factura.total || 0) / factura.descripcion.split(",").length),
+      }))
+    : [];
 
   return (
     <Menu>
@@ -98,17 +137,29 @@ export default function ClienteFacturaVer() {
 
         {/* Información Principal */}
         <div style={{ background: FONDO_TARJETA, border: BORDE_DORADO_FINO, borderRadius: "16px", padding: "16px", marginBottom: "20px", boxShadow: SOMBRA_LUXURY }}>
-          <p style={{ marginBottom: 8 }}>
-            <strong style={{ color: COLOR_DORADO }}>Fecha:</strong> {factura.fecha}
+          <p style={{ marginBottom: 8, fontSize: "14px" }}>
+            <strong style={{ color: COLOR_DORADO }}>Fecha:</strong> {factura.fecha || "—"}
           </p>
-          <p style={{ marginBottom: 8 }}>
+          <p style={{ marginBottom: 8, fontSize: "14px" }}>
             <strong style={{ color: COLOR_DORADO }}>Descripción:</strong>{" "}
             {factura.descripcion || "—"}
           </p>
-          <p style={{ marginBottom: 0 }}>
-            <strong style={{ color: COLOR_DORADO }}>Estado:</strong>{" "}
-            <span style={{ color: "#34d399", fontWeight: "bold" }}>{factura.estado}</span>
-          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "12px" }}>
+            <strong style={{ color: COLOR_DORADO, fontSize: "14px" }}>Estado:</strong>
+            <span
+              style={{
+                padding: "3px 10px",
+                borderRadius: "8px",
+                fontSize: "11px",
+                fontWeight: "800",
+                color: badgeEstado.color,
+                background: badgeEstado.bg,
+                border: badgeEstado.border,
+              }}
+            >
+              {badgeEstado.label}
+            </span>
+          </div>
         </div>
 
         {/* Sección de Evidencias e Inspección Técnica */}
@@ -120,7 +171,7 @@ export default function ClienteFacturaVer() {
 
             {factura.materiales && (
               <p style={{ marginBottom: 8, fontSize: "13px" }}>
-                <strong style={{ color: COLOR_DORADO }}>Materiales utlizados:</strong> {factura.materiales}
+                <strong style={{ color: COLOR_DORADO }}>Materiales utilizados:</strong> {factura.materiales}
               </p>
             )}
 
@@ -156,17 +207,18 @@ export default function ClienteFacturaVer() {
         )}
 
         {/* Detalle de Líneas de Factura */}
-        {lineas.length > 0 && (
+        {lineasParaMostrar.length > 0 && (
           <div style={{ margin: "20px 0" }}>
-            <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: 18, marginBottom: 12, fontWeight: "800" }}>
+            <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: 16, marginBottom: 12, fontWeight: "800", textTransform: "uppercase" }}>
               Detalle
             </h2>
-            {lineas.map((l) => (
+            {lineasParaMostrar.map((l) => (
               <div
                 key={l.id}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
+                  alignItems: "center",
                   background: FONDO_TARJETA,
                   border: BORDE_DORADO_FINO,
                   padding: "12px 16px",
@@ -175,8 +227,10 @@ export default function ClienteFacturaVer() {
                   boxShadow: SOMBRA_LUXURY,
                 }}
               >
-                <span>{l.descripcion}</span>
-                <span style={{ fontWeight: "700", color: COLOR_DORADO }}>{l.total != null ? `${Number(l.total).toFixed(2)} €` : ""}</span>
+                <span style={{ fontSize: "13px", color: "#e2e8f0" }}>{l.concepto}</span>
+                <span style={{ fontWeight: "700", color: COLOR_DORADO, fontSize: "14px" }}>
+                  {Number(l.precio || 0).toFixed(2)} €
+                </span>
               </div>
             ))}
           </div>
@@ -193,9 +247,9 @@ export default function ClienteFacturaVer() {
             boxShadow: SOMBRA_LUXURY,
           }}
         >
-          <p style={{ marginBottom: 6 }}>Base: {Number(factura.base || 0).toFixed(2)} €</p>
-          <p style={{ marginBottom: 8 }}>IVA: {Number(factura.iva || 0).toFixed(2)} €</p>
-          <p style={{ fontWeight: 900, fontSize: "18px", color: COLOR_DORADO, textShadow: "0 0 10px rgba(224,176,52,0.5)" }}>
+          <p style={{ marginBottom: 6, fontSize: "13px", color: "#cbd5e1" }}>Base: {Number(factura.base || 0).toFixed(2)} €</p>
+          <p style={{ marginBottom: 8, fontSize: "13px", color: "#cbd5e1" }}>IVA: {Number(factura.iva || 0).toFixed(2)} €</p>
+          <p style={{ fontWeight: 900, fontSize: "18px", color: COLOR_DORADO, textShadow: "0 0 10px rgba(224,176,52,0.5)", margin: 0 }}>
             Total: {Number(factura.total || 0).toFixed(2)} €
           </p>
         </div>
