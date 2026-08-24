@@ -9,6 +9,7 @@ export default function Contratos() {
   const [cargando, setCargando] = useState(true);
   const [modalHtml, setModalHtml] = useState(null);
   const [generandoId, setGenerandoId] = useState(null);
+  const [enviandoId, setEnviandoId] = useState(null); // Estado para controlar el botón de enviar correo
 
   useEffect(() => {
     cargarContratos();
@@ -80,17 +81,39 @@ export default function Contratos() {
     }
   };
 
+  // Función modificada para actualizar estado Y enviar el email con el PDF del contrato
   const enviarACliente = async (id) => {
-    const { error } = await supabase
-      .from("contratos")
-      .update({ estado: "enviado_al_cliente" })
-      .eq("id", id);
+    try {
+      setEnviandoId(id);
 
-    if (error) {
-      alert("Error actualizando estado: " + error.message);
-    } else {
-      alert("Contrato enviado al cliente.");
+      // 1. Actualizar estado en la base de datos
+      const { error } = await supabase
+        .from("contratos")
+        .update({ estado: "enviado_al_cliente" })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      // 2. Disparar tu función de Supabase para enviar el email con el PDF del contrato
+      const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
+        body: { 
+          id: id, 
+          tipo: "contrato" 
+        }
+      });
+
+      if (errEmail) {
+        console.warn("Aviso al enviar correo:", errEmail);
+        alert("Contrato actualizado, pero hubo un detalle al disparar el correo electrónico.");
+      } else {
+        alert("¡Contrato enviado al cliente por email con éxito!");
+      }
+
       cargarContratos();
+    } catch (err) {
+      alert("Error en el proceso: " + (err.message || err));
+    } finally {
+      setEnviandoId(null);
     }
   };
 
@@ -194,6 +217,15 @@ export default function Contratos() {
                         style={{ width: "100%", padding: "12px", background: "#22c55e", color: "#ffffff", border: "none", borderRadius: "8px", fontWeight: "bold", fontSize: "14px", cursor: "pointer", opacity: generandoId === c.id ? 0.6 : 1 }}
                       >
                         {generandoId === c.id ? "⌛ Generando..." : "📄 Generar PDF / Ver Contrato"}
+                      </button>
+
+                      {/* Botón para Enviar Contrato por Email al Cliente */}
+                      <button
+                        onClick={() => enviarACliente(c.id)}
+                        disabled={enviandoId === c.id}
+                        style={{ width: "100%", padding: "12px", background: "#3b82f6", color: "#ffffff", border: "none", borderRadius: "8px", fontWeight: "bold", fontSize: "14px", cursor: "pointer", opacity: enviandoId === c.id ? 0.6 : 1 }}
+                      >
+                        {enviandoId === c.id ? "⏳ Enviando correo..." : "✉️ Enviar Contrato por Email"}
                       </button>
                     </div>
                   </div>
