@@ -2,11 +2,13 @@ import React, { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirmaGuardada }) {
   const { id: routeContratoId } = useParams();
   const contratoId = propContratoId || routeContratoId;
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -66,12 +68,12 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
   const guardarFirma = async () => {
     if (!hayFirma) {
-      alert("Por favor, realiza tu firma antes de guardar.");
+      alert(t("alertaRealizarFirma"));
       return;
     }
 
     if (!contratoId || contratoId === "undefined") {
-      alert("Error: No se encontró un ID de contrato válido.");
+      alert(t("alertaIdContratoValido"));
       return;
     }
 
@@ -81,7 +83,6 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
       const canvas = canvasRef.current;
       const firmaBase64 = canvas.toDataURL("image/png");
 
-      // ⭐ NUEVO: llamar a la Edge Function que ignora RLS
       const { data, error } = await supabase.functions.invoke("guardar-firma", {
         body: {
           contratoId,
@@ -91,12 +92,12 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
       if (error) {
         console.error("Error guardando firma:", error);
-        alert("Error guardando la firma.");
+        alert(t("errorGuardandoFirma"));
         setGuardando(false);
         return;
       }
 
-      alert("¡Contrato firmado con éxito!");
+      alert(t("contratoFirmadoExito"));
 
       if (onFirmaGuardada) {
         onFirmaGuardada(data.firma_url);
@@ -105,7 +106,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
       }
     } catch (err) {
       console.error("Error al guardar la firma:", err);
-      alert("Error guardando la firma: " + (err.message || "Error desconocido"));
+      alert(t("errorGuardandoFirmaDetalle") + (err.message || "Error desconocido"));
     } finally {
       setGuardando(false);
     }
@@ -114,12 +115,12 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
   const contenido = (
     <div style={{ background: "#0a0f1a", minHeight: "100vh", padding: "20px", color: "#fff" }}>
       <h2 style={{ textAlign: "center", color: "#4db8ff", marginBottom: "20px" }}>
-        Firma del Cliente
+        {t("firmaDelClienteTitulo")}
       </h2>
 
       <div style={{ background: "rgba(255,255,255,0.05)", padding: "18px", borderRadius: "14px", maxWidth: "500px", margin: "0 auto" }}>
         <p style={{ color: "#9fb3c8", fontSize: "14px", marginBottom: "12px", textAlign: "center" }}>
-          Dibuje su firma con el dedo dentro del recuadro blanco:
+          {t("instruccionesFirma")}
         </p>
 
         <div style={{ background: "#ffffff", borderRadius: "10px", overflow: "hidden", touchAction: "none" }}>
@@ -142,7 +143,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
             disabled={guardando}
             style={{ flex: 1, background: "transparent", border: "1px solid #ff4d4d", color: "#ff4d4d", padding: "12px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}
           >
-            🗑️ Limpiar
+            {t("limpiar")}
           </button>
 
           <button
@@ -150,7 +151,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
             disabled={guardando || !hayFirma}
             style={{ flex: 2, background: guardando || !hayFirma ? "rgba(77, 184, 255, 0.4)" : "#4db8ff", color: "#0a0f1a", border: "none", padding: "12px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}
           >
-            {guardando ? "Guardando..." : "💾 Guardar firma"}
+            {guardando ? t("guardando") : t("guardarFirmaBtn")}
           </button>
         </div>
       </div>
