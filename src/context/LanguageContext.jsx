@@ -72,7 +72,7 @@ const translations = {
     clienteListaVacio: "No tienes contratos registrados.",
     servicioContratado: "Servicio contratado",
 
-    // Ver Contrato Individual
+    // Ver Contrato Individual y Generación PDF
     contratoNoEncontrado: "Contrato no encontrado",
     clienteContratoCargando: "Cargando contrato...",
     noSePudoCargarContrato: "No se pudo cargar el contrato",
@@ -99,6 +99,24 @@ const translations = {
     alertaErrorAdmin: "Error notificando al administrador: ",
     alertaContratoEnviado: "¡Contrato firmado enviado al administrador!",
     alertaNoPdfAdmin: "El administrador aún no ha generado el PDF.",
+    clienteAccesoDenegado: "Acceso denegado o contrato no encontrado.",
+
+    // PDF del Contrato (GenerarPDFContrato)
+    pdfTitulo: "CONTRATO DE PRESTACIÓN DE SERVICIOS",
+    pdfNombreCliente: "Cliente",
+    pdfDireccion: "Dirección",
+    pdfTelefono: "Teléfono",
+    pdfDetallesServicio: "DETALLES DEL SERVICIO",
+    pdfTipoServicio: "Frecuencia",
+    contratoCadaDias: "Cada",
+    pdfFechaInicio: "Fecha de inicio",
+    pdfPrecioMensual: "Precio mensual",
+    pdfCondiciones: "CONDICIONES",
+    pdfCondicionesTexto: "El prestador se compromete a realizar las inspecciones y servicios acordados según la frecuencia establecida, manteniendo la confidencialidad y el rigor profesional.",
+    pdfFirmaCliente: "Firma del Cliente",
+    pdfGenerado: "¡PDF generado y guardado con éxito!",
+    pdfGenerando: "Generando PDF...",
+    pdfGenerar: "Generar y Guardar PDF",
 
     // Firma Dibujar (ClienteFirmaDibujar)
     firmaDelClienteTitulo: "Firma del Cliente",
@@ -223,7 +241,7 @@ const translations = {
     clienteListaVacio: "You have no registered contracts.",
     servicioContratado: "Contracted service",
 
-    // View Contract Individual
+    // View Contract Individual & PDF Generation
     contratoNoEncontrado: "Contract not found",
     clienteContratoCargando: "Loading contract...",
     noSePudoCargarContrato: "Could not load the contract",
@@ -250,6 +268,24 @@ const translations = {
     alertaErrorAdmin: "Error notifying the administrator: ",
     alertaContratoEnviado: "Signed contract sent to the administrator!",
     alertaNoPdfAdmin: "The administrator has not generated the PDF yet.",
+    clienteAccesoDenegado: "Access denied or contract not found.",
+
+    // PDF Generation (GenerarPDFContrato)
+    pdfTitulo: "SERVICE AGREEMENT CONTRACT",
+    pdfNombreCliente: "Client",
+    pdfDireccion: "Address",
+    pdfTelefono: "Phone",
+    pdfDetallesServicio: "SERVICE DETAILS",
+    pdfTipoServicio: "Frequency",
+    contratoCadaDias: "Every",
+    pdfFechaInicio: "Start date",
+    pdfPrecioMensual: "Monthly price",
+    pdfCondiciones: "CONDITIONS",
+    pdfCondicionesTexto: "The provider agrees to perform the agreed inspections and services according to the established frequency, maintaining confidentiality and professional rigor.",
+    pdfFirmaCliente: "Client Signature",
+    pdfGenerado: "PDF generated and saved successfully!",
+    pdfGenerando: "Generating PDF...",
+    pdfGenerar: "Generate & Save PDF",
 
     // Signature Drawing (ClienteFirmaDibujar)
     firmaDelClienteTitulo: "Client Signature",
@@ -374,7 +410,7 @@ const translations = {
     clienteListaVacio: "Vous n'avez aucun contrat enregistré.",
     servicioContratado: "Service souscrit",
 
-    // Vue Contrat Individuel
+    // Vue Contrat Individuel & Génération PDF
     contratoNoEncontrado: "Contrat non trouvé",
     clienteContratoCargando: "Chargement du contrat...",
     noSePudoCargarContrato: "Impossible de charger le contrat",
@@ -401,6 +437,24 @@ const translations = {
     alertaErrorAdmin: "Erreur lors de la notification de l'administrateur : ",
     alertaContratoEnviado: "Contrat signé envoyé à l'administrateur !",
     alertaNoPdfAdmin: "L'administrateur n'a pas encore généré le PDF.",
+    clienteAccesoDenegado: "Accès refusé ou contrat introuvable.",
+
+    // PDF du Contrat (GenerarPDFContrato)
+    pdfTitulo: "CONTRAT DE PRESTATION DE SERVICES",
+    pdfNombreCliente: "Client",
+    pdfDireccion: "Adresse",
+    pdfTelefono: "Téléphone",
+    pdfDetallesServicio: "DÉTAILS DU SERVICE",
+    pdfTipoServicio: "Fréquence",
+    contratoCadaDias: "Tous les",
+    pdfFechaInicio: "Date de début",
+    pdfPrecioMensual: "Prix mensuel",
+    pdfCondiciones: "CONDITIONS",
+    pdfCondicionesTexto: "Le prestataire s'engage à effectuer les inspections et services convenus selon la fréquence établie, en maintenant la confidentialité et la rigueur professionnelle.",
+    pdfFirmaCliente: "Signature du client",
+    pdfGenerado: "PDF généré et enregistré avec succès !",
+    pdfGenerando: "Génération du PDF...",
+    pdfGenerar: "Générer et Enregistrer le PDF",
 
     // Signature Dessin (ClienteFirmaDibujar)
     firmaDelClienteTitulo: "Signature du client",
