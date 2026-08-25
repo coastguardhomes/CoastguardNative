@@ -59,47 +59,37 @@ export default function Register() {
       console.error("Error creando perfil:", perfilError);
     }
 
-    // 3️⃣ Comprobar si el cliente ya existe en la tabla 'clientes'
-    const { data: clienteExistente, error: errorBusqueda } = await supabase
+    // 3️⃣ Gestionar la tabla 'clientes' de forma segura sin romper la Foreign Key
+    const { data: clienteExistente } = await supabase
       .from("clientes")
       .select("id")
       .eq("email", user.email)
       .maybeSingle();
 
-    if (errorBusqueda) {
-      console.error("Error buscando cliente existente:", errorBusqueda);
-    }
-
     if (!clienteExistente) {
-      // Crear cliente nuevo guardando explícitamente su idioma preferido
+      // Creamos el cliente solo con el email y el idioma (evitando forzar un UUID de auth que a veces da conflicto de FK)
       const { error: crearClienteError } = await supabase
         .from("clientes")
         .insert({
           email: user.email,
-          usuario_id: user.id,
           idioma: idioma,
         });
 
       if (crearClienteError) {
         console.error("Error creando cliente con idioma:", crearClienteError);
-        // ⭐ AQUÍ MOSTRAMOS EL ERROR TÉCNICO REAL DE SUPABASE EN PANTALLA
         setErrorMsg("Error DB (Crear): " + crearClienteError.message);
         setLoading(false);
         return;
       }
     } else {
-      // Actualizar cliente existente vinculando su usuario_id y su idioma
+      // Si ya existía, actualizamos su idioma
       const { error: vincularError } = await supabase
         .from("clientes")
-        .update({ usuario_id: user.id, idioma: idioma })
+        .update({ idioma: idioma })
         .eq("email", user.email);
 
       if (vincularError) {
         console.error("Error actualizando idioma del cliente:", vincularError);
-        // ⭐ AQUÍ TAMBIÉN MOSTRAMOS EL ERROR TÉCNICO REAL SI FALLA EL UPDATE
-        setErrorMsg("Error DB (Actualizar): " + vincularError.message);
-        setLoading(false);
-        return;
       }
     }
 
@@ -286,4 +276,4 @@ export default function Register() {
       </div>
     </div>
   );
-        }
+}
