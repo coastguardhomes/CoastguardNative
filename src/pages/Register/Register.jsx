@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [idioma, setIdioma] = useState("es"); // ⭐ 1. Estado para el idioma seleccionado
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -56,7 +57,7 @@ export default function Register() {
       console.error("Error creando perfil:", perfilError);
     }
 
-    // ⭐ 3️⃣ Crear cliente si NO existe
+    // ⭐ 3️⃣ Crear cliente si NO existe (añadiendo el idioma elegido)
     const { data: clienteExistente } = await supabase
       .from("clientes")
       .select("id")
@@ -64,22 +65,23 @@ export default function Register() {
       .single();
 
     if (!clienteExistente) {
-      // Crear cliente nuevo
+      // Crear cliente nuevo con su idioma preferido
       const { error: crearClienteError } = await supabase
         .from("clientes")
         .insert({
           email: user.email,
           usuario_id: user.id,
+          idioma: idioma, // ⭐ Guardamos el idioma aquí
         });
 
       if (crearClienteError) {
         console.error("Error creando cliente:", crearClienteError);
       }
     } else {
-      // ⭐ 4️⃣ Vincular cliente existente
+      // ⭐ 4️⃣ Vincular cliente existente y actualizar idioma si lo desea
       const { error: vincularError } = await supabase
         .from("clientes")
-        .update({ usuario_id: user.id })
+        .update({ usuario_id: user.id, idioma: idioma })
         .eq("email", user.email);
 
       if (vincularError) {
@@ -184,7 +186,7 @@ export default function Register() {
           style={{
             width: "100%",
             padding: "12px",
-            marginBottom: "20px",
+            marginBottom: "15px",
             borderRadius: "8px",
             border: "1px solid rgba(255,255,255,0.2)",
             background: "rgba(255,255,255,0.08)",
@@ -192,6 +194,39 @@ export default function Register() {
             fontSize: "15px",
           }}
         />
+
+        {/* ⭐ 2. Selector visual de idioma en el registro */}
+        <div style={{ marginBottom: "20px" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "13px",
+              color: "#9fb3c8",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+            }}
+          >
+            Idioma Preferido / Preferred Language
+          </label>
+          <select
+            value={idioma}
+            onChange={(e) => setIdioma(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(255,255,255,0.08)",
+              color: "#fff",
+              fontSize: "15px",
+            }}
+          >
+            <option value="es" style={{ background: "#0a0f1a", color: "#fff" }}>🇪🇸 Español</option>
+            <option value="en" style={{ background: "#0a0f1a", color: "#fff" }}>🇬🇧 English</option>
+            <option value="fr" style={{ background: "#0a0f1a", color: "#fff" }}>🇫🇷 Français</option>
+          </select>
+        </div>
 
         <button
           onClick={handleRegister}
