@@ -1,209 +1,184 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Menu from "../../layouts/Menu";
+import { supabase } from "../../lib/supabase";
+import { useLanguage } from "../../context/LanguageContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 
-const translations = {
-  es: {
-    // Generales / Dashboard
-    bienvenida: "Bienvenido a tu panel de cliente",
-    misViviendas: "Mis Viviendas",
-    serviciosExtras: "Servicios Extras",
-    facturas: "Facturas y Pagos",
-    perfil: "Mi Perfil",
-    cerrarSesion: "Cerrar Sesión",
-    noHayDatos: "No hay registros disponibles.",
-    cambiarIdioma: "Idioma",
-    verDetalles: "Ver Detalles",
-    estadoPendiente: "Pendiente",
-    estadoAprobado: "Aprobado",
-    estadoCompletado: "Completado",
-    solicitarExtra: "Solicitar Servicio Extra",
-    totalPagar: "Total a Pagar",
-    direccion: "Dirección",
-    cargandoPanel: "Cargando Panel...",
-    panelDeControl: "Panel de Control",
-    dashboardCliente: "Dashboard Cliente",
-    operativo: "Operativo",
-    trabajosExtrasDisponibles: "¡Trabajos Extras Disponibles!",
-    tienes: "Tienes",
-    trabajosRegistrados: "trabajos o informes extras registrados.",
-    trabajoExtraFactura: "Trabajo Extra / Factura",
-    verDetallesFotosFacturas: "Ver detalles y fotos en facturas",
-    verFactura: "Ver Factura →",
-    inspecciones: "Inspecciones",
-    alertas: "Alertas",
-    viviendas: "Viviendas",
-    inspeccionesDiarias: "Inspecciones Diarias",
-    configuracionSeguridadNotificaciones: "Configuración de Seguridad y Notificaciones",
-    lun: "Lun",
-    mar: "Mar",
-    mie: "Mié",
-    jue: "Jue",
-    vie: "Vie",
-    sab: "Sáb",
-    dom: "Dom",
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
 
-    // Configuración y Seguridad
-    configuracionYSeguridad: "Configuración y Seguridad",
-    volver: "← Volver",
-    preferenciasNotificacion: "Preferencias de Notificación",
-    notifPushTitulo: "Notificaciones Push",
-    notifPushSub: "Recibe avisos inmediatos en la app sobre tus inspecciones.",
-    resumenCorreoTitulo: "Resumen por Correo",
-    resumenCorreoSub: "Recibe informes y facturas directamente en tu email.",
-    alertasCriticasTitulo: "Alertas de Incidencias Críticas",
-    alertasCriticasSub: "Avisos urgentes de incidencias graves detectadas en viviendas.",
-    seguridadCuenta: "Seguridad de la Cuenta",
-    autenticacionDosPasosTitulo: "Autenticación en 2 Pasos (2FA)",
-    autenticacionDosPasosSub: "Añade un nivel extra de seguridad al iniciar sesión.",
-    contrasena: "Contraseña",
-    ultimoCambioContrasena: "Último cambio hace más de 30 días",
-    cambiar: "Cambiar",
-    alertaCambiarContrasena: "Función para cambiar contraseña",
-    cambiosGuardados: "✓ Cambios Guardados",
-    guardarPreferencias: "Guardar Preferencias",
-  },
-  en: {
-    // General / Dashboard
-    bienvenida: "Welcome to your client dashboard",
-    misViviendas: "My Properties",
-    serviciosExtras: "Extra Services",
-    facturas: "Invoices & Payments",
-    perfil: "My Profile",
-    cerrarSesion: "Log Out",
-    noHayDatos: "No records available.",
-    cambiarIdioma: "Language",
-    verDetalles: "View Details",
-    estadoPendiente: "Pending",
-    estadoAprobado: "Approved",
-    estadoCompletado: "Completed",
-    solicitarExtra: "Request Extra Service",
-    totalPagar: "Total Due",
-    direccion: "Address",
-    cargandoPanel: "Loading Dashboard...",
-    panelDeControl: "Control Panel",
-    dashboardCliente: "Client Dashboard",
-    operativo: "Operational",
-    trabajosExtrasDisponibles: "Extra Jobs Available!",
-    tienes: "You have",
-    trabajosRegistrados: "extra jobs or reports registered.",
-    trabajoExtraFactura: "Extra Job / Invoice",
-    verDetallesFotosFacturas: "View details and photos in invoices",
-    verFactura: "View Invoice →",
-    inspecciones: "Inspections",
-    alertas: "Alerts",
-    viviendas: "Properties",
-    inspeccionesDiarias: "Daily Inspections",
-    configuracionSeguridadNotificaciones: "Security and Notification Settings",
-    lun: "Mon",
-    mar: "Tue",
-    mie: "Wed",
-    jue: "Thu",
-    vie: "Fri",
-    sab: "Sat",
-    dom: "Sun",
+export default function ClienteContratosLista() {
+  const { t } = useLanguage();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-    // Configuration & Security
-    configuracionYSeguridad: "Configuration & Security",
-    volver: "← Back",
-    preferenciasNotificacion: "Notification Preferences",
-    notifPushTitulo: "Push Notifications",
-    notifPushSub: "Receive immediate notices in the app about your inspections.",
-    resumenCorreoTitulo: "Email Summary",
-    resumenCorreoSub: "Receive reports and invoices directly in your email.",
-    alertasCriticasTitulo: "Critical Incident Alerts",
-    alertasCriticasSub: "Urgent notices of severe incidents detected in properties.",
-    seguridadCuenta: "Account Security",
-    autenticacionDosPasosTitulo: "Two-Factor Authentication (2FA)",
-    autenticacionDosPasosSub: "Add an extra level of security when logging in.",
-    contrasena: "Password",
-    ultimoCambioContrasena: "Last changed more than 30 days ago",
-    cambiar: "Change",
-    alertaCambiarContrasena: "Password change feature",
-    cambiosGuardados: "✓ Changes Saved",
-    guardarPreferencias: "Save Preferences",
-  },
-  fr: {
-    // Général / Tableau de bord
-    bienvenida: "Bienvenue sur votre tableau de bord client",
-    misViviendas: "Mes Propriétés",
-    serviciosExtras: "Services Supplémentaires",
-    facturas: "Factures et Paiements",
-    perfil: "Mon Profil",
-    cerrarSesion: "Se Déconnecter",
-    noHayDatos: "Aucun enregistrement disponible.",
-    cambiarIdioma: "Langue",
-    verDetalles: "Voir les détails",
-    estadoPendiente: "En attente",
-    estadoAprobado: "Approuvé",
-    estadoCompletado: "Terminé",
-    solicitarExtra: "Demander un service supplémentaire",
-    totalPagar: "Total à payer",
-    direccion: "Adresse",
-    cargandoPanel: "Chargement du tableau de bord...",
-    panelDeControl: "Panneau de contrôle",
-    dashboardCliente: "Tableau de bord client",
-    operativo: "Opérationnel",
-    trabajosExtrasDisponibles: "Travaux supplémentaires disponibles !",
-    tienes: "Vous avez",
-    trabajosRegistrados: "travaux ou rapports supplémentaires enregistrés.",
-    trabajoExtraFactura: "Travail supplémentaire / Facture",
-    verDetallesFotosFacturas: "Voir les détails et photos dans les factures",
-    verFactura: "Voir la facture →",
-    inspecciones: "Inspections",
-    alertas: "Alertes",
-    viviendas: "Propriétés",
-    inspeccionesDiarias: "Inspections quotidiennes",
-    configuracionSeguridadNotificaciones: "Paramètres de sécurité et de notification",
-    lun: "Lun",
-    mar: "Mar",
-    mie: "Mer",
-    jue: "Jeu",
-    vie: "Ven",
-    sab: "Sam",
-    dom: "Dim",
+  const [contratos, setContratos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
 
-    // Configuration & Sécurité
-    configuracionYSeguridad: "Configuration & Sécurité",
-    volver: "← Retour",
-    preferenciasNotificacion: "Préférences de notification",
-    notifPushTitulo: "Notifications push",
-    notifPushSub: "Recevez des avis immédiats dans l'application sur vos inspections.",
-    resumenCorreoTitulo: "Résumé par e-mail",
-    resumenCorreoSub: "Recevez des rapports et factures directement dans votre e-mail.",
-    alertasCriticasTitulo: "Alertas d'incidents critiques",
-    alertasCriticasSub: "Avis urgents d'incidents graves détectés dans les logements.",
-    seguridadCuenta: "Sécurité du compte",
-    autenticacionDosPasosTitulo: "Authentification à 2 facteurs (2FA)",
-    autenticacionDosPasosSub: "Ajoutez un niveau de sécurité supplémentaire lors de la connexion.",
-    contrasena: "Mot de passe",
-    ultimoCambioContrasena: "Dernière modification il y a plus de 30 jours",
-    cambiar: "Modifier",
-    alertaCambiarContrasena: "Fonction de changement de mot de passe",
-    cambiosGuardados: "✓ Modifications enregistrées",
-    guardarPreferencias: "Enregistrer les préférences",
-  }
-};
+  useEffect(() => {
+    let mounted = true;
 
-const LanguageContext = createContext();
+    async function cargarContratos() {
+      setLoading(true);
+      setErrorMsg("");
 
-export function LanguageProvider({ children }) {
-  const [lang, setLang] = useState(localStorage.getItem('app_lang') || 'es');
+      try {
+        if (!user) {
+          setErrorMsg(t("usuarioNoAutenticado"));
+          setContratos([]);
+          setLoading(false);
+          return;
+        }
 
-  const changeLanguage = (newLang) => {
-    setLang(newLang);
-    localStorage.setItem('app_lang', newLang);
-  };
+        // Obtener cliente asociado al usuario (si existe)
+        const { data: clienteData, error: clienteError } = await supabase
+          .from("clientes")
+          .select("id")
+          .eq("usuario_id", user.id)
+          .maybeSingle();
 
-  const t = (key) => {
-    return translations[lang]?.[key] || translations['es'][key] || key;
+        if (clienteError) {
+          console.error("Error cargando cliente:", clienteError);
+          setErrorMsg(t("errorIdentificarCliente"));
+          setContratos([]);
+          setLoading(false);
+          return;
+        }
+
+        const clienteId = clienteData?.id || user.id;
+
+        const { data: contratosData, error: contratosError } = await supabase
+          .from("contratos")
+          .select("*")
+          .eq("cliente_id", clienteId)
+          .order("id", { ascending: false });
+
+        if (contratosError) {
+          console.error("Error cargando contratos:", contratosError);
+          setErrorMsg(t("errorCargandoContratos"));
+          setContratos([]);
+          setLoading(false);
+          return;
+        }
+
+        if (mounted) {
+          setContratos(contratosData || []);
+        }
+      } catch (e) {
+        console.error("Excepción al cargar contratos:", e);
+        if (mounted) {
+          setErrorMsg(t("errorInesperadoContratos"));
+          setContratos([]);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    cargarContratos();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user, t]);
+
+  const abrirContrato = (id) => {
+    navigate(`/cliente/contrato/${id}`);
   };
 
   return (
-    <LanguageContext.Provider value={{ lang, changeLanguage, t }}>
-      {children}
-    </LanguageContext.Provider>
+    <Menu>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: FONDO_PRINCIPAL,
+          padding: "20px",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+          paddingBottom: "80px",
+        }}
+      >
+        <h2
+          style={{
+            textAlign: "center",
+            ...TEXTO_DORADO_BRILLO,
+            marginBottom: "25px",
+            fontSize: "28px",
+            fontWeight: "900",
+          }}
+        >
+          {t("clienteListaTitulo")}
+        </h2>
+
+        {loading ? (
+          <p style={{ textAlign: "center", color: "#94a3b8" }}>{t("cargandoContratos")}</p>
+        ) : errorMsg ? (
+          <div style={{ textAlign: "center", padding: "20px" }}>
+            <p style={{ color: "#ff6b6b", marginBottom: 8 }}>{errorMsg}</p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.06)",
+                color: "#fff",
+                border: "1px solid rgba(255,255,255,0.08)",
+                cursor: "pointer",
+              }}
+            >
+              {t("reintentar")}
+            </button>
+          </div>
+        ) : contratos.length === 0 ? (
+          <p style={{ textAlign: "center", color: "#94a3b8" }}>
+            {t("clienteListaVacio")}
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: 12 }}>
+            {contratos.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => abrirContrato(c.id)}
+                style={{
+                  background: FONDO_TARJETA,
+                  padding: "16px",
+                  borderRadius: 12,
+                  border: BORDE_DORADO_FINO,
+                  boxShadow: SOMBRA_LUXURY,
+                  cursor: "pointer",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", marginBottom: 6 }}>
+                    {c.modalidad ? `${c.modalidad}` : `Contrato #${c.id}`}
+                  </div>
+                  <div style={{ color: "#9fb3c8", fontSize: 14 }}>
+                    {c.descripcion || c.notas || t("servicioContratado")}
+                  </div>
+                </div>
+
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontWeight: 900, color: "#fff", marginBottom: 6 }}>
+                    {c.precio != null ? `${c.precio} €` : "—"}
+                  </div>
+                  <div style={{ color: c.estado === "firmado" ? "#34d399" : "#94a3b8", fontSize: 13 }}>
+                    {c.estado ? c.estado.replace("_", " ") : t("estadoPendiente")}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Menu>
   );
 }
-
-// Exportamos ambos alias para compatibilidad total
-export const useTranslation = () => useContext(LanguageContext);
-export const useLanguage = () => useContext(LanguageContext);
