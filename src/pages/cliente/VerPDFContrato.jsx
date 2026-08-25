@@ -103,7 +103,7 @@ export default function VerPDFContrato() {
             fontSize: "18px",
           }}
         >
-          {t("pdfCargando") || "Cargando PDF..."}
+          {t("pdfCargando")}
         </div>
       </Menu>
     );
@@ -126,7 +126,7 @@ export default function VerPDFContrato() {
             padding: "20px",
           }}
         >
-          {t("pdfNoGenerado") || "No hay ningún archivo PDF generado para este contrato."}
+          {t("pdfNoGenerado")}
         </div>
       </Menu>
     );
@@ -154,7 +154,7 @@ export default function VerPDFContrato() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          {t("pdfTituloVista") || "Contrato"} #{id}
+          {t("pdfTituloVista")} #{id}
         </h2>
 
         <button
@@ -172,7 +172,7 @@ export default function VerPDFContrato() {
             fontSize: "15px",
           }}
         >
-          {t("pdfVolver") || "Volver"}
+          {t("pdfVolver")}
         </button>
 
         <div
@@ -187,7 +187,7 @@ export default function VerPDFContrato() {
         >
           <iframe
             src={pdfURL}
-            title={t("pdfTituloIframe") || "Visor de Contrato"}
+            title={t("pdfTituloIframe")}
             style={{
               width: "100%",
               height: "70vh",
@@ -213,7 +213,7 @@ export default function VerPDFContrato() {
             boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
-          {t("pdfAbrirNuevaPestana") || "Abrir en nueva pestaña"}
+          {t("pdfAbrirNuevaPestana")}
         </button>
       </div>
     </Menu>
