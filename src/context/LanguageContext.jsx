@@ -99,6 +99,26 @@ const translations = {
     alertaErrorAdmin: "Error notificando al administrador: ",
     alertaContratoEnviado: "¡Contrato firmado enviado al administrador!",
     alertaNoPdfAdmin: "El administrador aún no ha generado el PDF.",
+
+    // Ver Factura Individual
+    facturaNoEncontrada: "No se encontró la factura",
+    volverSimple: "Volver",
+    estadoPagada: "PAGADA",
+    estadoEnviadaCliente: "ENVIADA AL CLIENTE",
+    servicioInspeccion: "Servicio / Inspección",
+    facturaLabel: "Factura",
+    fecha: "Fecha",
+    descripcion: "Descripción",
+    evidenciaDelTrabajo: "Evidencia del Trabajo",
+    materialesUtilizados: "Materiales utilizados:",
+    tiempoEmpleado: "Tiempo empleado:",
+    fotografiasInspeccion: "Fotografías de Inspección:",
+    detalle: "Detalle",
+    base: "Base",
+    iva: "IVA",
+    total: "Total",
+    verPdf: "Ver PDF",
+    noPdfGenerado: "Aún no hay PDF generado para esta factura.",
   },
   en: {
     // General / Dashboard
@@ -198,6 +218,26 @@ const translations = {
     alertaErrorAdmin: "Error notifying the administrator: ",
     alertaContratoEnviado: "Signed contract sent to the administrator!",
     alertaNoPdfAdmin: "The administrator has not generated the PDF yet.",
+
+    // View Invoice Individual
+    facturaNoEncontrada: "Invoice not found",
+    volverSimple: "Back",
+    estadoPagada: "PAID",
+    estadoEnviadaCliente: "SENT TO CLIENT",
+    servicioInspeccion: "Service / Inspection",
+    facturaLabel: "Invoice",
+    fecha: "Date",
+    descripcion: "Description",
+    evidenciaDelTrabajo: "Work Evidence",
+    materialesUtilizados: "Materials used:",
+    tiempoEmpleado: "Time spent:",
+    fotografiasInspeccion: "Inspection Photographs:",
+    detalle: "Detail",
+    base: "Subtotal",
+    iva: "VAT",
+    total: "Total",
+    verPdf: "View PDF",
+    noPdfGenerado: "No PDF generated for this invoice yet.",
   },
   fr: {
     // Général / Tableau de bord
@@ -297,6 +337,26 @@ const translations = {
     alertaErrorAdmin: "Erreur lors de la notification de l'administrateur : ",
     alertaContratoEnviado: "Contrat signé envoyé à l'administrateur !",
     alertaNoPdfAdmin: "L'administrateur n'a pas encore généré le PDF.",
+
+    // Vue Facture Individuelle
+    facturaNoEncontrada: "Facture non trouvée",
+    volverSimple: "Retour",
+    estadoPagada: "PAYÉE",
+    estadoEnviadaCliente: "ENVOYÉE AU CLIENT",
+    servicioInspeccion: "Service / Inspection",
+    facturaLabel: "Facture",
+    fecha: "Date",
+    descripcion: "Description",
+    evidenciaDelTrabajo: "Preuve de travail",
+    materialesUtilizados: "Matériaux utilisés :",
+    tiempoEmpleado: "Temps passé :",
+    fotografiasInspeccion: "Photographies d'inspection :",
+    detalle: "Détail",
+    base: "Base",
+    iva: "TVA",
+    total: "Total",
+    verPdf: "Voir le PDF",
+    noPdfGenerado: "Aucun PDF généré pour cette facture pour le moment.",
   }
 };
 
