@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../../context/LanguageContext.jsx"; // ⭐ 1. Importar el contexto de idioma
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -11,6 +12,7 @@ export default function Register() {
   const [errorMsg, setErrorMsg] = useState("");
 
   const navigate = useNavigate();
+  const { changeLanguage } = useLanguage(); // ⭐ 2. Extraer la función changeLanguage
 
   const handleRegister = async () => {
     setErrorMsg("");
@@ -95,6 +97,10 @@ export default function Register() {
         console.error("Error actualizando idioma del cliente:", vincularError);
       }
     }
+
+    // ⭐ 3.5 Sincronizar el idioma localmente para que la app lo adopte de inmediato
+    changeLanguage(idioma);
+    localStorage.setItem("app_idioma", idioma);
 
     // 4️⃣ Mensaje final + redirección
     setMensaje("Cuenta creada correctamente. Ya puedes iniciar sesión.");
