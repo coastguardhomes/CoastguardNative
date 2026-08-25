@@ -1,18 +1,18 @@
 import React, { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
-import { useLanguage } from "../../context/LanguageContext.jsx"; // ⭐ 1. Importar el contexto de idioma
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [idioma, setIdioma] = useState("es"); // Idioma seleccionado por el usuario
+  const [idioma, setIdioma] = useState("es");
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   const navigate = useNavigate();
-  const { changeLanguage } = useLanguage(); // ⭐ 2. Extraer la función changeLanguage
+  const { changeLanguage } = useLanguage();
 
   const handleRegister = async () => {
     setErrorMsg("");
@@ -59,7 +59,7 @@ export default function Register() {
       console.error("Error creando perfil:", perfilError);
     }
 
-    // 3️⃣ Comprobar si el cliente ya existe en la tabla 'clientes' (usando maybeSingle para evitar errores)
+    // 3️⃣ Comprobar si el cliente ya existe en la tabla 'clientes'
     const { data: clienteExistente, error: errorBusqueda } = await supabase
       .from("clientes")
       .select("id")
@@ -77,12 +77,13 @@ export default function Register() {
         .insert({
           email: user.email,
           usuario_id: user.id,
-          idioma: idioma, // ⭐ Guardamos el idioma aquí
+          idioma: idioma,
         });
 
       if (crearClienteError) {
         console.error("Error creando cliente con idioma:", crearClienteError);
-        setErrorMsg("Error al guardar el idioma del cliente en la base de datos.");
+        // ⭐ AQUÍ MOSTRAMOS EL ERROR TÉCNICO REAL DE SUPABASE EN PANTALLA
+        setErrorMsg("Error DB (Crear): " + crearClienteError.message);
         setLoading(false);
         return;
       }
@@ -95,10 +96,14 @@ export default function Register() {
 
       if (vincularError) {
         console.error("Error actualizando idioma del cliente:", vincularError);
+        // ⭐ AQUÍ TAMBIÉN MOSTRAMOS EL ERROR TÉCNICO REAL SI FALLA EL UPDATE
+        setErrorMsg("Error DB (Actualizar): " + vincularError.message);
+        setLoading(false);
+        return;
       }
     }
 
-    // ⭐ 3.5 Sincronizar el idioma localmente para que la app lo adopte de inmediato
+    // ⭐ Sincronizar el idioma localmente
     changeLanguage(idioma);
     localStorage.setItem("app_idioma", idioma);
 
@@ -153,6 +158,8 @@ export default function Register() {
               color: "#ff6b6b",
               marginBottom: "15px",
               textAlign: "center",
+              fontSize: "13px",
+              wordBreak: "break-word"
             }}
           >
             {errorMsg}
@@ -279,4 +286,4 @@ export default function Register() {
       </div>
     </div>
   );
-}
+        }
