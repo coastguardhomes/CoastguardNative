@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [idioma, setIdioma] = useState("es"); // ⭐ 1. Estado para el idioma seleccionado
+  const [idioma, setIdioma] = useState("es"); // Idioma seleccionado por el usuario
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -48,7 +48,7 @@ export default function Register() {
       return;
     }
 
-    // ⭐ 2️⃣ Crear perfil SIEMPRE
+    // 2️⃣ Crear perfil en la tabla 'profiles'
     const { error: perfilError } = await supabase
       .from("profiles")
       .insert({ id: user.id, rol: "cliente" });
@@ -57,15 +57,19 @@ export default function Register() {
       console.error("Error creando perfil:", perfilError);
     }
 
-    // ⭐ 3️⃣ Crear cliente si NO existe (añadiendo el idioma elegido)
-    const { data: clienteExistente } = await supabase
+    // 3️⃣ Comprobar si el cliente ya existe en la tabla 'clientes' (usando maybeSingle para evitar errores)
+    const { data: clienteExistente, error: errorBusqueda } = await supabase
       .from("clientes")
       .select("id")
       .eq("email", user.email)
-      .single();
+      .maybeSingle();
+
+    if (errorBusqueda) {
+      console.error("Error buscando cliente existente:", errorBusqueda);
+    }
 
     if (!clienteExistente) {
-      // Crear cliente nuevo con su idioma preferido
+      // Crear cliente nuevo guardando explícitamente su idioma preferido
       const { error: crearClienteError } = await supabase
         .from("clientes")
         .insert({
@@ -75,22 +79,25 @@ export default function Register() {
         });
 
       if (crearClienteError) {
-        console.error("Error creando cliente:", crearClienteError);
+        console.error("Error creando cliente con idioma:", crearClienteError);
+        setErrorMsg("Error al guardar el idioma del cliente en la base de datos.");
+        setLoading(false);
+        return;
       }
     } else {
-      // ⭐ 4️⃣ Vincular cliente existente y actualizar idioma si lo desea
+      // Actualizar cliente existente vinculando su usuario_id y su idioma
       const { error: vincularError } = await supabase
         .from("clientes")
         .update({ usuario_id: user.id, idioma: idioma })
         .eq("email", user.email);
 
       if (vincularError) {
-        console.error("Error vinculando cliente:", vincularError);
+        console.error("Error actualizando idioma del cliente:", vincularError);
       }
     }
 
-    // 5️⃣ Mensaje final + redirección
-    setMensaje("Cuenta creada correctamente. Revisa tu email para confirmar la cuenta.");
+    // 4️⃣ Mensaje final + redirección
+    setMensaje("Cuenta creada correctamente. Ya puedes iniciar sesión.");
     setLoading(false);
 
     setTimeout(() => {
@@ -195,7 +202,7 @@ export default function Register() {
           }}
         />
 
-        {/* ⭐ 2. Selector visual de idioma en el registro */}
+        {/* Selector de idioma */}
         <div style={{ marginBottom: "20px" }}>
           <label
             style={{
