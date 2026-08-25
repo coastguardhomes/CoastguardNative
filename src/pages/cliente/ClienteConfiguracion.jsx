@@ -75,7 +75,7 @@ export default function ClienteConfiguracion() {
                 ...TEXTO_DORADO_BRILLO,
               }}
             >
-              CONFIGURACIÓN Y SEGURIDAD
+              {t('configuracionYSeguridad')}
             </h1>
           </div>
           <button
@@ -91,7 +91,7 @@ export default function ClienteConfiguracion() {
               cursor: "pointer"
             }}
           >
-            ← Volver
+            {t('volver')}
           </button>
         </div>
 
@@ -107,25 +107,25 @@ export default function ClienteConfiguracion() {
           }}
         >
           <h2 style={{ fontSize: "12px", color: "#cbd5e1", textTransform: "uppercase", marginBottom: "14px", fontWeight: "700" }}>
-            🔔 Preferencias de Notificación
+            🔔 {t('preferenciasNotificacion')}
           </h2>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             <ToggleOption
-              titulo="Notificaciones Push"
-              subtitulo="Recibe avisos inmediatos en la app sobre tus inspecciones."
+              titulo={t('notifPushTitulo')}
+              subtitulo={t('notifPushSub')}
               activo={notifPush}
               onToggle={() => setNotifPush(!notifPush)}
             />
             <ToggleOption
-              titulo="Resumen por Correo"
-              subtitulo="Recibe informes y facturas directamente en tu email."
+              titulo={t('resumenCorreoTitulo')}
+              subtitulo={t('resumenCorreoSub')}
               activo={notifEmail}
               onToggle={() => setNotifEmail(!notifEmail)}
             />
             <ToggleOption
-              titulo="Alertas de Incidencias Críticas"
-              subtitulo="Avisos urgentes de incidencias graves detectadas en viviendas."
+              titulo={t('alertasCriticasTitulo')}
+              subtitulo={t('alertasCriticasSub')}
               activo={alertasCriticas}
               onToggle={() => setAlertasCriticas(!alertasCriticas)}
             />
@@ -144,24 +144,24 @@ export default function ClienteConfiguracion() {
           }}
         >
           <h2 style={{ fontSize: "12px", color: "#cbd5e1", textTransform: "uppercase", marginBottom: "14px", fontWeight: "700" }}>
-            🛡️ Seguridad de la Cuenta
+            🛡️ {t('seguridadCuenta')}
           </h2>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             <ToggleOption
-              titulo="Autenticación en 2 Pasos (2FA)"
-              subtitulo="Añade un nivel extra de seguridad al iniciar sesión."
+              titulo={t('autenticacionDosPasosTitulo')}
+              subtitulo={t('autenticacionDosPasosSub')}
               activo={autenticacionDosPasos}
               onToggle={() => setAutenticacionDosPasos(!autenticacionDosPasos)}
             />
 
-            <div style={{ paddingTop: "8px", borderT: "1px solid rgba(224, 176, 52, 0.2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ paddingTop: "8px", borderTop: "1px solid rgba(224, 176, 52, 0.2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: "12px", fontWeight: "700", color: "#fff" }}>Contraseña</div>
-                <div style={{ fontSize: "10px", color: "#94a3b8" }}>Último cambio hace más de 30 días</div>
+                <div style={{ fontSize: "12px", fontWeight: "700", color: "#fff" }}>{t('contrasena')}</div>
+                <div style={{ fontSize: "10px", color: "#94a3b8" }}>{t('ultimoCambioContrasena')}</div>
               </div>
               <button
-                onClick={() => alert("Función para cambiar contraseña")}
+                onClick={() => alert(t('alertaCambiarContrasena'))}
                 style={{
                   background: "rgba(224, 176, 52, 0.1)",
                   border: BORDE_DORADO,
@@ -173,7 +173,7 @@ export default function ClienteConfiguracion() {
                   cursor: "pointer"
                 }}
               >
-                Cambiar
+                {t('cambiar')}
               </button>
             </div>
           </div>
@@ -198,7 +198,7 @@ export default function ClienteConfiguracion() {
             transition: "all 0.3s ease"
           }}
         >
-          {guardado ? "✓ Cambios Guardados" : "Guardar Preferencias"}
+          {guardado ? t('cambiosGuardados') : t('guardarPreferencias')}
         </button>
       </div>
     </Menu>
