@@ -9,7 +9,7 @@ const FONDO_GRADIENTE = "radial-gradient(circle at top, #1a1f26 0%, #030509 100%
 const BORDE_DORADO_LUJO = "1px solid rgba(224, 176, 52, 0.35)";
 
 export default function Login() {
-  const { t, changeLanguage } = useLanguage();
+  const { t, changeLanguage, language } = useLanguage(); // Asegúrate de extraer 'language' si tu contexto lo provee, o usa un estado local
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,7 +22,6 @@ export default function Login() {
   async function redirigirSegunRol(userId) {
     if (!userId) return;
     
-    // ⭐ Consultamos el idioma usando usuario_id (evita bloqueos de RLS y encuentra el registro seguro)
     let { data: clienteData } = await supabase
       .from("clientes")
       .select("idioma")
@@ -30,7 +29,8 @@ export default function Login() {
       .maybeSingle();
 
     if (clienteData && clienteData.idioma) {
-      changeLanguage(clienteData.idioma); // Sincroniza el idioma globalmente de inmediato
+      changeLanguage(clienteData.idioma);
+      localStorage.setItem("app_idioma", clienteData.idioma);
     }
 
     let { data: perfil } = await supabase.from("profiles").select("rol").eq("id", userId).maybeSingle();
@@ -50,7 +50,6 @@ export default function Login() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error || !data.session) { setErrorMsg(t("loginError")); setLoading(false); return; }
       
-      // ⭐ Pasamos únicamente el ID de sesión
       await redirigirSegunRol(data.session.user.id);
     } catch (e) { setErrorMsg(t("loginError")); }
     setLoading(false);
@@ -82,6 +81,32 @@ export default function Login() {
         boxSizing: "border-box"
       }}>
         
+        {/* ⭐ Selector de idioma directo en el Login */}
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "10px" }}>
+          <select 
+            value={language || localStorage.getItem("app_idioma") || "es"}
+            onChange={(e) => {
+              changeLanguage(e.target.value);
+              localStorage.setItem("app_idioma", e.target.value);
+            }}
+            style={{
+              background: "rgba(11, 19, 32, 0.9)",
+              border: BORDE_DORADO_LUJO,
+              color: COLOR_DORADO,
+              padding: "4px 8px",
+              borderRadius: "8px",
+              fontSize: "11px",
+              fontWeight: "700",
+              cursor: "pointer",
+              outline: "none"
+            }}
+          >
+            <option value="es" style={{ background: "#030509", color: "#fff" }}>🇪🇸 Español</option>
+            <option value="en" style={{ background: "#030509", color: "#fff" }}>🇬🇧 English</option>
+            <option value="fr" style={{ background: "#030509", color: "#fff" }}>🇫🇷 Français</option>
+          </select>
+        </div>
+
         <div style={{ 
             width: "110px", 
             height: "110px", 
