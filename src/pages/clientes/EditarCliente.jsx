@@ -12,6 +12,7 @@ export default function EditarCliente() {
     telefono: "",
     email: "",
     direccion: "",
+    idioma: "es", // ⭐ 1. Idioma inicial añadido aquí
   });
 
   const [mensaje, setMensaje] = useState("");
@@ -20,7 +21,7 @@ export default function EditarCliente() {
     async function cargarCliente() {
       const { data, error } = await supabase
         .from("clientes")
-        .select("nombre, telefono, email, direccion")
+        .select("nombre, telefono, email, direccion, idioma") // ⭐ 2. Seleccionar el idioma de Supabase
         .eq("id", id)
         .single();
 
@@ -48,6 +49,7 @@ export default function EditarCliente() {
         telefono: form.telefono,
         email: form.email,
         direccion: form.direccion,
+        idioma: form.idioma, // ⭐ 3. Guardar el idioma modificado en Supabase
       })
       .eq("id", id);
 
@@ -130,6 +132,19 @@ export default function EditarCliente() {
           value={form.direccion}
           onChange={(e) => setForm({ ...form, direccion: e.target.value })}
         />
+
+        {/* ⭐ 4. Selector visual de idioma añadido en edición */}
+        <label>Idioma Preferido</label>
+        <select
+          name="idioma"
+          value={form.idioma}
+          onChange={(e) => setForm({ ...form, idioma: e.target.value })}
+          style={inputStyle}
+        >
+          <option value="es" style={{ background: "#0d1b2a", color: "#fff" }}>🇪🇸 Español</option>
+          <option value="en" style={{ background: "#0d1b2a", color: "#fff" }}>🇬🇧 Inglés</option>
+          <option value="fr" style={{ background: "#0d1b2a", color: "#fff" }}>🇫🇷 Francés</option>
+        </select>
 
         <button
           onClick={guardarCambios}
