@@ -34,7 +34,7 @@ export default function ClienteContratoVer() {
   const [contrato, setContrato] = useState(null);
   const [cliente, setCliente] = useState(null);
   const [enviando, setEnviando] = useState(false);
-  const [cargando,setCargando] = useState(true);
+  const [cargando, setCargando] = useState(true);
 
   const cargarContrato = async () => {
     setCargando(true);
@@ -47,7 +47,7 @@ export default function ClienteContratoVer() {
 
       if (contratoError || !contratoData) {
         console.error("Error cargando contrato:", contratoError);
-        setContrato({ error: true, mensaje: contratoError?.message || "Contrato no encontrado" });
+        setContrato({ error: true, mensaje: contratoError?.message || t("contratoNoEncontrado") });
         return;
       }
 
@@ -84,7 +84,7 @@ export default function ClienteContratoVer() {
 
   const enviarAlAdmin = async () => {
     if (!esFirmado) {
-      alert("Debes firmar el contrato antes de enviarlo.");
+      alert(t("alertaDebesFirmar"));
       return;
     }
 
@@ -97,16 +97,16 @@ export default function ClienteContratoVer() {
     setEnviando(false);
 
     if (error) {
-      alert("Error notificando al administrador: " + error.message);
+      alert(t("alertaErrorAdmin") + error.message);
     } else {
-      alert("¡Contrato firmado enviado al administrador!");
+      alert(t("alertaContratoEnviado"));
       cargarContrato();
     }
   };
 
   const manejarAbrirPDF = (url) => {
     if (!url) {
-      alert("El administrador aún no ha generado el PDF.");
+      alert(t("alertaNoPdfAdmin"));
       return;
     }
 
@@ -143,7 +143,7 @@ export default function ClienteContratoVer() {
             fontFamily: "Inter, sans-serif",
           }}
         >
-          <h3 style={TEXTO_DORADO}>{t("clienteContratoCargando") || "Cargando contrato..."}</h3>
+          <h3 style={TEXTO_DORADO}>{t("clienteContratoCargando")}</h3>
         </div>
       </Menu>
     );
@@ -166,10 +166,10 @@ export default function ClienteContratoVer() {
             fontFamily: "Inter, sans-serif",
           }}
         >
-          <h3 style={{ marginBottom: "10px" }}>No se pudo cargar el contrato</h3>
-          <p style={{ fontSize: "14px", color: "#aaa", marginBottom: "20px" }}>{contrato?.mensaje || "Comprueba tu conexión"}</p>
+          <h3 style={{ marginBottom: "10px" }}>{t("noSePudoCargarContrato")}</h3>
+          <p style={{ fontSize: "14px", color: "#aaa", marginBottom: "20px" }}>{contrato?.mensaje || t("compruebaTuConexion")}</p>
           <button onClick={() => navigate(-1)} style={{ ...botonEstilo, width: "auto", padding: "10px 20px" }}>
-            ← Volver
+            {t("volver")}
           </button>
         </div>
       </Menu>
@@ -197,7 +197,7 @@ export default function ClienteContratoVer() {
             fontWeight: "700",
           }}
         >
-          {t("clienteContratoTitulo") || "Contrato del Cliente"}
+          {t("clienteContratoTitulo")}
         </h2>
 
         {/* Datos del Cliente */}
@@ -212,11 +212,11 @@ export default function ClienteContratoVer() {
           }}
         >
           <h3 style={{ ...TEXTO_DORADO, marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
-            {t("clienteContratoDatosCliente") || "Datos del Cliente"}
+            {t("clienteContratoDatosCliente")}
           </h3>
-          <p style={{ margin: "6px 0" }}><strong>Nombre:</strong> {cliente?.nombre || contrato?.cliente_nombre || "—"}</p>
-          <p style={{ margin: "6px 0" }}><strong>Dirección:</strong> {cliente?.direccion || "—"}</p>
-          <p style={{ margin: "6px 0" }}><strong>Teléfono:</strong> {cliente?.telefono || "—"}</p>
+          <p style={{ margin: "6px 0" }}><strong>{t("nombre")}:</strong> {cliente?.nombre || contrato?.cliente_nombre || "—"}</p>
+          <p style={{ margin: "6px 0" }}><strong>{t("direccion")}:</strong> {cliente?.direccion || "—"}</p>
+          <p style={{ margin: "6px 0" }}><strong>{t("telefono")}:</strong> {cliente?.telefono || "—"}</p>
         </div>
 
         {/* Detalles del Contrato */}
@@ -230,26 +230,26 @@ export default function ClienteContratoVer() {
           }}
         >
           <h3 style={{ ...TEXTO_DORADO, marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
-            {t("clienteContratoDetalles") || "Detalles del Contrato"}
+            {t("clienteContratoDetalles")}
           </h3>
 
           <p style={{ margin: "6px 0" }}>
-            <strong>Tipo de servicio:</strong> Cada {contrato.frecuencia || 30} días
+            <strong>{t("tipoServicio")}:</strong> {contrato.frecuencia || 30} {t("dias")}
           </p>
           <p style={{ margin: "6px 0" }}>
-            <strong>Precio mensual:</strong> {contrato.precio != null ? `${contrato.precio} €` : "—"}
+            <strong>{t("precioMensual")}:</strong> {contrato.precio != null ? `${contrato.precio} €` : "—"}
           </p>
           <p style={{ margin: "6px 0" }}>
-            <strong>Fecha inicio:</strong> {contrato.fecha_inicio || "—"}
+            <strong>{t("fechaInicio")}:</strong> {contrato.fecha_inicio || "—"}
           </p>
           <p style={{ margin: "6px 0 16px 0" }}>
-            <strong>Estado:</strong>{" "}
+            <strong>{t("estado")}:</strong>{" "}
             <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d", fontWeight: "bold", textShadow: esFirmado ? "0 0 8px rgba(77,255,136,0.4)" : "0 0 8px rgba(255,184,77,0.4)" }}>
-              {esFirmado ? "✅ Firmado" : "⏳ Pendiente de firma"}
+              {esFirmado ? `✅ ${t("firmado")}` : `⏳ ${t("pendienteFirma")}`}
             </span>
           </p>
 
-          {/* Botón 1: Ver antes de firmar (Se oculta si ya está firmado) */}
+          {/* Botón 1: Ver antes de firmar */}
           <button
             onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
@@ -260,10 +260,10 @@ export default function ClienteContratoVer() {
               display: esFirmado ? "none" : "block",
             }}
           >
-            📄 Ver contrato antes de firmar
+            {t("verContratoAntesFirmar")}
           </button>
 
-          {/* Botón 2: Ver / Cambiar Firma (Se oculta si ya está firmado) */}
+          {/* Botón 2: Ver / Cambiar Firma */}
           <button
             onClick={() => navigate(`/cliente/firma/${id}`)}
             style={{
@@ -271,10 +271,10 @@ export default function ClienteContratoVer() {
               display: esFirmado ? "none" : "block",
             }}
           >
-            ✍️ {esFirmado ? "Ver / Cambiar Firma" : "Firma del Cliente"}
+            ✍️ {esFirmado ? t("verCambiarFirma") : t("firmaDelCliente")}
           </button>
 
-          {/* Botón 3: Enviar al Admin (Se oculta si ya está firmado) */}
+          {/* Botón 3: Enviar al Admin */}
           <button
             onClick={enviarAlAdmin}
             disabled={!esFirmado || enviando}
@@ -287,13 +287,13 @@ export default function ClienteContratoVer() {
               cursor: esFirmado ? "pointer" : "not-allowed",
               border: esFirmado ? "1px solid rgba(74, 222, 128, 0.5)" : "1px solid rgba(255,255,255,0.1)",
               boxShadow: esFirmado ? "0 4px 15px rgba(74, 222, 128, 0.3)" : "none",
-              display: esFirmado && contrato?.estado === "enviado_al_admin" ? "none" : (esFirmado ? "block" : "block"), // Si prefieres ocultarlo por completo al firmar:
+              display: esFirmado && contrato?.estado === "enviado_al_admin" ? "none" : "block",
             }}
           >
-            {enviando ? "Enviando..." : "📤 Enviar contrato al Admin"}
+            {enviando ? t("enviando") : t("enviarAlAdminBtn")}
           </button>
 
-          {/* Botón 4: Ver contrato firmado (PDF) - Este SIEMPRE se queda visible */}
+          {/* Botón 4: Ver contrato firmado (PDF) */}
           <button
             onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
@@ -301,10 +301,10 @@ export default function ClienteContratoVer() {
               background: "rgba(10, 15, 26, 0.8)",
               border: BORDE_DORADO,
               color: COLOR_DORADO,
-              marginTop: esFirmado ? "4px" : "12px", // Se ajusta limpio si los otros desaparecen
+              marginTop: esFirmado ? "4px" : "12px",
             }}
           >
-            📄 Ver contrato firmado (PDF)
+            {t("verContratoFirmadoPdf")}
           </button>
         </div>
       </div>
