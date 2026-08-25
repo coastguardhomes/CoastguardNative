@@ -73,7 +73,7 @@ import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas.jsx";
 // EXTRAS
 import Extras from "./pages/extras/Extras.jsx";
 
-// SERVICIOS Y ÓRDENES (NUEVO MÓDULO)
+// SERVICIOS Y ÓRDENES
 import Servicios from "./pages/servicios/Servicios.jsx";
 
 // ÁREA DEL CLIENTE
@@ -88,7 +88,7 @@ import ClienteFacturasLista from "./pages/cliente/ClienteFacturasLista.jsx";
 import ClienteFacturaVer from "./pages/cliente/ClienteFacturaVer.jsx";
 import ClienteConfiguracion from "./pages/cliente/ClienteConfiguracion.jsx";
 
-// AJUSTES / IDIOMA (Ruta de carpeta corregida)
+// AJUSTES / IDIOMA
 import Ajustes from "./pages/Ajustes/Ajustes.jsx";
 import Idioma from "./pages/Ajustes/Idioma.jsx"; 
 
