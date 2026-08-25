@@ -9,7 +9,7 @@ const FONDO_GRADIENTE = "radial-gradient(circle at top, #1a1f26 0%, #030509 100%
 const BORDE_DORADO_LUJO = "1px solid rgba(224, 176, 52, 0.35)";
 
 export default function Login() {
-  const { t, changeLanguage } = useLanguage(); // ⭐ 1. Extraemos changeLanguage aquí
+  const { t, changeLanguage } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,18 +19,18 @@ export default function Login() {
 
   useEffect(() => { setCheckingSession(false); }, []);
 
-  async function redirigirSegunRol(userId, userEmail) {
+  async function redirigirSegunRol(userId) {
     if (!userId) return;
     
-    // ⭐ 2. Consultamos si el cliente tiene un idioma preferido guardado en Supabase
+    // ⭐ Consultamos el idioma usando usuario_id (evita bloqueos de RLS y encuentra el registro seguro)
     let { data: clienteData } = await supabase
       .from("clientes")
       .select("idioma")
-      .eq("email", userEmail)
+      .eq("usuario_id", userId)
       .maybeSingle();
 
     if (clienteData && clienteData.idioma) {
-      changeLanguage(clienteData.idioma); // ⭐ Sincronizamos el idioma automáticamente
+      changeLanguage(clienteData.idioma); // Sincroniza el idioma globalmente de inmediato
     }
 
     let { data: perfil } = await supabase.from("profiles").select("rol").eq("id", userId).maybeSingle();
@@ -50,8 +50,8 @@ export default function Login() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error || !data.session) { setErrorMsg(t("loginError")); setLoading(false); return; }
       
-      // ⭐ 3. Pasamos también el email al redirigir para buscar su idioma
-      await redirigirSegunRol(data.session.user.id, data.session.user.email);
+      // ⭐ Pasamos únicamente el ID de sesión
+      await redirigirSegunRol(data.session.user.id);
     } catch (e) { setErrorMsg(t("loginError")); }
     setLoading(false);
   };
