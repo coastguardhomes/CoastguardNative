@@ -4,6 +4,7 @@ import { supabase } from "./supabaseClient"; // Asegúrate de que la ruta a tu c
 
 import PrivateRoute from "./guards/PrivateRoute.jsx";
 import ClienteRoute from "./pages/cliente/ClienteRoute.jsx";
+import { LanguageProvider } from "./context/LanguageContext.jsx"; // ⭐ CONTEXTO DE TRADUCCIÓN
 
 // LOGIN / REGISTER / RECUPERAR CONTRASEÑA
 import Login from "./pages/Login/Login.jsx";
@@ -39,7 +40,7 @@ import TecnicoInspeccion from "./pages/tecnicos/TecnicoInspeccion.jsx";
 import TecnicoChecklist from "./pages/tecnicos/TecnicoChecklist.jsx";
 import TecnicoFotos from "./pages/tecnicos/TecnicoFotos.jsx";
 import TecnicoFinalizar from "./pages/tecnicos/TecnicoFinalizar.jsx";
-import TecnicoInspeccionExtra from "./pages/tecnicos/TecnicoInspeccionExtra.jsx"; // ⭐ NUEVA PANTALLA TÉCNICO EXTRAS
+import TecnicoInspeccionExtra from "./pages/tecnicos/TecnicoInspeccionExtra.jsx";
 
 // CONTRATOS
 import Contratos from "./pages/contratos/Contratos.jsx";
@@ -93,7 +94,6 @@ import Idioma from "./pages/idioma/Idioma.jsx";
 
 export default function App() {
   useEffect(() => {
-    // Función auxiliar para auto-vincular el cliente si su usuario_id está vacío
     const vincularClienteSiEsNecesario = async (user) => {
       if (!user?.email) return;
 
@@ -117,17 +117,15 @@ export default function App() {
       }
     };
 
-    // 1. Comprobar sesión actual al cargar la app
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         vincularClienteSiEsNecesario(session.user);
       }
     });
 
-    // 2. Escuchar cambios de inicio/cierre de sesión en tiempo real
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
-        vincularClienteSiEsNecesario(session.user);
+        vincualarClienteSiEsNecesario(session.user);
       }
     });
 
@@ -159,16 +157,18 @@ export default function App() {
         <Route path="inspeccion/:id/checklist" element={<TecnicoChecklist />} />
         <Route path="inspeccion/:id/fotos" element={<TecnicoFotos />} />
         <Route path="inspeccion/:id/finalizar" element={<TecnicoFinalizar />} />
-        <Route path="extra/:id" element={<TecnicoInspeccionExtra />} /> {/* ⭐ RUTA NUEVA PARA INSPECCIÓN DE EXTRAS */}
+        <Route path="extra/:id" element={<TecnicoInspeccionExtra />} />
       </Route>
 
-      {/* ---------------- ÁREA DEL CLIENTE ---------------- */}
+      {/* ---------------- ÁREA DEL CLIENTE (ENVUELTO EN LanguageProvider) ---------------- */}
       <Route
         path="/cliente"
         element={
-          <ClienteRoute>
-            <PrivateRoute />
-          </ClienteRoute>
+          <LanguageProvider>
+            <ClienteRoute>
+              <PrivateRoute />
+            </ClienteRoute>
+          </LanguageProvider>
         }
       >
         <Route index element={<ClienteDashboard />} />
@@ -218,8 +218,6 @@ export default function App() {
         <Route path="crear" element={<CrearContrato />} />
         <Route path="editar/:id" element={<EditarContrato />} />
         <Route path=":id/editar" element={<EditarContrato />} />
-
-        {/* ⭐ RUTA CORRECTA PARA VER CONTRATO */}
         <Route path="ver/:id" element={<VerContrato />} />
       </Route>
 
