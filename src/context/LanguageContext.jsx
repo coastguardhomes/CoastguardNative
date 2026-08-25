@@ -9,6 +9,7 @@ const translations = {
     facturas: "Facturas y Pagos",
     perfil: "Mi Perfil",
     cerrarSesion: "Cerrar Sesión",
+    logout: "Cerrar Sesión",
     noHayDatos: "No hay registros disponibles.",
     cambiarIdioma: "Idioma",
     verDetalles: "Ver Detalles",
@@ -40,6 +41,14 @@ const translations = {
     vie: "Vie",
     sab: "Sáb",
     dom: "Dom",
+
+    // Perfil Cliente
+    clienteDashboardCargando: "Cargando perfil...",
+    clienteDashboardNoEncontrado: "No se encontró el perfil de cliente.",
+    clientePerfilTitulo: "Mi Perfil",
+    clienteDashboardNombre: "Nombre",
+    clienteDashboardEmail: "Correo electrónico",
+    clienteDashboardTelefono: "Teléfono",
 
     // Configuración y Seguridad
     configuracionYSeguridad: "Configuración y Seguridad",
@@ -100,6 +109,7 @@ const translations = {
     alertaContratoEnviado: "¡Contrato firmado enviado al administrador!",
     alertaNoPdfAdmin: "El administrador aún no ha generado el PDF.",
     clienteAccesoDenegado: "Acceso denegado o contrato no encontrado.",
+    clienteContratoDireccion: "Dirección",
 
     // PDF del Contrato (GenerarPDFContrato)
     pdfTitulo: "CONTRATO DE PRESTACIÓN DE SERVICIOS",
@@ -178,6 +188,7 @@ const translations = {
     facturas: "Invoices & Payments",
     perfil: "My Profile",
     cerrarSesion: "Log Out",
+    logout: "Log Out",
     noHayDatos: "No records available.",
     cambiarIdioma: "Language",
     verDetalles: "View Details",
@@ -209,6 +220,14 @@ const translations = {
     vie: "Fri",
     sab: "Sat",
     dom: "Sun",
+
+    // Perfil Cliente
+    clienteDashboardCargando: "Loading profile...",
+    clienteDashboardNoEncontrado: "Client profile not found.",
+    clientePerfilTitulo: "My Profile",
+    clienteDashboardNombre: "Name",
+    clienteDashboardEmail: "Email",
+    clienteDashboardTelefono: "Phone",
 
     // Configuration & Security
     configuracionYSeguridad: "Configuration & Security",
@@ -269,6 +288,7 @@ const translations = {
     alertaContratoEnviado: "Signed contract sent to the administrator!",
     alertaNoPdfAdmin: "The administrator has not generated the PDF yet.",
     clienteAccesoDenegado: "Access denied or contract not found.",
+    clienteContratoDireccion: "Address",
 
     // PDF Generation (GenerarPDFContrato)
     pdfTitulo: "SERVICE AGREEMENT CONTRACT",
@@ -347,6 +367,7 @@ const translations = {
     facturas: "Factures et Paiements",
     perfil: "Mon Profil",
     cerrarSesion: "Se Déconnecter",
+    logout: "Se Déconnecter",
     noHayDatos: "Aucun enregistrement disponible.",
     cambiarIdioma: "Langue",
     verDetalles: "Voir les détails",
@@ -378,6 +399,14 @@ const translations = {
     vie: "Ven",
     sab: "Sam",
     dom: "Dim",
+
+    // Profil Client
+    clienteDashboardCargando: "Chargement du profil...",
+    clienteDashboardNoEncontrado: "Profil client introuvable.",
+    clientePerfilTitulo: "Mon Profil",
+    clienteDashboardNombre: "Nom",
+    clienteDashboardEmail: "E-mail",
+    clienteDashboardTelefono: "Téléphone",
 
     // Configuration & Sécurité
     configuracionYSeguridad: "Configuration & Sécurité",
@@ -438,6 +467,7 @@ const translations = {
     alertaContratoEnviado: "Contrat signé envoyé à l'administrateur !",
     alertaNoPdfAdmin: "L'administrateur n'a pas encore généré le PDF.",
     clienteAccesoDenegado: "Accès refusé ou contrat introuvable.",
+    clienteContratoDireccion: "Adresse",
 
     // PDF du Contrat (GenerarPDFContrato)
     pdfTitulo: "CONTRAT DE PRESTATION DE SERVICES",
