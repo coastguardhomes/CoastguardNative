@@ -11,6 +11,7 @@ export default function NuevoCliente() {
     email: "",
     telefono: "",
     direccion: "",
+    idioma: "es", // ⭐ 1. Idioma por defecto añadido aquí
   });
 
   const [mensaje, setMensaje] = useState("");
@@ -36,6 +37,7 @@ export default function NuevoCliente() {
           email: form.email,
           telefono: form.telefono,
           direccion: form.direccion,
+          idioma: form.idioma, // ⭐ 3. Guardar el idioma seleccionado en Supabase
         },
       ]);
 
@@ -89,6 +91,40 @@ export default function NuevoCliente() {
             value={form.direccion}
             onChange={handleChange}
           />
+
+          {/* ⭐ 2. Selector de Idioma añadido visualmente */}
+          <div style={{ marginBottom: "16px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: 6,
+                fontSize: 13,
+                color: "#9fb3c8",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              Idioma Preferido
+            </label>
+            <select
+              name="idioma"
+              value={form.idioma}
+              onChange={handleChange}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "rgba(255,255,255,0.08)",
+                color: "#fff",
+                fontSize: 15,
+              }}
+            >
+              <option value="es" style={{ background: "#0a0f1a", color: "#fff" }}>🇪🇸 Español</option>
+              <option value="en" style={{ background: "#0a0f1a", color: "#fff" }}>🇬🇧 Inglés</option>
+              <option value="fr" style={{ background: "#0a0f1a", color: "#fff" }}>🇫🇷 Francés</option>
+            </select>
+          </div>
 
           <button
             onClick={crearCliente}
