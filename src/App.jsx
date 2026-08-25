@@ -1,10 +1,10 @@
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { supabase } from "./supabaseClient"; // Asegúrate de que la ruta a tu cliente de Supabase sea correcta
+import { supabase } from "./supabaseClient";
 
 import PrivateRoute from "./guards/PrivateRoute.jsx";
 import ClienteRoute from "./pages/cliente/ClienteRoute.jsx";
-import { LanguageProvider } from "./context/LanguageContext.jsx"; // ⭐ CONTEXTO DE TRADUCCIÓN
+import { LanguageProvider } from "./context/LanguageContext.jsx"; // ⭐ CONTEXTO GLOBAL DE TRADUCCIÓN
 
 // LOGIN / REGISTER / RECUPERAR CONTRASEÑA
 import Login from "./pages/Login/Login.jsx";
@@ -88,9 +88,9 @@ import ClienteFacturasLista from "./pages/cliente/ClienteFacturasLista.jsx";
 import ClienteFacturaVer from "./pages/cliente/ClienteFacturaVer.jsx";
 import ClienteConfiguracion from "./pages/cliente/ClienteConfiguracion.jsx";
 
-// AJUSTES / IDIOMA
+// AJUSTES / IDIOMA (Ruta de carpeta corregida)
 import Ajustes from "./pages/Ajustes/Ajustes.jsx";
-import Idioma from "./pages/idioma/Idioma.jsx";
+import Idioma from "./pages/Ajustes/Idioma.jsx"; 
 
 export default function App() {
   useEffect(() => {
@@ -125,7 +125,7 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
-        vincualarClienteSiEsNecesario(session.user);
+        vincularClienteSiEsNecesario(session.user);
       }
     });
 
@@ -135,139 +135,139 @@ export default function App() {
   }, []);
 
   return (
-    <Routes>
-      {/* ---------------- PÚBLICO ---------------- */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/update-password" element={<UpdatePassword />} />
+    <LanguageProvider>
+      <Routes>
+        {/* ---------------- PÚBLICO ---------------- */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/update-password" element={<UpdatePassword />} />
 
-      {/* ---------------- REDIRECCIÓN INICIAL ---------------- */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* ---------------- REDIRECCIÓN INICIAL ---------------- */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
-      {/* ---------------- ADMIN ---------------- */}
-      <Route path="/admin/dashboard" element={<PrivateRoute />}>
-        <Route index element={<Dashboardadmin />} />
-      </Route>
+        {/* ---------------- ADMIN ---------------- */}
+        <Route path="/admin/dashboard" element={<PrivateRoute />}>
+          <Route index element={<Dashboardadmin />} />
+        </Route>
 
-      {/* ---------------- TÉCNICO ---------------- */}
-      <Route path="/tecnico" element={<PrivateRoute />}>
-        <Route index element={<TecnicoDashboard />} />
-        <Route path="inspeccion/:id" element={<TecnicoInspeccion />} />
-        <Route path="inspeccion/:id/checklist" element={<TecnicoChecklist />} />
-        <Route path="inspeccion/:id/fotos" element={<TecnicoFotos />} />
-        <Route path="inspeccion/:id/finalizar" element={<TecnicoFinalizar />} />
-        <Route path="extra/:id" element={<TecnicoInspeccionExtra />} />
-      </Route>
+        {/* ---------------- TÉCNICO ---------------- */}
+        <Route path="/tecnico" element={<PrivateRoute />}>
+          <Route index element={<TecnicoDashboard />} />
+          <Route path="inspeccion/:id" element={<TecnicoInspeccion />} />
+          <Route path="inspeccion/:id/checklist" element={<TecnicoChecklist />} />
+          <Route path="inspeccion/:id/fotos" element={<TecnicoFotos />} />
+          <Route path="inspeccion/:id/finalizar" element={<TecnicoFinalizar />} />
+          <Route path="extra/:id" element={<TecnicoInspeccionExtra />} />
+        </Route>
 
-      {/* ---------------- ÁREA DEL CLIENTE (ENVUELTO EN LanguageProvider) ---------------- */}
-      <Route
-        path="/cliente"
-        element={
-          <LanguageProvider>
+        {/* ---------------- ÁREA DEL CLIENTE ---------------- */}
+        <Route
+          path="/cliente"
+          element={
             <ClienteRoute>
               <PrivateRoute />
             </ClienteRoute>
-          </LanguageProvider>
-        }
-      >
-        <Route index element={<ClienteDashboard />} />
-        <Route path="contratos" element={<ClienteContratosLista />} />
-        <Route path="contrato/:id" element={<ClienteContratoVer />} />
-        <Route path="contrato/:id/pdf" element={<VerPDFContrato />} />
-        <Route path="firma/:id" element={<ClienteFirmaDibujar />} />
-        <Route path="perfil" element={<PerfilCliente />} />
-        <Route path="inspecciones" element={<ClienteInspeccionesLista />} />
-        <Route path="inspeccion/:id" element={<ClienteInspeccionVer />} />
-        <Route path="facturas" element={<ClienteFacturasLista />} />
-        <Route path="factura/:id" element={<ClienteFacturaVer />} />
-        <Route path="configuracion" element={<ClienteConfiguracion />} />
-      </Route>
+          }
+        >
+          <Route index element={<ClienteDashboard />} />
+          <Route path="contratos" element={<ClienteContratosLista />} />
+          <Route path="contrato/:id" element={<ClienteContratoVer />} />
+          <Route path="contrato/:id/pdf" element={<VerPDFContrato />} />
+          <Route path="firma/:id" element={<ClienteFirmaDibujar />} />
+          <Route path="perfil" element={<PerfilCliente />} />
+          <Route path="inspecciones" element={<ClienteInspeccionesLista />} />
+          <Route path="inspeccion/:id" element={<ClienteInspeccionVer />} />
+          <Route path="facturas" element={<ClienteFacturasLista />} />
+          <Route path="factura/:id" element={<ClienteFacturaVer />} />
+          <Route path="configuracion" element={<ClienteConfiguracion />} />
+        </Route>
 
-      {/* ---------------- CLIENTES ---------------- */}
-      <Route path="/clientes" element={<PrivateRoute />}>
-        <Route index element={<Clientes />} />
-        <Route path="nuevo" element={<NuevoCliente />} />
-        <Route path="crear" element={<NuevoCliente />} />
-        <Route path="editar/:id" element={<EditarCliente />} />
-        <Route path="ver/:id" element={<VerCliente />} />
-      </Route>
+        {/* ---------------- CLIENTES ---------------- */}
+        <Route path="/clientes" element={<PrivateRoute />}>
+          <Route index element={<Clientes />} />
+          <Route path="nuevo" element={<NuevoCliente />} />
+          <Route path="crear" element={<NuevoCliente />} />
+          <Route path="editar/:id" element={<EditarCliente />} />
+          <Route path="ver/:id" element={<VerCliente />} />
+        </Route>
 
-      {/* ---------------- VIVIENDAS ---------------- */}
-      <Route path="/viviendas" element={<PrivateRoute />}>
-        <Route index element={<Viviendas />} />
-        <Route path="crear" element={<CrearVivienda />} />
-        <Route path="nueva" element={<CrearVivienda />} />
-        <Route path="editar/:id" element={<EditarVivienda />} />
-        <Route path="ver/:id" element={<VerVivienda />} />
-      </Route>
+        {/* ---------------- VIVIENDAS ---------------- */}
+        <Route path="/viviendas" element={<PrivateRoute />}>
+          <Route index element={<Viviendas />} />
+          <Route path="crear" element={<CrearVivienda />} />
+          <Route path="nueva" element={<CrearVivienda />} />
+          <Route path="editar/:id" element={<EditarVivienda />} />
+          <Route path="ver/:id" element={<VerVivienda />} />
+        </Route>
 
-      {/* ---------------- TÉCNICOS ---------------- */}
-      <Route path="/tecnicos" element={<PrivateRoute />}>
-        <Route index element={<Tecnicos />} />
-        <Route path="nuevo" element={<NuevoTecnico />} />
-        <Route path="crear" element={<NuevoTecnico />} />
-        <Route path="editar/:id" element={<EditarTecnico />} />
-        <Route path="ver/:id" element={<VerTecnico />} />
-      </Route>
+        {/* ---------------- TÉCNICOS ---------------- */}
+        <Route path="/tecnicos" element={<PrivateRoute />}>
+          <Route index element={<Tecnicos />} />
+          <Route path="nuevo" element={<NuevoTecnico />} />
+          <Route path="crear" element={<NuevoTecnico />} />
+          <Route path="editar/:id" element={<EditarTecnico />} />
+          <Route path="ver/:id" element={<VerTecnico />} />
+        </Route>
 
-      {/* ---------------- CONTRATOS ---------------- */}
-      <Route path="/contratos" element={<PrivateRoute />}>
-        <Route index element={<Contratos />} />
-        <Route path="nuevo" element={<CrearContrato />} />
-        <Route path="crear" element={<CrearContrato />} />
-        <Route path="editar/:id" element={<EditarContrato />} />
-        <Route path=":id/editar" element={<EditarContrato />} />
-        <Route path="ver/:id" element={<VerContrato />} />
-      </Route>
+        {/* ---------------- CONTRATOS ---------------- */}
+        <Route path="/contratos" element={<PrivateRoute />}>
+          <Route index element={<Contratos />} />
+          <Route path="nuevo" element={<CrearContrato />} />
+          <Route path="crear" element={<CrearContrato />} />
+          <Route path="editar/:id" element={<EditarContrato />} />
+          <Route path=":id/editar" element={<EditarContrato />} />
+          <Route path="ver/:id" element={<VerContrato />} />
+        </Route>
 
-      {/* ---------------- INSPECCIONES (ADMIN) ---------------- */}
-      <Route path="/inspecciones" element={<PrivateRoute />}>
-        <Route index element={<Inspecciones />} />
-        <Route path="nueva" element={<NuevaInspeccion />} />
-        <Route path="editar/:id" element={<EditarInspeccion />} />
-        <Route path="ver/:id" element={<VerInspeccion />} />
-        <Route path="detalle/:id" element={<DetalleInspeccion />} />
-        <Route path="galeria/:id" element={<GaleriaInspeccion />} />
-        <Route path="fotos/:id" element={<FotosInspeccion />} />
-        <Route path="firma/:id" element={<Firma />} />
-        <Route path="pdf/:id" element={<VerPDFInspeccion />} />
-        <Route path="pdf" element={<VerPDF />} />
-        <Route path="finalizar/:id" element={<FinalizarInspeccion />} />
-      </Route>
+        {/* ---------------- INSPECCIONES (ADMIN) ---------------- */}
+        <Route path="/inspecciones" element={<PrivateRoute />}>
+          <Route index element={<Inspecciones />} />
+          <Route path="nueva" element={<NuevaInspeccion />} />
+          <Route path="editar/:id" element={<EditarInspeccion />} />
+          <Route path="ver/:id" element={<VerInspeccion />} />
+          <Route path="detalle/:id" element={<DetalleInspeccion />} />
+          <Route path="galeria/:id" element={<GaleriaInspeccion />} />
+          <Route path="fotos/:id" element={<FotosInspeccion />} />
+          <Route path="firma/:id" element={<Firma />} />
+          <Route path="pdf/:id" element={<VerPDFInspeccion />} />
+          <Route path="pdf" element={<VerPDF />} />
+          <Route path="finalizar/:id" element={<FinalizarInspeccion />} />
+        </Route>
 
-      {/* ---------------- FACTURAS ---------------- */}
-      <Route path="/facturas" element={<PrivateRoute />}>
-        <Route index element={<Facturas />} />
-        <Route path="lista" element={<FacturasLista />} />
-        <Route path="crear" element={<CrearFactura />} />
-        <Route path="editar/:id" element={<EditarFactura />} />
-        <Route path="ver/:id" element={<VerFactura />} />
-        <Route path="filtros" element={<FiltrosFacturas />} />
-        <Route path="estadisticas" element={<EstadisticasFacturas />} />
-      </Route>
+        {/* ---------------- FACTURAS ---------------- */}
+        <Route path="/facturas" element={<PrivateRoute />}>
+          <Route index element={<Facturas />} />
+          <Route path="lista" element={<FacturasLista />} />
+          <Route path="crear" element={<CrearFactura />} />
+          <Route path="editar/:id" element={<EditarFactura />} />
+          <Route path="ver/:id" element={<VerFactura />} />
+          <Route path="filtros" element={<FiltrosFacturas />} />
+          <Route path="estadisticas" element={<EstadisticasFacturas />} />
+        </Route>
 
-      {/* ---------------- EXTRAS ---------------- */}
-      <Route path="/extras" element={<PrivateRoute />}>
-        <Route index element={<Extras />} />
-      </Route>
+        {/* ---------------- EXTRAS ---------------- */}
+        <Route path="/extras" element={<PrivateRoute />}>
+          <Route index element={<Extras />} />
+        </Route>
 
-      {/* ---------------- SERVICIOS Y ÓRDENES ---------------- */}
-      <Route path="/servicios" element={<PrivateRoute />}>
-        <Route index element={<Servicios />} />
-      </Route>
+        {/* ---------------- SERVICIOS Y ÓRDENES ---------------- */}
+        <Route path="/servicios" element={<PrivateRoute />}>
+          <Route index element={<Servicios />} />
+        </Route>
 
-      {/* ---------------- AJUSTES / IDIOMA ---------------- */}
-      <Route path="/ajustes" element={<PrivateRoute />}>
-        <Route index element={<Ajustes />} />
-      </Route>
+        {/* ---------------- AJUSTES / IDIOMA ---------------- */}
+        <Route path="/ajustes" element={<PrivateRoute />}>
+          <Route index element={<Ajustes />} />
+        </Route>
 
-      <Route path="/idioma" element={<PrivateRoute />}>
-        <Route index element={<Idioma />} />
-      </Route>
+        <Route path="/idioma" element={<PrivateRoute />}>
+          <Route index element={<Idioma />} />
+        </Route>
 
-      {/* ---------------- DEFAULT ---------------- */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        {/* ---------------- DEFAULT ---------------- */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </LanguageProvider>
   );
 }
