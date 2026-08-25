@@ -100,6 +100,17 @@ const translations = {
     alertaContratoEnviado: "¡Contrato firmado enviado al administrador!",
     alertaNoPdfAdmin: "El administrador aún no ha generado el PDF.",
 
+    // Firma Dibujar (ClienteFirmaDibujar)
+    firmaDelClienteTitulo: "Firma del Cliente",
+    instruccionesFirma: "Dibuje su firma con el dedo dentro del recuadro blanco:",
+    limpiar: "🗑️ Limpiar",
+    guardarFirmaBtn: "💾 Guardar firma",
+    alertaRealizarFirma: "Por favor, realiza tu firma antes de guardar.",
+    alertaIdContratoValido: "Error: No se encontró un ID de contrato válido.",
+    errorGuardandoFirma: "Error guardando la firma.",
+    contratoFirmadoExito: "¡Contrato firmado con éxito!",
+    errorGuardandoFirmaDetalle: "Error guardando la firma: ",
+
     // Ver Factura Individual
     facturaNoEncontrada: "No se encontró la factura",
     volverSimple: "Volver",
@@ -227,6 +238,17 @@ const translations = {
     alertaContratoEnviado: "Signed contract sent to the administrator!",
     alertaNoPdfAdmin: "The administrator has not generated the PDF yet.",
 
+    // Signature Drawing (ClienteFirmaDibujar)
+    firmaDelClienteTitulo: "Client Signature",
+    instruccionesFirma: "Draw your signature with your finger inside the white box:",
+    limpiar: "🗑️ Clear",
+    guardarFirmaBtn: "💾 Save signature",
+    alertaRealizarFirma: "Please sign before saving.",
+    alertaIdContratoValido: "Error: No valid contract ID found.",
+    errorGuardandoFirma: "Error saving signature.",
+    contratoFirmadoExito: "Contract signed successfully!",
+    errorGuardandoFirmaDetalle: "Error saving signature: ",
+
     // View Invoice Individual
     facturaNoEncontrada: "Invoice not found",
     volverSimple: "Back",
@@ -353,6 +375,17 @@ const translations = {
     alertaErrorAdmin: "Erreur lors de la notification de l'administrateur : ",
     alertaContratoEnviado: "Contrat signé envoyé à l'administrateur !",
     alertaNoPdfAdmin: "L'administrateur n'a pas encore généré le PDF.",
+
+    // Signature Dessin (ClienteFirmaDibujar)
+    firmaDelClienteTitulo: "Signature du client",
+    instruccionesFirma: "Dessinez votre signature avec le doigt dans le cadre blanc :",
+    limpiar: "🗑️ Effacer",
+    guardarFirmaBtn: "💾 Enregistrer la signature",
+    alertaRealizarFirma: "Veuillez signer avant d'enregistrer.",
+    alertaIdContratoValido: "Erreur : Aucun identifiant de contrat valide trouvé.",
+    errorGuardandoFirma: "Erreur lors de l'enregistrement de la signature.",
+    contratoFirmadoExito: "Contrat signé avec succès !",
+    errorGuardandoFirmaDetalle: "Erreur lors de l'enregistrement de la signature : ",
 
     // Vue Facture Individuelle
     facturaNoEncontrada: "Facture non trouvée",
