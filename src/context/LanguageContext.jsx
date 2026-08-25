@@ -57,7 +57,6 @@ const translations = {
 const LanguageContext = createContext();
 
 export function LanguageProvider({ children }) {
-  // Carga el idioma guardado previamente o usa español por defecto
   const [lang, setLang] = useState(localStorage.getItem('app_lang') || 'es');
 
   const changeLanguage = (newLang) => {
@@ -76,4 +75,6 @@ export function LanguageProvider({ children }) {
   );
 }
 
+// Exportamos ambos nombres para compatibilidad total con cualquier componente
 export const useTranslation = () => useContext(LanguageContext);
+export const useLanguage = () => useContext(LanguageContext);
