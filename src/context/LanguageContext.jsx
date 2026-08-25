@@ -127,6 +127,8 @@ const translations = {
     pdfGenerado: "¡PDF generado y guardado con éxito!",
     pdfGenerando: "Generando PDF...",
     pdfGenerar: "Generar y Guardar PDF",
+    errorSubirPdfStorage: "Error al subir el PDF a Storage: ",
+    errorGenerarPdf: "Error al generar el PDF: ",
 
     // Visor de PDF (VerPDFContrato)
     pdfCargando: "Cargando PDF...",
@@ -336,6 +338,8 @@ const translations = {
     pdfGenerado: "PDF generated and saved successfully!",
     pdfGenerando: "Generating PDF...",
     pdfGenerar: "Generate & Save PDF",
+    errorSubirPdfStorage: "Error uploading PDF to Storage: ",
+    errorGenerarPdf: "Error generating PDF: ",
 
     // PDF Viewer (VerPDFContrato)
     pdfCargando: "Loading PDF...",
@@ -476,7 +480,7 @@ const translations = {
     notifPushSub: "Recevez des avis immédiats dans l'application sur vos inspections.",
     resumenCorreoTitulo: "Résumé par e-mail",
     resumenCorreoSub: "Recevez des rapports et factures directement dans votre e-mail.",
-    alertasCriticasTitulo: "Alertas d'incidents critiques",
+    alertasCriticasTitulo: "Alertes d'incidents critiques",
     alertasCriticasSub: "Avis urgents d'incidents graves détectés dans les logements.",
     seguridadCuenta: "Sécurité du compte",
     autenticacionDosPasosTitulo: "Authentification à 2 facteurs (2FA)",
@@ -545,6 +549,8 @@ const translations = {
     pdfGenerado: "PDF généré et enregistré avec succès !",
     pdfGenerando: "Génération du PDF...",
     pdfGenerar: "Générer et Enregistrer le PDF",
+    errorSubirPdfStorage: "Erreur lors du téléchargement du PDF vers Storage : ",
+    errorGenerarPdf: "Erreur lors de la génération du PDF : ",
 
     // Visualiseur de PDF (VerPDFContrato)
     pdfCargando: "Chargement du PDF...",
