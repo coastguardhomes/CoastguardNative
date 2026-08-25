@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
+import { useLanguage } from "../../context/LanguageContext";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -15,6 +16,7 @@ const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 15px rgba(22
 const DEGRADADO_AZUL_BOTON = "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)";
 
 export default function ClienteInspeccionVer() {
+  const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -57,7 +59,7 @@ export default function ClienteInspeccionVer() {
         .maybeSingle();
 
       if (!clienteData) {
-        setErrorMsg("Perfil de cliente no encontrado.");
+        setErrorMsg(t("perfilClienteNoEncontrado"));
         setLoading(false);
         return;
       }
@@ -131,7 +133,7 @@ export default function ClienteInspeccionVer() {
       }
 
       if (!insp) {
-        setErrorMsg("No se encontró el informe o no tienes permisos para verlo.");
+        setErrorMsg(t("informeNoEncontradoPermisos"));
         setLoading(false);
         return;
       }
@@ -151,14 +153,14 @@ export default function ClienteInspeccionVer() {
 
     } catch (err) {
       console.error("Error al cargar detalles:", err);
-      setErrorMsg("Error de conexión al cargar la información.");
+      setErrorMsg(t("errorConexionCargarInformacion"));
     } finally {
       setLoading(false);
     }
   }
 
   async function borrarInforme() {
-    if (!window.confirm("¿Estás seguro de que quieres eliminar este informe de tu lista?")) return;
+    if (!window.confirm(t("confirmarBorrarInforme"))) return;
 
     try {
       const tablaDestino = esExtra ? "extras" : "inspecciones";
@@ -169,11 +171,11 @@ export default function ClienteInspeccionVer() {
 
       if (error) throw error;
 
-      alert("Informe eliminado correctamente.");
+      alert(t("informeEliminadoExito"));
       navigate("/cliente/inspecciones");
     } catch (err) {
       console.error("Error al borrar:", err);
-      alert("No se pudo eliminar el informe.");
+      alert(t("errorEliminarInforme"));
     }
   }
 
@@ -195,7 +197,7 @@ export default function ClienteInspeccionVer() {
     return (
       <Menu>
         <div style={{ height: "100vh", background: FONDO_PRINCIPAL, color: COLOR_DORADO, display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <h3 style={TEXTO_DORADO_BRILLO}>Cargando información...</h3>
+          <h3 style={TEXTO_DORADO_BRILLO}>{t("cargandoInformacion")}</h3>
         </div>
       </Menu>
     );
@@ -206,7 +208,7 @@ export default function ClienteInspeccionVer() {
       <div style={{ padding: "20px", background: FONDO_PRINCIPAL, minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif", paddingBottom: "80px" }}>
         
         <Link to="/cliente/inspecciones" style={{ ...TEXTO_DORADO_BRILLO, textDecoration: "none", fontWeight: "700", display: "inline-block", marginBottom: "20px" }}>
-          ← Volver a Mis Informes
+          {t("volverMisInformes")}
         </Link>
 
         {errorMsg && (
@@ -220,10 +222,10 @@ export default function ClienteInspeccionVer() {
             <div style={{ background: FONDO_TARJETA, padding: "18px", borderRadius: "16px", border: BORDE_DORADO_INTENSO, marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: SOMBRA_LUXURY }}>
               <div>
                 <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: "18px", margin: 0, fontWeight: "900" }}>
-                  Informe #{String(inspeccion.id).slice(0, 8)}
+                  {t("informeLabel")} #{String(inspeccion.id).slice(0, 8)}
                 </h2>
                 <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: "600" }}>
-                  Fecha: {inspeccion.fecha ? String(inspeccion.fecha).slice(0, 10) : "-"}
+                  {t("fecha")}: {inspeccion.fecha ? String(inspeccion.fecha).slice(0, 10) : "-"}
                 </span>
               </div>
               <span style={{ padding: "6px 12px", border: BORDE_DORADO_FINO, background: "rgba(224, 176, 52, 0.1)", color: COLOR_DORADO, borderRadius: "20px", fontSize: "11px", fontWeight: "900", textTransform: "uppercase", boxShadow: "0 0 10px rgba(224,176,52,0.3)" }}>
@@ -232,34 +234,34 @@ export default function ClienteInspeccionVer() {
             </div>
 
             <div style={{ background: FONDO_TARJETA, padding: "18px", borderRadius: "16px", border: BORDE_DORADO_FINO, marginBottom: "20px", boxShadow: SOMBRA_LUXURY }}>
-              <h4 style={{ color: COLOR_DORADO, fontSize: "12px", textTransform: "uppercase", marginBottom: "8px", fontWeight: "800", letterSpacing: "1px" }}>Ubicación / Vivienda</h4>
+              <h4 style={{ color: COLOR_DORADO, fontSize: "12px", textTransform: "uppercase", marginBottom: "8px", fontWeight: "800", letterSpacing: "1px" }}>{t("ubicacionVivienda")}</h4>
               <p style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#fff" }}>
-                {vivienda?.direccion || inspeccion.direccion || "Dirección no especificada"}
+                {vivienda?.direccion || inspeccion.direccion || t("direccionNoEspecificada")}
               </p>
             </div>
 
             <div style={{ background: FONDO_TARJETA, padding: "18px", borderRadius: "16px", border: BORDE_DORADO_FINO, marginBottom: "20px", boxShadow: SOMBRA_LUXURY }}>
-              <h4 style={{ color: COLOR_DORADO, fontSize: "12px", textTransform: "uppercase", marginBottom: "8px", fontWeight: "800", letterSpacing: "1px" }}>Descripción del Trabajo / Observaciones</h4>
+              <h4 style={{ color: COLOR_DORADO, fontSize: "12px", textTransform: "uppercase", marginBottom: "8px", fontWeight: "800", letterSpacing: "1px" }}>{t("descripcionTrabajoObservaciones")}</h4>
               <p style={{ margin: 0, fontSize: "14px", color: "#e2e8f0", whiteSpace: "pre-wrap", lineHeight: "1.5" }}>
-                {inspeccion.notas_tecnico || "Sin observaciones registradas."}
+                {inspeccion.notas_tecnico || t("sinObservacionesRegistradas")}
               </p>
 
               {inspeccion.materiales && (
                 <p style={{ margin: "12px 0 0 0", fontSize: "13px", color: "#cbd5e1" }}>
-                  <strong style={{ color: COLOR_DORADO }}>Materiales usados:</strong> {inspeccion.materiales}
+                  <strong style={{ color: COLOR_DORADO }}>{t("materialesUsados")}</strong> {inspeccion.materiales}
                 </p>
               )}
               {inspeccion.tiempo_empleado && (
                 <p style={{ margin: "6px 0 0 0", fontSize: "13px", color: "#cbd5e1" }}>
-                  <strong style={{ color: COLOR_DORADO }}>Tiempo empleado:</strong> {inspeccion.tiempo_empleado}
+                  <strong style={{ color: COLOR_DORADO }}>{t("tiempoEmpleadoLabel")}</strong> {inspeccion.tiempo_empleado}
                 </p>
               )}
             </div>
 
             <div style={{ background: FONDO_TARJETA, padding: "18px", borderRadius: "16px", border: BORDE_DORADO_FINO, marginBottom: "20px", boxShadow: SOMBRA_LUXURY }}>
-              <h4 style={{ color: COLOR_DORADO, fontSize: "12px", textTransform: "uppercase", marginBottom: "12px", fontWeight: "800", letterSpacing: "1px" }}>Fotografías Adjuntas</h4>
+              <h4 style={{ color: COLOR_DORADO, fontSize: "12px", textTransform: "uppercase", marginBottom: "12px", fontWeight: "800", letterSpacing: "1px" }}>{t("fotografiasAdjuntas")}</h4>
               {fotos.length === 0 ? (
-                <p style={{ color: "#94a3b8", fontSize: "13px", margin: 0 }}>No hay fotografías adjuntas a este informe.</p>
+                <p style={{ color: "#94a3b8", fontSize: "13px", margin: 0 }}>{t("noHayFotografiasInforme")}</p>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: "10px" }}>
                   {fotos.map((foto, idx) => {
@@ -301,7 +303,7 @@ export default function ClienteInspeccionVer() {
                   marginBottom: "16px"
                 }}
               >
-                📄 Ver Informe PDF
+                {t("verInformePdf")}
               </a>
             )}
 
@@ -309,7 +311,7 @@ export default function ClienteInspeccionVer() {
               onClick={borrarInforme}
               style={{ width: "100%", padding: "14px", background: "rgba(255, 71, 87, 0.15)", color: "#ff4757", border: "1px solid rgba(255, 71, 87, 0.4)", borderRadius: "16px", fontWeight: "900", fontSize: "14px", cursor: "pointer", marginBottom: "12px", boxShadow: "0 4px 15px rgba(255, 71, 87, 0.2)" }}
             >
-              🗑️ Borrar este informe
+              {t("borrarEsteInforme")}
             </button>
           </>
         )}
@@ -350,11 +352,11 @@ export default function ClienteInspeccionVer() {
                   boxShadow: "0 0 15px rgba(56, 189, 248, 0.4)",
                 }}
               >
-                ✕ Cerrar
+                ✕ {t("cerrar")}
               </button>
               <img
                 src={fotoModal}
-                alt="Foto ampliada"
+                alt={t("fotoAmpliada")}
                 style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: "14px", objectFit: "contain", border: BORDE_DORADO_INTENSO, boxShadow: "0 0 30px rgba(224,176,52,0.3)" }}
               />
             </div>
