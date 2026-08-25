@@ -138,6 +138,19 @@ const translations = {
     estadoCancelada: "CANCELADA",
     estadoTrabajoCompletado: "TRABAJO COMPLETADO",
     estadoPendienteRevision: "PENDIENTE DE REVISIÓN",
+
+    // Lista de Inspecciones (ClienteInspeccionesLista)
+    cargandoListado: "Cargando Listado...",
+    misInspeccionesInformesTitulo: "Mis Inspecciones e Informes",
+    errorPerfilClienteAsociado: "No se encontró el perfil de cliente asociado.",
+    errorCargarDatos: "Hubo un error al cargar los datos.",
+    noHayInspeccionesInformes: "No hay inspecciones ni informes disponibles.",
+    servicioExtraTrabajo: "🛠️ Servicio Extra / Trabajo",
+    inspeccionLabel: "📋 Inspección",
+    informeDisponible: "Informe disponible",
+    detalleLabel: "Detalle:",
+    verDetalleFlecha: "Ver detalle →",
+    extraBadge: "⚡ EXTRA",
   },
   en: {
     // General / Dashboard
@@ -276,6 +289,19 @@ const translations = {
     estadoCancelada: "CANCELLED",
     estadoTrabajoCompletado: "WORK COMPLETED",
     estadoPendienteRevision: "PENDING REVIEW",
+
+    // Inspections List (ClienteInspeccionesLista)
+    cargandoListado: "Loading List...",
+    misInspeccionesInformesTitulo: "My Inspections & Reports",
+    errorPerfilClienteAsociado: "Associated client profile not found.",
+    errorCargarDatos: "There was an error loading data.",
+    noHayInspeccionesInformes: "No inspections or reports available.",
+    servicioExtraTrabajo: "🛠️ Extra Service / Job",
+    inspeccionLabel: "📋 Inspection",
+    informeDisponible: "Report available",
+    detalleLabel: "Detail:",
+    verDetalleFlecha: "View detail →",
+    extraBadge: "⚡ EXTRA",
   },
   fr: {
     // Général / Tableau de bord
@@ -414,6 +440,19 @@ const translations = {
     estadoCancelada: "ANNULÉE",
     estadoTrabajoCompletado: "TRAVAIL TERMINÉ",
     estadoPendienteRevision: "EN ATTENTE DE RÉVISION",
+
+    // Liste des Inspections (ClienteInspeccionesLista)
+    cargandoListado: "Chargement de la liste...",
+    misInspeccionesInformesTitulo: "Mes Inspections et Rapports",
+    errorPerfilClienteAsociado: "Profil client associé introuvable.",
+    errorCargarDatos: "Une erreur s'est produite lors du chargement des données.",
+    noHayInspeccionesInformes: "Aucune inspection ou rapport disponible.",
+    servicioExtraTrabajo: "🛠️ Service Supplémentaire / Travail",
+    inspeccionLabel: "📋 Inspection",
+    informeDisponible: "Rapport disponible",
+    detalleLabel: "Détail :",
+    verDetalleFlecha: "Voir le détail →",
+    extraBadge: "⚡ EXTRA",
   }
 };
 
