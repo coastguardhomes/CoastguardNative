@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -13,6 +14,7 @@ const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 15px rgba(22
 const DEGRADADO_AZUL_BOTON = "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)";
 
 export default function ClienteFacturaVer() {
+  const { t } = useLanguage();
   const { id } = useParams();
   const [factura, setFactura] = useState(null);
   const [lineas, setLineas] = useState([]);
@@ -28,7 +30,7 @@ export default function ClienteFacturaVer() {
         .maybeSingle();
 
       if (error || !data) {
-        setMensaje("No se encontró la factura");
+        setMensaje(t("facturaNoEncontrada"));
         setLoading(false);
         return;
       }
@@ -45,17 +47,17 @@ export default function ClienteFacturaVer() {
     }
 
     cargar();
-  }, [id]);
+  }, [id, t]);
 
   const obtenerBadgesEstado = (estado) => {
     switch (estado?.toLowerCase()) {
       case "pagada":
-        return { label: "PAGADA", color: "#34d399", bg: "rgba(16, 185, 129, 0.15)", border: "1px solid #10b981" };
+        return { label: t("estadoPagada"), color: "#34d399", bg: "rgba(16, 185, 129, 0.15)", border: "1px solid #10b981" };
       case "enviado_cliente":
       case "enviada":
-        return { label: "ENVIADA AL CLIENTE", color: "#60a5fa", bg: "rgba(59, 130, 246, 0.15)", border: "1px solid #3b82f6" };
+        return { label: t("estadoEnviadaCliente"), color: "#60a5fa", bg: "rgba(59, 130, 246, 0.15)", border: "1px solid #3b82f6" };
       default:
-        return { label: "PENDIENTE", color: "#fbbf24", bg: "rgba(245, 158, 11, 0.15)", border: "1px solid #f59e0b" };
+        return { label: t("estadoPendiente"), color: "#fbbf24", bg: "rgba(245, 158, 11, 0.15)", border: "1px solid #f59e0b" };
     }
   };
 
@@ -63,7 +65,7 @@ export default function ClienteFacturaVer() {
     return (
       <Menu>
         <div style={{ padding: 20, color: COLOR_DORADO, textAlign: "center", background: FONDO_PRINCIPAL, height: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <h3 style={TEXTO_DORADO_BRILLO}>Cargando...</h3>
+          <h3 style={TEXTO_DORADO_BRILLO}>{t("cargandoPanel")}</h3>
         </div>
       </Menu>
     );
@@ -75,7 +77,7 @@ export default function ClienteFacturaVer() {
         <div style={{ padding: 20, color: "#fff", textAlign: "center", background: FONDO_PRINCIPAL, minHeight: "100vh" }}>
           <h1 style={{ ...TEXTO_DORADO_BRILLO, fontSize: "22px", marginBottom: "15px" }}>{mensaje}</h1>
           <Link to="/cliente/facturas" style={{ color: COLOR_DORADO, textDecoration: "none", fontWeight: "700" }}>
-            Volver
+            {t("volverSimple")}
           </Link>
         </div>
       </Menu>
@@ -101,7 +103,7 @@ export default function ClienteFacturaVer() {
   const lineasParaMostrar = lineas.length > 0
     ? lineas.map((l) => ({
         id: l.id,
-        concepto: l.descripcion || l.concepto || "Servicio / Inspección",
+        concepto: l.descripcion || l.concepto || t("servicioInspeccion"),
         precio: l.total ?? l.importe ?? l.precio ?? 0,
       }))
     : factura.descripcion
@@ -132,20 +134,20 @@ export default function ClienteFacturaVer() {
             textTransform: "uppercase",
           }}
         >
-          Factura {factura.numero || `#${factura.id}`}
+          {t("facturaLabel")} {factura.numero || `#${factura.id}`}
         </h1>
 
         {/* Información Principal */}
         <div style={{ background: FONDO_TARJETA, border: BORDE_DORADO_FINO, borderRadius: "16px", padding: "16px", marginBottom: "20px", boxShadow: SOMBRA_LUXURY }}>
           <p style={{ marginBottom: 8, fontSize: "14px" }}>
-            <strong style={{ color: COLOR_DORADO }}>Fecha:</strong> {factura.fecha || "—"}
+            <strong style={{ color: COLOR_DORADO }}>{t("fecha")}:</strong> {factura.fecha || "—"}
           </p>
           <p style={{ marginBottom: 8, fontSize: "14px" }}>
-            <strong style={{ color: COLOR_DORADO }}>Descripción:</strong>{" "}
+            <strong style={{ color: COLOR_DORADO }}>{t("descripcion")}:</strong>{" "}
             {factura.descripcion || "—"}
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "12px" }}>
-            <strong style={{ color: COLOR_DORADO, fontSize: "14px" }}>Estado:</strong>
+            <strong style={{ color: COLOR_DORADO, fontSize: "14px" }}>{t("estado")}:</strong>
             <span
               style={{
                 padding: "3px 10px",
@@ -166,24 +168,24 @@ export default function ClienteFacturaVer() {
         {tieneInfoTecnica && (
           <div style={{ background: FONDO_TARJETA, border: BORDE_DORADO_FINO, borderRadius: "16px", padding: "16px", marginBottom: "20px", boxShadow: SOMBRA_LUXURY }}>
             <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: "15px", marginBottom: 12, fontWeight: "800", textTransform: "uppercase" }}>
-              Evidencia del Trabajo
+              {t("evidenciaDelTrabajo")}
             </h2>
 
             {factura.materiales && (
               <p style={{ marginBottom: 8, fontSize: "13px" }}>
-                <strong style={{ color: COLOR_DORADO }}>Materiales utilizados:</strong> {factura.materiales}
+                <strong style={{ color: COLOR_DORADO }}>{t("materialesUtilizados")}</strong> {factura.materiales}
               </p>
             )}
 
             {factura.tiempo_empleado && (
               <p style={{ marginBottom: 8, fontSize: "13px" }}>
-                <strong style={{ color: COLOR_DORADO }}>Tiempo empleado:</strong> {factura.tiempo_empleado}
+                <strong style={{ color: COLOR_DORADO }}>{t("tiempoEmpleado")}</strong> {factura.tiempo_empleado}
               </p>
             )}
 
             {fotos.length > 0 && (
               <div style={{ marginTop: 10 }}>
-                <strong style={{ color: COLOR_DORADO, fontSize: "12px", textTransform: "uppercase" }}>Fotografías de Inspección:</strong>
+                <strong style={{ color: COLOR_DORADO, fontSize: "12px", textTransform: "uppercase" }}>{t("fotografiasInspeccion")}</strong>
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "8px" }}>
                   {fotos.map((url, idx) => (
                     <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
@@ -210,7 +212,7 @@ export default function ClienteFacturaVer() {
         {lineasParaMostrar.length > 0 && (
           <div style={{ margin: "20px 0" }}>
             <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: 16, marginBottom: 12, fontWeight: "800", textTransform: "uppercase" }}>
-              Detalle
+              {t("detalle")}
             </h2>
             {lineasParaMostrar.map((l) => (
               <div
@@ -247,10 +249,10 @@ export default function ClienteFacturaVer() {
             boxShadow: SOMBRA_LUXURY,
           }}
         >
-          <p style={{ marginBottom: 6, fontSize: "13px", color: "#cbd5e1" }}>Base: {Number(factura.base || 0).toFixed(2)} €</p>
-          <p style={{ marginBottom: 8, fontSize: "13px", color: "#cbd5e1" }}>IVA: {Number(factura.iva || 0).toFixed(2)} €</p>
+          <p style={{ marginBottom: 6, fontSize: "13px", color: "#cbd5e1" }}>{t("base")}: {Number(factura.base || 0).toFixed(2)} €</p>
+          <p style={{ marginBottom: 8, fontSize: "13px", color: "#cbd5e1" }}>{t("iva")}: {Number(factura.iva || 0).toFixed(2)} €</p>
           <p style={{ fontWeight: 900, fontSize: "18px", color: COLOR_DORADO, textShadow: "0 0 10px rgba(224,176,52,0.5)", margin: 0 }}>
-            Total: {Number(factura.total || 0).toFixed(2)} €
+            {t("total")}: {Number(factura.total || 0).toFixed(2)} €
           </p>
         </div>
 
@@ -274,11 +276,11 @@ export default function ClienteFacturaVer() {
               textShadow: "0 1px 3px rgba(0,0,0,0.6)",
             }}
           >
-            Ver PDF
+            {t("verPdf")}
           </a>
         ) : (
           <p style={{ opacity: 0.8, textAlign: "center", color: "#94a3b8", fontSize: "13px" }}>
-            Aún no hay PDF generado para esta factura.
+            {t("noPdfGenerado")}
           </p>
         )}
       </div>
