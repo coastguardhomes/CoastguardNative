@@ -30,7 +30,7 @@ export default function ClienteContratosLista() {
 
       try {
         if (!user) {
-          setErrorMsg("Usuario no autenticado.");
+          setErrorMsg(t("usuarioNoAutenticado"));
           setContratos([]);
           setLoading(false);
           return;
@@ -45,7 +45,7 @@ export default function ClienteContratosLista() {
 
         if (clienteError) {
           console.error("Error cargando cliente:", clienteError);
-          setErrorMsg("No se pudo identificar el cliente asociado.");
+          setErrorMsg(t("errorIdentificarCliente"));
           setContratos([]);
           setLoading(false);
           return;
@@ -61,7 +61,7 @@ export default function ClienteContratosLista() {
 
         if (contratosError) {
           console.error("Error cargando contratos:", contratosError);
-          setErrorMsg("Error cargando contratos.");
+          setErrorMsg(t("errorCargandoContratos"));
           setContratos([]);
           setLoading(false);
           return;
@@ -73,7 +73,7 @@ export default function ClienteContratosLista() {
       } catch (e) {
         console.error("Excepción al cargar contratos:", e);
         if (mounted) {
-          setErrorMsg("Error inesperado cargando contratos.");
+          setErrorMsg(t("errorInesperadoContratos"));
           setContratos([]);
         }
       } finally {
@@ -86,7 +86,7 @@ export default function ClienteContratosLista() {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user, t]);
 
   const abrirContrato = (id) => {
     navigate(`/cliente/contrato/${id}`);
@@ -113,11 +113,11 @@ export default function ClienteContratosLista() {
             fontWeight: "900",
           }}
         >
-          {t("clienteListaTitulo") || "Mis Contratos"}
+          {t("clienteListaTitulo")}
         </h2>
 
         {loading ? (
-          <p style={{ textAlign: "center", color: "#94a3b8" }}>Cargando contratos...</p>
+          <p style={{ textAlign: "center", color: "#94a3b8" }}>{t("cargandoContratos")}</p>
         ) : errorMsg ? (
           <div style={{ textAlign: "center", padding: "20px" }}>
             <p style={{ color: "#ff6b6b", marginBottom: 8 }}>{errorMsg}</p>
@@ -132,12 +132,12 @@ export default function ClienteContratosLista() {
                 cursor: "pointer",
               }}
             >
-              Reintentar
+              {t("reintentar")}
             </button>
           </div>
         ) : contratos.length === 0 ? (
           <p style={{ textAlign: "center", color: "#94a3b8" }}>
-            {t("clienteListaVacio") || "No tienes contratos registrados."}
+            {t("clienteListaVacio")}
           </p>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
@@ -162,7 +162,7 @@ export default function ClienteContratosLista() {
                     {c.modalidad ? `${c.modalidad}` : `Contrato #${c.id}`}
                   </div>
                   <div style={{ color: "#9fb3c8", fontSize: 14 }}>
-                    {c.descripcion || c.notas || "Servicio contratado"}
+                    {c.descripcion || c.notas || t("servicioContratado")}
                   </div>
                 </div>
 
@@ -171,7 +171,7 @@ export default function ClienteContratosLista() {
                     {c.precio != null ? `${c.precio} €` : "—"}
                   </div>
                   <div style={{ color: c.estado === "firmado" ? "#34d399" : "#94a3b8", fontSize: 13 }}>
-                    {c.estado ? c.estado.replace("_", " ") : "Pendiente"}
+                    {c.estado ? c.estado.replace("_", " ") : t("estadoPendiente")}
                   </div>
                 </div>
               </div>
