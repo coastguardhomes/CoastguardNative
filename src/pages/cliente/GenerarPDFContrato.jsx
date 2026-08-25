@@ -99,7 +99,7 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
 
       if (uploadError) {
         console.error("Error subiendo PDF:", uploadError);
-        alert("Error al subir el PDF a Storage: " + uploadError.message);
+        alert(t("errorSubirPdfStorage") + uploadError.message);
         setLoading(false);
         return;
       }
@@ -130,7 +130,7 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
       if (onGenerado) onGenerado();
     } catch (err) {
       console.error("Error generando PDF:", err);
-      alert("Error al generar el PDF: " + err.message);
+      alert(t("errorGenerarPdf") + err.message);
     } finally {
       setLoading(false);
     }
