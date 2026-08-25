@@ -9,7 +9,7 @@ const FONDO_GRADIENTE = "radial-gradient(circle at top, #1a1f26 0%, #030509 100%
 const BORDE_DORADO_LUJO = "1px solid rgba(224, 176, 52, 0.35)";
 
 export default function Login() {
-  const { t } = useLanguage();
+  const { t, changeLanguage } = useLanguage(); // ⭐ 1. Extraemos changeLanguage aquí
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,8 +19,20 @@ export default function Login() {
 
   useEffect(() => { setCheckingSession(false); }, []);
 
-  async function redirigirSegunRol(userId) {
+  async function redirigirSegunRol(userId, userEmail) {
     if (!userId) return;
+    
+    // ⭐ 2. Consultamos si el cliente tiene un idioma preferido guardado en Supabase
+    let { data: clienteData } = await supabase
+      .from("clientes")
+      .select("idioma")
+      .eq("email", userEmail)
+      .maybeSingle();
+
+    if (clienteData && clienteData.idioma) {
+      changeLanguage(clienteData.idioma); // ⭐ Sincronizamos el idioma automáticamente
+    }
+
     let { data: perfil } = await supabase.from("profiles").select("rol").eq("id", userId).maybeSingle();
     if (!perfil) { setErrorMsg("Error de configuración."); return; }
     switch (perfil.rol) {
@@ -37,7 +49,9 @@ export default function Login() {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error || !data.session) { setErrorMsg(t("loginError")); setLoading(false); return; }
-      await redirigirSegunRol(data.session.user.id);
+      
+      // ⭐ 3. Pasamos también el email al redirigir para buscar su idioma
+      await redirigirSegunRol(data.session.user.id, data.session.user.email);
     } catch (e) { setErrorMsg(t("loginError")); }
     setLoading(false);
   };
@@ -52,11 +66,10 @@ export default function Login() {
       display: "flex", 
       justifyContent: "center", 
       alignItems: "center", 
-      padding: "12px", // Margen exterior mínimo para aprovechar la pantalla
+      padding: "12px", 
       boxSizing: "border-box"
     }}>
       
-      {/* Tarjeta con ancho adaptable a la pantalla del móvil */}
       <div style={{ 
         width: "100%", 
         maxWidth: "400px", 
@@ -69,7 +82,6 @@ export default function Login() {
         boxSizing: "border-box"
       }}>
         
-        {/* Logo con recorte de esquinas y brillo dorado elegante */}
         <div style={{ 
             width: "110px", 
             height: "110px", 
@@ -77,7 +89,7 @@ export default function Login() {
             borderRadius: "18px", 
             border: `2px solid ${COLOR_DORADO}`,
             boxShadow: `0 0 20px rgba(224, 176, 52, 0.4)`, 
-            overflow: "hidden", // Oculta la marca de agua de la esquina
+            overflow: "hidden", 
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
