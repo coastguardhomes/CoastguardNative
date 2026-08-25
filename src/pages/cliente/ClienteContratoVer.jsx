@@ -39,7 +39,6 @@ export default function ClienteContratoVer() {
   const cargarContrato = async () => {
     setCargando(true);
     try {
-      // maybeSingle evita que la app colapse o se quede congelada por tiempos de respuesta en móvil
       const { data: contratoData, error: contratoError } = await supabase
         .from("contratos")
         .select("*")
@@ -224,7 +223,7 @@ export default function ClienteContratoVer() {
         <div
           style={{
             background: FONDO_TARJETA,
-            padding: "20px",
+            padding: "25px 20px",
             borderRadius: "14px",
             border: BORDE_DORADO,
             boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)",
@@ -250,6 +249,7 @@ export default function ClienteContratoVer() {
             </span>
           </p>
 
+          {/* Botón 1: Ver antes de firmar (Se oculta si ya está firmado) */}
           <button
             onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
@@ -257,18 +257,24 @@ export default function ClienteContratoVer() {
               background: "rgba(10, 15, 26, 0.8)",
               border: BORDE_DORADO,
               color: COLOR_DORADO,
+              display: esFirmado ? "none" : "block",
             }}
           >
             📄 Ver contrato antes de firmar
           </button>
 
+          {/* Botón 2: Ver / Cambiar Firma (Se oculta si ya está firmado) */}
           <button
             onClick={() => navigate(`/cliente/firma/${id}`)}
-            style={botonEstilo}
+            style={{
+              ...botonEstilo,
+              display: esFirmado ? "none" : "block",
+            }}
           >
             ✍️ {esFirmado ? "Ver / Cambiar Firma" : "Firma del Cliente"}
           </button>
 
+          {/* Botón 3: Enviar al Admin (Se oculta si ya está firmado) */}
           <button
             onClick={enviarAlAdmin}
             disabled={!esFirmado || enviando}
@@ -281,11 +287,13 @@ export default function ClienteContratoVer() {
               cursor: esFirmado ? "pointer" : "not-allowed",
               border: esFirmado ? "1px solid rgba(74, 222, 128, 0.5)" : "1px solid rgba(255,255,255,0.1)",
               boxShadow: esFirmado ? "0 4px 15px rgba(74, 222, 128, 0.3)" : "none",
+              display: esFirmado && contrato?.estado === "enviado_al_admin" ? "none" : (esFirmado ? "block" : "block"), // Si prefieres ocultarlo por completo al firmar:
             }}
           >
             {enviando ? "Enviando..." : "📤 Enviar contrato al Admin"}
           </button>
 
+          {/* Botón 4: Ver contrato firmado (PDF) - Este SIEMPRE se queda visible */}
           <button
             onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
@@ -293,6 +301,7 @@ export default function ClienteContratoVer() {
               background: "rgba(10, 15, 26, 0.8)",
               border: BORDE_DORADO,
               color: COLOR_DORADO,
+              marginTop: esFirmado ? "4px" : "12px", // Se ajusta limpio si los otros desaparecen
             }}
           >
             📄 Ver contrato firmado (PDF)
