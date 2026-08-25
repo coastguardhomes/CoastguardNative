@@ -128,6 +128,14 @@ const translations = {
     pdfGenerando: "Generando PDF...",
     pdfGenerar: "Generar y Guardar PDF",
 
+    // Visor de PDF (VerPDFContrato)
+    pdfCargando: "Cargando PDF...",
+    pdfNoGenerado: "No hay ningún archivo PDF generado para este contrato.",
+    pdfTituloVista: "Contrato",
+    pdfVolver: "Volver",
+    pdfTituloIframe: "Visor de Contrato",
+    pdfAbrirNuevaPestana: "Abrir en nueva pestaña",
+
     // Firma Dibujar (ClienteFirmaDibujar)
     firmaDelClienteTitulo: "Firma del Cliente",
     instruccionesFirma: "Dibuje su firma con el dedo dentro del recuadro blanco:",
@@ -307,6 +315,14 @@ const translations = {
     pdfGenerando: "Generating PDF...",
     pdfGenerar: "Generate & Save PDF",
 
+    // PDF Viewer (VerPDFContrato)
+    pdfCargando: "Loading PDF...",
+    pdfNoGenerado: "No PDF file has been generated for this contract yet.",
+    pdfTituloVista: "Contract",
+    pdfVolver: "Back",
+    pdfTituloIframe: "Contract Viewer",
+    pdfAbrirNuevaPestana: "Open in new tab",
+
     // Signature Drawing (ClienteFirmaDibujar)
     firmaDelClienteTitulo: "Client Signature",
     instruccionesFirma: "Draw your signature with your finger inside the white box:",
@@ -485,6 +501,14 @@ const translations = {
     pdfGenerado: "PDF généré et enregistré avec succès !",
     pdfGenerando: "Génération du PDF...",
     pdfGenerar: "Générer et Enregistrer le PDF",
+
+    // Visualiseur de PDF (VerPDFContrato)
+    pdfCargando: "Chargement du PDF...",
+    pdfNoGenerado: "Aucun fichier PDF n'a encore été généré pour ce contrat.",
+    pdfTituloVista: "Contrat",
+    pdfVolver: "Retour",
+    pdfTituloIframe: "Visualiseur de Contrat",
+    pdfAbrirNuevaPestana: "Ouvrir dans un nouvel onglet",
 
     // Signature Dessin (ClienteFirmaDibujar)
     firmaDelClienteTitulo: "Signature du client",
