@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Menu from "../../layouts/Menu.jsx";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -14,6 +15,7 @@ const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(22
 export default function ClienteInspeccionesLista() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   const [elementos, setElementos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ export default function ClienteInspeccionesLista() {
         }
 
         if (!clienteData) {
-          setErrorMsg("No se encontró el perfil de cliente asociado.");
+          setErrorMsg(t("errorPerfilClienteAsociado"));
           setLoading(false);
           return;
         }
@@ -74,20 +76,20 @@ export default function ClienteInspeccionesLista() {
 
       } catch (err) {
         console.error("Error:", err);
-        setErrorMsg("Hubo un error al cargar los datos.");
+        setErrorMsg(t("errorCargarDatos"));
       } finally {
         setLoading(false);
       }
     }
 
     cargarTodo();
-  }, [user]);
+  }, [user, t]);
 
   if (loading) {
     return (
       <Menu>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: COLOR_DORADO, background: FONDO_PRINCIPAL }}>
-          <h3 style={TEXTO_DORADO_BRILLO}>Cargando Listado...</h3>
+          <h3 style={TEXTO_DORADO_BRILLO}>{t("cargandoListado")}</h3>
         </div>
       </Menu>
     );
@@ -98,14 +100,14 @@ export default function ClienteInspeccionesLista() {
       <div style={{ padding: "16px", background: FONDO_PRINCIPAL, minHeight: "100vh", color: "#fff", fontFamily: "Inter", paddingBottom: "110px", boxSizing: "border-box" }}>
         
         <h1 style={{ fontSize: "16px", fontWeight: "900", ...TEXTO_DORADO_BRILLO, marginBottom: "20px", textTransform: "uppercase" }}>
-          Mis Inspecciones e Informes
+          {t("misInspeccionesInformesTitulo")}
         </h1>
 
         {errorMsg && <div style={{ color: "#ef4444", marginBottom: "15px", fontSize: "12px" }}>{errorMsg}</div>}
 
         {elementos.length === 0 ? (
           <div style={{ color: "#94a3b8", fontSize: "13px", textAlign: "center", marginTop: "40px" }}>
-            No hay inspecciones ni informes disponibles.
+            {t("noHayInspeccionesInformes")}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -113,9 +115,9 @@ export default function ClienteInspeccionesLista() {
               const esExtra = item.tipo === 'extra';
               
               const textoCrudo = item.observaciones || item.comentarios || item.descripcion || item.detalle || item.nota || "";
-              const descripcionLimpia = textoCrudo ? textoCrudo.replace(/Factura\s*[^:]*:\s*/i, "") : "Informe disponible";
+              const descripcionLimpia = textoCrudo ? textoCrudo.replace(/Factura\s*[^:]*:\s*/i, "") : t("informeDisponible");
 
-              const tituloItem = esExtra ? "🛠️ Servicio Extra / Trabajo" : (item.titulo || item.nombre || `📋 Inspección`);
+              const tituloItem = esExtra ? t("servicioExtraTrabajo") : (item.titulo || item.nombre || t("inspeccionLabel"));
               const fechaFormateada = item.created_at ? new Date(item.created_at).toLocaleDateString() : (item.fecha ? new Date(item.fecha).toLocaleDateString() : "Reciente");
 
               return (
@@ -147,17 +149,17 @@ export default function ClienteInspeccionesLista() {
                       color: esExtra ? COLOR_DORADO : "#34d399", 
                       border: esExtra ? BORDE_DORADO_FINO : "1px solid rgba(16, 185, 129, 0.4)" 
                     }}>
-                      {esExtra ? "⚡ EXTRA" : (item.estado || "APROBADA")}
+                      {esExtra ? t("extraBadge") : (item.estado || t("estadoAprobado"))}
                     </span>
                   </div>
 
                   <div style={{ fontSize: "12px", color: "#94a3b8" }}>
-                    <strong style={{ color: "#cbd5e1" }}>Detalle:</strong> {descripcionLimpia.substring(0, 70)}...
+                    <strong style={{ color: "#cbd5e1" }}>{t("detalleLabel")}</strong> {descripcionLimpia.substring(0, 70)}...
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px", fontSize: "11px", color: "#64748b" }}>
-                    <span>Fecha: {fechaFormateada}</span>
-                    <span style={{ color: COLOR_DORADO, fontWeight: "700" }}>Ver detalle →</span>
+                    <span>{t("fecha")}: {fechaFormateada}</span>
+                    <span style={{ color: COLOR_DORADO, fontWeight: "700" }}>{t("verDetalleFlecha")}</span>
                   </div>
                 </div>
               );
