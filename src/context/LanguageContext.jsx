@@ -119,6 +119,14 @@ const translations = {
     total: "Total",
     verPdf: "Ver PDF",
     noPdfGenerado: "Aún no hay PDF generado para esta factura.",
+
+    // Lista de Facturas
+    misFacturasTitulo: "Mis Facturas",
+    cargandoFacturas: "Cargando facturas...",
+    noHayFacturasRegistradas: "No hay facturas registradas.",
+    estadoCancelada: "CANCELADA",
+    estadoTrabajoCompletado: "TRABAJO COMPLETADO",
+    estadoPendienteRevision: "PENDIENTE DE REVISIÓN",
   },
   en: {
     // General / Dashboard
@@ -238,6 +246,14 @@ const translations = {
     total: "Total",
     verPdf: "View PDF",
     noPdfGenerado: "No PDF generated for this invoice yet.",
+
+    // Invoices List
+    misFacturasTitulo: "My Invoices",
+    cargandoFacturas: "Loading invoices...",
+    noHayFacturasRegistradas: "No registered invoices found.",
+    estadoCancelada: "CANCELLED",
+    estadoTrabajoCompletado: "WORK COMPLETED",
+    estadoPendienteRevision: "PENDING REVIEW",
   },
   fr: {
     // Général / Tableau de bord
@@ -357,6 +373,14 @@ const translations = {
     total: "Total",
     verPdf: "Voir le PDF",
     noPdfGenerado: "Aucun PDF généré pour cette facture pour le moment.",
+
+    // Liste des Factures
+    misFacturasTitulo: "Mes Factures",
+    cargandoFacturas: "Chargement des factures...",
+    noHayFacturasRegistradas: "Aucune facture enregistrée.",
+    estadoCancelada: "ANNULÉE",
+    estadoTrabajoCompletado: "TRAVAIL TERMINÉ",
+    estadoPendienteRevision: "EN ATTENTE DE RÉVISION",
   }
 };
 
