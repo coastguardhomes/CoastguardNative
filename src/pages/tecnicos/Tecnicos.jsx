@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
+import { FaPlus, FaEdit, FaEye, FaTrash, FaArrowLeft, FaUserTie } from 'react-icons/fa';
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -9,188 +10,52 @@ const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
 const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
 
-export default function TecnicoInspeccionExtra() {
-  const { id } = useParams();
+export default function Tecnicos() {
   const navigate = useNavigate();
+  const [tecnicos, setTecnicos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [extraData, setExtraData] = useState(null);
-  
-  const [descripcion, setDescripcion] = useState('');
-  const [materiales, setMateriales] = useState('');
-  const [tiempo, setTiempo] = useState('');
-  const [fotos, setFotos] = useState([]);
-  const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    cargarDetalleExtra();
-  }, [id]);
+    cargarTecnicos();
+  }, []);
 
-  const cargarDetalleExtra = async () => {
+  const cargarTecnicos = async () => {
     try {
       setLoading(true);
       setError('');
       
       const { data, error: err } = await supabase
-        .from('facturas')
+        .from('tecnicos')
         .select('*')
-        .eq('id', id)
-        .maybeSingle();
+        .order('created_at', { ascending: false });
 
       if (err) throw err;
-
-      if (data) {
-        setExtraData(data);
-        setDescripcion(data.descripcion || '');
-      } else {
-        setError('No se encontró el trabajo extra en facturas.');
-      }
+      setTecnicos(data || []);
     } catch (err) {
-      console.error('Error al cargar extra:', err);
-      setError('Error al cargar los datos de la factura/extra.');
+      console.error('Error al cargar técnicos:', err);
+      setError('No se pudieron cargar los técnicos.');
     } finally {
       setLoading(false);
     }
   };
 
-  const manejarSubidaFotos = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    try {
-      setSaving(true);
-      setError('');
-      const nuevasUrls = [...fotos];
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random()}.${fileExt}`;
-        const filePath = `extras/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('extras')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: publicUrlData } = supabase.storage
-          .from('extras')
-          .getPublicUrl(filePath);
-
-        if (publicUrlData?.publicUrl) {
-          nuevasUrls.push(publicUrlData.publicUrl);
-        }
-      }
-
-      setFotos(nuevasUrls);
-      setMensaje('¡Fotos subidas con éxito!');
-    } catch (err) {
-      console.error('Error al subir fotos:', err);
-      setError('No se pudieron subir las fotos.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const eliminarTecnico = async (id) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este técnico?')) return;
     
-    if (!extraData || !extraData.id) {
-      alert("Error: Los datos aún no se han cargado correctamente.");
-      return;
-    }
-
     try {
-      setSaving(true);
-      setError('');
+      const { error: err } = await supabase
+        .from('tecnicos')
+        .delete()
+        .eq('id', id);
 
-      const facturaId = extraData.id; // Mantiene el formato exacto del ID ( UUID o string/num )
-      const inspeccionUuid = extraData.inspeccion_id || null;
-      const viviendaId = extraData.vivienda_id || null;
-      const clienteUuid = extraData.cliente_id || null;
-
-      const descripcionCompleta = `Trabajo: ${descripcion} | Materiales: ${materiales || 'Ninguno'} | Tiempo: ${tiempo || 'No especificado'}`;
-
-      // 1. Actualizar la tabla facturas para el Administrador (estado pendiente / técnico completado)
-      const { error: updateError } = await supabase
-        .from('facturas')
-        .update({
-          descripcion: descripcionCompleta,
-          estado_tecnico: 'completado',
-          estado: 'pendiente' // Se queda pendiente para revisión del Admin
-        })
-        .eq('id', facturaId);
-
-      if (updateError) throw updateError;
-
-      // 2. Preparar datos para la tabla 'extras' manteniendo todas las relaciones
-      const datosExtra = {
-        factura_id: facturaId,
-        inspeccion_id: inspeccionUuid,
-        vivienda_id: viviendaId,
-        cliente_id: clienteUuid,
-        descripcion: descripcionCompleta,
-        materiales: materiales || '',
-        tiempo_empleado: tiempo || '',
-        fotos: fotos,
-        estado_tecnico: 'completado',
-        estado: 'pendiente'
-      };
-
-      // Comprobar si ya existe un registro previo en 'extras'
-      let existingExtra = null;
-      const { data: extraByFactura } = await supabase
-        .from('extras')
-        .select('id')
-        .eq('factura_id', facturaId)
-        .maybeSingle();
-
-      if (extraByFactura) {
-        existingExtra = extraByFactura;
-      } else if (inspeccionUuid) {
-        const { data: extraByInspeccion } = await supabase
-          .from('extras')
-          .select('id')
-          .eq('inspeccion_id', inspeccionUuid)
-          .maybeSingle();
-        existingExtra = extraByInspeccion;
-      }
-
-      let extraError;
-      if (existingExtra) {
-        const { error: errUpd } = await supabase
-          .from('extras')
-          .update(datosExtra)
-          .eq('id', existingExtra.id);
-        extraError = errUpd;
-      } else {
-        const { error: errIns } = await supabase
-          .from('extras')
-          .insert([datosExtra]);
-        extraError = errIns;
-      }
-
-      if (extraError) throw extraError;
-
-      alert('Inspección de extra enviada al administrador correctamente.');
-      navigate('/tecnico');
+      if (err) throw err;
+      setTecnicos(tecnicos.filter(t => t.id !== id));
     } catch (err) {
-      console.error('Error al guardar:', err);
-      setError('Error al enviar la inspección: ' + err.message);
-    } finally {
-      setSaving(false);
+      console.error('Error al eliminar técnico:', err);
+      alert('Error al eliminar el técnico: ' + err.message);
     }
   };
-
-  if (loading) {
-    return (
-      <div style={{ backgroundColor: FONDO_PRINCIPAL, minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Inter, sans-serif' }}>
-        <h3 style={TEXTO_DORADO_BRILLO}>Cargando datos del trabajo...</h3>
-      </div>
-    );
-  }
 
   return (
     <div style={{
@@ -204,7 +69,7 @@ export default function TecnicoInspeccionExtra() {
     }}>
       <div style={{
         width: '100%',
-        maxWidth: '480px',
+        maxWidth: '600px',
         background: FONDO_TARJETA,
         border: BORDE_DORADO_FINO,
         borderRadius: '16px',
@@ -216,6 +81,7 @@ export default function TecnicoInspeccionExtra() {
         boxSizing: 'border-box'
       }}>
         
+        {/* Cabecera */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -225,7 +91,7 @@ export default function TecnicoInspeccionExtra() {
         }}>
           <button 
             type="button"
-            onClick={() => navigate('/tecnico')} 
+            onClick={() => navigate('/admin/dashboard')} 
             style={{
               background: 'transparent',
               border: BORDE_DORADO_FINO,
@@ -234,21 +100,42 @@ export default function TecnicoInspeccionExtra() {
               borderRadius: '8px',
               cursor: 'pointer',
               fontSize: '11px',
-              fontWeight: '700'
+              fontWeight: '700',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px'
             }}
           >
-            ← Volver
+            <FaArrowLeft /> Volver
           </button>
           <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '18px', fontWeight: '900', margin: 0, textTransform: 'uppercase' }}>
-            Inspección de Extra
+            Gestión de Técnicos
           </h2>
         </div>
 
-        {mensaje && (
-          <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', padding: '12px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', color: '#34d399', textAlign: 'center' }}>
-            {mensaje}
-          </div>
-        )}
+        {/* Botón Nuevo Técnico (Ruta corregida en plural /tecnicos/nuevo) */}
+        <button
+          type="button"
+          onClick={() => navigate('/tecnicos/nuevo')}
+          style={{
+            background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
+            color: '#fff',
+            border: BORDE_DORADO_FINO,
+            padding: '12px',
+            borderRadius: '12px',
+            fontWeight: '900',
+            fontSize: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)',
+            textTransform: 'uppercase'
+          }}
+        >
+          <FaPlus /> Nuevo Técnico
+        </button>
 
         {error && (
           <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', padding: '12px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', color: '#ef4444', textAlign: 'center' }}>
@@ -256,171 +143,69 @@ export default function TecnicoInspeccionExtra() {
           </div>
         )}
 
-        {extraData && (
-          <div style={{ backgroundColor: 'rgba(11, 19, 32, 0.9)', padding: '14px', borderRadius: '12px', border: BORDE_DORADO_FINO }}>
-            <p style={{ fontSize: '12px', margin: '4px 0', color: '#ccc' }}>
-              <strong style={{ color: COLOR_DORADO }}>Factura / Ref:</strong> {extraData.numero || `#${extraData.id}`}
-            </p>
-            <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: '#ccc' }}>
-              <strong style={{ color: COLOR_DORADO }}>Concepto inicial:</strong> {extraData.descripcion || 'Sin descripción previa'}
-            </p>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <p style={TEXTO_DORADO_BRILLO}>Cargando técnicos...</p>
           </div>
-        )}
+        ) : tecnicos.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#888', fontSize: '13px' }}>
+            No hay técnicos registrados todavía.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {tecnicos.map((tecnico) => (
+              <div 
+                key={tecnico.id}
+                style={{
+                  backgroundColor: 'rgba(11, 19, 32, 0.9)',
+                  border: BORDE_DORADO_FINO,
+                  borderRadius: '12px',
+                  padding: '14px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <FaUserTie color={COLOR_DORADO} size={20} />
+                  <div>
+                    <h4 style={{ color: '#fff', margin: '0 0 4px 0', fontSize: '14px', fontWeight: '700' }}>
+                      {tecnico.nombre || tecnico.email || 'Técnico sin nombre'}
+                    </h4>
+                    <p style={{ color: '#aaa', margin: 0, fontSize: '12px' }}>
+                      {tecnico.email} {tecnico.telefono ? `• ${tecnico.telefono}` : ''}
+                    </p>
+                  </div>
+                </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <label style={{
-            flex: 1,
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
-            color: '#fff',
-            padding: '12px',
-            borderRadius: '12px',
-            fontWeight: '900',
-            fontSize: '12px',
-            cursor: 'pointer',
-            border: BORDE_DORADO_FINO,
-            boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)',
-            textTransform: 'uppercase'
-          }}>
-            📸 Hacer Foto
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={manejarSubidaFotos}
-              style={{ display: 'none' }}
-            />
-          </label>
-
-          <label style={{
-            flex: 1,
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)',
-            color: '#fff',
-            padding: '12px',
-            borderRadius: '12px',
-            fontWeight: '900',
-            fontSize: '12px',
-            cursor: 'pointer',
-            border: BORDE_DORADO_FINO,
-            boxShadow: '0 4px 15px rgba(56, 189, 248, 0.3)',
-            textTransform: 'uppercase'
-          }}>
-            🖼️ Galería
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={manejarSubidaFotos}
-              style={{ display: 'none' }}
-            />
-          </label>
-        </div>
-
-        {fotos.length > 0 && (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {fotos.map((url, index) => (
-              <img 
-                key={index} 
-                src={url} 
-                alt={`Evidencia ${index}`} 
-                style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: BORDE_DORADO_FINO }} 
-              />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => navigate(`/tecnicos/ver/${tecnico.id}`)}
+                    style={{ background: 'transparent', border: '1px solid #38bdf8', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
+                    title="Ver"
+                  >
+                    <FaEye size={12} />
+                  </button>
+                  <button
+                    onClick={() => navigate(`/tecnicos/editar/${tecnico.id}`)}
+                    style={{ background: 'transparent', border: BORDE_DORADO_FINO, color: COLOR_DORADO, padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
+                    title="Editar"
+                  >
+                    <FaEdit size={12} />
+                  </button>
+                  <button
+                    onClick={() => eliminarTecnico(tecnico.id)}
+                    style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
+                    title="Eliminar"
+                  >
+                    <FaTrash size={12} />
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>
-              Descripción del trabajo realizado:
-            </label>
-            <textarea
-              style={{
-                backgroundColor: 'rgba(11, 19, 32, 0.8)',
-                border: BORDE_DORADO_FINO,
-                borderRadius: '12px',
-                padding: '12px',
-                color: '#fff',
-                fontSize: '13px',
-                resize: 'vertical',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-              rows="4"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Detalla qué se ha reparado o revisado..."
-              required
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>
-              Materiales usados:
-            </label>
-            <input
-              type="text"
-              style={{
-                backgroundColor: 'rgba(11, 19, 32, 0.8)',
-                border: BORDE_DORADO_FINO,
-                borderRadius: '12px',
-                padding: '12px',
-                color: '#fff',
-                fontSize: '13px',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-              value={materiales}
-              onChange={(e) => setMateriales(e.target.value)}
-              placeholder="Ej: Tubo de PVC, silicona, tornillos..."
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>
-              Tiempo empleado:
-            </label>
-            <input
-              type="text"
-              style={{
-                backgroundColor: 'rgba(11, 19, 32, 0.8)',
-                border: BORDE_DORADO_FINO,
-                borderRadius: '12px',
-                padding: '12px',
-                color: '#fff',
-                fontSize: '13px',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-              value={tiempo}
-              onChange={(e) => setTiempo(e.target.value)}
-              placeholder="Ej: 2 horas"
-            />
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={saving || !extraData}
-            style={{
-              background: (saving || !extraData) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
-              color: (saving || !extraData) ? '#64748b' : '#fff',
-              border: (saving || !extraData) ? BORDE_DORADO_FINO : '1px solid rgba(16, 185, 129, 0.6)',
-              padding: '14px',
-              borderRadius: '16px',
-              fontSize: '14px',
-              fontWeight: '900',
-              cursor: (saving || !extraData) ? 'not-allowed' : 'pointer',
-              marginTop: '10px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              boxShadow: (saving || !extraData) ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.3)',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            {saving ? 'Enviando...' : '✅ Enviar Inspección al Administrador'}
-          </button>
-        </form>
       </div>
     </div>
   );
