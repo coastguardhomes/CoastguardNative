@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -14,6 +15,7 @@ const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 15px rgba(22
 export default function ClienteFacturasLista() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [facturas, setFacturas] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,22 +38,22 @@ export default function ClienteFacturasLista() {
   const obtenerBadgeEstadoAdmin = (estado) => {
     switch (estado?.toLowerCase()) {
       case "pagada":
-        return { label: "PAGADA", bg: "rgba(16, 185, 129, 0.2)", border: "1px solid #10b981", color: "#34d399" };
+        return { label: t("estadoPagada"), bg: "rgba(16, 185, 129, 0.2)", border: "1px solid #10b981", color: "#34d399" };
       case "enviado_cliente":
       case "enviada":
-        return { label: "ENVIADA AL CLIENTE", bg: "rgba(59, 130, 246, 0.2)", border: "1px solid #3b82f6", color: "#60a5fa" };
+        return { label: t("estadoEnviadaCliente"), bg: "rgba(59, 130, 246, 0.2)", border: "1px solid #3b82f6", color: "#60a5fa" };
       case "cancelada":
-        return { label: "CANCELADA", bg: "rgba(239, 68, 68, 0.2)", border: "1px solid #ef4444", color: "#f87171" };
+        return { label: t("estadoCancelada"), bg: "rgba(239, 68, 68, 0.2)", border: "1px solid #ef4444", color: "#f87171" };
       default:
-        return { label: "PENDIENTE", bg: "rgba(245, 158, 11, 0.2)", border: "1px solid #f59e0b", color: "#fbbf24" };
+        return { label: t("estadoPendiente"), bg: "rgba(245, 158, 11, 0.2)", border: "1px solid #f59e0b", color: "#fbbf24" };
     }
   };
 
   const obtenerBadgeTecnico = (estadoTecnico) => {
     if (estadoTecnico === "completado") {
-      return { label: "TRABAJO COMPLETADO", bg: "rgba(59, 130, 246, 0.2)", border: "1px solid #3b82f6", color: "#60a5fa" };
+      return { label: t("estadoTrabajoCompletado"), bg: "rgba(59, 130, 246, 0.2)", border: "1px solid #3b82f6", color: "#60a5fa" };
     }
-    return { label: "PENDIENTE DE REVISIÓN", bg: "rgba(148, 163, 184, 0.15)", border: "1px solid #64748b", color: "#94a3b8" };
+    return { label: t("estadoPendienteRevision"), bg: "rgba(148, 163, 184, 0.15)", border: "1px solid #64748b", color: "#94a3b8" };
   };
 
   return (
@@ -75,14 +77,14 @@ export default function ClienteFacturasLista() {
             textTransform: "uppercase",
           }}
         >
-          Mis Facturas
+          {t("misFacturasTitulo")}
         </h1>
 
         {loading ? (
-          <p style={{ textAlign: "center", ...TEXTO_DORADO_BRILLO }}>Cargando facturas...</p>
+          <p style={{ textAlign: "center", ...TEXTO_DORADO_BRILLO }}>{t("cargandoFacturas")}</p>
         ) : facturas.length === 0 ? (
           <p style={{ textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
-            No hay facturas registradas.
+            {t("noHayFacturasRegistradas")}
           </p>
         ) : (
           facturas.map((f) => {
@@ -131,12 +133,12 @@ export default function ClienteFacturasLista() {
 
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", paddingTop: "10px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                   <div>
-                    <span style={{ fontSize: "11px", color: "#94a3b8", display: "block" }}>Fecha</span>
+                    <span style={{ fontSize: "11px", color: "#94a3b8", display: "block" }}>{t("fecha")}</span>
                     <span style={{ fontSize: "13px", color: "#fff" }}>{f.fecha || "—"}</span>
                   </div>
 
                   <div>
-                    <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", textAlign: "right" }}>Total</span>
+                    <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", textAlign: "right" }}>{t("total")}</span>
                     <span style={{ fontSize: "16px", fontWeight: "900", color: COLOR_DORADO }}>
                       {f.total != null ? `${f.total} €` : "—"}
                     </span>
