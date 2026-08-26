@@ -102,17 +102,19 @@ export default function App() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        // 2. Usar maybeSingle() para evitar errores si el usuario logueado es admin o técnico y no está en la tabla clientes
-        const { data: clienteExistente, error: errorBusq } = await supabase
+        // 2. Usar .limit(1) para evitar el error 406 si hay múltiples registros con el mismo email en pruebas
+        const { data: clientesEncontrados, error: errorBusq } = await supabase
           .from("clientes")
           .select("id, usuario_id")
           .eq("email", user.email)
-          .maybeSingle();
+          .limit(1);
 
         if (errorBusq) {
           console.error("Error al buscar cliente:", errorBusq.message);
           return;
         }
+
+        const clienteExistente = clientesEncontrados?.[0] || null;
 
         if (clienteExistente && !clienteExistente.usuario_id) {
           await supabase
