@@ -5,7 +5,7 @@ import { useLanguage } from "../../context/LanguageContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
-  const { t } = useLanguage();
+  const { t, changeLanguage } = useLanguage();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
@@ -31,6 +31,11 @@ export default function GenerarPDFContrato({ contrato, cliente, onGenerado }) {
     setLoading(true);
 
     try {
+      // 🌍 Forzar el idioma del documento según lo que el cliente tiene en la BD
+      if (cliente?.idioma) {
+        changeLanguage(cliente.idioma);
+      }
+
       const doc = new jsPDF();
 
       doc.setFontSize(18);
