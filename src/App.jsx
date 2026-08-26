@@ -98,11 +98,21 @@ export default function App() {
       if (!user?.email) return;
 
       try {
-        const { data: clienteExistente } = await supabase
+        // 1. Validar que realmente exista sesión activa antes de consultar
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // 2. Usar maybeSingle() para evitar errores si el usuario logueado es admin o técnico y no está en la tabla clientes
+        const { data: clienteExistente, error: errorBusq } = await supabase
           .from("clientes")
           .select("id, usuario_id")
           .eq("email", user.email)
-          .single();
+          .maybeSingle();
+
+        if (errorBusq) {
+          console.error("Error al buscar cliente:", errorBusq.message);
+          return;
+        }
 
         if (clienteExistente && !clienteExistente.usuario_id) {
           await supabase
