@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -12,6 +13,7 @@ const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(22
 
 export default function CrearFactura() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [clientes, setClientes] = useState([]);
   const [viviendas, setViviendas] = useState([]);
@@ -54,15 +56,15 @@ export default function CrearFactura() {
     setMensaje("");
 
     if (!form.cliente_id) {
-      setMensaje("Selecciona un cliente.");
+      setMensaje(t("errorSeleccionarCliente") || "Selecciona un cliente.");
       return;
     }
     if (!form.vivienda_id) {
-      setMensaje("Selecciona una vivienda.");
+      setMensaje(t("errorSeleccionarVivienda") || "Selecciona una vivienda.");
       return;
     }
     if (!form.importe) {
-      setMensaje("Introduce el importe.");
+      setMensaje(t("errorIntroducirImporte") || "Introduce el importe.");
       return;
     }
 
@@ -85,15 +87,15 @@ export default function CrearFactura() {
 
       if (error || !facturaCreada) {
         console.error("Error creando factura:", error);
-        setMensaje("Error creando factura");
+        setMensaje(t("errorCreandoFactura") || "Error creando factura");
         return;
       }
 
-      setMensaje("Factura creada correctamente");
+      setMensaje(t("facturaCreadaCorrectamente") || "Factura creada correctamente");
       setTimeout(() => navigate("/facturas"), 1200);
     } catch (e) {
       console.error("Error en crearFactura:", e);
-      setMensaje("Error creando factura");
+      setMensaje(t("errorCreandoFactura") || "Error creando factura");
     }
   }
 
@@ -120,7 +122,7 @@ export default function CrearFactura() {
             textTransform: "uppercase",
           }}
         >
-          Nueva Factura / Extra
+          {t("tituloNuevaFactura") || "Nueva Factura / Extra"}
         </h1>
 
         {mensaje && (
@@ -128,13 +130,13 @@ export default function CrearFactura() {
             style={{
               marginBottom: "16px",
               padding: "12px 16px",
-              background: mensaje.includes("correctamente")
+              background: mensaje.includes("correctamente") || mensaje.includes(t("facturaCreadaCorrectamente"))
                 ? "rgba(16, 185, 129, 0.15)"
                 : "rgba(239, 68, 68, 0.15)",
-              border: mensaje.includes("correctamente")
+              border: mensaje.includes("correctamente") || mensaje.includes(t("facturaCreadaCorrectamente"))
                 ? "1px solid rgba(16, 185, 129, 0.4)"
                 : "1px solid rgba(239, 68, 68, 0.4)",
-              color: mensaje.includes("correctamente") ? "#34d399" : "#ef4444",
+              color: mensaje.includes("correctamente") || mensaje.includes(t("facturaCreadaCorrectamente")) ? "#34d399" : "#ef4444",
               borderRadius: "12px",
               fontWeight: "700",
               textAlign: "center",
@@ -155,13 +157,13 @@ export default function CrearFactura() {
             boxSizing: "border-box",
           }}
         >
-          <label style={labelStyle}>Cliente</label>
+          <label style={labelStyle}>{t("cliente") || "Cliente"}</label>
           <select
             value={form.cliente_id}
             onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
             style={inputStyle}
           >
-            <option value="">Selecciona un cliente...</option>
+            <option value="">{t("seleccionaCliente") || "Selecciona un cliente..."}</option>
             {clientes.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nombre}
@@ -169,13 +171,13 @@ export default function CrearFactura() {
             ))}
           </select>
 
-          <label style={labelStyle}>Vivienda</label>
+          <label style={labelStyle}>{t("vivienda") || "Vivienda"}</label>
           <select
             value={form.vivienda_id}
             onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
             style={inputStyle}
           >
-            <option value="">Selecciona una vivienda...</option>
+            <option value="">{t("seleccionaVivienda") || "Selecciona una vivienda..."}</option>
             {viviendas.map((v) => (
               <option key={v.id} value={v.id}>
                 #{v.id} — {v.direccion} ({v.ciudad})
@@ -183,7 +185,7 @@ export default function CrearFactura() {
             ))}
           </select>
 
-          <label style={labelStyle}>Fecha</label>
+          <label style={labelStyle}>{t("fecha") || "Fecha"}</label>
           <input
             type="date"
             value={form.fecha}
@@ -191,15 +193,15 @@ export default function CrearFactura() {
             style={inputStyle}
           />
 
-          <label style={labelStyle}>Concepto</label>
+          <label style={labelStyle}>{t("concepto") || "Concepto"}</label>
           <input
             value={form.concepto}
             onChange={(e) => setForm({ ...form, concepto: e.target.value })}
             style={inputStyle}
-            placeholder="Descripción del servicio..."
+            placeholder={t("placeholderConcepto") || "Descripción del servicio..."}
           />
 
-          <label style={labelStyle}>Importe</label>
+          <label style={labelStyle}>{t("importe") || "Importe"}</label>
           <input
             type="number"
             value={form.importe}
@@ -226,7 +228,7 @@ export default function CrearFactura() {
               boxSizing: "border-box",
             }}
           >
-            Crear Factura
+            {t("btnCrearFactura") || "Crear Factura"}
           </button>
         </div>
       </div>
