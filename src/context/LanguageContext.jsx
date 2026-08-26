@@ -51,6 +51,23 @@ const translations = {
     sab: "Sáb",
     dom: "Dom",
 
+    // Crear Factura
+    tituloNuevaFactura: "Nueva Factura / Extra",
+    errorSeleccionarCliente: "Selecciona un cliente.",
+    errorSeleccionarVivienda: "Selecciona una vivienda.",
+    errorIntroducirImporte: "Introduce el importe.",
+    errorCreandoFactura: "Error creando factura",
+    facturaCreadaCorrectamente: "Factura creada correctamente",
+    cliente: "Cliente",
+    seleccionaCliente: "Selecciona un cliente...",
+    vivienda: "Vivienda",
+    seleccionaVivienda: "Selecciona una vivienda...",
+    fecha: "Fecha",
+    concepto: "Concepto",
+    placeholderConcepto: "Descripción del servicio...",
+    importe: "Importe",
+    btnCrearFactura: "Crear Factura",
+
     // Perfil Cliente
     clienteDashboardCargando: "Cargando perfil...",
     clienteDashboardNoEncontrado: "No se encontró el perfil de cliente.",
@@ -165,8 +182,6 @@ const translations = {
     estadoEnviadaCliente: "ENVIADA AL CLIENTE",
     servicioInspeccion: "Servicio / Inspección",
     facturaLabel: "Factura",
-    fecha: "Fecha",
-    descripcion: "Descripción",
     evidenciaDelTrabajo: "Evidencia del Trabajo",
     materialesUtilizados: "Materiales utilizados:",
     tiempoEmpleado: "Tiempo empleado:",
@@ -270,6 +285,23 @@ const translations = {
     vie: "Fri",
     sab: "Sat",
     dom: "Sun",
+
+    // Create Invoice
+    tituloNuevaFactura: "New Invoice / Extra",
+    errorSeleccionarCliente: "Select a client.",
+    errorSeleccionarVivienda: "Select a property.",
+    errorIntroducirImporte: "Enter the amount.",
+    errorCreandoFactura: "Error creating invoice",
+    facturaCreadaCorrectamente: "Invoice created successfully",
+    cliente: "Client",
+    seleccionaCliente: "Select a client...",
+    vivienda: "Property",
+    seleccionaVivienda: "Select a property...",
+    fecha: "Date",
+    concepto: "Concept",
+    placeholderConcepto: "Service description...",
+    importe: "Amount",
+    btnCrearFactura: "Create Invoice",
 
     // Perfil Cliente
     clienteDashboardCargando: "Loading profile...",
@@ -385,8 +417,6 @@ const translations = {
     estadoEnviadaCliente: "SENT TO CLIENT",
     servicioInspeccion: "Service / Inspection",
     facturaLabel: "Invoice",
-    fecha: "Date",
-    descripcion: "Description",
     evidenciaDelTrabajo: "Work Evidence",
     materialesUtilizados: "Materials used:",
     tiempoEmpleado: "Time spent:",
@@ -487,35 +517,40 @@ const translations = {
     vie: "Ven",
     sab: "Sam",
     dom: "Dim",
+
+    // Create Invoice
+    tituloNuevaFactura: "Nouvelle facture / Supplément",
+    errorSeleccionarCliente: "Sélectionnez un client.",
+    errorSeleccionarVivienda: "Sélectionnez une propriété.",
+    errorIntroducirImporte: "Entrez le montant.",
+    errorCreandoFactura: "Erreur lors de la création de la facture",
+    facturaCreadaCorrectamente: "Facture créée avec succès",
+    cliente: "Client",
+    seleccionaCliente: "Sélectionnez un client...",
+    vivienda: "Propriété",
+    seleccionaVivienda: "Sélectionnez une propriété...",
+    fecha: "Date",
+    concepto: "Concept",
+    placeholderConcepto: "Description du service...",
+    importe: "Montant",
+    btnCrearFactura: "Créer la facture",
   }
 };
 
 const LanguageContext = createContext();
 
-export function LanguageProvider({ children }) {
-  // ⭐ Cargamos desde localStorage para asegurar que persista globalmente
-  const [language, setLanguage] = useState(() => {
-    return localStorage.getItem("app_idioma") || "es";
-  });
-
-  const changeLanguage = (lang) => {
-    if (translations[lang]) {
-      setLanguage(lang);
-      localStorage.setItem("app_idioma", lang);
-    }
-  };
+export const LanguageProvider = ({ children }) => {
+  const [language, setLanguage] = useState('es');
 
   const t = (key) => {
-    return translations[language]?.[key] || translations["es"][key] || key;
+    return translations[language]?.[key] || translations['es'][key] || key;
   };
 
   return (
-    <LanguageContext.Provider value={{ language, changeLanguage, t }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );
-}
+};
 
-export function useLanguage() {
-  return useContext(LanguageContext);
-}
+export const useLanguage = () => useContext(LanguageContext);
