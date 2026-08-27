@@ -14,6 +14,22 @@ export default function Register() {
   const navigate = useNavigate();
   const { changeLanguage } = useLanguage();
 
+  // 🛡️ Función auxiliar para asegurar que el error siempre sea texto plano
+  const handleError = (err, customPrefix = "") => {
+    if (!err) {
+      setErrorMsg(customPrefix || "Error desconocido");
+      return;
+    }
+    if (typeof err === "string") {
+      setErrorMsg(customPrefix ? `${customPrefix}: ${err}` : err);
+    } else if (err.message) {
+      setErrorMsg(customPrefix ? `${customPrefix}: ${err.message}` : err.message);
+    } else {
+      const stringified = JSON.stringify(err);
+      setErrorMsg(customPrefix ? `${customPrefix}: ${stringified}` : stringified);
+    }
+  };
+
   const handleRegister = async () => {
     setErrorMsg("");
     setMensaje("");
@@ -37,7 +53,7 @@ export default function Register() {
     });
 
     if (error) {
-      setErrorMsg(error.message);
+      handleError(error);
       setLoading(false);
       return;
     }
@@ -67,7 +83,6 @@ export default function Register() {
       .maybeSingle();
 
     if (!clienteExistente) {
-      // Creamos el cliente solo con el email y el idioma (evitando forzar un UUID de auth que a veces da conflicto de FK)
       const { error: crearClienteError } = await supabase
         .from("clientes")
         .insert({
@@ -77,12 +92,11 @@ export default function Register() {
 
       if (crearClienteError) {
         console.error("Error creando cliente con idioma:", crearClienteError);
-        setErrorMsg("Error DB (Crear): " + crearClienteError.message);
+        handleError(crearClienteError, "Error DB (Crear)");
         setLoading(false);
         return;
       }
     } else {
-      // Si ya existía, actualizamos su idioma
       const { error: vincularError } = await supabase
         .from("clientes")
         .update({ idioma: idioma })
@@ -152,7 +166,7 @@ export default function Register() {
               wordBreak: "break-word"
             }}
           >
-            {errorMsg}
+            {typeof errorMsg === "string" ? errorMsg : JSON.stringify(errorMsg)}
           </div>
         )}
 
