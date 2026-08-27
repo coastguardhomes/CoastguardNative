@@ -1,421 +1,326 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-export default function AdminDetalleInspeccion() {
-  const { id } = useParams();
+export default function NuevaInspeccion() {
   const navigate = useNavigate();
 
-  const [inspeccion, setInspeccion] = useState(null);
-  const [tecnico, setTecnico] = useState(null);
-  const [vivienda, setVivienda] = useState(null);
-  const [cliente, setCliente] = useState(null);
-  const [checklist, setChecklist] = useState([]);
-  const [fotos, setFotos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [viviendas, setViviendas] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [tecnicos, setTecnicos] = useState([]);
+  const [contratos, setContratos] = useState([]);
   const [mensaje, setMensaje] = useState("");
-  const [procesando, setProcesando] = useState(false);
 
+  const [alerta, setAlerta] = useState(false); // 🔥 NUEVO
+
+  const [form, setForm] = useState({
+    vivienda_id: "",
+    cliente_id: "",
+    contrato_id: "",
+    tecnico_id: "",
+    fecha: "",
+    estado: "pendiente",
+    notas: "",
+  });
+
+  // CARGAR VIVIENDAS, CLIENTES Y TÉCNICOS
   useEffect(() => {
-    cargarDatosInspeccion();
-  }, [id]);
-
-  async function cargarDatosInspeccion() {
-    setLoading(true);
-
-    // 1️⃣ Cargar inspección
-    const { data: insp, error } = await supabase
-      .from("inspecciones")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error || !insp) {
-      setMensaje("No se pudo cargar la inspección.");
-      setLoading(false);
-      return;
-    }
-    setInspeccion(insp);
-
-    // 2️⃣ Cargar técnico asignado
-    if (insp.tecnico_id) {
-      const { data: tec } = await supabase
-        .from("tecnicos")
-        .select("nombre, telefono, email")
-        .eq("id", insp.tecnico_id)
-        .single();
-      setTecnico(tec || null);
-    }
-
-    // 3️⃣ Cargar vivienda
-    if (insp.vivienda_id) {
+    async function cargarDatos() {
       const { data: viv } = await supabase
         .from("viviendas")
-        .select("direccion, ciudad")
-        .eq("id", insp.vivienda_id)
-        .single();
-      setVivienda(viv || null);
-    }
+        .select("id, direccion, cliente_id");
 
-    // 4️⃣ Cargar cliente (vía contrato o directo)
-    if (insp.contrato_id) {
-      const { data: contrato } = await supabase
-        .from("contratos")
-        .select("cliente_id")
-        .eq("id", insp.contrato_id)
-        .single();
-
-      if (contrato?.cliente_id) {
-        const { data: cli } = await supabase
-          .from("clientes")
-          .select("nombre, telefono, email")
-          .eq("id", contrato.cliente_id)
-          .single();
-        setCliente(cli || null);
-      }
-    } else if (insp.cliente_id) {
       const { data: cli } = await supabase
         .from("clientes")
-        .select("nombre, telefono, email")
-        .eq("id", insp.cliente_id)
-        .single();
-      setCliente(cli || null);
+        .select("id, nombre");
+
+      const { data: tec } = await supabase
+        .from("tecnicos")
+        .select("id, nombre");
+
+      setViviendas(viv || []);
+      setClientes(cli || []);
+      setTecnicos(tec || []);
     }
 
-    // 5️⃣ Cargar checklist del técnico
-    const { data: chk } = await supabase
-      .from("checklist_inspeccion")
-      .select("*")
-      .eq("inspeccion_id", id);
-    setChecklist(chk || []);
+    cargarDatos();
+  }, []);
 
-    // 6️⃣ Cargar fotos de la inspección
-    const { data: fts } = await supabase
-      .from("fotos_inspeccion")
-      .select("*")
-      .eq("inspeccion_id", id);
-    setFotos(fts || []);
+  // CARGAR CONTRATOS SEGÚN VIVIENDA
+  useEffect(() => {
+    async function cargarContratos() {
+      if (!form.vivienda_id) {
+        setContratos([]);
+        return;
+      }
 
-    setLoading(false);
-  }
+      const { data, error } = await supabase
+        .from("contratos")
+        .select("id, modalidad, precio, fecha_inicio, estado, tecnico_id")
+        .eq("vivienda_id", form.vivienda_id);
 
-  // ⭐ ACCIÓN DEL ADMIN: Aprobar trabajo del técnico
-  async function aprobarInspeccionAdmin() {
-    setProcesando(true);
+      if (!error) setContratos(data || []);
+      else console.error("Error cargando contratos:", error);
+    }
+
+    cargarContratos();
+  }, [form.vivienda_id]);
+
+  // CREAR INSPECCIÓN
+  async function crear() {
     setMensaje("");
 
-    const { error } = await supabase
-      .from("inspecciones")
-      .update({
-        estado: "completada_admin",
-        fecha_aprobacion_admin: new Date().toISOString(),
-      })
-      .eq("id", id);
+    try {
+      const vivienda = viviendas.find((v) => String(v.id) === String(form.vivienda_id));
 
-    if (error) {
-      setMensaje("Error al aprobar la inspección: " + error.message);
-      setProcesando(false);
-      return;
+      if (!vivienda) {
+        setMensaje("Selecciona una vivienda válida.");
+        return;
+      }
+
+      if (!form.cliente_id) {
+        setMensaje("Selecciona un cliente.");
+        return;
+      }
+
+      if (!form.contrato_id) {
+        setMensaje("Selecciona un contrato.");
+        return;
+      }
+
+      const { data: contratoData } = await supabase
+        .from("contratos")
+        .select("id, tecnico_id")
+        .eq("id", form.contrato_id)
+        .maybeSingle();
+
+      const tecnicoFinal = form.tecnico_id || contratoData?.tecnico_id || null;
+
+      if (!tecnicoFinal) {
+        setMensaje("Selecciona un técnico.");
+        return;
+      }
+
+      if (!form.fecha) {
+        setMensaje("Selecciona una fecha.");
+        return;
+      }
+
+      const nuevaInspeccion = {
+        vivienda_id: vivienda.id,
+        cliente_id: form.cliente_id,
+        contrato_id: form.contrato_id,
+        tecnico_id: tecnicoFinal,
+        fecha: form.fecha,
+        estado: "pendiente",
+        notas: form.notas,
+        origen: "app",
+        alerta: alerta, // 🔥 NUEVO
+      };
+
+      const { data: insp, error } = await supabase
+        .from("inspecciones")
+        .insert([nuevaInspeccion])
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error detallado Supabase:", error);
+        setMensaje(`Error Supabase: ${error.message}`);
+        return;
+      }
+
+      if (!insp) {
+        setMensaje("Error: No se pudo obtener el ID de la inspección creada.");
+        return;
+      }
+
+      // 🔥 LISTA DE TAREAS REAL DE COASTGUARD
+      const plantillaCompleta = [
+        "Puerta principal cerrada y asegurada",
+        "Cerraduras sin daños",
+        "Ventanas cerradas correctamente",
+        "Persianas bajadas o en posición segura",
+        "Rejas exteriores sin daños",
+        "Sistema de alarma activo",
+        "Sensores de movimiento operativos",
+
+        "Humedades en paredes",
+        "Humedades en techos",
+        "Grifos sin goteos",
+        "Llaves de paso funcionando",
+        "Fugas visibles",
+        "Presión de agua correcta",
+        "Cisterna funcionando",
+
+        "Cuadro eléctrico sin disparos",
+        "Luces funcionando",
+        "Enchufes sin quemaduras",
+        "Electrodomésticos con corriente",
+
+        "Jardín revisado",
+        "Piscina nivel correcto",
+        "Bomba de piscina operativa",
+        "Accesos exteriores revisados",
+
+        "Ausencia de insectos",
+        "Ausencia de roedores",
+
+        "Limpieza ligera",
+        "Ausencia de basura",
+        "Cristales sin roturas",
+        "Mobiliario sin daños"
+      ];
+
+      const checklistItems = plantillaCompleta.map((texto) => ({
+        inspeccion_id: insp.id,
+        item: texto,
+        completado: false,
+      }));
+
+      await supabase.from("checklist_inspeccion").insert(checklistItems);
+
+      setMensaje("Inspección creada correctamente.");
+      navigate(`/inspecciones/${insp.id}`);
+    } catch (e) {
+      console.error(e);
+      setMensaje(`Error inesperado: ${e.message}`);
     }
-
-    setMensaje("¡Inspección aprobada con éxito! Lista para el cliente.");
-    setProcesando(false);
-    cargarDatosInspeccion();
-  }
-
-  if (loading) {
-    return (
-      <Menu>
-        <div
-          style={{
-            height: "100vh",
-            background: "#0a0f1a",
-            color: "#fff",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            fontFamily: "Inter, sans-serif",
-            fontSize: "18px",
-          }}
-        >
-          Cargando revisión del administrador...
-        </div>
-      </Menu>
-    );
   }
 
   return (
     <Menu>
-      <div
-        style={{
-          padding: "20px",
-          background: "#0a0f1a",
-          minHeight: "100vh",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <h1
-          style={{
-            color: "#4db8ff",
-            marginBottom: "20px",
-            fontSize: "26px",
-            fontWeight: "700",
-            textAlign: "center",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
-          Revisión Admin — Inspección #{inspeccion.id}
+      <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff" }}>
+        <h1 style={{ color: "#4db8ff", marginBottom: "25px", fontSize: "28px", fontWeight: "700" }}>
+          Nueva Inspección
         </h1>
 
-        {mensaje && (
-          <div
-            style={{
-              marginBottom: "20px",
-              padding: "12px",
-              background: mensaje.includes("éxito")
-                ? "rgba(74, 222, 128, 0.15)"
-                : "rgba(255, 107, 107, 0.15)",
-              border: `1px solid ${mensaje.includes("éxito") ? "#4ade80" : "#ff6b6b"}`,
-              borderRadius: "10px",
-              color: mensaje.includes("éxito") ? "#4ade80" : "#ff6b6b",
-              fontWeight: "600",
-              textAlign: "center",
+        {mensaje && <p style={{ marginBottom: "15px", color: "#ff6b6b", fontWeight: "600" }}>{mensaje}</p>}
+
+        <div style={{ background: "rgba(255,255,255,0.05)", padding: "20px", borderRadius: "14px" }}>
+
+          {/* SELECT VIVIENDA */}
+          <label>Vivienda</label>
+          <select
+            value={form.vivienda_id}
+            onChange={(e) => {
+              const viviendaId = e.target.value;
+              const viviendaSel = viviendas.find(v => String(v.id) === viviendaId);
+              setForm({
+                ...form,
+                vivienda_id: viviendaId,
+                cliente_id: viviendaSel?.cliente_id || "",
+              });
             }}
+            style={selectStyle}
           >
-            {mensaje}
-          </div>
-        )}
+            <option value="">Selecciona una vivienda</option>
+            {viviendas.map((v) => (
+              <option key={v.id} value={v.id}>{v.direccion}</option>
+            ))}
+          </select>
 
-        {/* ESTADO ACTUAL Y BOTÓN DE APROBACIÓN */}
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            marginBottom: "25px",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-          }}
-        >
-          <p style={{ fontSize: "16px", marginBottom: "10px" }}>
-            <strong style={{ color: "#4db8ff" }}>Estado del Proceso:</strong>{" "}
-            <span
-              style={{
-                padding: "4px 10px",
-                borderRadius: "6px",
-                background:
-                  inspeccion.estado === "completada_admin"
-                    ? "#4ade80"
-                    : "#ffcc00",
-                color: "#000",
-                fontWeight: "700",
-                fontSize: "14px",
-              }}
-            >
-              {inspeccion.estado}
-            </span>
-          </p>
-
-          <p>
-            <strong style={{ color: "#4db8ff" }}>Técnico a cargo:</strong>{" "}
-            {tecnico ? `${tecnico.nombre} (${tecnico.telefono || tecno.email})` : "Sin asignar"}
-          </p>
-          <p>
-            <strong style={{ color: "#4db8ff" }}>Vivienda:</strong>{" "}
-            {vivienda ? `${vivienda.direccion}, ${vivienda.ciudad}` : "No especificada"}
-          </p>
-          <p>
-            <strong style={{ color: "#4db8ff" }}>Cliente:</strong>{" "}
-            {cliente ? `${cliente.nombre} (${cliente.telefono || cliente.email})` : "Sin cliente asociado"}
-          </p>
-
-          <div style={{ marginTop: "15px" }}>
-            <strong style={{ color: "#4db8ff" }}>Notas del técnico:</strong>
-            <p
-              style={{
-                marginTop: "5px",
-                padding: "10px",
-                background: "rgba(0,0,0,0.3)",
-                borderRadius: "8px",
-                fontStyle: "italic",
-              }}
-            >
-              {inspeccion.notas_tecnico || "El técnico no dejó notas adicionales."}
-            </p>
-          </div>
-
-          {/* BOTÓN DE VALIDACIÓN DE ADMIN */}
-          {inspeccion.estado !== "completada_admin" ? (
-            <button
-              onClick={aprobarInspeccionAdmin}
-              disabled={procesando}
-              style={{
-                marginTop: "20px",
-                padding: "14px",
-                width: "100%",
-                background: "#4ade80",
-                color: "#000",
-                borderRadius: "10px",
-                border: "none",
-                fontWeight: "700",
-                fontSize: "17px",
-                cursor: procesando ? "not-allowed" : "pointer",
-                boxShadow: "0 0 10px rgba(74,222,128,0.4)",
-              }}
-            >
-              {procesando ? "Aprobando..." : "✅ Aprobar trabajo y habilitar para cliente"}
-            </button>
-          ) : (
-            <div
-              style={{
-                marginTop: "20px",
-                padding: "12px",
-                background: "rgba(74, 222, 128, 0.2)",
-                border: "1px solid #4ade80",
-                borderRadius: "10px",
-                textAlign: "center",
-                color: "#4ade80",
-                fontWeight: "700",
-              }}
-            >
-              ✔ Inspección aprobada por el administrador.
-            </div>
-          )}
-        </div>
-
-        {/* CHECKLIST REALIZADO POR EL TÉCNICO */}
-        <div style={{ marginBottom: "25px" }}>
-          <h2 style={{ color: "#4db8ff", fontSize: "20px", marginBottom: "12px" }}>
-            Checklist Realizado ({checklist.length} puntos)
-          </h2>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              padding: "15px",
-              borderRadius: "12px",
-              border: "1px solid rgba(255,255,255,0.08)",
-              maxHeight: "300px",
-              overflowY: "auto",
-            }}
+          {/* SELECT CLIENTE */}
+          <label>Cliente</label>
+          <select
+            value={form.cliente_id}
+            onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+            style={selectStyle}
           >
-            {checklist.length === 0 ? (
-              <p style={{ opacity: 0.7 }}>No hay elementos en el checklist.</p>
-            ) : (
-              checklist.map((item, index) => (
-                <div
-                  key={item.id || index}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "8px 0",
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
-                  }}
-                >
-                  <span style={{ fontSize: "14px" }}>
-                    {index + 1}. {item.item || item.pregunta}
-                  </span>
-                  <span
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                      fontWeight: "700",
-                      background:
-                        item.estado === "ok" || item.completado === true
-                          ? "#2ecc71"
-                          : "#e74c3c",
-                      color: "#fff",
-                    }}
-                  >
-                    {item.estado ? item.estado.toUpperCase() : item.completado ? "OK" : "KO"}
-                  </span>
-                </div>
-              ))
-            )}
+            <option value="">Selecciona un cliente</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>{c.nombre}</option>
+            ))}
+          </select>
+
+          {/* SELECT CONTRATO */}
+          <label>Contrato</label>
+          <select
+            value={form.contrato_id}
+            onChange={(e) => setForm({ ...form, contrato_id: e.target.value })}
+            style={selectStyle}
+          >
+            <option value="">Selecciona un contrato</option>
+            {contratos.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.modalidad} — {c.precio}€ — {c.fecha_inicio} — {c.estado}
+              </option>
+            ))}
+          </select>
+
+          {/* SELECT TÉCNICO */}
+          <label>Técnico</label>
+          <select
+            value={form.tecnico_id}
+            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+            style={selectStyle}
+          >
+            <option value="">Selecciona un técnico</option>
+            {tecnicos.map((t) => (
+              <option key={t.id} value={t.id}>{t.nombre}</option>
+            ))}
+          </select>
+
+          {/* FECHA */}
+          <label>Fecha</label>
+          <input
+            type="date"
+            value={form.fecha}
+            onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+            style={selectStyle}
+          />
+
+          {/* NOTAS */}
+          <label>Notas</label>
+          <textarea
+            value={form.notas}
+            onChange={(e) => setForm({ ...form, notas: e.target.value })}
+            style={{ ...selectStyle, minHeight: "100px" }}
+          />
+
+          {/* 🔥 BOTÓN ALERTA */}
+          <label style={{ marginTop: "10px", fontWeight: "600" }}>Marcar como ALERTA / Incidencia</label>
+          <div style={{ marginBottom: "15px" }}>
+            <input
+              type="checkbox"
+              checked={alerta}
+              onChange={(e) => setAlerta(e.target.checked)}
+              style={{ marginRight: "10px" }}
+            />
+            <span>Esta inspección contiene una incidencia importante</span>
           </div>
-        </div>
 
-        {/* FOTOS SUBIDAS POR EL TÉCNICO */}
-        <div style={{ marginBottom: "25px" }}>
-          <h2 style={{ color: "#4db8ff", fontSize: "20px", marginBottom: "12px" }}>
-            Evidencias Fotográficas ({fotos.length})
-          </h2>
-          {fotos.length === 0 ? (
-            <p style={{ opacity: 0.7 }}>No hay fotos registradas.</p>
-          ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-                gap: "10px",
-              }}
-            >
-              {fotos.map((foto) => (
-                <div
-                  key={foto.id}
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    padding: "8px",
-                    borderRadius: "10px",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <img
-                    src={foto.url}
-                    alt="Evidencia"
-                    style={{
-                      width: "100%",
-                      height: "120px",
-                      objectFit: "cover",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ACCIONES DE CIERRE / PDF / CLIENTE */}
-        <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+          {/* BOTÓN CREAR */}
           <button
-            onClick={() => navigate(`/inspecciones/pdf/${id}`)}
+            onClick={crear}
             style={{
-              flex: 1,
+              marginTop: "20px",
               padding: "14px",
+              width: "100%",
               background: "#4db8ff",
               color: "#000",
               borderRadius: "10px",
               border: "none",
               fontWeight: "700",
-              fontSize: "16px",
+              fontSize: "17px",
               cursor: "pointer",
             }}
           >
-            📄 Generar / Ver PDF
-          </button>
-
-          <button
-            onClick={() => navigate("/inspecciones")}
-            style={{
-              flex: 1,
-              padding: "14px",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-              borderRadius: "10px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              fontWeight: "700",
-              fontSize: "16px",
-              cursor: "pointer",
-            }}
-          >
-            Volver al listado
+            Crear inspección
           </button>
         </div>
       </div>
     </Menu>
   );
 }
+
+const selectStyle = {
+  padding: "12px",
+  width: "100%",
+  marginBottom: "15px",
+  borderRadius: "10px",
+  border: "1px solid rgba(255,255,255,0.2)",
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+};
