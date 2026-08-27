@@ -14,20 +14,31 @@ export default function Register() {
   const navigate = useNavigate();
   const { changeLanguage } = useLanguage();
 
-  // 🛡️ Función auxiliar para asegurar que el error siempre sea texto plano
+  // 🛡️ Filtro blindado para evitar que un objeto vacío muestre "{}"
   const handleError = (err, customPrefix = "") => {
+    let msg = "";
+
     if (!err) {
-      setErrorMsg(customPrefix || "Error desconocido");
-      return;
-    }
-    if (typeof err === "string") {
-      setErrorMsg(customPrefix ? `${customPrefix}: ${err}` : err);
+      msg = "Error desconocido";
+    } else if (typeof err === "string") {
+      msg = err;
     } else if (err.message) {
-      setErrorMsg(customPrefix ? `${customPrefix}: ${err.message}` : err.message);
+      msg = err.message;
     } else {
-      const stringified = JSON.stringify(err);
-      setErrorMsg(customPrefix ? `${customPrefix}: ${stringified}` : stringified);
+      try {
+        const stringified = JSON.stringify(err);
+        if (stringified && stringified !== "{}" && stringified !== "[]") {
+          msg = stringified;
+        }
+      } catch (e) {}
     }
+
+    // Si sigue vacío o es el objeto "{}" de Supabase, ponemos un mensaje descriptivo
+    if (!msg || msg === "{}") {
+      msg = "Error de conexión con el servidor o credenciales inválidas";
+    }
+
+    setErrorMsg(customPrefix ? `${customPrefix}: ${msg}` : msg);
   };
 
   const handleRegister = async () => {
@@ -58,10 +69,10 @@ export default function Register() {
       return;
     }
 
-    const user = data.user;
+    const user = data?.user;
 
     if (!user) {
-      setErrorMsg("Error inesperado creando usuario");
+      setErrorMsg("Error inesperado creando usuario (sin datos de usuario)");
       setLoading(false);
       return;
     }
@@ -75,7 +86,7 @@ export default function Register() {
       console.error("Error creando perfil:", perfilError);
     }
 
-    // 3️⃣ Gestionar la tabla 'clientes' de forma segura sin romper la Foreign Key
+    // 3️⃣ Gestionar la tabla 'clientes' de forma segura
     const { data: clienteExistente } = await supabase
       .from("clientes")
       .select("id")
@@ -91,7 +102,6 @@ export default function Register() {
         });
 
       if (crearClienteError) {
-        console.error("Error creando cliente con idioma:", crearClienteError);
         handleError(crearClienteError, "Error DB (Crear)");
         setLoading(false);
         return;
@@ -166,7 +176,7 @@ export default function Register() {
               wordBreak: "break-word"
             }}
           >
-            {typeof errorMsg === "string" ? errorMsg : JSON.stringify(errorMsg)}
+            {errorMsg}
           </div>
         )}
 
