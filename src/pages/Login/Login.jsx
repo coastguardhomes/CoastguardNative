@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
-import { useLanguage } from "../../context/LanguageContext.jsx";
 import logo from "../../assets/logo.jpeg"; 
 
 const COLOR_DORADO = "#e0b034";
@@ -9,7 +8,6 @@ const FONDO_GRADIENTE = "radial-gradient(circle at top, #1a1f26 0%, #030509 100%
 const BORDE_DORADO_LUJO = "1px solid rgba(224, 176, 52, 0.35)";
 
 export default function Login() {
-  const { t, changeLanguage, language } = useLanguage(); // Asegúrate de extraer 'language' si tu contexto lo provee, o usa un estado local
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,7 +27,6 @@ export default function Login() {
       .maybeSingle();
 
     if (clienteData && clienteData.idioma) {
-      changeLanguage(clienteData.idioma);
       localStorage.setItem("app_idioma", clienteData.idioma);
     }
 
@@ -39,7 +36,7 @@ export default function Login() {
       case "admin": navigate("/admin/dashboard", { replace: true }); break;
       case "cliente": navigate("/cliente", { replace: true }); break;
       case "tecnico": navigate("/tecnico", { replace: true }); break;
-      default: setErrorMsg(t("loginSinRol"));
+      default: setErrorMsg("Rol de usuario no válido o sin permisos.");
     }
   }
 
@@ -93,32 +90,6 @@ export default function Login() {
         boxSizing: "border-box"
       }}>
         
-        {/* ⭐ Selector de idioma directo en el Login */}
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "10px" }}>
-          <select 
-            value={language || localStorage.getItem("app_idioma") || "es"}
-            onChange={(e) => {
-              changeLanguage(e.target.value);
-              localStorage.setItem("app_idioma", e.target.value);
-            }}
-            style={{
-              background: "rgba(11, 19, 32, 0.9)",
-              border: BORDE_DORADO_LUJO,
-              color: COLOR_DORADO,
-              padding: "4px 8px",
-              borderRadius: "8px",
-              fontSize: "11px",
-              fontWeight: "700",
-              cursor: "pointer",
-              outline: "none"
-            }}
-          >
-            <option value="es" style={{ background: "#030509", color: "#fff" }}>🇪🇸 Español</option>
-            <option value="en" style={{ background: "#030509", color: "#fff" }}>🇬🇧 English</option>
-            <option value="fr" style={{ background: "#030509", color: "#fff" }}>🇫🇷 Français</option>
-          </select>
-        </div>
-
         <div style={{ 
             width: "110px", 
             height: "110px", 
@@ -145,7 +116,7 @@ export default function Login() {
         </div>
 
         <p style={{ textAlign: "center", color: "#ccc", fontSize: "13px", marginBottom: "22px", fontWeight: "400" }}>
-          {t("loginSubtitle")}
+          Inicia sesión en tu cuenta
         </p>
 
         {errorMsg && (
@@ -156,7 +127,7 @@ export default function Login() {
 
         <input 
           type="email" 
-          placeholder={t("email")} 
+          placeholder="Correo electrónico" 
           value={email} 
           onChange={(e) => setEmail(e.target.value)} 
           style={{ 
@@ -175,7 +146,7 @@ export default function Login() {
 
         <input 
           type="password" 
-          placeholder={t("password")} 
+          placeholder="Contraseña" 
           value={password} 
           onChange={(e) => setPassword(e.target.value)} 
           style={{ 
@@ -211,7 +182,7 @@ export default function Login() {
             boxSizing: "border-box" 
           }}
         >
-          {loading ? t("loggingIn") : t("login")}
+          {loading ? "Iniciando sesión..." : "Iniciar sesión"}
         </button>
 
         <button 
@@ -228,7 +199,7 @@ export default function Login() {
             textDecoration: "underline" 
           }}
         >
-          {t("register")}
+          ¿No tienes cuenta? Regístrate
         </button>
       </div>
     </div>
