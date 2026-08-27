@@ -14,7 +14,6 @@ export default function DetalleInspeccion() {
   const [fotos, setFotos] = useState([]);
   const [firma, setFirma] = useState(null);
 
-  // Estados relacionados
   const [cliente, setCliente] = useState(null);
   const [vivienda, setVivienda] = useState(null);
   const [tecnico, setTecnico] = useState(null);
@@ -95,23 +94,22 @@ export default function DetalleInspeccion() {
           setContrato(cont);
         }
 
-        // 6️⃣ Cargar checklist para auditoría del admin
+        // 6️⃣ Cargar checklist
         const { data: chk } = await supabase
           .from("checklist_inspeccion")
           .select("*")
           .eq("inspeccion_id", id);
         setChecklist(chk || []);
 
-        // 7️⃣ Cargar fotos de forma segura
+        // 7️⃣ Cargar fotos
         try {
           const fotosCargadas = await cargarFotosInspeccion(id);
           setFotos(fotosCargadas || []);
-        } catch (errFoto) {
-          console.warn("Error cargando fotos:", errFoto);
+        } catch {
           setFotos([]);
         }
 
-        // 8️⃣ Cargar firma de forma segura
+        // 8️⃣ Cargar firma
         try {
           const { data: firmas } = await supabase
             .from("firmas_inspeccion")
@@ -120,18 +118,14 @@ export default function DetalleInspeccion() {
             .limit(1);
 
           setFirma(firmas?.[0]?.url || null);
-        } catch (errFirma) {
-          console.warn("Error cargando firma:", errFirma);
+        } catch {
           setFirma(null);
         }
 
-      } catch (errGeneral) {
-        console.error("Error crítico cargando detalle de inspección:", errGeneral);
+      } catch {
         setError("Error al cargar los datos de la inspección.");
       } finally {
-        if (!cancelado) {
-          setCargando(false);
-        }
+        if (!cancelado) setCargando(false);
       }
     }
 
@@ -158,7 +152,6 @@ export default function DetalleInspeccion() {
     }
   }
 
-  // ⭐ ACCIÓN DE APROBACIÓN DEL ADMIN
   async function aprobarInspeccionAdmin() {
     setAprobando(true);
     setMensaje("");
@@ -179,7 +172,7 @@ export default function DetalleInspeccion() {
     }
 
     setInspeccion((prev) => ({ ...prev, estado: "completada_admin" }));
-    setMensaje("¡Inspección aprobada con éxito! Ya se puede generar el PDF para el cliente.");
+    setMensaje("¡Inspección aprobada con éxito!");
     setAprobando(false);
   }
 
@@ -204,7 +197,7 @@ export default function DetalleInspeccion() {
       }
 
       setInspeccion((prev) => ({ ...prev, pdf_url: resultado.url }));
-      setMensaje("Informe PDF generado y guardado correctamente.");
+      setMensaje("Informe PDF generado correctamente.");
       setGenerando(false);
     } catch (e) {
       setError(`No se pudo generar el informe: ${e.message}`);
@@ -224,10 +217,8 @@ export default function DetalleInspeccion() {
     return (
       <Menu>
         <div style={estilos.centrado}>
-          <div>
-            <p style={{ color: "#ff6b6b", marginBottom: "15px" }}>{error || "No se encontró la inspección."}</p>
-            <button onClick={() => navigate(-1)} style={estilos.botonSec}>Volver</button>
-          </div>
+          <p style={{ color: "#ff6b6b", marginBottom: "15px" }}>{error || "No se encontró la inspección."}</p>
+          <button onClick={() => navigate(-1)} style={estilos.botonSec}>Volver</button>
         </div>
       </Menu>
     );
@@ -240,10 +231,26 @@ export default function DetalleInspeccion() {
       <div style={estilos.pagina}>
         <h2 style={estilos.titulo}>Revisión de Inspección #{inspeccion.id}</h2>
 
+        {/* 🔥 BLOQUE DE ALERTA */}
+        {inspeccion.alerta && (
+          <div style={{
+            padding: "12px",
+            background: "rgba(255,0,0,0.25)",
+            border: "1px solid rgba(255,0,0,0.45)",
+            borderRadius: "10px",
+            marginBottom: "18px",
+            color: "#fff",
+            fontWeight: "700",
+            fontSize: "15px"
+          }}>
+            ⚠️ ALERTA marcada por el técnico: esta inspección contiene una incidencia importante.
+          </div>
+        )}
+
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
         {error && <p style={estilos.error}>{error}</p>}
 
-        {/* 🛡️ PANEL DE CONTROL Y APROBACIÓN DEL ADMIN */}
+        {/* PANEL ADMIN */}
         <div style={estilos.tarjetaAdmin}>
           <h3 style={{ color: "#4db8ff", marginBottom: "10px", fontSize: "18px" }}>
             Panel de Validación del Administrador
@@ -273,7 +280,7 @@ export default function DetalleInspeccion() {
           )}
         </div>
 
-        {/* 🔥 TARJETA DATOS GENERALES */}
+        {/* DATOS GENERALES */}
         <div style={estilos.tarjeta}>
           <Dato clave="Fecha" valor={String(inspeccion.fecha || "").slice(0, 10)} />
           <Dato clave="Cliente" valor={cliente?.nombre} />
@@ -288,7 +295,7 @@ export default function DetalleInspeccion() {
           {inspeccion.observaciones && <Dato clave="Notas del técnico" valor={inspeccion.observaciones} />}
         </div>
 
-        {/* ACCIÓN PDF */}
+        {/* PDF */}
         <button
           onClick={generarInforme}
           disabled={generando}
@@ -309,6 +316,7 @@ export default function DetalleInspeccion() {
           </button>
         )}
 
+        {/* ACCIONES */}
         <div style={estilos.acciones}>
           <button
             onClick={() => navigate(`/inspecciones/fotos/${inspeccion.id}`)}
@@ -335,7 +343,7 @@ export default function DetalleInspeccion() {
 }
 
 function Dato({ clave, valor }) {
-  if (valor === undefined || valor === null || valor === "") return null;
+  if (!valor) return null;
   return (
     <div style={estilos.fila}>
       <span style={estilos.clave}>{clave}</span>
