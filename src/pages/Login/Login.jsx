@@ -46,12 +46,24 @@ export default function Login() {
   const handleLogin = async () => {
     if (!email || !password) return;
     setLoading(true);
+    setErrorMsg("");
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error || !data.session) { setErrorMsg(t("loginError")); setLoading(false); return; }
+      if (error) { 
+        setErrorMsg(error.message || JSON.stringify(error)); 
+        setLoading(false); 
+        return; 
+      }
+      if (!data.session) { 
+        setErrorMsg("No se pudo iniciar sesión, sesión no encontrada."); 
+        setLoading(false); 
+        return; 
+      }
       
       await redirigirSegunRol(data.session.user.id);
-    } catch (e) { setErrorMsg(t("loginError")); }
+    } catch (e) { 
+      setErrorMsg(e?.message || String(e)); 
+    }
     setLoading(false);
   };
 
@@ -137,7 +149,7 @@ export default function Login() {
         </p>
 
         {errorMsg && (
-          <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.4)", padding: "10px", borderRadius: "10px", color: "#ef4444", marginBottom: "16px", textAlign: "center", fontSize: "12px", fontWeight: "700" }}>
+          <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.4)", padding: "10px", borderRadius: "10px", color: "#ef4444", marginBottom: "16px", textAlign: "center", fontSize: "12px", fontWeight: "700", wordBreak: "break-word" }}>
             {errorMsg}
           </div>
         )}
