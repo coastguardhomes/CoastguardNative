@@ -40,7 +40,7 @@ export default function Extras() {
 
   const [clientes, setClientes] = useState([]);
   const [clienteId, setClienteId] = useState("");
-  
+
   // Estados para automatización de inspecciones
   const [viviendas, setViviendas] = useState([]);
   const [tecnicos, setTecnicos] = useState([]);
@@ -54,6 +54,9 @@ export default function Extras() {
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(true);
+
+  // ⭐ NUEVO: alerta para inspecciones extra
+  const [alertaExtra, setAlertaExtra] = useState(false);
 
   // Cargar Clientes y Técnicos al montar
   useEffect(() => {
@@ -217,7 +220,7 @@ export default function Extras() {
         return;
       }
 
-      // AUTOMATIZACIÓN: Si es inspección, crear registro automático para la app del técnico
+      // ⭐ AUTOMATIZACIÓN: Si es inspección, crear registro automático para la app del técnico
       let avisoInspeccion = "";
       if (esInspeccion) {
         const { error: errorInspeccion } = await supabase.from("inspecciones").insert({
@@ -226,6 +229,11 @@ export default function Extras() {
           tecnico_id: tecnicoId,
           estado: "pendiente",
           fecha: new Date().toISOString(),
+
+          // ⭐ AÑADIDO: ALERTA EN INSPECCIÓN EXTRA
+          alerta: alertaExtra,
+          alerta_vista: false,
+
           notas: `Generado automáticamente desde Factura ${factura.numero}`
         });
 
@@ -279,6 +287,8 @@ export default function Extras() {
       setPrecios({});
       setViviendaId("");
       setTecnicoId("");
+      setAlertaExtra(false);
+
       setMensaje(
         `Factura ${factura.numero} creada correctamente (${total} €).${avisoInspeccion}${avisoPdf}`
       );
@@ -357,6 +367,19 @@ export default function Extras() {
               )}
             </div>
           ))}
+
+          {/* ⭐ ALERTA EN EXTRAS */}
+          <div style={{ marginTop: 20 }}>
+            <label style={estilos.check}>
+              <input
+                type="checkbox"
+                checked={alertaExtra}
+                onChange={(e) => setAlertaExtra(e.target.checked)}
+                style={estilos.checkbox}
+              />
+              <span>Marcar como ALERTA / Incidencia importante</span>
+            </label>
+          </div>
         </div>
 
         {/* Sección condicional para la automatización de inspecciones */}
@@ -469,100 +492,3 @@ const estilos = {
   },
   subtitulo: { opacity: 0.7, fontSize: 14, marginBottom: 20 },
   tarjeta: {
-    background: "rgba(255,255,255,0.05)",
-    padding: 20,
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.1)",
-    boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-    marginBottom: 16
-  },
-  etiqueta: {
-    display: "block",
-    fontSize: 13,
-    color: "#9fb3c8",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.5
-  },
-  select: {
-    width: "100%",
-    padding: 12,
-    borderRadius: 8,
-    border: "1px solid rgba(255,255,255,0.2)",
-    background: "#132033",
-    color: "#fff",
-    fontSize: 15
-  },
-  check: {
-    display: "flex",
-    alignItems: "center",
-    fontSize: 16,
-    cursor: "pointer"
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    marginRight: 12,
-    cursor: "pointer",
-    accentColor: "#4db8ff"
-  },
-  input: {
-    padding: 12,
-    width: "100%",
-    borderRadius: 8,
-    border: "1px solid rgba(255,255,255,0.2)",
-    background: "rgba(255,255,255,0.08)",
-    color: "#fff",
-    marginTop: 10,
-    fontSize: 15
-  },
-  fila: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "8px 0"
-  },
-  boton: {
-    width: "100%",
-    padding: 14,
-    background: "#4db8ff",
-    color: "#000",
-    borderRadius: 8,
-    border: "none",
-    fontWeight: 700,
-    fontSize: 16,
-    cursor: "pointer",
-    boxShadow: "0 0 10px rgba(0,153,255,0.4)"
-  },
-  botonSec: {
-    width: "100%",
-    marginTop: 10,
-    padding: 13,
-    background: "transparent",
-    color: "#4db8ff",
-    borderRadius: 8,
-    border: "1px solid rgba(77,184,255,0.45)",
-    fontWeight: 600,
-    fontSize: 15,
-    cursor: "pointer"
-  },
-  ok: {
-    marginBottom: 15,
-    color: "#4ade80",
-    fontWeight: 600,
-    background: "rgba(74,222,128,0.1)",
-    border: "1px solid rgba(74,222,128,0.35)",
-    borderRadius: 8,
-    padding: 12
-  },
-  error: {
-    marginBottom: 15,
-    color: "#ff6b6b",
-    fontWeight: 600,
-    background: "rgba(255,107,107,0.1)",
-    border: "1px solid rgba(255,107,107,0.35)",
-    borderRadius: 8,
-    padding: 12
-  },
-  aviso: { marginTop: 10, color: "#ffc861", fontSize: 13.5 }
-};
