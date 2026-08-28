@@ -51,6 +51,14 @@ export default function DetalleInspeccion() {
 
         setInspeccion(insp);
 
+        // ⭐ Marcar automáticamente la alerta como vista cuando el cliente la abre
+        if (insp.alerta && !insp.alerta_vista) {
+          await supabase
+            .from("inspecciones")
+            .update({ alerta_vista: true })
+            .eq("id", id);
+        }
+
         // 2️⃣ Cargar vivienda
         if (insp.vivienda_id) {
           const { data: viv } = await supabase
