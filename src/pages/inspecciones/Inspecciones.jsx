@@ -16,17 +16,10 @@ export default function Inspecciones() {
   async function cargarInspecciones() {
     setLoading(true);
     try {
+      // 1. Cargamos las inspecciones de forma independiente
       const { data, error } = await supabase
         .from("inspecciones")
-        .select(`
-          *,
-          viviendas!vivienda_id (
-            direccion,
-            ciudad,
-            localidad,
-            alias
-          )
-        `)
+        .select("*")
         .order("fecha", { ascending: true });
 
       if (error) {
@@ -35,7 +28,34 @@ export default function Inspecciones() {
         return;
       }
 
-      setInspecciones(data || []);
+      let listaInspecciones = data || [];
+
+      // 2. Buscamos las viviendas asociadas por separado para evitar errores de embedding
+      if (listaInspecciones.length > 0) {
+        const viviendaIds = [...new Set(listaInspecciones.map(i => i.vivienda_id).filter(Boolean))];
+
+        let viviendasMap = {};
+        if (viviendaIds.length > 0) {
+          const { data: dataViviendas } = await supabase
+            .from("viviendas")
+            .select("id, direccion, ciudad, localidad, alias")
+            .in("id", viviendaIds);
+
+          if (dataViviendas) {
+            viviendasMap = dataViviendas.reduce((acc, viv) => {
+              acc[viv.id] = viv;
+              return acc;
+            }, {});
+          }
+        }
+
+        listaInspecciones = listaInspecciones.map(item => ({
+          ...item,
+          viviendas: viviendasMap[item.vivienda_id] || null
+        }));
+      }
+
+      setInspecciones(listaInspecciones);
     } catch {
       setErrorMsg("Error conectando con el servidor.");
     } finally {
