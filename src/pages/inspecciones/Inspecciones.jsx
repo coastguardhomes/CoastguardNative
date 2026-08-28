@@ -16,10 +16,17 @@ export default function Inspecciones() {
   async function cargarInspecciones() {
     setLoading(true);
     try {
-      // 1. Cargamos las inspecciones de forma independiente
+      // Usamos la relación nativa indicando explícitamente !vivienda_id para evitar ambigüedades
       const { data, error } = await supabase
         .from("inspecciones")
-        .select("*")
+        .select(`
+          *,
+          viviendas!vivienda_id (
+            direccion,
+            ciudad,
+            localidad
+          )
+        `)
         .order("fecha", { ascending: true });
 
       if (error) {
@@ -28,34 +35,7 @@ export default function Inspecciones() {
         return;
       }
 
-      let listaInspecciones = data || [];
-
-      // 2. Buscamos las viviendas asociadas por separado para evitar errores de embedding
-      if (listaInspecciones.length > 0) {
-        const viviendaIds = [...new Set(listaInspecciones.map(i => i.vivienda_id).filter(Boolean))];
-
-        let viviendasMap = {};
-        if (viviendaIds.length > 0) {
-          const { data: dataViviendas } = await supabase
-            .from("viviendas")
-            .select("id, direccion, ciudad, localidad, alias")
-            .in("id", viviendaIds);
-
-          if (dataViviendas) {
-            viviendasMap = dataViviendas.reduce((acc, viv) => {
-              acc[viv.id] = viv;
-              return acc;
-            }, {});
-          }
-        }
-
-        listaInspecciones = listaInspecciones.map(item => ({
-          ...item,
-          viviendas: viviendasMap[item.vivienda_id] || null
-        }));
-      }
-
-      setInspecciones(listaInspecciones);
+      setInspecciones(data || []);
     } catch {
       setErrorMsg("Error conectando con el servidor.");
     } finally {
@@ -89,12 +69,12 @@ export default function Inspecciones() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             {inspecciones.map((insp, index) => {
-              const direccionReal = insp.viviendas?.direccion || insp.viviendas?.alias || insp.direccion || "Dirección no especificada";
-              const localidadReal = insp.viviendas?.ciudad || insp.viviendas?.localidad || insp.localidad || "No especificada";
+              const direccionReal = insp.viviendas?.direccion || "Dirección no especificada";
+              const localidadReal = insp.viviendas?.ciudad || insp.viviendas?.localidad || "No especificada";
               const fechaFormateada = insp.fecha ? String(insp.fecha).slice(0, 10) : "Sin fecha";
               const numeroCorrelativo = String(index + 1).padStart(2, '0');
               
-              const titulo = direccionReal && direccionReal !== "Dirección no especificada"
+              const titulo = direccionReal !== "Dirección no especificada"
                 ? `Inspección - ${direccionReal}` 
                 : `Inspección Nº ${numeroCorrelativo}`;
 
