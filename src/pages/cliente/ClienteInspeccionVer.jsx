@@ -97,23 +97,27 @@ export default function ClienteInspeccionVer() {
           setEsExtra(true);
           fotosEncontradas = parsearFotos(dataExtra.fotos);
 
+          // Búsqueda robusta de fotos asociadas al extra en la tabla fotos
           if (fotosEncontradas.length === 0) {
             const { data: fotosTabla } = await supabase
               .from("fotos")
               .select("*")
-              .or(`extra_id.eq.${id},inspeccion_id.eq.${id}`);
+              .or(`extra_id.eq.${id},factura_id.eq.${id},inspeccion_id.eq.${id}`);
             if (fotosTabla && fotosTabla.length > 0) {
               fotosEncontradas = fotosTabla;
             }
           }
 
-          // Marcar alerta como vista en facturas si aplica
-          if (dataExtra.alerta && !dataExtra.alerta_vista) {
-            await supabase
-              .from("facturas")
-              .update({ alerta_vista: true })
-              .eq("id", id);
-          }
+          // Marcar alerta como vista en ambas tablas para limpiar el contador del dashboard
+          await supabase
+            .from("extras")
+            .update({ alerta_vista: true })
+            .eq("id", id);
+
+          await supabase
+            .from("facturas")
+            .update({ alerta_vista: true })
+            .eq("id", id);
         }
       } else {
         if (insp.fotos) {
