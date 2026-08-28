@@ -29,7 +29,6 @@ export default function ClienteDashboard() {
   const [nuevosExtras, setNuevosExtras] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Datos del gráfico traducidos dinámicamente según el idioma actual
   const datosGrafico = [
     { dia: t('lun'), inspecciones: 4 },
     { dia: t('mar'), inspecciones: 3 },
@@ -64,14 +63,34 @@ export default function ClienteDashboard() {
           const clienteId = clienteData.id;
 
           const [resInspecciones, resAlertas, resViviendas, resExtras] = await Promise.all([
-            supabase.from("inspecciones").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
-            supabase.from("alertas").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
-            supabase.from("viviendas").select("*", { count: "exact", head: true }).eq("cliente_id", clienteId),
-            supabase.from("extras").select("*").eq("cliente_id", clienteId).neq("visto", true).order("created_at", { ascending: false })
+            supabase
+              .from("inspecciones")
+              .select("*", { count: "exact", head: true })
+              .eq("cliente_id", clienteId),
+
+            // ⭐ ALERTAS REALES: inspecciones con alerta NO vistas
+            supabase
+              .from("inspecciones")
+              .select("*", { count: "exact", head: true })
+              .eq("cliente_id", clienteId)
+              .eq("alerta", true)
+              .eq("alerta_vista", false),
+
+            supabase
+              .from("viviendas")
+              .select("*", { count: "exact", head: true })
+              .eq("cliente_id", clienteId),
+
+            supabase
+              .from("extras")
+              .select("*")
+              .eq("cliente_id", clienteId)
+              .neq("visto", true)
+              .order("created_at", { ascending: false })
           ]);
 
           setNumInspecciones(resInspecciones.count || 0);
-          setNumAlertas(resAlertas.count || 0);
+          setNumAlertas(resAlertas.count || 0); // ⭐ ALERTAS REALES
           setNumViviendas(resViviendas.count || 0);
           setNuevosExtras(resExtras.data || []);
         }
@@ -178,10 +197,15 @@ export default function ClienteDashboard() {
             <span style={{ fontSize: "10px", fontWeight: "800", color: "#94a3b8", textTransform: "uppercase" }}>{t('inspecciones')}</span>
             <span style={{ fontSize: "26px", fontWeight: "900", ...TEXTO_DORADO_BRILLO }}>{numInspecciones}</span>
           </div>
+
+          {/* ⭐ ALERTAS REALES */}
           <div style={estiloTarjetaDato} onClick={() => navigate('/cliente/alertas')}>
             <span style={{ fontSize: "10px", fontWeight: "800", color: numAlertas > 0 ? "#ef4444" : "#94a3b8", textTransform: "uppercase" }}>{t('alertas')}</span>
-            <span style={{ fontSize: "26px", fontWeight: "900", color: numAlertas > 0 ? "#ef4444" : COLOR_DORADO, textShadow: numAlertas > 0 ? "0 0 10px rgba(239,68,68,0.6)" : "0 0 12px rgba(224,176,52,0.6)" }}>{numAlertas}</span>
+            <span style={{ fontSize: "26px", fontWeight: "900", color: numAlertas > 0 ? "#ef4444" : COLOR_DORADO, textShadow: numAlertas > 0 ? "0 0 10px rgba(239,68,68,0.6)" : "0 0 12px rgba(224,176,52,0.6)" }}>
+              {numAlertas}
+            </span>
           </div>
+
           <div style={estiloTarjetaDato} onClick={() => navigate('/cliente/contratos')}>
             <span style={{ fontSize: "10px", fontWeight: "800", color: "#94a3b8", textTransform: "uppercase" }}>{t('viviendas')}</span>
             <span style={{ fontSize: "26px", fontWeight: "900", ...TEXTO_DORADO_BRILLO }}>{numViviendas}</span>
