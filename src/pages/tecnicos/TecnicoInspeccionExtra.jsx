@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { supabase } from '../../lib/supabase';
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -20,6 +20,7 @@ export default function TecnicoInspeccionExtra() {
   const [descripcion, setDescripcion] = useState('');
   const [materiales, setMateriales] = useState('');
   const [tiempo, setTiempo] = useState('');
+  const [alerta, setAlerta] = useState(false);
   const [fotos, setFotos] = useState([]);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
@@ -59,6 +60,7 @@ export default function TecnicoInspeccionExtra() {
         setDescripcion(data.descripcion || data.concepto || '');
         setMateriales(data.materiales || '');
         setTiempo(data.tiempo_empleado || '');
+        setAlerta(Boolean(data.alerta));
         if (Array.isArray(data.fotos)) {
           setFotos(data.fotos);
         } else if (typeof data.fotos === 'string') {
@@ -95,7 +97,6 @@ export default function TecnicoInspeccionExtra() {
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
         const fileName = `${Date.now()}_${Math.floor(Math.random() * 1000)}_${cleanFileName}`;
 
-        // Intentar subir al bucket 'extras'
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('extras')
           .upload(fileName, file, { cacheControl: '3600', upsert: true });
@@ -141,8 +142,13 @@ export default function TecnicoInspeccionExtra() {
         materiales: materiales || null,
         tiempo_empleado: tiempo || null,
         fotos: fotos,
-        estado_tecnico: 'completado'
+        estado_tecnico: 'completado',
+        alerta: alerta,
       };
+
+      if (alerta) {
+        updatePayload.alerta_vista = false;
+      }
 
       const { error: updateError } = await supabase
         .from(origenTabla)
@@ -310,6 +316,21 @@ export default function TecnicoInspeccionExtra() {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          
+          <div style={{ background: 'rgba(11, 19, 32, 0.9)', padding: '12px 14px', borderRadius: '12px', border: BORDE_DORADO_FINO, display: 'flex', alignItems: 'center' }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', width: '100%' }}>
+              <input
+                type="checkbox"
+                checked={alerta}
+                onChange={(e) => setAlerta(e.target.checked)}
+                style={{ width: '20px', height: '20px', marginRight: '12px', cursor: 'pointer', accentColor: '#ef4444' }}
+              />
+              <span style={{ fontSize: '13px', color: '#ef4444', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                ⚠️ Marcar como ALERTA / Urgencia importante
+              </span>
+            </label>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>
               Descripción del trabajo realizado:
