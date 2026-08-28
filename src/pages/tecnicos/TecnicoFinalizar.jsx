@@ -18,6 +18,7 @@ export default function TecnicoFinalizar() {
 
   const [inspeccion, setInspeccion] = useState(null);
   const [notas, setNotas] = useState("");
+  const [alerta, setAlerta] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [exito, setExito] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -46,6 +47,7 @@ export default function TecnicoFinalizar() {
 
       setInspeccion(insp);
       setNotas(insp.notas_tecnico || insp.observaciones || "");
+      setAlerta(Boolean(insp.alerta));
     } catch {
       setMensaje("Error de conexión al cargar la inspección.");
     } finally {
@@ -64,14 +66,21 @@ export default function TecnicoFinalizar() {
     setMensaje("");
 
     try {
+      const updateData = {
+        notas_tecnico: notas,
+        observaciones: notas,
+        alerta: alerta,
+        estado: "completada_tecnico",
+        fecha_finalizacion: new Date().toISOString(),
+      };
+
+      if (alerta) {
+        updateData.alerta_vista = false;
+      }
+
       const { error } = await supabase
         .from("inspecciones")
-        .update({
-          notas_tecnico: notas,
-          observaciones: notas,
-          estado: "completada_tecnico",
-          fecha_finalizacion: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq("id", String(id));
 
       if (error) {
@@ -131,6 +140,20 @@ export default function TecnicoFinalizar() {
             </p>
           </div>
         )}
+
+        <div style={{ background: FONDO_TARJETA, padding: "14px 16px", borderRadius: "12px", border: BORDE_DORADO_FINO, marginBottom: "20px", display: "flex", alignItems: "center", boxShadow: SOMBRA_LUXURY }}>
+          <label style={{ display: "flex", alignItems: "center", cursor: "pointer", width: "100%" }}>
+            <input
+              type="checkbox"
+              checked={alerta}
+              onChange={(e) => setAlerta(e.target.checked)}
+              style={{ width: "20px", height: "20px", marginRight: "12px", cursor: "pointer", accentColor: "#ef4444" }}
+            />
+            <span style={{ fontSize: "13.5px", color: "#ef4444", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.3px" }}>
+              ⚠️ Marcar como ALERTA / Urgencia importante
+            </span>
+          </label>
+        </div>
 
         <textarea
           value={notas}
