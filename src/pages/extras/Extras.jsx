@@ -225,7 +225,7 @@ export default function Extras() {
       if (esInspeccion) {
         const { error: errorInspeccion } = await supabase.from("inspecciones").insert({
           vivienda_id: Number(viviendaId),
-          cliente_id: String(clienteId),
+          cliente_id: Number(clienteId),
           tecnico_id: tecnicoId,
           estado: "pendiente",
           fecha: new Date().toISOString(),
@@ -367,19 +367,6 @@ export default function Extras() {
               )}
             </div>
           ))}
-
-          {/* ⭐ ALERTA EN EXTRAS */}
-          <div style={{ marginTop: 20 }}>
-            <label style={estilos.check}>
-              <input
-                type="checkbox"
-                checked={alertaExtra}
-                onChange={(e) => setAlertaExtra(e.target.checked)}
-                style={estilos.checkbox}
-              />
-              <span>Marcar como ALERTA / Incidencia importante</span>
-            </label>
-          </div>
         </div>
 
         {/* Sección condicional para la automatización de inspecciones */}
@@ -421,6 +408,21 @@ export default function Extras() {
                 </option>
               ))}
             </select>
+
+            {/* ⭐ ALERTA EN EXTRAS (Movida aquí para que tenga sentido contextual) */}
+            <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+              <label style={estilos.check}>
+                <input
+                  type="checkbox"
+                  checked={alertaExtra}
+                  onChange={(e) => setAlertaExtra(e.target.checked)}
+                  style={estilos.checkbox}
+                />
+                <span style={{ fontSize: 14.5, color: "#ff6b6b", fontWeight: 600 }}>
+                  ⚠️ Marcar como ALERTA / Incidencia importante
+                </span>
+              </label>
+            </div>
           </div>
         )}
 
