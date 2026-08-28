@@ -62,7 +62,7 @@ export default function ClienteDashboard() {
         if (clienteData) {
           const clienteId = clienteData.id;
 
-          const [resInspecciones, resAlertasInsp, resAlertasExtras, resViviendas, resExtras] = await Promise.all([
+          const [resInspecciones, resAlertasInsp, resAlertasFacturas, resViviendas, resExtras] = await Promise.all([
             supabase
               .from("inspecciones")
               .select("*", { count: "exact", head: true })
@@ -76,9 +76,9 @@ export default function ClienteDashboard() {
               .eq("alerta", true)
               .eq("alerta_vista", false),
 
-            // Alertas en trabajos extras
+            // Alertas en facturas / inspecciones extra
             supabase
-              .from("extras")
+              .from("facturas")
               .select("*", { count: "exact", head: true })
               .eq("cliente_id", clienteId)
               .eq("alerta", true)
@@ -98,7 +98,7 @@ export default function ClienteDashboard() {
           ]);
 
           setNumInspecciones(resInspecciones.count || 0);
-          setNumAlertas((resAlertasInsp.count || 0) + (resAlertasExtras.count || 0));
+          setNumAlertas((resAlertasInsp.count || 0) + (resAlertasFacturas.count || 0));
           setNumViviendas(resViviendas.count || 0);
           setNuevosExtras(resExtras.data || []);
         }
@@ -114,9 +114,16 @@ export default function ClienteDashboard() {
 
   const manejarVerFactura = async (extraId) => {
     try {
+      // Marcar como visto en extras
       await supabase
         .from("extras")
-        .update({ visto: true, alerta_vista: true })
+        .update({ visto: true })
+        .eq("id", extraId);
+
+      // Limpiar también la alerta en facturas para que el contador baje inmediatamente
+      await supabase
+        .from("facturas")
+        .update({ alerta_vista: true })
         .eq("id", extraId);
 
       setNuevosExtras((prev) => prev.filter((item) => item.id !== extraId));
@@ -206,7 +213,7 @@ export default function ClienteDashboard() {
             <span style={{ fontSize: "26px", fontWeight: "900", ...TEXTO_DORADO_BRILLO }}>{numInspecciones}</span>
           </div>
 
-          {/* ALERTAS COMBINADAS (INSPECCIONES + EXTRAS) */}
+          {/* ALERTAS TOTALES (INSPECCIONES + FACTURAS) */}
           <div style={estiloTarjetaDato} onClick={() => navigate('/cliente/alertas')}>
             <span style={{ fontSize: "10px", fontWeight: "800", color: numAlertas > 0 ? "#ef4444" : "#94a3b8", textTransform: "uppercase" }}>{t('alertas')}</span>
             <span style={{ fontSize: "26px", fontWeight: "900", color: numAlertas > 0 ? "#ef4444" : COLOR_DORADO, textShadow: numAlertas > 0 ? "0 0 10px rgba(239,68,68,0.6)" : "0 0 12px rgba(224,176,52,0.6)" }}>
