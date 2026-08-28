@@ -20,7 +20,7 @@ export default function Inspecciones() {
         .from("inspecciones")
         .select(`
           *,
-          viviendas (
+          viviendas!vivienda_id (
             direccion,
             ciudad,
             localidad,
