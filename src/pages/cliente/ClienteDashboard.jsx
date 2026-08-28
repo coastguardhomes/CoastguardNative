@@ -9,7 +9,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import logoReal from "../../assets/logo.jpeg";
 
 const COLOR_DORADO = "#e0b034";
-const FONDO_PRINCIPAL = "%23030509";
+const FONDO_PRINCIPAL = "#030509";
 const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
 const FONDO_BANNER_EXTRA = "linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(11, 19, 32, 0.9) 100%)";
 const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
@@ -62,15 +62,23 @@ export default function ClienteDashboard() {
         if (clienteData) {
           const clienteId = clienteData.id;
 
-          const [resInspecciones, resAlertas, resViviendas, resExtras] = await Promise.all([
+          const [resInspecciones, resAlertasInsp, resAlertasExtras, resViviendas, resExtras] = await Promise.all([
             supabase
               .from("inspecciones")
               .select("*", { count: "exact", head: true })
               .eq("cliente_id", clienteId),
 
-            // ⭐ ALERTAS REALES: inspecciones con alerta NO vistas
+            // Alertas en inspecciones normales
             supabase
               .from("inspecciones")
+              .select("*", { count: "exact", head: true })
+              .eq("cliente_id", clienteId)
+              .eq("alerta", true)
+              .eq("alerta_vista", false),
+
+            // Alertas en trabajos extras
+            supabase
+              .from("extras")
               .select("*", { count: "exact", head: true })
               .eq("cliente_id", clienteId)
               .eq("alerta", true)
@@ -90,7 +98,7 @@ export default function ClienteDashboard() {
           ]);
 
           setNumInspecciones(resInspecciones.count || 0);
-          setNumAlertas(resAlertas.count || 0); // ⭐ ALERTAS REALES
+          setNumAlertas((resAlertasInsp.count || 0) + (resAlertasExtras.count || 0));
           setNumViviendas(resViviendas.count || 0);
           setNuevosExtras(resExtras.data || []);
         }
@@ -108,7 +116,7 @@ export default function ClienteDashboard() {
     try {
       await supabase
         .from("extras")
-        .update({ visto: true })
+        .update({ visto: true, alerta_vista: true })
         .eq("id", extraId);
 
       setNuevosExtras((prev) => prev.filter((item) => item.id !== extraId));
@@ -198,7 +206,7 @@ export default function ClienteDashboard() {
             <span style={{ fontSize: "26px", fontWeight: "900", ...TEXTO_DORADO_BRILLO }}>{numInspecciones}</span>
           </div>
 
-          {/* ⭐ ALERTAS REALES */}
+          {/* ALERTAS COMBINADAS (INSPECCIONES + EXTRAS) */}
           <div style={estiloTarjetaDato} onClick={() => navigate('/cliente/alertas')}>
             <span style={{ fontSize: "10px", fontWeight: "800", color: numAlertas > 0 ? "#ef4444" : "#94a3b8", textTransform: "uppercase" }}>{t('alertas')}</span>
             <span style={{ fontSize: "26px", fontWeight: "900", color: numAlertas > 0 ? "#ef4444" : COLOR_DORADO, textShadow: numAlertas > 0 ? "0 0 10px rgba(239,68,68,0.6)" : "0 0 12px rgba(224,176,52,0.6)" }}>
