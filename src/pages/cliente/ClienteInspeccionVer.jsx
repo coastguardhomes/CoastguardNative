@@ -106,6 +106,14 @@ export default function ClienteInspeccionVer() {
               fotosEncontradas = fotosTabla;
             }
           }
+
+          // Marcar alerta como vista en facturas si aplica
+          if (dataExtra.alerta && !dataExtra.alerta_vista) {
+            await supabase
+              .from("facturas")
+              .update({ alerta_vista: true })
+              .eq("id", id);
+          }
         }
       } else {
         if (insp.fotos) {
@@ -129,6 +137,14 @@ export default function ClienteInspeccionVer() {
             .select("*")
             .eq("inspeccion_id", String(id));
           if (fotosData) fotosEncontradas = fotosData;
+        }
+
+        // Marcar alerta como vista en inspecciones normales si aplica
+        if (insp.alerta && !insp.alerta_vista) {
+          await supabase
+            .from("inspecciones")
+            .update({ alerta_vista: true })
+            .eq("id", id);
         }
       }
 
