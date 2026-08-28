@@ -25,17 +25,20 @@ export default function NuevaInspeccion() {
   // CARGAR VIVIENDAS, CLIENTES Y TÉCNICOS
   useEffect(() => {
     async function cargarDatos() {
-      const { data: viv } = await supabase
+      const { data: viv, error: errViv } = await supabase
         .from("viviendas")
-        .select("id, direccion, cliente_id");
+        .select("id, direccion, alias, ciudad, localidad, cliente_id");
+      if (errViv) console.error("Error cargando viviendas:", errViv);
 
-      const { data: cli } = await supabase
+      const { data: cli, error: errCli } = await supabase
         .from("clientes")
         .select("id, nombre");
+      if (errCli) console.error("Error cargando clientes:", errCli);
 
-      const { data: tec } = await supabase
+      const { data: tec, error: errTec } = await supabase
         .from("tecnicos")
         .select("id, nombre");
+      if (errTec) console.error("Error cargando técnicos:", errTec);
 
       setViviendas(viv || []);
       setClientes(cli || []);
@@ -49,7 +52,7 @@ export default function NuevaInspeccion() {
   useEffect(() => {
     async function cargarContratos() {
       if (!form.vivienda_id) {
-        setContratos([]);
+        setContratosRef([]);
         return;
       }
 
@@ -64,6 +67,10 @@ export default function NuevaInspeccion() {
 
     cargarContratos();
   }, [form.vivienda_id]);
+
+  function setContratosRef(val) {
+    setContratos(val);
+  }
 
   // CREAR INSPECCIÓN
   async function crear() {
@@ -171,7 +178,7 @@ export default function NuevaInspeccion() {
       await supabase.from("checklist_inspeccion").insert(checklistItems);
 
       setMensaje("Inspección creada correctamente.");
-      navigate(`/inspecciones/${insp.id}`);
+      navigate(`/inspecciones/finalizar/${insp.id}`);
     } catch (e) {
       console.error(e);
       setMensaje(`Error inesperado: ${e.message}`);
@@ -192,47 +199,53 @@ export default function NuevaInspeccion() {
           {/* SELECT VIVIENDA */}
           <label>Vivienda</label>
           <select
-            value={form.vivienda_id}
+            value={form.vivienda_id ? String(form.vivienda_id) : ""}
             onChange={(e) => {
               const viviendaId = e.target.value;
-              const viviendaSel = viviendas.find(v => String(v.id) === viviendaId);
+              const viviendaSel = viviendas.find(v => String(v.id) === String(viviendaId));
               setForm({
                 ...form,
                 vivienda_id: viviendaId,
-                cliente_id: viviendaSel?.cliente_id || "",
+                cliente_id: viviendaSel?.cliente_id ? String(viviendaSel.cliente_id) : "",
               });
             }}
             style={selectStyle}
           >
             <option value="">Selecciona una vivienda</option>
-            {viviendas.map((v) => (
-              <option key={v.id} value={v.id}>{v.direccion}</option>
-            ))}
+            {viviendas.map((v) => {
+              const textoDir = v.direccion || v.alias || "Dirección no especificada";
+              const textoLoc = v.ciudad || v.localidad ? ` (${v.ciudad || v.localidad})` : "";
+              return (
+                <option key={v.id} value={String(v.id)}>
+                  {textoDir}{textoLoc}
+                </option>
+              );
+            })}
           </select>
 
           {/* SELECT CLIENTE */}
           <label>Cliente</label>
           <select
-            value={form.cliente_id}
+            value={form.cliente_id ? String(form.cliente_id) : ""}
             onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
             style={selectStyle}
           >
             <option value="">Selecciona un cliente</option>
             {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
+              <option key={c.id} value={String(c.id)}>{c.nombre}</option>
             ))}
           </select>
 
           {/* SELECT CONTRATO */}
           <label>Contrato</label>
           <select
-            value={form.contrato_id}
+            value={form.contrato_id ? String(form.contrato_id) : ""}
             onChange={(e) => setForm({ ...form, contrato_id: e.target.value })}
             style={selectStyle}
           >
             <option value="">Selecciona un contrato</option>
             {contratos.map((c) => (
-              <option key={c.id} value={c.id}>
+              <option key={c.id} value={String(c.id)}>
                 {c.modalidad} — {c.precio}€ — {c.fecha_inicio} — {c.estado}
               </option>
             ))}
@@ -241,13 +254,13 @@ export default function NuevaInspeccion() {
           {/* SELECT TÉCNICO */}
           <label>Técnico</label>
           <select
-            value={form.tecnico_id}
+            value={form.tecnico_id ? String(form.tecnico_id) : ""}
             onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
             style={selectStyle}
           >
             <option value="">Selecciona un técnico</option>
             {tecnicos.map((t) => (
-              <option key={t.id} value={t.id}>{t.nombre}</option>
+              <option key={t.id} value={String(t.id)}>{t.nombre}</option>
             ))}
           </select>
 
