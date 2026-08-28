@@ -5,9 +5,7 @@ import { supabase } from "../../lib/supabase";
 
 /**
  * Facturación de extras.
- *
- * Crea una factura a partir de los servicios sueltos seleccionados, guarda
- * el desglose en facturas_lineas y automatiza la creación de inspecciones.
+ * Crea una factura a partir de los servicios sueltos seleccionados y guarda el desglose.
  */
 
 const EXTRAS = [
@@ -25,7 +23,6 @@ const IVA = 0.21;
 
 const redondear = (n) => Math.round(n * 100) / 100;
 
-/** Comprueba que el PDF existe de verdad antes de guardar su enlace. */
 async function pdfDisponible(url) {
   try {
     const res = await fetch(url, { method: "HEAD" });
@@ -41,12 +38,6 @@ export default function Extras() {
   const [clientes, setClientes] = useState([]);
   const [clienteId, setClienteId] = useState("");
 
-  // Estados para automatización de inspecciones
-  const [viviendas, setViviendas] = useState([]);
-  const [tecnicos, setTecnicos] = useState([]);
-  const [viviendaId, setViviendaId] = useState("");
-  const [tecnicoId, setTecnicoId] = useState("");
-
   const [seleccionados, setSeleccionados] = useState([]);
   const [precios, setPrecios] = useState({});
   const [enviarEmail, setEnviarEmail] = useState(true);
@@ -55,65 +46,32 @@ export default function Extras() {
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(true);
 
-  // ⭐ ALERTA EN INSPECCIÓN EXTRA
-  const [alertaExtra, setAlertaExtra] = useState(false);
-
-  // Cargar Clientes y Técnicos al montar
   useEffect(() => {
     let cancelado = false;
 
-    async function cargarDatosIniciales() {
-      const [resClientes, resTecnicos] = await Promise.all([
-        supabase.from("clientes").select("id, nombre, direccion, email").order("nombre"),
-        supabase.from("tecnicos").select("id, nombre").eq("activo", true).order("nombre")
-      ]);
+    async function cargarClientes() {
+      const { data, error: errClientes } = await supabase
+        .from("clientes")
+        .select("id, nombre, direccion, email")
+        .order("nombre");
 
       if (cancelado) return;
 
-      if (resClientes.error) {
-        console.error("Error cargando clientes:", resClientes.error);
+      if (errClientes) {
+        console.error("Error cargando clientes:", errClientes);
         setError("No se pudieron cargar los clientes.");
       } else {
-        setClientes(resClientes.data || []);
-      }
-
-      if (!resTecnicos.error) {
-        setTecnicos(resTecnicos.data || []);
+        setClientes(data || []);
       }
 
       setCargando(false);
     }
 
-    cargarDatosIniciales();
+    cargarClientes();
     return () => {
       cancelado = true;
     };
   }, []);
-
-  // Cargar Viviendas cuando cambia el cliente seleccionado
-  useEffect(() => {
-    if (!clienteId) {
-      setViviendas([]);
-      setViviendaId("");
-      return;
-    }
-
-    async function cargarViviendasCliente() {
-      const { data, error: errViviendas } = await supabase
-        .from("viviendas")
-        .select("id, direccion")
-        .eq("cliente_id", clienteId)
-        .eq("activa", true);
-
-      if (errViviendas) {
-        console.error("Error cargando viviendas:", errViviendas);
-      } else {
-        setViviendas(data || []);
-      }
-    }
-
-    cargarViviendasCliente();
-  }, [clienteId]);
 
   const toggleExtra = (nombre) => {
     setSeleccionados((prev) =>
@@ -121,7 +79,6 @@ export default function Extras() {
     );
   };
 
-  /** Líneas con su precio final resuelto (tarifa fija o precio manual). */
   const lineas = seleccionados.map((nombre) => {
     const extra = EXTRAS.find((e) => e.nombre === nombre);
     const precio = extra.precio ?? Number(precios[nombre] || 0);
@@ -132,10 +89,6 @@ export default function Extras() {
   const iva = redondear(base * IVA);
   const total = redondear(base + iva);
 
-  /**
-   * Genera el siguiente número de factura con el formato ya usado en la base
-   * de datos ("CG-000008").
-   */
   async function siguienteNumero() {
     const { data, error: errorNum } = await supabase
       .from("facturas")
@@ -170,12 +123,6 @@ export default function Extras() {
     const sinPrecio = lineas.find((l) => !l.precio || l.precio <= 0);
     if (sinPrecio) {
       setError(`Indica un precio para "${sinPrecio.nombre}".`);
-      return;
-    }
-
-    const esInspeccion = seleccionados.includes("Inspección posterior a tormenta");
-    if (esInspeccion && (!viviendaId || !tecnicoId)) {
-      setError("Para la inspección posterior a tormenta, debes seleccionar una vivienda y un técnico.");
       return;
     }
 
@@ -220,31 +167,6 @@ export default function Extras() {
         return;
       }
 
-      // ⭐ AUTOMATIZACIÓN: Si es inspección, crear registro automático para la app del técnico
-      let avisoInspeccion = "";
-      if (esInspeccion) {
-        const { error: errorInspeccion } = await supabase.from("inspecciones").insert({
-          vivienda_id: Number(viviendaId),
-          cliente_id: Number(clienteId),
-          tecnico_id: tecnicoId,
-          estado: "pendiente",
-          fecha: new Date().toISOString(),
-
-          // ⭐ ALERTA EN INSPECCIÓN EXTRA
-          alerta: alertaExtra,
-          alerta_vista: false,
-
-          notas: `Generado automáticamente desde Factura ${factura.numero}`
-        });
-
-        if (errorInspeccion) {
-          console.error("Error creando inspección:", errorInspeccion);
-          avisoInspeccion = " (Aviso: La factura se creó pero falló la asignación al técnico).";
-        } else {
-          avisoInspeccion = " Inspección asignada al técnico en la app.";
-        }
-      }
-
       let avisoPdf = "";
 
       const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
@@ -285,12 +207,9 @@ export default function Extras() {
 
       setSeleccionados([]);
       setPrecios({});
-      setViviendaId("");
-      setTecnicoId("");
-      setAlertaExtra(false);
 
       setMensaje(
-        `Factura ${factura.numero} creada correctamente (${total} €).${avisoInspeccion}${avisoPdf}`
+        `Factura ${factura.numero} creada correctamente (${total} €).${avisoPdf}`
       );
       setGuardando(false);
     } catch (e) {
@@ -305,7 +224,7 @@ export default function Extras() {
       <div style={estilos.pagina}>
         <h1 style={estilos.titulo}>Extras</h1>
         <p style={estilos.subtitulo}>
-          Factura servicios sueltos y automatiza órdenes para los técnicos.
+          Factura servicios y conceptos sueltos a los clientes.
         </p>
 
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
@@ -369,63 +288,6 @@ export default function Extras() {
           ))}
         </div>
 
-        {/* Sección condicional para la automatización de inspecciones */}
-        {seleccionados.includes("Inspección posterior a tormenta") && (
-          <div style={{ ...estilos.tarjeta, border: "1px solid #4db8ff" }}>
-            <h3 style={{ color: "#4db8ff", marginBottom: 14, fontSize: 16 }}>
-              ⚡ Automatización de Inspección
-            </h3>
-
-            <label style={estilos.etiqueta}>Vivienda a inspeccionar</label>
-            <select
-              value={viviendaId}
-              onChange={(e) => setViviendaId(e.target.value)}
-              style={estilos.select}
-            >
-              <option value="">-- Selecciona una vivienda del cliente --</option>
-              {viviendas.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.direccion}
-                </option>
-              ))}
-            </select>
-            {clienteId && viviendas.length === 0 && (
-              <p style={{ ...estilos.aviso, color: "#ffc861" }}>
-                Este cliente no tiene viviendas registradas.
-              </p>
-            )}
-
-            <label style={{ ...estilos.etiqueta, marginTop: 14 }}>Técnico asignado</label>
-            <select
-              value={tecnicoId}
-              onChange={(e) => setTecnicoId(e.target.value)}
-              style={estilos.select}
-            >
-              <option value="">-- Selecciona un técnico --</option>
-              {tecnicos.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nombre}
-                </option>
-              ))}
-            </select>
-
-            {/* ⭐ ALERTA EN EXTRAS (Movida aquí para que tenga sentido contextual) */}
-            <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-              <label style={estilos.check}>
-                <input
-                  type="checkbox"
-                  checked={alertaExtra}
-                  onChange={(e) => setAlertaExtra(e.target.checked)}
-                  style={estilos.checkbox}
-                />
-                <span style={{ fontSize: 14.5, color: "#ff6b6b", fontWeight: 600 }}>
-                  ⚠️ Marcar como ALERTA / Incidencia importante
-                </span>
-              </label>
-            </div>
-          </div>
-        )}
-
         <div style={estilos.tarjeta}>
           <Fila clave="Base" valor={`${base.toFixed(2)} €`} />
           <Fila clave={`IVA (${IVA * 100}%)`} valor={`${iva.toFixed(2)} €`} />
@@ -449,7 +311,7 @@ export default function Extras() {
           disabled={guardando}
           style={{ ...estilos.boton, opacity: guardando ? 0.6 : 1 }}
         >
-          {guardando ? "Procesando..." : "Crear factura y asignar"}
+          {guardando ? "Procesando..." : "Crear factura"}
         </button>
 
         <button onClick={() => navigate("/facturas")} style={estilos.botonSec}>
