@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+            import React, { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../../context/LanguageContext";
 import logo from "../../assets/logo.jpeg"; 
 
 const COLOR_DORADO = "#e0b034";
@@ -14,6 +15,7 @@ export default function Login() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const navigate = useNavigate();
+  const { t, changeLanguage, language } = useLanguage();
 
   useEffect(() => { setCheckingSession(false); }, []);
 
@@ -89,6 +91,31 @@ export default function Login() {
         boxShadow: "0 20px 40px rgba(0,0,0,0.8), 0 0 15px rgba(224, 176, 52, 0.1)",
         boxSizing: "border-box"
       }}>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "10px" }}>
+          <select
+            value={language || localStorage.getItem("app_idioma") || "es"}
+            onChange={(e) => {
+              changeLanguage(e.target.value);
+              localStorage.setItem("app_idioma", e.target.value);
+            }}
+            style={{
+              background: "rgba(11, 19, 32, 0.9)",
+              border: BORDE_DORADO_LUJO,
+              color: COLOR_DORADO,
+              padding: "4px 8px",
+              borderRadius: "8px",
+              fontSize: "11px",
+              fontWeight: "700",
+              cursor: "pointer",
+              outline: "none"
+            }}
+          >
+            <option value="es" style={{ background: "#030509", color: "#fff" }}>Español</option>
+            <option value="en" style={{ background: "#030509", color: "#fff" }}>English</option>
+            <option value="fr" style={{ background: "#030509", color: "#fff" }}>Français</option>
+          </select>
+        </div>
         
         <div style={{ 
             width: "110px", 
@@ -116,7 +143,7 @@ export default function Login() {
         </div>
 
         <p style={{ textAlign: "center", color: "#ccc", fontSize: "13px", marginBottom: "22px", fontWeight: "400" }}>
-          Inicia sesión en tu cuenta
+          {t("loginSubtitle")}
         </p>
 
         {errorMsg && (
