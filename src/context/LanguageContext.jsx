@@ -473,7 +473,6 @@ const translations = {
     cerrar: "Close",
   },
   fr: {
-    // Menu & Navigation
     inicio: "Accueil",
     clientes: "Clients",
     viviendas: "Propriétés",
@@ -485,13 +484,11 @@ const translations = {
     dashboard: "Tableau de bord",
     ajustes: "Paramètres",
     perfil: "Profil",
-
-    // General / Dashboard
     bienvenida: "Bienvenue sur votre tableau de bord client",
     misViviendas: "Mes Propriétés",
     serviciosExtras: "Services Extras",
-    cerrarSesion: "Se déconnecter",
-    logout: "Se déconnecter",
+    cerrarSesion: "Déconnexion",
+    logout: "Déconnexion",
     noHayDatos: "Aucun enregistrement disponible.",
     cambiarIdioma: "Langue",
     verDetalles: "Voir les détails",
@@ -505,15 +502,15 @@ const translations = {
     panelDeControl: "Panneau de configuration",
     dashboardCliente: "Tableau de bord client",
     operativo: "Opérationnel",
-    trabajosExtrasDisponibles: "Travaux extra disponibles !",
+    trabajosExtrasDisponibles: "Travaux extras disponibles !",
     tienes: "Vous avez",
-    trabajosRegistrados: "travaux ou rapports extra enregistrés.",
+    trabajosRegistrados: "travaux ou rapports extras enregistrés.",
     trabajoExtraFactura: "Travail extra / Facture",
-    verDetallesFotosFacturas: "Voir les détails et les photos dans les factures",
+    verDetallesFotosFacturas: "Voir les détails et photos dans les factures",
     verFactura: "Voir la facture →",
     alertas: "Alertes",
     inspeccionesDiarias: "Inspections quotidiennes",
-    configuracionSeguridadNotificaciones: "Paramètres de sécurité et de notifications",
+    configuracionSeguridadNotificaciones: "Paramètres de sécurité et de notification",
     lun: "Lun",
     mar: "Mar",
     mie: "Mer",
@@ -521,73 +518,63 @@ const translations = {
     vie: "Ven",
     sab: "Sam",
     dom: "Dim",
-
-    // Create Invoice
     tituloNuevaFactura: "Nouvelle facture / Extra",
     errorSeleccionarCliente: "Sélectionnez un client.",
     errorSeleccionarVivienda: "Sélectionnez une propriété.",
     errorIntroducirImporte: "Entrez le montant.",
     errorCreandoFactura: "Erreur lors de la création de la facture",
-    facturaCreadaCorrectamente: "Facture créée avec succès",
+    facturaCreadaCorrectamente: "Factura créée avec succès",
     cliente: "Client",
-    seleccionaCliente: "Sélectionner un client...",
+    seleccionaCliente: "Sélectionnez un client...",
     vivienda: "Propriété",
-    seleccionaVivienda: "Sélectionner une propriété...",
+    seleccionaVivienda: "Sélectionnez une propriété...",
     fecha: "Date",
     concepto: "Concept",
     placeholderConcepto: "Description du service...",
     importe: "Montant",
     btnCrearFactura: "Créer la facture",
-
-    // Perfil Cliente
     clienteDashboardCargando: "Chargement du profil...",
     clienteDashboardNoEncontrado: "Profil client introuvable.",
     clientePerfilTitulo: "Mon Profil",
     clienteDashboardNombre: "Nom",
     clienteDashboardEmail: "E-mail",
     clienteDashboardTelefono: "Téléphone",
-
-    // Configuration & Security
     configuracionYSeguridad: "Configuration et Sécurité",
     volver: "← Retour",
     preferenciasNotificacion: "Préférences de notification",
     notifPushTitulo: "Notifications Push",
-    notifPushSub: "Recevez des avis immédiats dans l'application concernant vos inspections.",
+    notifPushSub: "Recevez des avis immédiats sur vos inspections.",
     resumenCorreoTitulo: "Résumé par e-mail",
-    resumenCorreoSub: "Recevez des rapports et des factures directement dans votre e-mail.",
+    resumenCorreoSub: "Recevez rapports et factures par e-mail.",
     alertasCriticasTitulo: "Alertes d'incidents critiques",
-    alertasCriticasSub: "Avis urgents d'incidents graves détectés dans les propriétés.",
+    alertasCriticasSub: "Avis urgents d'incidents graves.",
     seguridadCuenta: "Sécurité du compte",
     autenticacionDosPasosTitulo: "Authentification à deux facteurs (2FA)",
-    autenticacionDosPasosSub: "Ajoutez un niveau de sécurité supplémentaire lors de la connexion.",
+    autenticacionDosPasosSub: "Ajoutez un niveau de sécurité supplémentaire.",
     contrasena: "Mot de passe",
-    ultimoCambioContrasena: "Dernière modification il y a plus de 30 jours",
+    ultimoCambioContrasena: "Dernier changement il y a plus de 30 jours",
     cambiar: "Modifier",
     alertaCambiarContrasena: "Fonction de modification du mot de passe",
     cambiosGuardados: "✓ Modifications enregistrées",
     guardarPreferencias: "Enregistrer les préférences",
-
-    // Contracts List
     clienteListaTitulo: "Mes Contrats",
     cargandoContratos: "Chargement des contrats...",
     usuarioNoAutenticado: "Utilisateur non authentifié.",
     errorIdentificarCliente: "Impossible d'identifier le client associé.",
-    errorCargandoContratos: "Erreur lors du chargement des contrats.",
-    errorInesperadoContratos: "Erreur inattendue lors du chargement des contrats.",
+    errorCargandoContratos: "Erreur de chargement des contrats.",
+    errorInesperadoContratos: "Erreur inattendue.",
     reintentar: "Réessayer",
     clienteListaVacio: "Vous n'avez aucun contrat enregistré.",
-    servicioContratado: "Service contractuel",
-
-    // View Contract Individual & PDF Generation
+    servicioContratado: "Service contracté",
     contratoNoEncontrado: "Contrat introuvable",
     clienteContratoCargando: "Chargement du contrat...",
     noSePudoCargarContrato: "Impossible de charger le contrat",
     compruebaTuConexion: "Vérifiez votre connexion",
-    clienteContratoTitulo: "Contrat du Client",
-    clienteContratoDatosCliente: "Données du Client",
+    clienteContratoTitulo: "Contrat Client",
+    clienteContratoDatosCliente: "Données du client",
     nombre: "Nom",
     telefono: "Téléphone",
-    clienteContratoDetalles: "Détails du Contrat",
+    clienteContratoDetalles: "Détails du contrat",
     tipoServicio: "Type de service : Tous les",
     dias: "jours",
     precioMensual: "Prix mensuel",
@@ -596,9 +583,9 @@ const translations = {
     firmado: "Signé",
     pendienteFirma: "En attente de signature",
     verContratoAntesFirmar: "📄 Voir le contrat avant de signer",
-    firmaDelCliente: "Signature du Client",
+    firmaDelCliente: "Signature du client",
     verCambiarFirma: "Voir / Modifier la signature",
-    enviarAlAdminBtn: "📤 Envoyer le contrat à l'Admin",
+    enviarAlAdminBtn: "📤 Envoyer le contrat à l'admin",
     enviando: "Envoi en cours...",
     verContratoFirmadoPdf: "📄 Voir le contrat signé (PDF)",
     alertaDebesFirmar: "Vous devez signer le contrat avant de l'envoyer.",
@@ -607,8 +594,6 @@ const translations = {
     alertaNoPdfAdmin: "L'administrateur n'a pas encore généré le PDF.",
     clienteAccesoDenegado: "Accès refusé ou contrat introuvable.",
     clienteContratoDireccion: "Adresse",
-
-    // PDF Generation
     pdfTitulo: "CONTRAT DE PRESTATION DE SERVICES",
     pdfNombreCliente: "Client",
     pdfDireccion: "Adresse",
@@ -619,34 +604,28 @@ const translations = {
     pdfFechaInicio: "Date de début",
     pdfPrecioMensual: "Prix mensuel",
     pdfCondiciones: "CONDITIONS",
-    pdfCondicionesTexto: "Le prestataire s'engage à effectuer les inspections et services convenus selon la fréquence établie, en conservant la confidentialité et la rigueur professionnelle.",
-    pdfFirmaCliente: "Signature du Client",
+    pdfCondicionesTexto: "Le prestataire s'engage à effectuer les inspections et services...",
+    pdfFirmaCliente: "Signature du client",
     pdfGenerado: "PDF généré et enregistré avec succès !",
     pdfGenerando: "Génération du PDF...",
-    pdfGenerar: "Générer et Enregistrer le PDF",
-    errorSubirPdfStorage: "Erreur lors du téléchargement du PDF vers Storage : ",
+    pdfGenerar: "Générer et enregistrer le PDF",
+    errorSubirPdfStorage: "Erreur lors du téléchargement du PDF : ",
     errorGenerarPdf: "Erreur lors de la génération du PDF : ",
-
-    // PDF Viewer
     pdfCargando: "Chargement du PDF...",
-    pdfNoGenerado: "Aucun fichier PDF n'a encore été généré pour ce contrat.",
+    pdfNoGenerado: "Aucun fichier PDF généré pour ce contrat.",
     pdfTituloVista: "Contrat",
     pdfVolver: "Retour",
-    pdfTituloIframe: "Visionneuse de Contrat",
+    pdfTituloIframe: "Visionneuse de contrat",
     pdfAbrirNuevaPestana: "Ouvrir dans un nouvel onglet",
-
-    // Signature Drawing
-    firmaDelClienteTitulo: "Signature du Client",
-    instruccionesFirma: "Dessinez votre signature avec votre doigt dans le cadre blanc :",
+    firmaDelClienteTitulo: "Signature du client",
+    instruccionesFirma: "Dessinez votre signature avec votre doigt :",
     limpiar: "🗑️ Effacer",
     guardarFirmaBtn: "💾 Enregistrer la signature",
-    alertaRealizarFirma: "Veuillez effectuer votre signature avant d'enregistrer.",
-    alertaIdContratoValido: "Erreur : Aucun ID de contrat valide n'a été trouvé.",
+    alertaRealizarFirma: "Veuillez signer avant d'enregistrer.",
+    alertaIdContratoValido: "Erreur : ID de contrat invalide.",
     errorGuardandoFirma: "Erreur lors de l'enregistrement de la signature.",
     contratoFirmadoExito: "Contrat signé avec succès !",
-    errorGuardandoFirmaDetalle: "Erreur lors de l'enregistrement de la signature : ",
-
-    // View Invoice Individual
+    errorGuardandoFirmaDetalle: "Erreur : ",
     facturaNoEncontrada: "Facture introuvable",
     volverSimple: "Retour",
     estadoPagada: "PAYÉE",
@@ -658,25 +637,21 @@ const translations = {
     tiempoEmpleado: "Temps passé :",
     fotografiasInspeccion: "Photographies d'inspection :",
     detalle: "Détail",
-    base: "Sous-total",
+    base: "Base",
     iva: "TVA",
     total: "Total",
     verPdf: "Voir le PDF",
-    noPdfGenerado: "Aucun PDF généré pour cette facture pour le moment.",
-
-    // Invoices List
+    noPdfGenerado: "Aucun PDF généré pour cette facture.",
     misFacturasTitulo: "Mes Factures",
     cargandoFacturas: "Chargement des factures...",
     noHayFacturasRegistradas: "Aucune facture enregistrée.",
     estadoCancelada: "ANNULÉE",
     estadoTrabajoCompletado: "TRAVAIL TERMINÉ",
     estadoPendienteRevision: "EN ATTENTE DE RÉVISION",
-
-    // Inspections List
     cargandoListado: "Chargement de la liste...",
     misInspeccionesInformesTitulo: "Mes Inspections et Rapports",
     errorPerfilClienteAsociado: "Profil client associé introuvable.",
-    errorCargarDatos: "Une erreur s'est produite lors du chargement des données.",
+    errorCargarDatos: "Erreur lors du chargement des données.",
     noHayInspeccionesInformes: "Aucune inspection ou rapport disponible.",
     servicioExtraTrabajo: "🛠️ Service Extra / Travail",
     inspeccionLabel: "📋 Inspection",
@@ -684,13 +659,11 @@ const translations = {
     detalleLabel: "Détail :",
     verDetalleFlecha: "Voir le détail →",
     extraBadge: "⚡ EXTRA",
-
-    // View Inspection / Report
     cargandoInformacion: "Chargement des informations...",
     volverMisInformes: "← Retour à mes rapports",
-    informeNoEncontradoPermisos: "Rapport introuvable ou vous n'avez pas l'autorisation de le voir.",
-    errorConexionCargarInformacion: "Erreur de connexion lors du chargement des informations.",
-    confirmarBorrarInforme: "Êtes-vous sûr de vouloir supprimer ce rapport de votre liste ?",
+    informeNoEncontradoPermisos: "Rapport introuvable ou permissions insuffisantes.",
+    errorConexionCargarInformacion: "Erreur de connexion.",
+    confirmarBorrarInforme: "Êtes-vous sûr de vouloir supprimer ce rapport ?",
     informeEliminadoExito: "Rapport supprimé avec succès.",
     errorEliminarInforme: "Impossible de supprimer le rapport.",
     informeLabel: "Rapport",
@@ -701,7 +674,7 @@ const translations = {
     materialesUsados: "Matériaux utilisés :",
     tiempoEmpleadoLabel: "Temps passé :",
     fotografiasAdjuntas: "Photographies jointes",
-    noHayFotografiasInforme: "Aucune photographie jointe à ce rapport.",
+    noHayFotografiasInforme: "Aucune photo jointe.",
     verInformePdf: "📄 Voir le rapport PDF",
     borrarEsteInforme: "🗑️ Supprimer ce rapport",
     fotoAmpliada: "Photo agrandie",
@@ -711,33 +684,37 @@ const translations = {
 
 const LanguageContext = createContext();
 
-export const LanguageProvider = ({ children }) => {
-  // Recuperar idioma guardado en localStorage o usar 'es' por defecto
+export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState(() => {
-    return localStorage.getItem('app_idioma') || 'es';
+    return localStorage.getItem("app_idioma") || "es";
   });
 
   useEffect(() => {
-    localStorage.setItem('app_idioma', language);
+    localStorage.setItem("app_idioma", language);
   }, [language]);
 
-  // Función para traducir claves. Ej: t('clientes')
+  const changeLanguage = (lang) => {
+    if (translations[lang]) {
+      setLanguage(lang);
+    }
+  };
+
   const t = (key) => {
-    return translations[language]?.[key] || translations['es']?.[key] || key;
+    const dict = translations[language] || translations.es;
+    return dict[key] || translations.es[key] || key;
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language, changeLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );
-};
+}
 
-// Hook personalizado para usar el contexto de idioma fácilmente
-export const useLanguage = () => {
+export function useLanguage() {
   const context = useContext(LanguageContext);
   if (!context) {
-    throw new Error('useLanguage debe ser usado dentro de un LanguageProvider');
+    throw new Error("useLanguage debe usarse dentro de un LanguageProvider");
   }
   return context;
-};
+}
