@@ -10,10 +10,35 @@ const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
 const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
 
+const traducirConcepto = (texto, idioma) => {
+  if (!texto) return texto;
+  if (idioma !== 'en' && idioma !== 'english') return texto;
+
+  const diccionario = {
+    "Urgencia / Emergencia": "Urgency / Emergency",
+    "Apertura de vivienda": "Property opening",
+    "Supervisión (por hora o fracción)": "Supervision (per hour or fraction)",
+    "Cierre de vivienda": "Property closure",
+    "Gestión del técnico": "Technician management",
+    "Visita rápida": "Quick visit",
+    "Inspección posterior a tormenta": "Post-storm inspection",
+    "Coste del técnico": "Technician cost"
+  };
+
+  let textoTraducido = texto;
+  for (const [esp, eng] of Object.entries(diccionario)) {
+    const regex = new RegExp(esp, 'g');
+    textoTraducido = textoTraducido.replace(regex, eng);
+  }
+
+  return textoTraducido;
+};
+
 export default function VerFactura() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language, idioma } = useLanguage();
+  const currentLang = language || idioma || 'es';
 
   const [factura, setFactura] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -229,7 +254,7 @@ export default function VerFactura() {
               <div>
                 <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Descripción:</span>
                 <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0 0 0', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
-                  {factura.descripcion || 'Sin descripción'}
+                  {traducirConcepto(factura.descripcion, currentLang) || 'Sin descripción'}
                 </p>
               </div>
 
