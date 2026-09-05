@@ -17,6 +17,30 @@ const SERVICIOS_DISPONIBLES = [
 const IVA = 0.21;
 const redondear = (n) => Math.round(n * 100) / 100;
 
+// ⭐ SISTEMA AUTOMÁTICO DE PUNTOS
+function calcularPuntos(v) {
+  let puntos = 0;
+
+  if (v.metros_cuadrados > 80 && v.metros_cuadrados <= 120) puntos += 5;
+  else if (v.metros_cuadrados > 120 && v.metros_cuadrados <= 180) puntos += 10;
+  else if (v.metros_cuadrados > 180) puntos += 15;
+
+  if (v.habitaciones > 1) puntos += (v.habitaciones - 1) * 2;
+  if (v.banos > 1) puntos += (v.banos - 1) * 3;
+
+  if (v.tiene_piscina) puntos += 10;
+  if (v.tiene_jardin) puntos += 8;
+  if (v.tiene_garaje) puntos += 4;
+  if (v.tiene_sotano) puntos += 6;
+
+  return puntos;
+}
+
+function calcularPrecio(v) {
+  const puntos = calcularPuntos(v);
+  return Number((puntos * 1.5).toFixed(2));
+}
+
 async function pdfDisponible(url) {
   try {
     const res = await fetch(url, { method: "HEAD" });
@@ -42,6 +66,7 @@ export default function Servicios() {
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(true);
 
+  // Cargar clientes
   useEffect(() => {
     async function cargarClientes() {
       const { data, error } = await supabase
@@ -55,6 +80,7 @@ export default function Servicios() {
     cargarClientes();
   }, []);
 
+  // Cargar viviendas del cliente
   useEffect(() => {
     if (!clienteId) {
       setViviendas([]);
@@ -64,9 +90,20 @@ export default function Servicios() {
     async function cargarViviendasCliente() {
       const { data } = await supabase
         .from("viviendas")
-        .select("id, direccion")
+        .select(`
+          id,
+          direccion,
+          metros_cuadrados,
+          habitaciones,
+          banos,
+          tiene_piscina,
+          tiene_jardin,
+          tiene_garaje,
+          tiene_sotano
+        `)
         .eq("cliente_id", clienteId)
         .eq("activa", true);
+
       setViviendas(data || []);
     }
     cargarViviendasCliente();
@@ -74,15 +111,30 @@ export default function Servicios() {
 
   const toggleServicio = (nombre) => {
     setSeleccionados((prev) =>
-      prev.includes(nombre) ? prev.filter((x) => x !== nombre) : [...prev, nombre]
+      prev.includes(nombre)
+        ? prev.filter((x) => x !== nombre)
+        : [...prev, nombre]
     );
   };
 
-  const lineas = seleccionados.map((nombre) => {
+  // ⭐ LÍNEAS DE SERVICIO + TARIFA AUTOMÁTICA DE VIVIENDA
+  let lineas = seleccionados.map((nombre) => {
     const serv = SERVICIOS_DISPONIBLES.find((e) => e.nombre === nombre);
     const precio = serv.precio ?? Number(precios[nombre] || 0);
     return { nombre, precio };
   });
+
+  // ⭐ SI HAY VIVIENDA → AÑADIR PRECIO AUTOMÁTICO
+  if (viviendaId) {
+    const vivienda = viviendas.find((v) => v.id == viviendaId);
+    if (vivienda) {
+      const precioAuto = calcularPrecio(vivienda);
+      lineas.push({
+        nombre: "Tarifa vivienda (precio automático)",
+        precio: precioAuto
+      });
+    }
+  }
 
   const base = redondear(lineas.reduce((acc, l) => acc + l.precio, 0));
   const iva = redondear(base * IVA);
@@ -110,8 +162,8 @@ export default function Servicios() {
       setError("Selecciona el cliente.");
       return;
     }
-    if (seleccionados.length === 0) {
-      setError("Selecciona al menos un servicio u orden.");
+    if (seleccionados.length === 0 && !viviendaId) {
+      setError("Selecciona al menos un servicio o una vivienda.");
       return;
     }
 
@@ -129,12 +181,12 @@ export default function Servicios() {
       const viviendaSeleccionada = viviendas.find((v) => v.id == viviendaId);
       const direccionTexto = viviendaSeleccionada ? viviendaSeleccionada.direccion : null;
 
-      // 1. Crear Factura Contable (estado pendiente por defecto)
+      // 1. Crear Factura Contable
       const { data: factura, error: errorFactura } = await supabase
         .from("facturas")
         .insert({
           numero,
-          cliente_id: clienteId, // Corregido: UUID limpio sin Number()
+          cliente_id: clienteId,
           fecha: new Date().toISOString().slice(0, 10),
           base,
           iva,
@@ -162,7 +214,7 @@ export default function Servicios() {
 
       // 3. Registrar en la tabla 'extras'
       await supabase.from("extras").insert({
-        cliente_id: clienteId, // Corregido: UUID limpio sin Number()
+        cliente_id: clienteId,
         direccion: direccionTexto,
         descripcion: descripcionServicios,
         precio: total,
@@ -228,7 +280,7 @@ export default function Servicios() {
 
           {viviendas.length > 0 && (
             <>
-              <label style={{...estilos.etiqueta, marginTop: 18}}>Vivienda</label>
+              <label style={{...estilos.etiqueta, marginTop: 18}}>Vivienda (Opcional - Tarifa Automática)</label>
               <select
                 value={viviendaId}
                 onChange={(e) => setViviendaId(e.target.value)}
@@ -236,7 +288,7 @@ export default function Servicios() {
               >
                 <option value="">-- Selecciona una vivienda --</option>
                 {viviendas.map((v) => (
-                  <option key={v.id} value={v.id}>{v.direccion}</option>
+                  <option key={v.id} value={v.id}>{v.direccion} ({v.metros_cuadrados}m², {v.habitaciones} hab)</option>
                 ))}
               </select>
             </>
