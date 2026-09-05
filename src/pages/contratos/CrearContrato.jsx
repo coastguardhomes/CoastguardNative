@@ -27,9 +27,9 @@ export default function CrearContrato() {
   const [mensaje, setMensaje] = useState("");
 
   const modalidades = [
-    { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
-    { id: "premium", nombre: "Premium", precio: 59, frecuencia: 30 },
-    { id: "plus", nombre: "Plus", precio: 79, frecuencia: 30 },
+    { id: "basico", nombre: "Básico", frecuencia: 30 },
+    { id: "premium", nombre: "Premium", frecuencia: 30 },
+    { id: "plus", nombre: "Plus", frecuencia: 30 },
   ];
 
   // ⭐ SISTEMA AUTOMÁTICO DE PUNTOS
@@ -94,7 +94,7 @@ export default function CrearContrato() {
     });
   }
 
-  // ⭐ CUANDO SE SELECCIONA VIVIENDA → CALCULAR PRECIO AUTOMÁTICO
+  // ⭐ PRECIO AUTOMÁTICO AL SELECCIONAR VIVIENDA
   function handleViviendaChange(e) {
     const viviendaId = e.target.value;
     const vivienda = viviendas.find((v) => String(v.id) === String(viviendaId));
@@ -106,7 +106,7 @@ export default function CrearContrato() {
         ...form,
         vivienda_id: viviendaId,
         precio: precioAuto,
-        frecuencia: form.frecuencia, // no tocar
+        frecuencia: form.frecuencia,
       });
     } else {
       setForm({ ...form, vivienda_id: viviendaId });
@@ -246,7 +246,7 @@ export default function CrearContrato() {
       console.error("Error creando inspecciones:", e);
     }
 
-    // ⭐ CREAR FACTURA AUTOMÁTICA
+    // ⭐ FACTURA AUTOMÁTICA
     const { data: facturaData, error: facturaError } = await supabase
       .from("facturas")
       .insert([
@@ -279,7 +279,7 @@ export default function CrearContrato() {
 
       try {
         await supabase.functions.invoke("enviar-email", {
-          body: { id: facturaId, tipo: "factura" },
+          body: { facturaId, tipo: "factura" },
         });
       } catch (e) {
         console.error("Error enviando factura:", e);
@@ -287,10 +287,9 @@ export default function CrearContrato() {
     }
 
     try {
-      await supabase.functions.invoke(
-        "enviar-email",
-        { body: { contratoId } }
-      );
+      await supabase.functions.invoke("enviar-email", {
+        body: { contratoId, tipo: "contrato" },
+      });
     } catch (e) {
       console.error("Error enviando email:", e);
     }
@@ -422,7 +421,7 @@ export default function CrearContrato() {
             <option value="">Selecciona modalidad</option>
             {modalidades.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.nombre} — {m.precio}€
+                {m.nombre}
               </option>
             ))}
           </select>
@@ -454,13 +453,13 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          {/* Precio */}
+          {/* Precio automático */}
           <label>Precio (€/mes):</label>
           <input
             type="number"
             value={form.precio}
-            onChange={(e) => setForm({ ...form, precio: e.target.value })}
-            style={inputStyle}
+            readOnly
+            style={{ ...inputStyle, background: "rgba(255,255,255,0.15)" }}
           />
 
           {/* Frecuencia */}
