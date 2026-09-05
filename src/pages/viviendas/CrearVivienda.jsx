@@ -13,9 +13,9 @@ export default function CrearVivienda() {
     direccion: "",
     ciudad: "",
     codigo_postal: "",
+    localidad: "",
     activa: true,
 
-    // ⭐ NUEVOS CAMPOS
     metros_cuadrados: "",
     habitaciones: "",
     banos: "",
@@ -43,16 +43,39 @@ export default function CrearVivienda() {
     cargarListas();
   }, []);
 
+  // ⭐ CÁLCULO AUTOMÁTICO
+  function calcularPrecioAutomatico(v) {
+    let precio = 0;
+
+    if (v.metros_cuadrados <= 80) precio += 29;
+    else if (v.metros_cuadrados <= 120) precio += 39;
+    else if (v.metros_cuadrados <= 180) precio += 49;
+    else precio += 59;
+
+    precio += v.habitaciones * 5;
+    precio += v.banos * 4;
+
+    if (v.tiene_piscina) precio += 15;
+    if (v.tiene_jardin) precio += 10;
+    if (v.tiene_garaje) precio += 8;
+    if (v.tiene_sotano) precio += 6;
+
+    return precio;
+  }
+
   async function crearVivienda() {
     if (!form.cliente_id) {
       setMensaje("Selecciona el cliente propietario de la vivienda");
       return;
     }
 
+    const precio_mensual = calcularPrecioAutomatico(form);
+
     const { error } = await supabase.from("viviendas").insert([
       {
         ...form,
         tecnico_id: form.tecnico_id || null,
+        precio_mensual, // ⭐ AHORA SE GUARDA
       },
     ]);
 
@@ -168,7 +191,14 @@ export default function CrearVivienda() {
             style={inputStyle}
           />
 
-          {/* ⭐ NUEVOS CAMPOS */}
+          <label>Localidad</label>
+          <input
+            value={form.localidad}
+            onChange={(e) =>
+              setForm({ ...form, localidad: e.target.value })
+            }
+            style={inputStyle}
+          />
 
           <label>Metros cuadrados</label>
           <input
