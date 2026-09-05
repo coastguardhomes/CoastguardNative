@@ -73,9 +73,22 @@ export default function CrearVivienda() {
 
     const { error } = await supabase.from("viviendas").insert([
       {
-        ...form,
+        cliente_id: form.cliente_id,
         tecnico_id: form.tecnico_id || null,
-        precio_mensual, // ⭐ AHORA SE GUARDA
+        nombre: form.nombre,
+        direccion: form.direccion,
+        ciudad: form.ciudad,
+        codigo_postal: form.codigo_postal,
+        localidad: form.localidad,
+        metros_cuadrados: form.metros_cuadrados,
+        habitaciones: form.habitaciones,
+        banos: form.banos,
+        tiene_piscina: form.tiene_piscina,
+        tiene_jardin: form.tiene_jardin,
+        tiene_garaje: form.tiene_garaje,
+        tiene_sotano: form.tiene_sotano,
+        precio_mensual,
+        activa: true,
       },
     ]);
 
@@ -200,35 +213,53 @@ export default function CrearVivienda() {
             style={inputStyle}
           />
 
+          {/* ⭐ SELECTS AUTOMÁTICOS */}
+
           <label>Metros cuadrados</label>
-          <input
-            type="number"
+          <select
             value={form.metros_cuadrados}
             onChange={(e) =>
               setForm({ ...form, metros_cuadrados: Number(e.target.value) })
             }
             style={inputStyle}
-          />
+          >
+            <option value="">Selecciona tamaño</option>
+            <option value="60">Hasta 80 m²</option>
+            <option value="100">80–120 m²</option>
+            <option value="150">120–180 m²</option>
+            <option value="200">Más de 180 m²</option>
+          </select>
 
           <label>Habitaciones</label>
-          <input
-            type="number"
+          <select
             value={form.habitaciones}
             onChange={(e) =>
               setForm({ ...form, habitaciones: Number(e.target.value) })
             }
             style={inputStyle}
-          />
+          >
+            <option value="">Selecciona habitaciones</option>
+            <option value="1">1 habitación</option>
+            <option value="2">2 habitaciones</option>
+            <option value="3">3 habitaciones</option>
+            <option value="4">4 habitaciones</option>
+            <option value="5">5 habitaciones</option>
+          </select>
 
           <label>Baños</label>
-          <input
-            type="number"
+          <select
             value={form.banos}
             onChange={(e) =>
               setForm({ ...form, banos: Number(e.target.value) })
             }
             style={inputStyle}
-          />
+          >
+            <option value="">Selecciona baños</option>
+            <option value="1">1 baño</option>
+            <option value="2">2 baños</option>
+            <option value="3">3 baños</option>
+            <option value="4">4 baños</option>
+          </select>
 
           <label>
             <input
