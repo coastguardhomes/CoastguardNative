@@ -32,6 +32,30 @@ export default function CrearContrato() {
     { id: "plus", nombre: "Plus", precio: 79, frecuencia: 30 },
   ];
 
+  // ⭐ SISTEMA AUTOMÁTICO DE PUNTOS
+  function calcularPuntos(v) {
+    let puntos = 0;
+
+    if (v.metros_cuadrados > 80 && v.metros_cuadrados <= 120) puntos += 5;
+    else if (v.metros_cuadrados > 120 && v.metros_cuadrados <= 180) puntos += 10;
+    else if (v.metros_cuadrados > 180) puntos += 15;
+
+    if (v.habitaciones > 1) puntos += (v.habitaciones - 1) * 2;
+    if (v.banos > 1) puntos += (v.banos - 1) * 3;
+
+    if (v.tiene_piscina) puntos += 10;
+    if (v.tiene_jardin) puntos += 8;
+    if (v.tiene_garaje) puntos += 4;
+    if (v.tiene_sotano) puntos += 6;
+
+    return puntos;
+  }
+
+  function calcularPrecio(v) {
+    const puntos = calcularPuntos(v);
+    return Number((puntos * 1.5).toFixed(2));
+  }
+
   useEffect(() => {
     cargarDatos();
   }, []);
@@ -43,7 +67,7 @@ export default function CrearContrato() {
 
     const { data: viviendasData } = await supabase
       .from("viviendas")
-      .select("id, direccion, cliente_id");
+      .select("*");
 
     const { data: tecnicosData } = await supabase
       .from("tecnicos")
@@ -70,13 +94,31 @@ export default function CrearContrato() {
     });
   }
 
+  // ⭐ CUANDO SE SELECCIONA VIVIENDA → CALCULAR PRECIO AUTOMÁTICO
+  function handleViviendaChange(e) {
+    const viviendaId = e.target.value;
+    const vivienda = viviendas.find((v) => String(v.id) === String(viviendaId));
+
+    if (vivienda) {
+      const precioAuto = calcularPrecio(vivienda);
+
+      setForm({
+        ...form,
+        vivienda_id: viviendaId,
+        precio: precioAuto,
+        frecuencia: form.frecuencia, // no tocar
+      });
+    } else {
+      setForm({ ...form, vivienda_id: viviendaId });
+    }
+  }
+
   function seleccionarModalidad(modalidadId) {
     const mod = modalidades.find((m) => m.id === modalidadId);
 
     setForm({
       ...form,
       modalidad: modalidadId,
-      precio: mod ? mod.precio : "",
       frecuencia: mod ? mod.frecuencia : "",
     });
   }
@@ -342,7 +384,7 @@ export default function CrearContrato() {
           <label>Vivienda:</label>
           <select
             value={form.vivienda_id}
-            onChange={(e) => setForm({ ...form, vivienda_id: e.target.value })}
+            onChange={handleViviendaChange}
             style={inputStyle}
           >
             <option value="">Selecciona vivienda</option>
