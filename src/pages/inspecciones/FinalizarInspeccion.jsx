@@ -20,7 +20,6 @@ export default function FinalizarInspeccion() {
   async function cargarInspeccion() {
     setLoading(true);
     try {
-      // 1. Intentamos buscar primero con la relación de viviendas
       let { data, error } = await supabase
         .from("inspecciones")
         .select(`
@@ -35,7 +34,6 @@ export default function FinalizarInspeccion() {
         .eq("id", id)
         .maybeSingle();
 
-      // 2. Si falla la relación, buscamos la inspección sola
       if (error || !data) {
         const resSimple = await supabase
           .from("inspecciones")
@@ -82,48 +80,59 @@ export default function FinalizarInspeccion() {
       const token = sessionData?.session?.access_token;
       const headersAuth = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // 3. Invocar Edge Function de PDF enviando todas las variantes de nombres de ID
       const resPdf = await supabase.functions.invoke("pdf-inspeccion", { 
-        body: { 
-          inspeccionId: id, 
-          inspeccion_id: id, 
-          id: id 
-        },
+        body: { inspeccionId: id, inspeccion_id: id, id: id },
         headers: headersAuth
       });
 
-      if (resPdf.error) {
-        let detalleError = resPdf.error.message;
-        if (resPdf.error.context && typeof resPdf.error.context.text === "function") {
-          try {
-            const textBody = await resPdf.error.context.text();
-            if (textBody) detalleError += ` -> ${textBody}`;
-          } catch {}
+      if (resPdf.error) throw new Error("Error en PDF: " + resPdf.error.message);
+
+      // ⭐ CREAR FACTURA AUTOMÁTICA DE INSPECCIÓN
+      const { data: facturaData, error: facturaError } = await supabase
+        .from("facturas")
+        .insert([
+          {
+            cliente_id: inspeccion.cliente_id,
+            vivienda_id: inspeccion.vivienda_id,
+            inspeccion_id: id,
+            tipo: "inspeccion",
+            descripcion: `Inspección técnica — ${inspeccion.fecha}`,
+            base: 49,
+            iva: (49 * 0.21).toFixed(2),
+            total: (49 * 1.21).toFixed(2),
+            estado: "pendiente",
+            fecha: new Date().toISOString(),
+          },
+        ])
+        .select()
+        .single();
+
+      if (!facturaError) {
+        const facturaId = facturaData.id;
+
+        try {
+          await supabase.functions.invoke("factura-pdf", {
+            body: { facturaId },
+          });
+        } catch (e) {
+          console.error("Error generando factura PDF:", e);
         }
-        throw new Error("Error en PDF: " + detalleError);
+
+        try {
+          await supabase.functions.invoke("enviar-email", {
+            body: { id: facturaId, tipo: "factura" },
+          });
+        } catch (e) {
+          console.error("Error enviando factura:", e);
+        }
       }
 
-      // 4. Invocar Edge Function de Email capturando el error detallado
       const resEmail = await supabase.functions.invoke("enviar-email", { 
-        body: { 
-          inspeccionId: id, 
-          inspeccion_id: id, 
-          id: id, 
-          tipo: "inspeccion_aprobada" 
-        },
+        body: { inspeccionId: id, inspeccion_id: id, id: id, tipo: "inspeccion_aprobada" },
         headers: headersAuth
       });
 
-      if (resEmail.error) {
-        let detalleEmailError = resEmail.error.message;
-        if (resEmail.error.context && typeof resEmail.error.context.text === "function") {
-          try {
-            const textBody = await resEmail.error.context.text();
-            if (textBody) detalleEmailError += ` -> ${textBody}`;
-          } catch {}
-        }
-        throw new Error("Error en Email: " + detalleEmailError);
-      }
+      if (resEmail.error) throw new Error("Error en Email: " + resEmail.error.message);
 
       setMensaje("¡Inspección finalizada, PDF generado y email enviado con éxito! ✔");
       setEsError(false);
