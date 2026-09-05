@@ -133,7 +133,6 @@ export default function CrearContrato() {
       return;
     }
 
-    // Guardar DNI/NIE si se ha editado
     if (form.dni && form.cliente_id) {
       await supabase
         .from("clientes")
@@ -141,7 +140,6 @@ export default function CrearContrato() {
         .eq("id", form.cliente_id);
     }
 
-    // Calcular fecha_fin si falta
     let fechaFinFinal = form.fecha_fin;
     if (!fechaFinFinal && form.fecha_inicio) {
       const fechaInicioObj = new Date(form.fecha_inicio);
@@ -150,7 +148,6 @@ export default function CrearContrato() {
       fechaFinFinal = fechaInicioObj.toISOString().split("T")[0];
     }
 
-    // Crear contrato
     const { data, error } = await supabase
       .from("contratos")
       .insert([
@@ -180,34 +177,24 @@ export default function CrearContrato() {
 
     const contratoId = data[0].id;
 
-    // Generar PDF legal
     let pdfUrl = null;
     try {
-      const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
+      const { data: pdfData } = await supabase.functions.invoke(
         "contrato-pdf",
         { body: { contratoId } }
       );
-
-      if (pdfError) {
-        console.error(pdfError);
-      } else {
-        pdfUrl = pdfData.pdf_url; // ← CORREGIDO
-      }
+      pdfUrl = pdfData?.pdf_url || null;
     } catch (e) {
       console.error("Error generando PDF:", e);
     }
 
-    // Guardar pdf_url en la tabla contratos
     if (pdfUrl) {
       await supabase
         .from("contratos")
-        .update({
-          pdf_url: pdfUrl,
-        })
+        .update({ pdf_url: pdfUrl })
         .eq("id", contratoId);
     }
 
-    // Crear inspecciones automáticas
     try {
       await supabase.functions.invoke(
         "crear_inspecciones_programadas",
@@ -217,7 +204,46 @@ export default function CrearContrato() {
       console.error("Error creando inspecciones:", e);
     }
 
-    // Enviar email al cliente
+    // ⭐ CREAR FACTURA AUTOMÁTICA
+    const { data: facturaData, error: facturaError } = await supabase
+      .from("facturas")
+      .insert([
+        {
+          cliente_id: form.cliente_id,
+          vivienda_id: form.vivienda_id,
+          contrato_id: contratoId,
+          tipo: "contrato",
+          descripcion: `Contrato ${form.modalidad} — ${form.duracion_meses} meses`,
+          base: form.precio,
+          iva: (form.precio * 0.21).toFixed(2),
+          total: (form.precio * 1.21).toFixed(2),
+          estado: "pendiente",
+          fecha: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single();
+
+    if (!facturaError) {
+      const facturaId = facturaData.id;
+
+      try {
+        await supabase.functions.invoke("factura-pdf", {
+          body: { facturaId },
+        });
+      } catch (e) {
+        console.error("Error generando factura PDF:", e);
+      }
+
+      try {
+        await supabase.functions.invoke("enviar-email", {
+          body: { id: facturaId, tipo: "factura" },
+        });
+      } catch (e) {
+        console.error("Error enviando factura:", e);
+      }
+    }
+
     try {
       await supabase.functions.invoke(
         "enviar-email",
