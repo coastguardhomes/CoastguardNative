@@ -13,15 +13,22 @@ export default function CrearVivienda() {
     direccion: "",
     ciudad: "",
     codigo_postal: "",
-    activa: true, // obligatorio en tu tabla
+    activa: true,
+
+    // ⭐ NUEVOS CAMPOS
+    metros_cuadrados: "",
+    habitaciones: "",
+    banos: "",
+    tiene_piscina: false,
+    tiene_jardin: false,
+    tiene_garaje: false,
+    tiene_sotano: false,
   });
 
   const [clientes, setClientes] = useState([]);
   const [tecnicos, setTecnicos] = useState([]);
   const [mensaje, setMensaje] = useState("");
 
-  // Sin cliente la vivienda queda huérfana: no se le puede crear contrato ni
-  // inspección, porque ambos cuelgan de la relación cliente → vivienda.
   useEffect(() => {
     async function cargarListas() {
       const [{ data: cli }, { data: tec }] = await Promise.all([
@@ -50,6 +57,7 @@ export default function CrearVivienda() {
     ]);
 
     if (error) {
+      console.error(error);
       setMensaje("Error creando vivienda");
       return;
     }
@@ -159,6 +167,82 @@ export default function CrearVivienda() {
             }
             style={inputStyle}
           />
+
+          {/* ⭐ NUEVOS CAMPOS */}
+
+          <label>Metros cuadrados</label>
+          <input
+            type="number"
+            value={form.metros_cuadrados}
+            onChange={(e) =>
+              setForm({ ...form, metros_cuadrados: Number(e.target.value) })
+            }
+            style={inputStyle}
+          />
+
+          <label>Habitaciones</label>
+          <input
+            type="number"
+            value={form.habitaciones}
+            onChange={(e) =>
+              setForm({ ...form, habitaciones: Number(e.target.value) })
+            }
+            style={inputStyle}
+          />
+
+          <label>Baños</label>
+          <input
+            type="number"
+            value={form.banos}
+            onChange={(e) =>
+              setForm({ ...form, banos: Number(e.target.value) })
+            }
+            style={inputStyle}
+          />
+
+          <label>
+            <input
+              type="checkbox"
+              checked={form.tiene_piscina}
+              onChange={(e) =>
+                setForm({ ...form, tiene_piscina: e.target.checked })
+              }
+            />{" "}
+            Piscina
+          </label>
+
+          <label>
+            <input
+              type="checkbox"
+              checked={form.tiene_jardin}
+              onChange={(e) =>
+                setForm({ ...form, tiene_jardin: e.target.checked })
+              }
+            />{" "}
+            Jardín
+          </label>
+
+          <label>
+            <input
+              type="checkbox"
+              checked={form.tiene_garaje}
+              onChange={(e) =>
+                setForm({ ...form, tiene_garaje: e.target.checked })
+              }
+            />{" "}
+            Garaje
+          </label>
+
+          <label>
+            <input
+              type="checkbox"
+              checked={form.tiene_sotano}
+              onChange={(e) =>
+                setForm({ ...form, tiene_sotano: e.target.checked })
+              }
+            />{" "}
+            Sótano
+          </label>
 
           <button
             onClick={crearVivienda}
