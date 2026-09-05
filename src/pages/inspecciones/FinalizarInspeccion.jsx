@@ -13,6 +13,30 @@ export default function FinalizarInspeccion() {
   const [esError, setEsError] = useState(false);
   const [procesando, setProcesando] = useState(false);
 
+  // ⭐ SISTEMA AUTOMÁTICO DE PUNTOS
+  function calcularPuntos(v) {
+    let puntos = 0;
+
+    if (v.metros_cuadrados > 80 && v.metros_cuadrados <= 120) puntos += 5;
+    else if (v.metros_cuadrados > 120 && v.metros_cuadrados <= 180) puntos += 10;
+    else if (v.metros_cuadrados > 180) puntos += 15;
+
+    if (v.habitaciones > 1) puntos += (v.habitaciones - 1) * 2;
+    if (v.banos > 1) puntos += (v.banos - 1) * 3;
+
+    if (v.tiene_piscina) puntos += 10;
+    if (v.tiene_jardin) puntos += 8;
+    if (v.tiene_garaje) puntos += 4;
+    if (v.tiene_sotano) puntos += 6;
+
+    return puntos;
+  }
+
+  function calcularPrecio(v) {
+    const puntos = calcularPuntos(v);
+    return Number((puntos * 1.5).toFixed(2));
+  }
+
   useEffect(() => {
     if (id) cargarInspeccion();
   }, [id]);
@@ -28,7 +52,14 @@ export default function FinalizarInspeccion() {
             id,
             direccion,
             ciudad,
-            localidad
+            localidad,
+            metros_cuadrados,
+            habitaciones,
+            banos,
+            tiene_piscina,
+            tiene_jardin,
+            tiene_garaje,
+            tiene_sotano
           )
         `)
         .eq("id", id)
@@ -87,6 +118,10 @@ export default function FinalizarInspeccion() {
 
       if (resPdf.error) throw new Error("Error en PDF: " + resPdf.error.message);
 
+      // ⭐ CALCULAR PRECIO AUTOMÁTICO DE LA VIVIENDA
+      const vivienda = inspeccion.viviendas;
+      const precioAuto = calcularPrecio(vivienda);
+
       // ⭐ CREAR FACTURA AUTOMÁTICA DE INSPECCIÓN
       const { data: facturaData, error: facturaError } = await supabase
         .from("facturas")
@@ -97,9 +132,9 @@ export default function FinalizarInspeccion() {
             inspeccion_id: id,
             tipo: "inspeccion",
             descripcion: `Inspección técnica — ${inspeccion.fecha}`,
-            base: 49,
-            iva: (49 * 0.21).toFixed(2),
-            total: (49 * 1.21).toFixed(2),
+            base: precioAuto,
+            iva: (precioAuto * 0.21).toFixed(2),
+            total: (precioAuto * 1.21).toFixed(2),
             estado: "pendiente",
             fecha: new Date().toISOString(),
           },
