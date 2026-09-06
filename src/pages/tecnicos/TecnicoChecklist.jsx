@@ -4,27 +4,13 @@ import { supabase } from "../../lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
+// 🎨 ESTILOS
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
 const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
 const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
 const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
-
-const botonEstilo = {
-  padding: "14px",
-  width: "100%",
-  borderRadius: "16px",
-  cursor: "pointer",
-  marginTop: "12px",
-  fontWeight: "900",
-  fontSize: "14px",
-  border: BORDE_DORADO_FINO,
-  background: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
-  color: "#ffffff",
-  boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)",
-  transition: "all 0.2s ease",
-};
 
 export default function ChecklistUnificado() {
   const { id } = useParams();
@@ -36,23 +22,31 @@ export default function ChecklistUnificado() {
     direccion: "",
     cliente: "Sin cliente asignado",
   });
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  // 1. Cargar inspección y datos de la vivienda/cliente real
+  // ⭐ SANITIZAR TEXTO (evita errores del traductor)
+  function limpiarTexto(texto) {
+    return texto
+      .replace(/[^\x00-\x7F]/g, "")
+      .replace(/[\u2028\u2029]/g, "");
+  }
+
+  // 1️⃣ Cargar inspección + vivienda + cliente
   useEffect(() => {
     async function cargarDatosInspeccion() {
       try {
-        const { data: insp, error: inspError } = await supabase
+        const { data: insp } = await supabase
           .from("inspecciones")
           .select("*")
           .eq("id", id)
           .single();
 
-        if (inspError || !insp) {
+        if (!insp) {
           setMensaje("No se encontró la inspección.");
           return;
         }
@@ -71,37 +65,30 @@ export default function ChecklistUnificado() {
             setViviendaInfo({
               nombre: viv.nombre || viv.direccion || "Vivienda",
               direccion: viv.direccion || "Sin dirección",
-              cliente: viv.clientes?.nombre || viv.cliente || "Cliente asignado",
+              cliente: viv.clientes?.nombre || "Cliente asignado",
             });
           }
         }
       } catch (e) {
-        console.error("Error cargando metadatos:", e);
+        console.error("Error cargando inspección:", e);
       }
     }
 
     if (id) cargarDatosInspeccion();
   }, [id]);
 
-  // 2. Cargar o generar los ítems del checklist
+  // 2️⃣ Cargar checklist o generarlo si no existe
   useEffect(() => {
     async function gestionarChecklist() {
       setLoading(true);
 
-      let { data, error } = await supabase
+      let { data } = await supabase
         .from("checklist_inspeccion")
         .select("*")
-        .eq("inspeccion_id", String(id));
-
-      if (error) {
-        console.error("Error checklist:", error);
-        setMensaje("Error conectando con la tabla checklist_inspeccion");
-        setLoading(false);
-        return;
-      }
+        .eq("inspeccion_id", id);
 
       if (!data || data.length === 0) {
-        const plantillaCompleta = [
+        const plantilla = [
           "Puerta principal cerrada y asegurada correctamente",
           "Cerraduras y bombines sin daños aparentes",
           "Ventanas y ventanales cerrados y bloqueados",
@@ -129,28 +116,20 @@ export default function ChecklistUnificado() {
           "Estado general del mobiliario y cristales sin roturas",
         ];
 
-        const nuevosItems = plantillaCompleta.map((texto) => ({
-          inspeccion_id: String(id),
+        const nuevosItems = plantilla.map((texto) => ({
+          inspeccion_id: id,
           item: texto,
           completado: false,
         }));
 
-        const { error: insertError } = await supabase
-          .from("checklist_inspeccion")
-          .insert(nuevosItems);
+        await supabase.from("checklist_inspeccion").insert(nuevosItems);
 
-        if (insertError) {
-          setMensaje("Error generando plantilla: " + insertError.message);
-          setLoading(false);
-          return;
-        }
-
-        const { data: dataRecargada } = await supabase
+        const { data: recargado } = await supabase
           .from("checklist_inspeccion")
           .select("*")
-          .eq("inspeccion_id", String(id));
+          .eq("inspeccion_id", id);
 
-        data = dataRecargada || [];
+        data = recargado;
       }
 
       setItems(data);
@@ -160,7 +139,7 @@ export default function ChecklistUnificado() {
     if (id) gestionarChecklist();
   }, [id]);
 
-  // Actualizar OK / KO de un ítem
+  // 3️⃣ Marcar OK / KO
   async function actualizarItem(itemId, completado) {
     setItems((prev) =>
       prev.map((i) => (i.id === itemId ? { ...i, completado } : i))
@@ -172,56 +151,41 @@ export default function ChecklistUnificado() {
       .eq("id", itemId);
   }
 
-  // Subida de fotos integrada
+  // 4️⃣ Subir fotos
   async function procesarYSubirImagen(base64String) {
     try {
-      setMensaje("Subiendo foto...");
-
-      const base64Clean = base64String.includes("base64,")
-        ? base64String.split("base64,")[1]
-        : base64String;
-
+      const base64Clean = base64String.split("base64,")[1];
       const byteCharacters = atob(base64Clean);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: "image/jpeg" });
+      const byteArray = new Uint8Array(byteCharacters.length);
 
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteArray[i] = byteCharacters.charCodeAt(i);
+      }
+
+      const blob = new Blob([byteArray], { type: "image/jpeg" });
       const nombreArchivo = `checklist_${id}_${Date.now()}.jpg`;
 
-      const { error: storageError } = await supabase.storage
+      await supabase.storage
         .from("fotos")
         .upload(nombreArchivo, blob, { contentType: "image/jpeg", upsert: true });
-
-      if (storageError) {
-        setMensaje("Error Storage: " + storageError.message);
-        return;
-      }
 
       const { data: urlData } = supabase.storage
         .from("fotos")
         .getPublicUrl(nombreArchivo);
 
-      const { error: insertError } = await supabase.from("fotos_inspeccion").insert({
-        inspeccion_id: String(id),
+      await supabase.from("fotos_inspeccion").insert({
+        inspeccion_id: id,
         archivo: nombreArchivo,
         url: urlData.publicUrl,
         principal: false,
         tipo: "checklist",
       });
 
-      if (insertError) {
-        setMensaje("Error al registrar foto en BD: " + insertError.message);
-        return;
-      }
-
-      setMensaje("¡Foto guardada con éxito!");
-      setTimeout(() => setMensaje(""), 3000);
+      setMensaje("Foto guardada correctamente");
+      setTimeout(() => setMensaje(""), 2000);
     } catch (e) {
-      console.error("Excepción al subir foto:", e);
-      setMensaje("Error crítico al procesar la foto.");
+      console.error(e);
+      setMensaje("Error al subir la foto");
     }
   }
 
@@ -232,9 +196,9 @@ export default function ChecklistUnificado() {
         resultType: CameraResultType.Base64,
         source: CameraSource.Camera,
       });
-      if (image.base64String) await procesarYSubirImagen(image.base64String);
-    } catch (e) {
-      setMensaje("Cámara cancelada.");
+      if (image.base64String) procesarYSubirImagen(image.base64String);
+    } catch {
+      setMensaje("Cámara cancelada");
     }
   }
 
@@ -245,36 +209,36 @@ export default function ChecklistUnificado() {
         resultType: CameraResultType.Base64,
         source: CameraSource.Photos,
       });
-      if (image.base64String) await procesarYSubirImagen(image.base64String);
-    } catch (e) {
-      setMensaje("Galería cancelada.");
+      if (image.base64String) procesarYSubirImagen(image.base64String);
+    } catch {
+      setMensaje("Galería cancelada");
     }
   }
 
+  // 5️⃣ Guardar checklist completo
   async function guardarChecklistCompleto() {
     setGuardando(true);
-    const todoOk = items.length > 0 && items.every((i) => i.completado === true);
 
-    const { error } = await supabase
+    const textoLimpio = limpiarTexto(observaciones);
+    const todoOk = items.every((i) => i.completado === true);
+
+    await supabase
       .from("inspecciones")
       .update({
-        observaciones,
+        observaciones: textoLimpio,
         checklist_completado: todoOk,
         fecha_checklist: new Date().toISOString(),
+        estado_tecnico: "checklist_completado",
+        estado_admin: "pendiente",
         estado: todoOk ? "checklist_completado" : "checklist_incompleto",
       })
-      .eq("id", String(id));
-
-    if (error) {
-      setMensaje("Error al guardar inspección: " + error.message);
-      setGuardando(false);
-      return;
-    }
+      .eq("id", id);
 
     setGuardando(false);
     navigate(`/tecnico/inspeccion/${id}`);
   }
 
+  // 6️⃣ Pantalla cargando
   if (loading) {
     return (
       <Menu>
@@ -289,12 +253,13 @@ export default function ChecklistUnificado() {
             fontFamily: "Inter, sans-serif",
           }}
         >
-          <h3 style={TEXTO_DORADO_BRILLO}>Cargando puntos del checklist...</h3>
+          <h3 style={TEXTO_DORADO_BRILLO}>Cargando checklist...</h3>
         </div>
       </Menu>
     );
   }
 
+  // 7️⃣ Pantalla principal
   return (
     <Menu>
       <div
@@ -305,20 +270,19 @@ export default function ChecklistUnificado() {
           color: "#fff",
           fontFamily: "Inter, sans-serif",
           paddingBottom: "100px",
-          boxSizing: "border-box",
         }}
       >
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center",
             marginBottom: "20px",
           }}
         >
-          <h1 style={{ ...TEXTO_DORADO_BRILLO, fontSize: "18px", margin: 0, fontWeight: "900", textTransform: "uppercase" }}>
+          <h1 style={{ ...TEXTO_DORADO_BRILLO, fontSize: "18px", fontWeight: "900" }}>
             Checklist Técnico ({items.length} puntos)
           </h1>
+
           <button
             onClick={() => navigate(`/tecnico/inspeccion/${id}`)}
             style={{
@@ -336,6 +300,7 @@ export default function ChecklistUnificado() {
           </button>
         </div>
 
+        {/* INFO VIVIENDA */}
         <div
           style={{
             background: FONDO_TARJETA,
@@ -343,24 +308,15 @@ export default function ChecklistUnificado() {
             borderRadius: "16px",
             padding: "16px",
             marginBottom: "20px",
-            fontSize: "13px",
             boxShadow: SOMBRA_LUXURY,
           }}
         >
-          <div style={{ marginBottom: "6px" }}>
-            🏠 <strong style={{ color: COLOR_DORADO }}>Vivienda:</strong>{" "}
-            {viviendaInfo.nombre}
-          </div>
-          <div style={{ marginBottom: "6px" }}>
-            📍 <strong style={{ color: COLOR_DORADO }}>Dirección:</strong>{" "}
-            {viviendaInfo.direccion}
-          </div>
-          <div>
-            👤 <strong style={{ color: COLOR_DORADO }}>Cliente:</strong>{" "}
-            {viviendaInfo.cliente}
-          </div>
+          <div>🏠 <strong style={{ color: COLOR_DORADO }}>Vivienda:</strong> {viviendaInfo.nombre}</div>
+          <div>📍 <strong style={{ color: COLOR_DORADO }}>Dirección:</strong> {viviendaInfo.direccion}</div>
+          <div>👤 <strong style={{ color: COLOR_DORADO }}>Cliente:</strong> {viviendaInfo.cliente}</div>
         </div>
 
+        {/* MENSAJE */}
         {mensaje && (
           <div
             style={{
@@ -370,7 +326,6 @@ export default function ChecklistUnificado() {
               border: BORDE_DORADO_FINO,
               borderRadius: "12px",
               color: COLOR_DORADO,
-              fontSize: "13px",
               fontWeight: "700",
               textAlign: "center",
             }}
@@ -379,6 +334,7 @@ export default function ChecklistUnificado() {
           </div>
         )}
 
+        {/* BOTONES FOTO */}
         <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
           <button
             onClick={tomarFoto}
@@ -391,12 +347,11 @@ export default function ChecklistUnificado() {
               border: BORDE_DORADO_FINO,
               fontWeight: "900",
               cursor: "pointer",
-              fontSize: "13px",
-              boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
             }}
           >
             📸 Hacer Foto
           </button>
+
           <button
             onClick={seleccionarDeGaleria}
             style={{
@@ -408,25 +363,17 @@ export default function ChecklistUnificado() {
               border: "1px solid rgba(16, 185, 129, 0.6)",
               fontWeight: "900",
               cursor: "pointer",
-              fontSize: "13px",
-              boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)",
             }}
           >
             🖼️ Galería
           </button>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "12px",
-            marginBottom: "20px",
-          }}
-        >
+        {/* CHECKLIST */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {items.map((item, index) => (
             <div
-              key={item.id || index}
+              key={item.id}
               style={{
                 background: FONDO_TARJETA,
                 padding: "16px",
@@ -435,14 +382,7 @@ export default function ChecklistUnificado() {
                 boxShadow: SOMBRA_LUXURY,
               }}
             >
-              <p
-                style={{
-                  marginBottom: "10px",
-                  fontSize: "14px",
-                  fontWeight: "700",
-                  color: "#fff",
-                }}
-              >
+              <p style={{ marginBottom: "10px", fontSize: "14px", fontWeight: "700" }}>
                 {index + 1}. {item.item}
               </p>
 
@@ -457,7 +397,6 @@ export default function ChecklistUnificado() {
                     borderRadius: "10px",
                     border: item.completado ? "1px solid #10b981" : BORDE_DORADO_FINO,
                     fontWeight: "900",
-                    fontSize: "12px",
                     cursor: "pointer",
                   }}
                 >
@@ -469,15 +408,11 @@ export default function ChecklistUnificado() {
                   style={{
                     flex: 1,
                     padding: "10px",
-                    background:
-                      !item.completado && item.completado !== null
-                        ? "#ef4444"
-                        : "rgba(11, 19, 32, 0.9)",
-                    color: !item.completado && item.completado !== null ? "#fff" : "#ef4444",
+                    background: !item.completado ? "#ef4444" : "rgba(11, 19, 32, 0.9)",
+                    color: !item.completado ? "#fff" : "#ef4444",
                     borderRadius: "10px",
-                    border: !item.completado && item.completado !== null ? "1px solid #ef4444" : "1px solid rgba(239, 68, 68, 0.4)",
+                    border: !item.completado ? "1px solid #ef4444" : "1px solid rgba(239, 68, 68, 0.4)",
                     fontWeight: "900",
-                    fontSize: "12px",
                     cursor: "pointer",
                   }}
                 >
@@ -488,6 +423,7 @@ export default function ChecklistUnificado() {
           ))}
         </div>
 
+        {/* OBSERVACIONES */}
         <textarea
           placeholder="Observaciones de la inspección..."
           value={observaciones}
@@ -495,18 +431,17 @@ export default function ChecklistUnificado() {
           style={{
             width: "100%",
             minHeight: "100px",
-            marginBottom: "20px",
+            marginTop: "20px",
             padding: "14px",
             borderRadius: "12px",
             background: "rgba(11, 19, 32, 0.8)",
             color: "#fff",
             border: BORDE_DORADO_FINO,
             fontSize: "14px",
-            outline: "none",
-            boxSizing: "border-box",
           }}
         />
 
+        {/* GUARDAR */}
         <button
           onClick={guardarChecklistCompleto}
           disabled={guardando}
@@ -518,15 +453,10 @@ export default function ChecklistUnificado() {
               : "linear-gradient(135deg, #10b981 0%, #047857 100%)",
             color: guardando ? "#64748b" : "#ffffff",
             borderRadius: "16px",
-            border: guardando ? BORDE_DORADO_FINO : "1px solid rgba(16, 185, 129, 0.6)",
+            border: "1px solid rgba(16, 185, 129, 0.6)",
             fontWeight: "900",
-            fontSize: "14px",
+            marginTop: "30px",
             cursor: guardando ? "not-allowed" : "pointer",
-            boxShadow: guardando ? "none" : "0 4px 15px rgba(16, 185, 129, 0.3)",
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-            marginBottom: "30px",
-            transition: "all 0.2s ease",
           }}
         >
           {guardando ? "Guardando..." : "✅ Guardar y Finalizar Checklist"}
