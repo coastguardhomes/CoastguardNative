@@ -26,35 +26,12 @@ export default function CrearContrato() {
 
   const [mensaje, setMensaje] = useState("");
 
+  // ⭐ MODALIDADES CON PRECIO (como antes)
   const modalidades = [
-    { id: "basico", nombre: "Básico", frecuencia: 30 },
-    { id: "premium", nombre: "Premium", frecuencia: 30 },
-    { id: "plus", nombre: "Plus", frecuencia: 30 },
+    { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
+    { id: "standard", nombre: "Standard", precio: 59, frecuencia: 30 },
+    { id: "premium", nombre: "Premium", precio: 79, frecuencia: 30 },
   ];
-
-  // ⭐ SISTEMA AUTOMÁTICO DE PUNTOS
-  function calcularPuntos(v) {
-    let puntos = 0;
-
-    if (v.metros_cuadrados > 80 && v.metros_cuadrados <= 120) puntos += 5;
-    else if (v.metros_cuadrados > 120 && v.metros_cuadrados <= 180) puntos += 10;
-    else if (v.metros_cuadrados > 180) puntos += 15;
-
-    if (v.habitaciones > 1) puntos += (v.habitaciones - 1) * 2;
-    if (v.banos > 1) puntos += (v.banos - 1) * 3;
-
-    if (v.tiene_piscina) puntos += 10;
-    if (v.tiene_jardin) puntos += 8;
-    if (v.tiene_garaje) puntos += 4;
-    if (v.tiene_sotano) puntos += 6;
-
-    return puntos;
-  }
-
-  function calcularPrecio(v) {
-    const puntos = calcularPuntos(v);
-    return Number((puntos * 1.5).toFixed(2));
-  }
 
   useEffect(() => {
     cargarDatos();
@@ -94,25 +71,17 @@ export default function CrearContrato() {
     });
   }
 
-  // ⭐ PRECIO AUTOMÁTICO AL SELECCIONAR VIVIENDA
+  // ⭐ YA NO CALCULA PRECIO POR VIVIENDA (solo modalidad)
   function handleViviendaChange(e) {
     const viviendaId = e.target.value;
-    const vivienda = viviendas.find((v) => String(v.id) === String(viviendaId));
 
-    if (vivienda) {
-      const precioAuto = calcularPrecio(vivienda);
-
-      setForm({
-        ...form,
-        vivienda_id: viviendaId,
-        precio: precioAuto,
-        frecuencia: form.frecuencia,
-      });
-    } else {
-      setForm({ ...form, vivienda_id: viviendaId });
-    }
+    setForm({
+      ...form,
+      vivienda_id: viviendaId,
+    });
   }
 
+  // ⭐ PRECIO SEGÚN MODALIDAD (39 / 59 / 79)
   function seleccionarModalidad(modalidadId) {
     const mod = modalidades.find((m) => m.id === modalidadId);
 
@@ -120,6 +89,7 @@ export default function CrearContrato() {
       ...form,
       modalidad: modalidadId,
       frecuencia: mod ? mod.frecuencia : "",
+      precio: mod ? mod.precio : "", // ⭐ AHORA SÍ CAMBIA EL PRECIO
     });
   }
 
@@ -199,7 +169,7 @@ export default function CrearContrato() {
           tecnico_id: String(form.tecnico_id),
           fecha_inicio: form.fecha_inicio,
           fecha_fin: fechaFinFinal,
-          precio: form.precio,
+          precio: form.precio, // ⭐ AHORA ES EL PRECIO DE LA MODALIDAD
           notas: form.notas,
           frecuencia: form.frecuencia,
           modalidad: form.modalidad,
@@ -247,8 +217,7 @@ export default function CrearContrato() {
     }
 
     // ⭐ FACTURA AUTOMÁTICA
-    const { data: facturaData, error: facturaError } = await supabase
-      .from("facturas")
+    const { data: facturaData, error: facturaError } = await supabase.from("facturas")
       .insert([
         {
           cliente_id: form.cliente_id,
@@ -421,7 +390,7 @@ export default function CrearContrato() {
             <option value="">Selecciona modalidad</option>
             {modalidades.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.nombre}
+                {m.nombre} — {m.precio}€
               </option>
             ))}
           </select>
