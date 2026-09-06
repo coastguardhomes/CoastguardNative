@@ -4,7 +4,6 @@ import { supabase } from "../../lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
-// 🎨 ESTILOS
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
 const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
@@ -29,57 +28,63 @@ export default function ChecklistUnificado() {
   const [observaciones, setObservaciones] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  // ⭐ SANITIZAR TEXTO (evita errores del traductor)
-  function limpiarTexto(texto) {
-    return texto
+  function limpiarTexto(txt) {
+    return txt
+      .replace(/\u2028|\u2029/g, "\n")
       .replace(/[^\x00-\x7F]/g, "")
-      .replace(/[\u2028\u2029]/g, "");
+      .trim();
   }
 
-  // 1️⃣ Cargar inspección + vivienda + cliente
+  // Cargar inspección + vivienda + cliente
   useEffect(() => {
-    async function cargarDatosInspeccion() {
-      try {
-        const { data: insp } = await supabase
-          .from("inspecciones")
-          .select("*")
-          .eq("id", id)
-          .single();
+    async function cargarDatos() {
+      const { data: insp } = await supabase
+        .from("inspecciones")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-        if (!insp) {
-          setMensaje("No se encontró la inspección.");
-          return;
-        }
-
-        setInspeccion(insp);
-        if (insp.observaciones) setObservaciones(insp.observaciones);
-
-        if (insp.vivienda_id) {
-          const { data: viv } = await supabase
-            .from("viviendas")
-            .select("*, clientes(nombre)")
-            .eq("id", insp.vivienda_id)
-            .single();
-
-          if (viv) {
-            setViviendaInfo({
-              nombre: viv.nombre || viv.direccion || "Vivienda",
-              direccion: viv.direccion || "Sin dirección",
-              cliente: viv.clientes?.nombre || "Cliente asignado",
-            });
-          }
-        }
-      } catch (e) {
-        console.error("Error cargando inspección:", e);
+      if (!insp) {
+        setMensaje("No se encontró la inspección.");
+        return;
       }
+
+      setInspeccion(insp);
+      if (insp.observaciones) setObservaciones(insp.observaciones);
+
+      // Cargar vivienda REAL
+      const { data: viv } = await supabase
+        .from("viviendas")
+        .select("id, nombre, direccion, cliente_id")
+        .eq("id", insp.vivienda_id)
+        .single();
+
+      let clienteNombre = "Sin cliente asignado";
+
+      // Cliente REAL desde inspecciones.cliente_id
+      if (insp.cliente_id) {
+        const { data: cli } = await supabase
+          .from("clientes")
+          .select("nombre")
+          .eq("id", insp.cliente_id)
+          .maybeSingle();
+
+        if (cli?.nombre) clienteNombre = cli.nombre;
+      }
+
+      setViviendaInfo({
+        nombre: viv?.nombre || viv?.direccion || "Vivienda",
+        direccion: viv?.direccion || "Sin dirección",
+        cliente: clienteNombre,
+      });
     }
 
-    if (id) cargarDatosInspeccion();
+    cargarDatos();
   }, [id]);
 
-  // 2️⃣ Cargar checklist o generarlo si no existe
+  // Cargar checklist
   useEffect(() => {
-    async function gestionarChecklist() {
+    async function cargarChecklist() {
       setLoading(true);
 
       let { data } = await supabase
@@ -136,10 +141,10 @@ export default function ChecklistUnificado() {
       setLoading(false);
     }
 
-    if (id) gestionarChecklist();
+    cargarChecklist();
   }, [id]);
 
-  // 3️⃣ Marcar OK / KO
+  // Actualizar OK/KO
   async function actualizarItem(itemId, completado) {
     setItems((prev) =>
       prev.map((i) => (i.id === itemId ? { ...i, completado } : i))
@@ -151,41 +156,62 @@ export default function ChecklistUnificado() {
       .eq("id", itemId);
   }
 
-  // 4️⃣ Subir fotos
+  // Subida de fotos (versión que funcionaba)
   async function procesarYSubirImagen(base64String) {
     try {
-      const base64Clean = base64String.split("base64,")[1];
+      setMensaje("Subiendo foto...");
+
+      const base64Clean = base64String.includes("base64,")
+        ? base64String.split("base64,")[1]
+        : base64String;
+
       const byteCharacters = atob(base64Clean);
-      const byteArray = new Uint8Array(byteCharacters.length);
+      const byteNumbers = new Array(byteCharacters.length);
 
       for (let i = 0; i < byteCharacters.length; i++) {
-        byteArray[i] = byteCharacters.charCodeAt(i);
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
 
+      const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: "image/jpeg" });
+
       const nombreArchivo = `checklist_${id}_${Date.now()}.jpg`;
 
-      await supabase.storage
+      const { error: storageError } = await supabase.storage
         .from("fotos")
-        .upload(nombreArchivo, blob, { contentType: "image/jpeg", upsert: true });
+        .upload(nombreArchivo, blob, {
+          contentType: "image/jpeg",
+          upsert: true,
+        });
+
+      if (storageError) {
+        setMensaje("Error Storage: " + storageError.message);
+        return;
+      }
 
       const { data: urlData } = supabase.storage
         .from("fotos")
         .getPublicUrl(nombreArchivo);
 
-      await supabase.from("fotos_inspeccion").insert({
-        inspeccion_id: id,
-        archivo: nombreArchivo,
-        url: urlData.publicUrl,
-        principal: false,
-        tipo: "checklist",
-      });
+      const { error: insertError } = await supabase
+        .from("fotos_inspeccion")
+        .insert({
+          inspeccion_id: id,
+          archivo: nombreArchivo,
+          url: urlData.publicUrl,
+          principal: false,
+          tipo: "checklist",
+        });
+
+      if (insertError) {
+        setMensaje("Error BD fotos: " + insertError.message);
+        return;
+      }
 
       setMensaje("Foto guardada correctamente");
       setTimeout(() => setMensaje(""), 2000);
     } catch (e) {
-      console.error(e);
-      setMensaje("Error al subir la foto");
+      setMensaje("Error al procesar la foto");
     }
   }
 
@@ -196,6 +222,7 @@ export default function ChecklistUnificado() {
         resultType: CameraResultType.Base64,
         source: CameraSource.Camera,
       });
+
       if (image.base64String) procesarYSubirImagen(image.base64String);
     } catch {
       setMensaje("Cámara cancelada");
@@ -209,13 +236,14 @@ export default function ChecklistUnificado() {
         resultType: CameraResultType.Base64,
         source: CameraSource.Photos,
       });
+
       if (image.base64String) procesarYSubirImagen(image.base64String);
     } catch {
       setMensaje("Galería cancelada");
     }
   }
 
-  // 5️⃣ Guardar checklist completo
+  // Guardar checklist
   async function guardarChecklistCompleto() {
     setGuardando(true);
 
@@ -228,9 +256,8 @@ export default function ChecklistUnificado() {
         observaciones: textoLimpio,
         checklist_completado: todoOk,
         fecha_checklist: new Date().toISOString(),
-        estado_tecnico: "checklist_completado",
+        estado_tecnico: todoOk ? "completado" : "pendiente",
         estado_admin: "pendiente",
-        estado: todoOk ? "checklist_completado" : "checklist_incompleto",
       })
       .eq("id", id);
 
@@ -238,7 +265,6 @@ export default function ChecklistUnificado() {
     navigate(`/tecnico/inspeccion/${id}`);
   }
 
-  // 6️⃣ Pantalla cargando
   if (loading) {
     return (
       <Menu>
@@ -250,7 +276,6 @@ export default function ChecklistUnificado() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            fontFamily: "Inter, sans-serif",
           }}
         >
           <h3 style={TEXTO_DORADO_BRILLO}>Cargando checklist...</h3>
@@ -259,7 +284,6 @@ export default function ChecklistUnificado() {
     );
   }
 
-  // 7️⃣ Pantalla principal
   return (
     <Menu>
       <div
@@ -268,7 +292,6 @@ export default function ChecklistUnificado() {
           background: FONDO_PRINCIPAL,
           padding: "20px",
           color: "#fff",
-          fontFamily: "Inter, sans-serif",
           paddingBottom: "100px",
         }}
       >
@@ -293,14 +316,12 @@ export default function ChecklistUnificado() {
               borderRadius: "8px",
               fontWeight: "700",
               cursor: "pointer",
-              fontSize: "11px",
             }}
           >
             ← Volver
           </button>
         </div>
 
-        {/* INFO VIVIENDA */}
         <div
           style={{
             background: FONDO_TARJETA,
@@ -316,7 +337,6 @@ export default function ChecklistUnificado() {
           <div>👤 <strong style={{ color: COLOR_DORADO }}>Cliente:</strong> {viviendaInfo.cliente}</div>
         </div>
 
-        {/* MENSAJE */}
         {mensaje && (
           <div
             style={{
@@ -334,7 +354,6 @@ export default function ChecklistUnificado() {
           </div>
         )}
 
-        {/* BOTONES FOTO */}
         <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
           <button
             onClick={tomarFoto}
@@ -346,7 +365,6 @@ export default function ChecklistUnificado() {
               borderRadius: "12px",
               border: BORDE_DORADO_FINO,
               fontWeight: "900",
-              cursor: "pointer",
             }}
           >
             📸 Hacer Foto
@@ -362,14 +380,12 @@ export default function ChecklistUnificado() {
               borderRadius: "12px",
               border: "1px solid rgba(16, 185, 129, 0.6)",
               fontWeight: "900",
-              cursor: "pointer",
             }}
           >
             🖼️ Galería
           </button>
         </div>
 
-        {/* CHECKLIST */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {items.map((item, index) => (
             <div
@@ -397,7 +413,6 @@ export default function ChecklistUnificado() {
                     borderRadius: "10px",
                     border: item.completado ? "1px solid #10b981" : BORDE_DORADO_FINO,
                     fontWeight: "900",
-                    cursor: "pointer",
                   }}
                 >
                   ✓ OK
@@ -413,7 +428,6 @@ export default function ChecklistUnificado() {
                     borderRadius: "10px",
                     border: !item.completado ? "1px solid #ef4444" : "1px solid rgba(239, 68, 68, 0.4)",
                     fontWeight: "900",
-                    cursor: "pointer",
                   }}
                 >
                   ✗ KO / Pendiente
@@ -423,7 +437,6 @@ export default function ChecklistUnificado() {
           ))}
         </div>
 
-        {/* OBSERVACIONES */}
         <textarea
           placeholder="Observaciones de la inspección..."
           value={observaciones}
@@ -441,7 +454,6 @@ export default function ChecklistUnificado() {
           }}
         />
 
-        {/* GUARDAR */}
         <button
           onClick={guardarChecklistCompleto}
           disabled={guardando}
