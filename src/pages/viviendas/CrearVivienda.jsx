@@ -28,6 +28,7 @@ export default function CrearVivienda() {
   const [clientes, setClientes] = useState([]);
   const [tecnicos, setTecnicos] = useState([]);
   const [mensaje, setMensaje] = useState("");
+  const [errorDetalle, setErrorDetalle] = useState("");
 
   useEffect(() => {
     async function cargarListas() {
@@ -64,6 +65,9 @@ export default function CrearVivienda() {
   }
 
   async function crearVivienda() {
+    setMensaje("");
+    setErrorDetalle("");
+
     if (!form.cliente_id) {
       setMensaje("Selecciona el cliente propietario de la vivienda");
       return;
@@ -87,14 +91,15 @@ export default function CrearVivienda() {
         tiene_jardin: form.tiene_jardin,
         tiene_garaje: form.tiene_garaje,
         tiene_sotano: form.tiene_sotano,
-        precio_mensual,
         activa: true,
+        // ❌ precio_mensual eliminado porque tu tabla NO lo tiene
       },
     ]);
 
     if (error) {
       console.error(error);
       setMensaje("Error creando vivienda");
+      setErrorDetalle(error.message || JSON.stringify(error));
       return;
     }
 
@@ -128,12 +133,27 @@ export default function CrearVivienda() {
         {mensaje && (
           <p
             style={{
-              marginBottom: "15px",
-              color: "#4db8ff",
+              marginBottom: "10px",
+              color: mensaje.includes("Error") ? "#ff6b6b" : "#4db8ff",
               fontWeight: "600",
             }}
           >
             {mensaje}
+          </p>
+        )}
+
+        {errorDetalle && (
+          <p
+            style={{
+              marginBottom: "15px",
+              color: "#ff4444",
+              fontSize: "14px",
+              background: "rgba(255,0,0,0.15)",
+              padding: "10px",
+              borderRadius: "8px",
+            }}
+          >
+            {errorDetalle}
           </p>
         )}
 
