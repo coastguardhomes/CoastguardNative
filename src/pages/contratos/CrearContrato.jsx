@@ -16,7 +16,9 @@ export default function CrearContrato() {
     tecnico_id: "",
     fecha_inicio: "",
     fecha_fin: "",
-    precio: "",
+    precio: "",              // ⭐ precio total (vivienda + modalidad)
+    precio_vivienda: 0,      // ⭐ precio vivienda
+    precio_modalidad: 0,     // ⭐ precio modalidad
     notas: "",
     frecuencia: "",
     modalidad: "",
@@ -32,6 +34,30 @@ export default function CrearContrato() {
     { id: "standard", nombre: "Standard", precio: 59, frecuencia: 30 },
     { id: "premium", nombre: "Premium", precio: 79, frecuencia: 30 },
   ];
+
+  // ⭐ SISTEMA AUTOMÁTICO DE PUNTOS (precio vivienda)
+  function calcularPuntos(v) {
+    let puntos = 0;
+
+    if (v.metros_cuadrados > 80 && v.metros_cuadrados <= 120) puntos += 5;
+    else if (v.metros_cuadrados > 120 && v.metros_cuadrados <= 180) puntos += 10;
+    else if (v.metros_cuadrados > 180) puntos += 15;
+
+    if (v.habitaciones > 1) puntos += (v.habitaciones - 1) * 2;
+    if (v.banos > 1) puntos += (v.banos - 1) * 3;
+
+    if (v.tiene_piscina) puntos += 10;
+    if (v.tiene_jardin) puntos += 8;
+    if (v.tiene_garaje) puntos += 4;
+    if (v.tiene_sotano) puntos += 6;
+
+    return puntos;
+  }
+
+  function calcularPrecioVivienda(v) {
+    const puntos = calcularPuntos(v);
+    return Number((puntos * 1.5).toFixed(2));
+  }
 
   useEffect(() => {
     cargarDatos();
@@ -71,24 +97,39 @@ export default function CrearContrato() {
     });
   }
 
-  // ⭐ YA NO CALCULA PRECIO POR VIVIENDA
+  // ⭐ PRECIO VIVIENDA + recalcular total
   function handleViviendaChange(e) {
     const viviendaId = e.target.value;
-    setForm({
-      ...form,
-      vivienda_id: viviendaId,
-    });
+    const vivienda = viviendas.find((v) => String(v.id) === String(viviendaId));
+
+    if (vivienda) {
+      const precioVivienda = calcularPrecioVivienda(vivienda);
+      const precioTotal = precioVivienda + (form.precio_modalidad || 0);
+
+      setForm({
+        ...form,
+        vivienda_id: viviendaId,
+        precio_vivienda: precioVivienda,
+        precio: precioTotal,
+      });
+    } else {
+      setForm({ ...form, vivienda_id: viviendaId });
+    }
   }
 
-  // ⭐ PRECIO SEGÚN MODALIDAD (39 / 59 / 79)
+  // ⭐ PRECIO MODALIDAD + recalcular total
   function seleccionarModalidad(modalidadId) {
     const mod = modalidades.find((m) => m.id === modalidadId);
+
+    const precioModalidad = mod.precio;
+    const precioTotal = precioModalidad + (form.precio_vivienda || 0);
 
     setForm({
       ...form,
       modalidad: modalidadId,
       frecuencia: mod.frecuencia,
-      precio: mod.precio, // ⭐ SIEMPRE SE ACTUALIZA
+      precio_modalidad: precioModalidad,
+      precio: precioTotal,
     });
   }
 
@@ -168,7 +209,7 @@ export default function CrearContrato() {
           tecnico_id: String(form.tecnico_id),
           fecha_inicio: form.fecha_inicio,
           fecha_fin: fechaFinFinal,
-          precio: form.precio, // ⭐ PRECIO DE LA MODALIDAD
+          precio: form.precio, // ⭐ PRECIO TOTAL
           notas: form.notas,
           frecuencia: form.frecuencia,
           modalidad: form.modalidad,
@@ -215,7 +256,7 @@ export default function CrearContrato() {
       console.error("Error creando inspecciones:", e);
     }
 
-    // ⭐ FACTURA AUTOMÁTICA
+    // ⭐ FACTURA AUTOMÁTICA (precio total)
     const { data: facturaData, error: facturaError } = await supabase.from("facturas")
       .insert([
         {
@@ -224,7 +265,7 @@ export default function CrearContrato() {
           contrato_id: contratoId,
           tipo: "contrato",
           descripcion: `Contrato ${form.modalidad} — ${form.duracion_meses} meses`,
-          base: form.precio,
+          base: form.precio, // ⭐ PRECIO TOTAL
           iva: (form.precio * 0.21).toFixed(2),
           total: (form.precio * 1.21).toFixed(2),
           estado: "pendiente",
@@ -421,8 +462,8 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          {/* Precio */}
-          <label>Precio (€/mes):</label>
+          {/* Precio total */}
+          <label>Precio total (€/mes):</label>
           <input
             type="number"
             value={form.precio}
