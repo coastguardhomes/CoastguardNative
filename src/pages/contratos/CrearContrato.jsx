@@ -26,7 +26,7 @@ export default function CrearContrato() {
 
   const [mensaje, setMensaje] = useState("");
 
-  // ⭐ MODALIDADES CON PRECIO (como antes)
+  // ⭐ MODALIDADES CON PRECIO REAL
   const modalidades = [
     { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
     { id: "standard", nombre: "Standard", precio: 59, frecuencia: 30 },
@@ -71,10 +71,9 @@ export default function CrearContrato() {
     });
   }
 
-  // ⭐ YA NO CALCULA PRECIO POR VIVIENDA (solo modalidad)
+  // ⭐ YA NO CALCULA PRECIO POR VIVIENDA
   function handleViviendaChange(e) {
     const viviendaId = e.target.value;
-
     setForm({
       ...form,
       vivienda_id: viviendaId,
@@ -88,8 +87,8 @@ export default function CrearContrato() {
     setForm({
       ...form,
       modalidad: modalidadId,
-      frecuencia: mod ? mod.frecuencia : "",
-      precio: mod ? mod.precio : "", // ⭐ AHORA SÍ CAMBIA EL PRECIO
+      frecuencia: mod.frecuencia,
+      precio: mod.precio, // ⭐ SIEMPRE SE ACTUALIZA
     });
   }
 
@@ -169,7 +168,7 @@ export default function CrearContrato() {
           tecnico_id: String(form.tecnico_id),
           fecha_inicio: form.fecha_inicio,
           fecha_fin: fechaFinFinal,
-          precio: form.precio, // ⭐ AHORA ES EL PRECIO DE LA MODALIDAD
+          precio: form.precio, // ⭐ PRECIO DE LA MODALIDAD
           notas: form.notas,
           frecuencia: form.frecuencia,
           modalidad: form.modalidad,
@@ -422,7 +421,7 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          {/* Precio automático */}
+          {/* Precio */}
           <label>Precio (€/mes):</label>
           <input
             type="number"
