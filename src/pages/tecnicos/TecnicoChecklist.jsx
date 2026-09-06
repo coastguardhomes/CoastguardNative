@@ -256,8 +256,9 @@ export default function ChecklistUnificado() {
         observaciones: textoLimpio,
         checklist_completado: todoOk,
         fecha_checklist: new Date().toISOString(),
-        estado_tecnico: todoOk ? "completado" : "pendiente",
-        estado_admin: "pendiente",
+
+        // ⭐ ESTA LÍNEA HACE QUE DESAPAREZCA DEL DASHBOARD TÉCNICO
+        estado: "finalizada",
       })
       .eq("id", id);
 
