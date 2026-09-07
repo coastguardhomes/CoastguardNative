@@ -116,7 +116,10 @@ export default function FinalizarInspeccion() {
         headers: headersAuth
       });
 
-      if (resPdf.error) throw new Error("Error en PDF: " + resPdf.error.message);
+      // ⭐ CORRECCIÓN: evitar falso error si el PDF ya existe
+      if (resPdf.error && !inspeccion?.pdf_url) {
+        throw new Error("Error en PDF: " + resPdf.error.message);
+      }
 
       // ⭐ CALCULAR PRECIO AUTOMÁTICO DE LA VIVIENDA
       const vivienda = inspeccion.viviendas;
