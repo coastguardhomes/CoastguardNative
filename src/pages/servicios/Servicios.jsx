@@ -17,7 +17,6 @@ const SERVICIOS_DISPONIBLES = [
 const IVA = 0.21;
 const redondear = (n) => Math.round(n * 100) / 100;
 
-// ⭐ SISTEMA AUTOMÁTICO DE PUNTOS
 function calcularPuntos(v) {
   let puntos = 0;
 
@@ -66,7 +65,6 @@ export default function Servicios() {
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(true);
 
-  // Cargar clientes
   useEffect(() => {
     async function cargarClientes() {
       const { data, error } = await supabase
@@ -80,7 +78,6 @@ export default function Servicios() {
     cargarClientes();
   }, []);
 
-  // Cargar viviendas del cliente
   useEffect(() => {
     if (!clienteId) {
       setViviendas([]);
@@ -117,14 +114,12 @@ export default function Servicios() {
     );
   };
 
-  // ⭐ LÍNEAS DE SERVICIO + TARIFA AUTOMÁTICA DE VIVIENDA
   let lineas = seleccionados.map((nombre) => {
     const serv = SERVICIOS_DISPONIBLES.find((e) => e.nombre === nombre);
     const precio = serv.precio ?? Number(precios[nombre] || 0);
     return { nombre, precio };
   });
 
-  // ⭐ SI HAY VIVIENDA → AÑADIR PRECIO AUTOMÁTICO
   if (viviendaId) {
     const vivienda = viviendas.find((v) => v.id == viviendaId);
     if (vivienda) {
@@ -181,7 +176,6 @@ export default function Servicios() {
       const viviendaSeleccionada = viviendas.find((v) => v.id == viviendaId);
       const direccionTexto = viviendaSeleccionada ? viviendaSeleccionada.direccion : null;
 
-      // 1. Crear Factura Contable
       const { data: factura, error: errorFactura } = await supabase
         .from("facturas")
         .insert({
@@ -199,7 +193,6 @@ export default function Servicios() {
 
       if (errorFactura) throw new Error(errorFactura.message);
 
-      // 2. Guardar líneas de la factura
       const { error: errorLineas } = await supabase.from("facturas_lineas").insert(
         lineas.map((l) => ({
           factura_id: factura.id,
@@ -212,7 +205,6 @@ export default function Servicios() {
 
       if (errorLineas) throw new Error(errorLineas.message);
 
-      // 3. Registrar en la tabla 'extras'
       await supabase.from("extras").insert({
         cliente_id: clienteId,
         direccion: direccionTexto,
@@ -222,14 +214,12 @@ export default function Servicios() {
         creado_en: new Date().toISOString()
       });
 
-      // 4. Generación y envío de PDF
       let avisoPdf = "";
       const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
         "factura-pdf",
         { body: { facturaId: factura.id } }
       );
 
-      // ⭐ CORRECCIÓN: evitar falso error si el PDF ya existe
       if (errorPdf && !factura?.pdf_url) {
         avisoPdf = " Error generando PDF.";
       }
@@ -261,92 +251,109 @@ export default function Servicios() {
   return (
     <Menu>
       <div style={estilos.pagina}>
-        <h1 style={estilos.titulo}>Gestión de Servicios y Órdenes</h1>
-        <p style={estilos.subtitulo}>
-          Emite servicios de campo y genera su contabilidad automáticamente.
-        </p>
+        <h1 style={estilos.titulo}>Emitir Servicio y Facturar</h1>
+        <p style={estilos.subtitulo}>Selecciona un cliente, los servicios adicionales o la vivienda y genera la factura correspondiente.</p>
 
-        {mensaje && <p style={estilos.ok}>{mensaje}</p>}
-        {error && <p style={estilos.error}>{error}</p>}
+        {mensaje && <div style={estilos.ok}>{mensaje}</div>}
+        {error && <div style={estilos.error}>{error}</div>}
 
         <div style={estilos.tarjeta}>
+          <h2 style={estilos.seccionTitulo}>Datos del Cliente</h2>
           <label style={estilos.etiqueta}>Cliente</label>
           <select
+            style={estilos.select}
             value={clienteId}
             onChange={(e) => setClienteId(e.target.value)}
-            style={estilos.select}
             disabled={cargando}
           >
-            <option value="">{cargando ? "Cargando..." : "-- Selecciona un cliente --"}</option>
+            <option value="">{cargando ? "Cargando clientes..." : "Selecciona un cliente"}</option>
             {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre} {c.direccion ? `— ${c.direccion}` : ""}</option>
+              <option key={c.id} value={c.id}>
+                {c.nombre} {c.direccion ? `- ${c.direccion}` : ""}
+              </option>
             ))}
           </select>
-
-          {viviendas.length > 0 && (
-            <>
-              <label style={{...estilos.etiqueta, marginTop: 18}}>Vivienda (Opcional - Tarifa Automática)</label>
-              <select
-                value={viviendaId}
-                onChange={(e) => setViviendaId(e.target.value)}
-                style={estilos.select}
-              >
-                <option value="">-- Selecciona una vivienda --</option>
-                {viviendas.map((v) => (
-                  <option key={v.id} value={v.id}>{v.direccion} ({v.metros_cuadrados}m², {v.habitaciones} hab)</option>
-                ))}
-              </select>
-            </>
-          )}
         </div>
 
+        {clienteId && (
+          <div style={estilos.tarjeta}>
+            <h2 style={estilos.seccionTitulo}>Vivienda (Tarifa Automática)</h2>
+            <label style={estilos.etiqueta}>Vivienda asociada</label>
+            <select
+              style={estilos.select}
+              value={viviendaId}
+              onChange={(e) => setViviendaId(e.target.value)}
+            >
+              <option value="">Ninguna / Opcional</option>
+              {viviendas.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.direccion} ({v.metros_cuadrados} m²)
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div style={estilos.tarjeta}>
-          <h3 style={estilos.seccionTitulo}>Seleccionar Servicios</h3>
-          {SERVICIOS_DISPONIBLES.map((serv) => (
-            <div key={serv.nombre} style={{ marginBottom: 16 }}>
+          <h2 style={estilos.seccionTitulo}>Servicios Disponibles</h2>
+          {SERVICIOS_DISPONIBLES.map((s) => {
+            const activo = seleccionados.includes(s.nombre);
+            return (
+              <div key={s.nombre} style={{ marginBottom: 12 }}>
+                <label style={estilos.check}>
+                  <input
+                    type="checkbox"
+                    style={estilos.checkbox}
+                    checked={activo}
+                    onChange={() => toggleServicio(s.nombre)}
+                  />
+                  {s.nombre} {s.precio ? `(${s.precio} €)` : ""}
+                </label>
+                {activo && s.precio === null && (
+                  <input
+                    type="number"
+                    placeholder="Introduce el precio"
+                    style={estilos.input}
+                    value={precios[s.nombre] || ""}
+                    onChange={(e) =>
+                      setPrecios({ ...precios, [s.nombre]: e.target.value })
+                    }
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {(seleccionados.length > 0 || viviendaId) && (
+          <div style={estilos.tarjeta}>
+            <h2 style={estilos.seccionTitulo}>Resumen del Importe</h2>
+            <div style={estilos.fila}>
+              <span>Base imponible:</span>
+              <span>{base} €</span>
+            </div>
+            <div style={estilos.fila}>
+              <span>IVA (21%):</span>
+              <span>{iva} €</span>
+            </div>
+            <div style={{ ...estilos.fila, fontWeight: 700, color: "#4db8ff", fontSize: 17, borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: 8, paddingTop: 8 }}>
+              <span>Total a Pagar:</span>
+              <span>{total} €</span>
+            </div>
+
+            <div style={{ marginTop: 16 }}>
               <label style={estilos.check}>
                 <input
                   type="checkbox"
-                  checked={seleccionados.includes(serv.nombre)}
-                  onChange={() => toggleServicio(serv.nombre)}
                   style={estilos.checkbox}
+                  checked={enviarEmail}
+                  onChange={(e) => setEnviarEmail(e.target.checked)}
                 />
-                <span style={{ color: seleccionados.includes(serv.nombre) ? "#fff" : "#cbd5e1" }}>
-                  {serv.nombre} — {serv.precio !== null ? `${serv.precio} €` : "Precio variable"}
-                </span>
+                Enviar factura por email automáticamente al cliente
               </label>
-
-              {serv.precio === null && seleccionados.includes(serv.nombre) && (
-                <input
-                  type="number"
-                  placeholder="Introduce el importe en €"
-                  value={precios[serv.nombre] || ""}
-                  onChange={(e) => setPrecios({ ...precios, [serv.nombre]: e.target.value })}
-                  style={estilos.input}
-                />
-              )}
             </div>
-          ))}
-        </div>
-
-        <div style={{ ...estilos.tarjeta, background: "linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)" }}>
-          <div style={estilos.fila}><span>Base Imponible</span><strong>{base.toFixed(2)} €</strong></div>
-          <div style={estilos.fila}><span>IVA ({IVA * 100}%)</span><strong>{iva.toFixed(2)} €</strong></div>
-          <div style={{ ...estilos.fila, borderTop: "1px solid rgba(255,255,255,0.12)", marginTop: 10, paddingTop: 10 }}>
-            <span style={{ fontSize: 18, color: "#4db8ff", fontWeight: 600 }}>Total</span>
-            <strong style={{ fontSize: 22, color: "#4db8ff" }}>{total.toFixed(2)} €</strong>
           </div>
-
-          <label style={{ ...estilos.check, marginTop: 18 }}>
-            <input
-              type="checkbox"
-              checked={enviarEmail}
-              onChange={(e) => setEnviarEmail(e.target.checked)}
-              style={estilos.checkbox}
-            />
-            <span style={{ fontSize: 14, color: "#cbd5e1" }}>Enviar comprobante y factura por correo al cliente</span>
-          </label>
-        </div>
+        )}
 
         <button
           onClick={crearServicioyFactura}
@@ -395,4 +402,44 @@ const estilos = {
   check: { display: "flex", alignItems: "center", fontSize: 15, cursor: "pointer", userSelect: "none" },
   checkbox: { width: 20, height: 20, marginRight: 12, cursor: "pointer", accentColor: "#4db8ff", borderRadius: 4 },
   input: { 
-    padding: "11px 14px
+    padding: "11px 14px", 
+    width: "100%", 
+    borderRadius: 10, 
+    border: "1px solid rgba(255, 255, 255, 0.15)", 
+    background: "rgba(255, 255, 255, 0.06)", 
+    color: "#fff", 
+    marginTop: 10, 
+    fontSize: 15,
+    outline: "none",
+    boxShadow: "inset 0 2px 4px rgba(0,0,0,0.2)"
+  },
+  fila: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", fontSize: 15, color: "#cbd5e1" },
+  boton: { 
+    width: "100%", 
+    padding: 15, 
+    background: "linear-gradient(135deg, #4db8ff 0%, #2b9ee6 100%)", 
+    color: "#0a0f1a", 
+    borderRadius: 12, 
+    border: "none", 
+    fontWeight: 700, 
+    fontSize: 16, 
+    cursor: "pointer",
+    boxShadow: "0 6px 20px rgba(77, 184, 255, 0.35)",
+    transition: "transform 0.1s ease, filter 0.2s"
+  },
+  botonSec: { 
+    width: "100%", 
+    marginTop: 12, 
+    padding: 14, 
+    background: "rgba(255, 255, 255, 0.03)", 
+    color: "#4db8ff", 
+    borderRadius: 12, 
+    border: "1px solid rgba(77, 184, 255, 0.3)", 
+    fontWeight: 600, 
+    fontSize: 15, 
+    cursor: "pointer",
+    transition: "background 0.2s"
+  },
+  ok: { marginBottom: 16, color: "#4ade80", background: "rgba(74, 222, 128, 0.12)", border: "1px solid rgba(74, 222, 128, 0.3)", borderRadius: 12, padding: 14, fontSize: 14, lineHeight: 1.4 },
+  error: { marginBottom: 16, color: "#ff6b6b", background: "rgba(255, 107, 107, 0.12)", border: "1px solid rgba(255, 107, 107, 0.3)", borderRadius: 12, padding: 14, fontSize: 14, lineHeight: 1.4 }
+};
