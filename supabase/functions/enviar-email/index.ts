@@ -7,6 +7,11 @@ const CORS = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Metadata interno para debug y control de despliegues
+const FUNCTION_VERSION = "v1.0.1";
+const LAST_UPDATE = "2026-09-07 14:15";
+console.log(`enviar-email cargada (${FUNCTION_VERSION}) - ${LAST_UPDATE}`);
+
 serve({
   "/": async (req) => {
     if (req.method === "OPTIONS") {
