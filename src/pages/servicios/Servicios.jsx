@@ -229,7 +229,12 @@ export default function Servicios() {
         { body: { facturaId: factura.id } }
       );
 
-      if (!errorPdf && pdfData?.url && (await pdfDisponible(pdfData.url))) {
+      // ⭐ CORRECCIÓN: evitar falso error si el PDF ya existe
+      if (errorPdf && !factura?.pdf_url) {
+        avisoPdf = " Error generando PDF.";
+      }
+
+      if ((!errorPdf || factura?.pdf_url) && pdfData?.url && (await pdfDisponible(pdfData.url))) {
         await supabase.from("facturas").update({ pdf_url: pdfData.url }).eq("id", factura.id);
         const cliente = clientes.find((c) => c.id == clienteId);
 
@@ -390,44 +395,4 @@ const estilos = {
   check: { display: "flex", alignItems: "center", fontSize: 15, cursor: "pointer", userSelect: "none" },
   checkbox: { width: 20, height: 20, marginRight: 12, cursor: "pointer", accentColor: "#4db8ff", borderRadius: 4 },
   input: { 
-    padding: "11px 14px", 
-    width: "100%", 
-    borderRadius: 10, 
-    border: "1px solid rgba(255, 255, 255, 0.15)", 
-    background: "rgba(255, 255, 255, 0.06)", 
-    color: "#fff", 
-    marginTop: 10, 
-    fontSize: 15,
-    outline: "none",
-    boxShadow: "inset 0 2px 4px rgba(0,0,0,0.2)"
-  },
-  fila: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", fontSize: 15, color: "#cbd5e1" },
-  boton: { 
-    width: "100%", 
-    padding: 15, 
-    background: "linear-gradient(135deg, #4db8ff 0%, #2b9ee6 100%)", 
-    color: "#0a0f1a", 
-    borderRadius: 12, 
-    border: "none", 
-    fontWeight: 700, 
-    fontSize: 16, 
-    cursor: "pointer",
-    boxShadow: "0 6px 20px rgba(77, 184, 255, 0.35)",
-    transition: "transform 0.1s ease, filter 0.2s"
-  },
-  botonSec: { 
-    width: "100%", 
-    marginTop: 12, 
-    padding: 14, 
-    background: "rgba(255, 255, 255, 0.03)", 
-    color: "#4db8ff", 
-    borderRadius: 12, 
-    border: "1px solid rgba(77, 184, 255, 0.3)", 
-    fontWeight: 600, 
-    fontSize: 15, 
-    cursor: "pointer",
-    transition: "background 0.2s"
-  },
-  ok: { marginBottom: 16, color: "#4ade80", background: "rgba(74, 222, 128, 0.12)", border: "1px solid rgba(74, 222, 128, 0.3)", borderRadius: 12, padding: 14, fontSize: 14, lineHeight: 1.4 },
-  error: { marginBottom: 16, color: "#ff6b6b", background: "rgba(255, 107, 107, 0.12)", border: "1px solid rgba(255, 107, 107, 0.3)", borderRadius: 12, padding: 14, fontSize: 14, lineHeight: 1.4 }
-};
+    padding: "11px 14px
