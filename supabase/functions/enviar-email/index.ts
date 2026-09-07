@@ -8,14 +8,20 @@ const CORS = {
 };
 
 // Metadata interno para debug y control de despliegues
-const FUNCTION_VERSION = "v1.0.2"; // versión incrementada
-const LAST_UPDATE = "2026-09-07 15:12"; // hora nueva
+const FUNCTION_VERSION = "v1.0.3"; // versión incrementada
+const LAST_UPDATE = "2026-09-07 15:54"; // hora nueva
 console.log(`enviar-email cargada (${FUNCTION_VERSION}) - ${LAST_UPDATE}`);
 
 // Nuevo header para compatibilidad con clientes de correo
 const EXTRA_HEADERS = {
   "X-CoastGuard-Function": "enviar-email",
 };
+
+// 🔥 NUEVO: Log detallado de entrada para debug
+function debugLogEntrada(payload: any) {
+  console.log("DEBUG CoastGuard → Datos recibidos en enviar-email:");
+  console.log(JSON.stringify(payload, null, 2));
+}
 
 serve({
   "/": async (req) => {
@@ -34,6 +40,18 @@ serve({
         foto_principal,
         tipo_servicio,
       } = await req.json();
+
+      // 🔥 Log de entrada
+      debugLogEntrada({
+        email,
+        pdfUrl,
+        cliente_nombre,
+        direccion,
+        fecha,
+        observaciones,
+        foto_principal,
+        tipo_servicio,
+      });
 
       const apiKey = Deno.env.get("RESEND_API_KEY");
 
