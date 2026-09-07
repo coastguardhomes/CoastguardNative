@@ -8,14 +8,19 @@ const CORS = {
 };
 
 // Metadata interno para debug y control de despliegues
-const FUNCTION_VERSION = "v1.0.1";
-const LAST_UPDATE = "2026-09-07 14:15";
+const FUNCTION_VERSION = "v1.0.2"; // versión incrementada
+const LAST_UPDATE = "2026-09-07 15:12"; // hora nueva
 console.log(`enviar-email cargada (${FUNCTION_VERSION}) - ${LAST_UPDATE}`);
+
+// Nuevo header para compatibilidad con clientes de correo
+const EXTRA_HEADERS = {
+  "X-CoastGuard-Function": "enviar-email",
+};
 
 serve({
   "/": async (req) => {
     if (req.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS });
+      return new Response(null, { status: 204, headers: { ...CORS, ...EXTRA_HEADERS } });
     }
 
     try {
@@ -35,7 +40,7 @@ serve({
       if (!email || !pdfUrl) {
         return new Response(
           JSON.stringify({ error: "Faltan parámetros obligatorios" }),
-          { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
+          { status: 400, headers: { ...CORS, ...EXTRA_HEADERS, "Content-Type": "application/json" } }
         );
       }
 
@@ -103,18 +108,18 @@ serve({
         console.error(await response.text());
         return new Response(
           JSON.stringify({ error: "Error enviando email" }),
-          { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
+          { status: 500, headers: { ...CORS, ...EXTRA_HEADERS, "Content-Type": "application/json" } }
         );
       }
 
       return new Response(JSON.stringify({ status: "ok" }), {
-        headers: { ...CORS, "Content-Type": "application/json" },
+        headers: { ...CORS, ...EXTRA_HEADERS, "Content-Type": "application/json" },
       });
     } catch (e) {
       console.error("ERROR EN FUNCIÓN enviar-email:", e);
       return new Response(JSON.stringify({ error: e.message }), {
         status: 500,
-        headers: { ...CORS, "Content-Type": "application/json" },
+        headers: { ...CORS, ...EXTRA_HEADERS, "Content-Type": "application/json" },
       });
     }
   },
