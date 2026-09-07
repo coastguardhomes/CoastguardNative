@@ -16,9 +16,9 @@ export default function CrearContrato() {
     tecnico_id: "",
     fecha_inicio: "",
     fecha_fin: "",
-    precio: "",              // ⭐ precio total (vivienda + modalidad)
-    precio_vivienda: 0,      // ⭐ precio vivienda
-    precio_modalidad: 0,     // ⭐ precio modalidad
+    precio: "",
+    precio_vivienda: 0,
+    precio_modalidad: 0,
     notas: "",
     frecuencia: "",
     modalidad: "",
@@ -28,14 +28,12 @@ export default function CrearContrato() {
 
   const [mensaje, setMensaje] = useState("");
 
-  // ⭐ MODALIDADES CON PRECIO REAL
   const modalidades = [
     { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
     { id: "standard", nombre: "Standard", precio: 59, frecuencia: 30 },
     { id: "premium", nombre: "Premium", precio: 79, frecuencia: 30 },
   ];
 
-  // ⭐ SISTEMA AUTOMÁTICO DE PUNTOS (precio vivienda)
   function calcularPuntos(v) {
     let puntos = 0;
 
@@ -97,7 +95,6 @@ export default function CrearContrato() {
     });
   }
 
-  // ⭐ PRECIO VIVIENDA + recalcular total
   function handleViviendaChange(e) {
     const viviendaId = e.target.value;
     const vivienda = viviendas.find((v) => String(v.id) === String(viviendaId));
@@ -117,7 +114,6 @@ export default function CrearContrato() {
     }
   }
 
-  // ⭐ PRECIO MODALIDAD + recalcular total
   function seleccionarModalidad(modalidadId) {
     const mod = modalidades.find((m) => m.id === modalidadId);
 
@@ -209,7 +205,7 @@ export default function CrearContrato() {
           tecnico_id: String(form.tecnico_id),
           fecha_inicio: form.fecha_inicio,
           fecha_fin: fechaFinFinal,
-          precio: form.precio, // ⭐ PRECIO TOTAL
+          precio: form.precio,
           notas: form.notas,
           frecuencia: form.frecuencia,
           modalidad: form.modalidad,
@@ -235,7 +231,10 @@ export default function CrearContrato() {
         "contrato-pdf",
         { body: { contratoId } }
       );
-      pdfUrl = pdfData?.pdf_url || null;
+
+      // ⭐ CORREGIDO
+      pdfUrl = pdfData?.pdfUrl || null;
+
     } catch (e) {
       console.error("Error generando PDF:", e);
     }
@@ -257,7 +256,8 @@ export default function CrearContrato() {
     }
 
     // ⭐ FACTURA AUTOMÁTICA (precio total)
-    const { data: facturaData, error: facturaError } = await supabase.from("facturas")
+    const { data: facturaData, error: facturaError } = await supabase
+      .from("facturas")
       .insert([
         {
           cliente_id: form.cliente_id,
@@ -265,7 +265,7 @@ export default function CrearContrato() {
           contrato_id: contratoId,
           tipo: "contrato",
           descripcion: `Contrato ${form.modalidad} — ${form.duracion_meses} meses`,
-          base: form.precio, // ⭐ PRECIO TOTAL
+          base: form.precio,
           iva: (form.precio * 0.21).toFixed(2),
           total: (form.precio * 1.21).toFixed(2),
           estado: "pendiente",
@@ -363,7 +363,6 @@ export default function CrearContrato() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          {/* Cliente */}
           <label>Cliente:</label>
           <select
             value={form.cliente_id}
@@ -378,7 +377,6 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          {/* DNI */}
           <label>DNI / NIE:</label>
           <input
             type="text"
@@ -388,7 +386,6 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          {/* Vivienda */}
           <label>Vivienda:</label>
           <select
             value={form.vivienda_id}
@@ -403,7 +400,6 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          {/* Técnico */}
           <label>Técnico:</label>
           <select
             value={form.tecnico_id}
@@ -420,7 +416,6 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          {/* Modalidad */}
           <label>Modalidad:</label>
           <select
             value={form.modalidad}
@@ -435,7 +430,6 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          {/* Duración */}
           <label>Duración (meses):</label>
           <input
             type="number"
@@ -444,7 +438,6 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          {/* Fecha inicio */}
           <label>Fecha inicio:</label>
           <input
             type="date"
@@ -453,7 +446,6 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          {/* Fecha fin */}
           <label>Fecha de finalización:</label>
           <input
             type="date"
@@ -462,7 +454,6 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          {/* Precio total */}
           <label>Precio total (€/mes):</label>
           <input
             type="number"
@@ -471,7 +462,6 @@ export default function CrearContrato() {
             style={{ ...inputStyle, background: "rgba(255,255,255,0.15)" }}
           />
 
-          {/* Frecuencia */}
           <label>Frecuencia de visitas (días):</label>
           <input
             type="number"
@@ -480,7 +470,6 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          {/* Notas */}
           <label>Notas adicionales:</label>
           <textarea
             value={form.notas}
@@ -513,4 +502,4 @@ export default function CrearContrato() {
       </div>
     </Menu>
   );
-}
+          }
