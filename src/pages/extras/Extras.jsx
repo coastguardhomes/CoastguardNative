@@ -174,7 +174,8 @@ export default function Extras() {
         { body: { facturaId: factura.id } }
       );
 
-      if (errorPdf) {
+      // ⭐ CORRECCIÓN: evitar falso error si el PDF ya existe
+      if (errorPdf && !factura?.pdf_url) {
         console.error("Error generando PDF:", errorPdf);
         avisoPdf = " El PDF no se pudo generar.";
       } else if (pdfData?.url && !(await pdfDisponible(pdfData.url))) {
