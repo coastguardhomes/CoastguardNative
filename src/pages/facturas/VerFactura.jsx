@@ -83,13 +83,14 @@ export default function VerFactura() {
 
       setFactura(prev => ({ ...prev, estado: 'pagada' }));
 
+      // ⭐ Tolerancia a fallos: no bloquea si falla el envío
       const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
-        body: { id: id, tipo: 'factura' }
+        body: { id: Number(id), facturaId: Number(id), tipo: 'factura' }
       });
 
       if (errEmail) {
         console.warn('Aviso: Factura marcada como pagada pero hubo un detalle con el correo:', errEmail);
-        alert('¡Factura marcada como pagada, pero revisa el envío del correo!');
+        alert('¡Factura marcada como pagada! (Nota: el envío del correo automático podría haber fallado o estar retrasado)');
       } else {
         alert('¡Factura marcada como pagada y enviada por email al cliente correctamente!');
       }
@@ -113,17 +114,22 @@ export default function VerFactura() {
 
       if (err) throw err;
       
+      setFactura(prev => ({ ...prev, estado: nuevoEstado }));
+
+      // ⭐ Eliminado el "throw errEmail" que rompía el proceso entero
       const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
-        body: { id: id, tipo: 'factura' }
+        body: { id: Number(id), facturaId: Number(id), tipo: 'factura' }
       });
 
-      if (errEmail) throw errEmail;
-
-      setFactura(prev => ({ ...prev, estado: nuevoEstado }));
-      alert('¡Factura enviada al cliente por email con éxito!');
+      if (errEmail) {
+        console.warn('Aviso al enviar el correo al cliente:', errEmail);
+        alert('El estado de la factura se ha actualizado, pero el servidor de correo reportó un problema. Se reintentará más tarde.');
+      } else {
+        alert('¡Factura enviada al cliente por email con éxito!');
+      }
     } catch (err) {
       console.error('Error al enviar al cliente:', err);
-      alert('No se pudo enviar el correo al cliente: ' + (err.message || ''));
+      alert('Ocurrió un error al procesar la solicitud: ' + (err.message || ''));
     } finally {
       setSaving(false);
     }
