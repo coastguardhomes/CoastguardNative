@@ -215,7 +215,8 @@ export default function CrearContrato() {
           pdf_url: null,
         },
       ])
-      .select();
+      .select("*")
+      .single(); // ← CORREGIDO
 
     if (error) {
       console.error(error);
@@ -223,7 +224,7 @@ export default function CrearContrato() {
       return;
     }
 
-    const contratoId = data[0].id;
+    const contratoId = data.id;
 
     let pdfUrl = null;
     try {
@@ -232,8 +233,7 @@ export default function CrearContrato() {
         { body: { contratoId } }
       );
 
-      // ⭐ CORREGIDO
-      pdfUrl = pdfData?.pdfUrl || null;
+      pdfUrl = pdfData?.pdfUrl || null; // ← CORREGIDO
 
     } catch (e) {
       console.error("Error generando PDF:", e);
@@ -255,7 +255,6 @@ export default function CrearContrato() {
       console.error("Error creando inspecciones:", e);
     }
 
-    // ⭐ FACTURA AUTOMÁTICA (precio total)
     const { data: facturaData, error: facturaError } = await supabase
       .from("facturas")
       .insert([
@@ -502,4 +501,4 @@ export default function CrearContrato() {
       </div>
     </Menu>
   );
-          }
+}
