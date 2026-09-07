@@ -174,7 +174,6 @@ export default function Extras() {
         { body: { facturaId: factura.id } }
       );
 
-      // ⭐ CORRECCIÓN: evitar falso error si el PDF ya existe
       if (errorPdf && !factura?.pdf_url) {
         console.error("Error generando PDF:", errorPdf);
         avisoPdf = " El PDF no se pudo generar.";
@@ -395,7 +394,7 @@ const estilos = {
     accentColor: "#4db8ff"
   },
   input: {
-    padding: 12,
+    padding: "11px 14px",
     width: "100%",
     borderRadius: 8,
     border: "1px solid rgba(255,255,255,0.2)",
