@@ -47,19 +47,35 @@ export default function FacturasLista() {
     setPdfCargandoId(facturaId);
     try {
       const { data, error } = await supabase.functions.invoke("factura-pdf", {
-        body: { facturaId },
+        body: { facturaId, id: facturaId },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.warn("Aviso al generar PDF desde Edge Function:", error);
+      }
 
-      if (data?.url) {
-        window.open(data.url, "_blank");
+      // ⭐ Tolerancia a múltiples formatos de respuesta de la Edge Function
+      const pdfUrl = data?.url || data?.pdf_url || data?.pdfUrl;
+
+      if (pdfUrl) {
+        window.open(pdfUrl, "_blank");
       } else {
-        alert("No se devolvió la URL del PDF.");
+        // ⭐ Fallback: Revisar si la función guardó la URL en la base de datos pero no la devolvió directamente
+        const { data: facturaData } = await supabase
+          .from("facturas")
+          .select("pdf_url")
+          .eq("id", facturaId)
+          .single();
+
+        if (facturaData && facturaData.pdf_url) {
+          window.open(facturaData.pdf_url, "_blank");
+        } else {
+          alert("El PDF se está procesando o no se pudo obtener la URL en este momento. Inténtalo de nuevo en unos segundos.");
+        }
       }
     } catch (err) {
-      console.error("Error al generar PDF:", err);
-      alert("Error al generar el documento PDF.");
+      console.error("Error al gestionar la vista del PDF:", err);
+      alert("Ocurrió un problema de conexión al intentar recuperar el documento PDF.");
     } finally {
       setPdfCargandoId(null);
     }
