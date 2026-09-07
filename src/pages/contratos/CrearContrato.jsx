@@ -117,6 +117,8 @@ export default function CrearContrato() {
   function seleccionarModalidad(modalidadId) {
     const mod = modalidades.find((m) => m.id === modalidadId);
 
+    if (!mod) return;
+
     const precioModalidad = mod.precio;
     const precioTotal = precioModalidad + (form.precio_vivienda || 0);
 
@@ -216,11 +218,10 @@ export default function CrearContrato() {
         },
       ])
       .select("*")
-      .single(); // ← CORREGIDO
+      .single();
 
     if (error) {
-      console.error(error);
-      setMensaje("Error creando contrato");
+      setMensaje("Error creando contrato: " + error.message);
       return;
     }
 
@@ -228,15 +229,21 @@ export default function CrearContrato() {
 
     let pdfUrl = null;
     try {
-      const { data: pdfData } = await supabase.functions.invoke(
+      const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
         "contrato-pdf",
         { body: { contratoId } }
       );
 
-      pdfUrl = pdfData?.pdfUrl || null; // ← CORREGIDO
+      if (pdfError) {
+        setMensaje("Error función contrato-pdf: " + JSON.stringify(pdfError));
+        return;
+      }
+
+      pdfUrl = pdfData?.pdfUrl || null;
 
     } catch (e) {
-      console.error("Error generando PDF:", e);
+      setMensaje("Invoke contrato-pdf falló: " + e.message);
+      return;
     }
 
     if (pdfUrl) {
@@ -252,7 +259,7 @@ export default function CrearContrato() {
         { body: { contratoId } }
       );
     } catch (e) {
-      console.error("Error creando inspecciones:", e);
+      setMensaje("Error creando inspecciones: " + e.message);
     }
 
     const { data: facturaData, error: facturaError } = await supabase
@@ -282,7 +289,7 @@ export default function CrearContrato() {
           body: { facturaId },
         });
       } catch (e) {
-        console.error("Error generando factura PDF:", e);
+        setMensaje("Error generando factura PDF: " + e.message);
       }
 
       try {
@@ -290,7 +297,7 @@ export default function CrearContrato() {
           body: { facturaId, tipo: "factura" },
         });
       } catch (e) {
-        console.error("Error enviando factura:", e);
+        setMensaje("Error enviando factura: " + e.message);
       }
     }
 
@@ -299,7 +306,7 @@ export default function CrearContrato() {
         body: { contratoId, tipo: "contrato" },
       });
     } catch (e) {
-      console.error("Error enviando email:", e);
+      setMensaje("Error enviando email: " + e.message);
     }
 
     setMensaje("¡Contrato legal creado y enviado al cliente con éxito!");
@@ -319,16 +326,9 @@ export default function CrearContrato() {
   };
 
   return (
-    <Menu>
-      <div
-        style={{
-          padding: "20px",
-          background: "#0a0f1a",
-          minHeight: "100vh",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
+    <div style={{ backgroundColor: "#0a0f1a", minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif" }}>
+      <Menu />
+      <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
         <h1
           style={{
             color: "#4db8ff",
@@ -345,7 +345,7 @@ export default function CrearContrato() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: mensaje.includes("Error") ? "#ff4d4d" : "#4db8ff",
               fontWeight: "600",
             }}
           >
@@ -362,7 +362,7 @@ export default function CrearContrato() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          <label>Cliente:</label>
+          <label style={{ display: "block", marginBottom: "5px" }}>Cliente:</label>
           <select
             value={form.cliente_id}
             onChange={handleClienteChange}
@@ -371,12 +371,12 @@ export default function CrearContrato() {
             <option value="">Selecciona cliente</option>
             {clientes.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.nombre}
+                {c.nombre} ({c.dni || c.cif || "Sin DNI"})
               </option>
             ))}
           </select>
 
-          <label>DNI / NIE:</label>
+          <label style={{ display: "block", marginBottom: "5px" }}>DNI / NIE:</label>
           <input
             type="text"
             placeholder="Introduce o edita el DNI / NIE"
@@ -385,7 +385,7 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label>Vivienda:</label>
+          <label style={{ display: "block", marginBottom: "5px" }}>Vivienda:</label>
           <select
             value={form.vivienda_id}
             onChange={handleViviendaChange}
@@ -394,12 +394,12 @@ export default function CrearContrato() {
             <option value="">Selecciona vivienda</option>
             {viviendasFiltradas.map((v) => (
               <option key={v.id} value={v.id}>
-                {v.direccion}
+                {v.direccion} - {v.metros_cuadrados}m²
               </option>
             ))}
           </select>
 
-          <label>Técnico:</label>
+          <label style={{ display: "block", marginBottom: "5px" }}>Técnico:</label>
           <select
             value={form.tecnico_id}
             onChange={(e) =>
@@ -415,37 +415,51 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          <label>Modalidad:</label>
-          <select
-            value={form.modalidad}
-            onChange={(e) => seleccionarModalidad(e.target.value)}
-            style={inputStyle}
-          >
-            <option value="">Selecciona modalidad</option>
+          <label style={{ display: "block", marginBottom: "5px" }}>Modalidad:</label>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
             {modalidades.map((m) => (
-              <option key={m.id} value={m.id}>
+              <button
+                type="button"
+                key={m.id}
+                onClick={() => seleccionarModalidad(m.id)}
+                style={{
+                  padding: "12px",
+                  flex: 1,
+                  backgroundColor: form.modalidad === m.id ? "#4db8ff" : "rgba(255,255,255,0.08)",
+                  color: form.modalidad === m.id ? "#000" : "#fff",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  borderRadius: "10px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
                 {m.nombre} — {m.precio}€
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
 
-          <label>Duración (meses):</label>
-          <input
-            type="number"
-            value={form.duracion_meses}
-            onChange={handleDuracionChange}
-            style={inputStyle}
-          />
+          <div style={{ display: "flex", gap: "15px" }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: "block", marginBottom: "5px" }}>Fecha inicio:</label>
+              <input
+                type="date"
+                value={form.fecha_inicio}
+                onChange={handleFechaInicioChange}
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: "block", marginBottom: "5px" }}>Duración (meses):</label>
+              <input
+                type="number"
+                value={form.duracion_meses}
+                onChange={handleDuracionChange}
+                style={inputStyle}
+              />
+            </div>
+          </div>
 
-          <label>Fecha inicio:</label>
-          <input
-            type="date"
-            value={form.fecha_inicio}
-            onChange={handleFechaInicioChange}
-            style={inputStyle}
-          />
-
-          <label>Fecha de finalización:</label>
+          <label style={{ display: "block", marginBottom: "5px" }}>Fecha de finalización:</label>
           <input
             type="date"
             value={form.fecha_fin}
@@ -453,7 +467,7 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label>Precio total (€/mes):</label>
+          <label style={{ display: "block", marginBottom: "5px" }}>Precio total (€/mes):</label>
           <input
             type="number"
             value={form.precio}
@@ -461,7 +475,7 @@ export default function CrearContrato() {
             style={{ ...inputStyle, background: "rgba(255,255,255,0.15)" }}
           />
 
-          <label>Frecuencia de visitas (días):</label>
+          <label style={{ display: "block", marginBottom: "5px" }}>Frecuencia de visitas (días):</label>
           <input
             type="number"
             value={form.frecuencia}
@@ -469,7 +483,7 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label>Notas adicionales:</label>
+          <label style={{ display: "block", marginBottom: "5px" }}>Notas adicionales:</label>
           <textarea
             value={form.notas}
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
@@ -499,6 +513,6 @@ export default function CrearContrato() {
           </button>
         </div>
       </div>
-    </Menu>
+    </div>
   );
 }
