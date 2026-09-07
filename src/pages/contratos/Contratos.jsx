@@ -9,7 +9,7 @@ export default function Contratos() {
   const [cargando, setCargando] = useState(true);
   const [modalHtml, setModalHtml] = useState(null);
   const [generandoId, setGenerandoId] = useState(null);
-  const [enviandoId, setEnviandoId] = useState(null); // Estado para controlar el botón de enviar correo
+  const [enviandoId, setEnviandoId] = useState(null);
 
   useEffect(() => {
     cargarContratos();
@@ -17,9 +17,24 @@ export default function Contratos() {
 
   const cargarContratos = async () => {
     setCargando(true);
+
     const { data, error } = await supabase
       .from("contratos")
-      .select("*")
+      .select(`
+        *,
+        clientes (
+          id,
+          nombre,
+          direccion,
+          email
+        ),
+        viviendas (
+          id,
+          direccion,
+          ciudad,
+          localidad
+        )
+      `)
       .order("id", { ascending: false });
 
     if (error) {
@@ -81,12 +96,10 @@ export default function Contratos() {
     }
   };
 
-  // Función modificada para actualizar estado Y enviar el email con el PDF del contrato
   const enviarACliente = async (id) => {
     try {
       setEnviandoId(id);
 
-      // 1. Actualizar estado en la base de datos
       const { error } = await supabase
         .from("contratos")
         .update({ estado: "enviado_al_cliente" })
@@ -94,17 +107,13 @@ export default function Contratos() {
 
       if (error) throw error;
 
-      // 2. Disparar tu función de Supabase para enviar el email con el PDF del contrato
       const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
-        body: { 
-          id: id, 
-          tipo: "contrato" 
-        }
+        body: { id, tipo: "contrato" }
       });
 
       if (errEmail) {
         console.warn("Aviso al enviar correo:", errEmail);
-        alert("Contrato actualizado, pero hubo un detalle al disparar el correo electrónico.");
+        alert("Contrato actualizado, pero hubo un detalle al enviar el correo.");
       } else {
         alert("¡Contrato enviado al cliente por email con éxito!");
       }
@@ -133,7 +142,7 @@ export default function Contratos() {
     const rawUrl = c.pdf_url;
 
     if (!rawUrl) {
-      alert("Este contrato aún no tiene un PDF generado. Pulsa primero en 'Generar PDF'.");
+      alert("Este contrato aún no tiene un PDF generado.");
       return;
     }
 
@@ -154,7 +163,7 @@ export default function Contratos() {
       if (publicData?.publicUrl) {
         window.open(`${publicData.publicUrl}?t=${Date.now()}`, "_blank");
       } else {
-        alert("No se pudo obtener la ruta de acceso al archivo.");
+        alert("No se pudo obtener la ruta del archivo.");
       }
     }
   };
@@ -185,6 +194,20 @@ export default function Contratos() {
 
                 return (
                   <div key={c.id} style={{ background: "rgba(255,255,255,0.05)", padding: "18px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)" }}>
+                    
+                    {/* ⭐ DATOS DEL CLIENTE Y VIVIENDA */}
+                    <p style={{ margin: "4px 0", fontSize: "14px", color: "#9fb3c8" }}>
+                      Cliente: {c.clientes?.nombre || "Sin cliente"}
+                    </p>
+
+                    <p style={{ margin: "4px 0", fontSize: "14px", color: "#9fb3c8" }}>
+                      Dirección cliente: {c.clientes?.direccion || "Sin dirección"}
+                    </p>
+
+                    <p style={{ margin: "4px 0 14px 0", fontSize: "14px", color: "#9fb3c8" }}>
+                      Vivienda: {c.viviendas?.direccion || "Sin vivienda asignada"}
+                    </p>
+
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                       <h3 style={{ margin: 0, fontSize: "18px" }}>Contrato #{c.id}</h3>
                       <span style={{ background: esFirmado ? "rgba(76, 217, 100, 0.2)" : "rgba(255, 184, 77, 0.2)", color: esFirmado ? "#4cd964" : "#ffb84d", padding: "4px 10px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold" }}>
@@ -211,6 +234,7 @@ export default function Contratos() {
                         </button>
                       </div>
 
+                      {/* ⭐ BOTÓN CORREGIDO */}
                       <button
                         onClick={() => generarPDF(c.id)}
                         disabled={generandoId === c.id}
@@ -219,7 +243,6 @@ export default function Contratos() {
                         {generandoId === c.id ? "⌛ Generando..." : "📄 Generar PDF / Ver Contrato"}
                       </button>
 
-                      {/* Botón para Enviar Contrato por Email al Cliente */}
                       <button
                         onClick={() => enviarACliente(c.id)}
                         disabled={enviandoId === c.id}
