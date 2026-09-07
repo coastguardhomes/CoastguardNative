@@ -27,6 +27,7 @@ export default function CrearContrato() {
   });
 
   const [mensaje, setMensaje] = useState("");
+  const [procesando, setProcesando] = useState(false);
 
   const modalidades = [
     { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
@@ -39,7 +40,7 @@ export default function CrearContrato() {
 
     if (v.metros_cuadrados > 80 && v.metros_cuadrados <= 120) puntos += 5;
     else if (v.metros_cuadrados > 120 && v.metros_cuadrados <= 180) puntos += 10;
-    else if (v.mmetros_cuadrados > 180) puntos += 15;
+    else if (v.metros_cuadrados > 180) puntos += 15; // ⭐ Corregido error tipográfico (mmetros_cuadrados)
 
     if (v.habitaciones > 1) puntos += (v.habitaciones - 1) * 2;
     if (v.banos > 1) puntos += (v.banos - 1) * 3;
@@ -116,6 +117,7 @@ export default function CrearContrato() {
 
   function seleccionarModalidad(modalidadId) {
     const mod = modalidades.find((m) => m.id === modalidadId);
+    if (!mod) return;
 
     const precioModalidad = mod.precio;
     const precioTotal = precioModalidad + (form.precio_vivienda || 0);
@@ -181,101 +183,117 @@ export default function CrearContrato() {
       return;
     }
 
-    if (form.dni && form.cliente_id) {
-      await supabase
-        .from("clientes")
-        .update({ dni: form.dni })
-        .eq("id", form.cliente_id);
-    }
+    setProcesando(true);
+    setMensaje("Creando contrato y generando documentación...");
 
-    let fechaFinFinal = form.fecha_fin;
-    if (!fechaFinFinal && form.fecha_inicio) {
-      const fechaInicioObj = new Date(form.fecha_inicio);
-      const meses = Number(form.duracion_meses) || 12;
-      fechaInicioObj.setMonth(fechaInicioObj.getMonth() + meses);
-      fechaFinFinal = fechaInicioObj.toISOString().split("T")[0];
-    }
+    try {
+      if (form.dni && form.cliente_id) {
+        await supabase
+          .from("clientes")
+          .update({ dni: form.dni })
+          .eq("id", form.cliente_id);
+      }
 
-    const { data, error } = await supabase
-      .from("contratos")
-      .insert([
-        {
-          cliente_id: form.cliente_id,
-          vivienda_id: form.vivienda_id,
-          tecnico_id: String(form.tecnico_id),
-          fecha_inicio: form.fecha_inicio,
-          fecha_fin: fechaFinFinal,
-          precio: form.precio,
-          notas: form.notas,
-          frecuencia: form.frecuencia,
-          modalidad: form.modalidad,
-          estado: "pendiente",
-          duracion_meses: form.duracion_meses,
-          firma_url: null,
-          pdf_url: null,
-        },
-      ])
-      .select("*")
-      .single();
+      let fechaFinFinal = form.fecha_fin;
+      if (!fechaFinFinal && form.fecha_inicio) {
+        const fechaInicioObj = new Date(form.fecha_inicio);
+        const meses = Number(form.duracion_meses) || 12;
+        fechaInicioObj.setMonth(fechaInicioObj.getMonth() + meses);
+        fechaFinFinal = fechaInicioObj.toISOString().split("T")[0];
+      }
 
-    if (error) {
-      setMensaje("Error creando contrato: " + error.message);
-      return;
-    }
+      const { data, error } = await supabase
+        .from("contratos")
+        .insert([
+          {
+            cliente_id: form.cliente_id,
+            vivienda_id: form.vivienda_id,
+            tecnico_id: String(form.tecnico_id),
+            fecha_inicio: form.fecha_inicio,
+            fecha_fin: fechaFinFinal,
+            precio: form.precio,
+            notas: form.notas,
+            frecuencia: form.frecuencia,
+            modalidad: form.modalidad,
+            estado: "pendiente",
+            duracion_meses: form.duracion_meses,
+            firma_url: null,
+            pdf_url: null,
+          },
+        ])
+        .select("*")
+        .single();
 
-    const contratoId = data.id;
+      if (error) throw error;
 
-    const { data: facturaData, error: facturaError } = await supabase
-      .from("facturas")
-      .insert([
-        {
-          cliente_id: form.cliente_id,
-          vivienda_id: form.vivienda_id,
-          contrato_id: contratoId,
-          tipo: "contrato",
-          descripcion: `Contrato ${form.modalidad} — ${form.duracion_meses} meses`,
-          base: form.precio,
-          iva: (form.precio * 0.21).toFixed(2),
-          total: (form.precio * 1.21).toFixed(2),
-          estado: "pendiente",
-          fecha: new Date().toISOString(),
-        },
-      ])
-      .select()
-      .single();
+      const contratoId = data.id;
 
-    if (!facturaError) {
-      const facturaId = facturaData.id;
+      // ⭐ CREAR FACTURA AUTOMÁTICA ASOCIADA AL CONTRATO
+      const { data: facturaData, error: facturaError } = await supabase
+        .from("facturas")
+        .insert([
+          {
+            cliente_id: form.cliente_id,
+            vivienda_id: form.vivienda_id,
+            contrato_id: contratoId,
+            tipo: "contrato",
+            descripcion: `Contrato ${form.modalidad} — ${form.duracion_meses} meses`,
+            base: form.precio,
+            iva: (form.precio * 0.21).toFixed(2),
+            total: (form.precio * 1.21).toFixed(2),
+            estado: "pendiente",
+            fecha: new Date().toISOString(),
+          },
+        ])
+        .select()
+        .single();
+
+      if (!facturaError && facturaData) {
+        const facturaId = facturaData.id;
+
+        try {
+          await supabase.functions.invoke("factura-pdf", {
+            body: { facturaId, id: facturaId },
+          });
+        } catch (e) {
+          console.warn("Aviso menor al generar PDF de factura:", e);
+        }
+
+        try {
+          await supabase.functions.invoke("enviar-email", {
+            body: { facturaId, id: facturaId, tipo: "factura" },
+          });
+        } catch (e) {
+          console.warn("Aviso menor al enviar email de factura:", e);
+        }
+      }
 
       try {
-        await supabase.functions.invoke("factura-pdf", {
-          body: { facturaId },
+        await supabase.functions.invoke("contrato-pdf", {
+          body: { contratoId: contratoId, id: contratoId },
         });
       } catch (e) {
-        setMensaje("Error generando factura PDF: " + e.message);
+        console.warn("Aviso menor al generar PDF de contrato:", e);
       }
 
       try {
         await supabase.functions.invoke("enviar-email", {
-          body: { facturaId, tipo: "factura" },
+          body: { contratoId, id: contratoId, tipo: "contrato" },
         });
       } catch (e) {
-        setMensaje("Error enviando factura: " + e.message);
+        console.warn("Aviso menor al enviar email de contrato:", e);
       }
-    }
 
-    try {
-      await supabase.functions.invoke("enviar-email", {
-        body: { contratoId, tipo: "contrato" },
-      });
+      setMensaje("¡Contrato creado con éxito! ✔");
+      setTimeout(() => {
+        navigate("/contratos");
+      }, 1500);
+
     } catch (e) {
-      setMensaje("Error enviando email: " + e.message);
+      console.error("Error general creando contrato:", e);
+      setMensaje("Error creando contrato: " + e.message);
+      setProcesando(false);
     }
-
-    setMensaje("¡Contrato creado con éxito!");
-    setTimeout(() => {
-      navigate("/contratos");
-    }, 1500);
   }
 
   const inputStyle = {
@@ -315,7 +333,7 @@ export default function CrearContrato() {
           <p
             style={{
               marginBottom: "15px",
-              color: "#4db8ff",
+              color: mensaje.includes("éxito") ? "#4ade80" : "#4db8ff",
               fontWeight: "600",
             }}
           >
@@ -451,6 +469,7 @@ export default function CrearContrato() {
 
           <button
             onClick={crearContrato}
+            disabled={procesando}
             style={{
               marginTop: "20px",
               padding: "14px",
@@ -463,9 +482,10 @@ export default function CrearContrato() {
               fontSize: "17px",
               cursor: "pointer",
               boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+              opacity: procesando ? 0.6 : 1,
             }}
           >
-            Crear Contrato
+            {procesando ? "Procesando..." : "Crear Contrato"}
           </button>
         </div>
       </div>
