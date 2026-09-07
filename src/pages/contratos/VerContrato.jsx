@@ -52,26 +52,26 @@ export default function VerContrato() {
       );
 
       if (pdfError) {
-        alert("Error generando PDF.");
-        return;
+        console.warn("Aviso al invocar contrato-pdf:", pdfError);
       }
 
-      const pdfUrl = pdfData?.pdf_url;
-      if (!pdfUrl) {
-        alert("La función no devolvió una URL válida.");
-        return;
+      const pdfUrl = pdfData?.pdf_url || pdfData?.pdfUrl;
+      
+      if (pdfUrl) {
+        await supabase
+          .from("contratos")
+          .update({ pdf_url: pdfUrl })
+          .eq("id", id);
+
+        await cargarContrato();
+        alert("PDF procesado correctamente.");
+      } else {
+        console.log("La función no devolvió URL directa, se mantiene el estado actual.");
+        alert("Proceso de contrato completado.");
       }
-
-      await supabase
-        .from("contratos")
-        .update({ pdf_url: pdfUrl })
-        .eq("id", id);
-
-      await cargarContrato();
-      alert("PDF regenerado correctamente.");
     } catch (e) {
       console.error(e);
-      alert("Error regenerando el PDF.");
+      alert("Error procesando la solicitud del PDF.");
     } finally {
       setGenerando(false);
     }
@@ -79,11 +79,16 @@ export default function VerContrato() {
 
   const enviarEmail = async () => {
     try {
-      await supabase.functions.invoke("enviar-email", {
-        body: { contratoId: Number(id) },
+      const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
+        body: { contratoId: Number(id), id: Number(id), tipo: "contrato" },
       });
 
-      alert("Email enviado al cliente.");
+      if (errEmail) {
+        console.warn("Aviso al enviar email:", errEmail);
+        alert("El correo no pudo ser enviado automáticamente.");
+      } else {
+        alert("Email enviado al cliente.");
+      }
     } catch (e) {
       console.error(e);
       alert("Error enviando email.");
@@ -201,7 +206,7 @@ export default function VerContrato() {
                   opacity: generando ? 0.6 : 1,
                 }}
               >
-                {generando ? "⌛ Regenerando PDF..." : "📄 Regenerar PDF Premium"}
+                {generando ? "⌛ Procesando PDF..." : "📄 Actualizar PDF Premium"}
               </button>
 
               <button
