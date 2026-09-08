@@ -12,25 +12,32 @@ export default function EditarCliente() {
     telefono: "",
     email: "",
     direccion: "",
-    idioma: "es", // ⭐ 1. Idioma inicial añadido aquí
+    idioma: "es",
   });
 
   const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     async function cargarCliente() {
+      // Reemplazado .single() por .maybeSingle() para evitar error 406
       const { data, error } = await supabase
         .from("clientes")
-        .select("nombre, telefono, email, direccion, idioma") // ⭐ 2. Seleccionar el idioma de Supabase
+        .select("nombre, telefono, email, direccion, idioma")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        setMensaje("Error cargando cliente");
+      if (error || !data) {
+        setMensaje("Error cargando cliente o no encontrado");
         return;
       }
 
-      setForm(data);
+      setForm({
+        nombre: data.nombre || "",
+        telefono: data.telefono || "",
+        email: data.email || "",
+        direccion: data.direccion || "",
+        idioma: data.idioma || "es",
+      });
     }
 
     cargarCliente();
@@ -49,7 +56,7 @@ export default function EditarCliente() {
         telefono: form.telefono,
         email: form.email,
         direccion: form.direccion,
-        idioma: form.idioma, // ⭐ 3. Guardar el idioma modificado en Supabase
+        idioma: form.idioma,
       })
       .eq("id", id);
 
@@ -133,7 +140,6 @@ export default function EditarCliente() {
           onChange={(e) => setForm({ ...form, direccion: e.target.value })}
         />
 
-        {/* ⭐ 4. Selector visual de idioma añadido en edición */}
         <label>Idioma Preferido</label>
         <select
           name="idioma"
