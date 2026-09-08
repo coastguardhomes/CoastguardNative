@@ -49,43 +49,27 @@ export default function Contratos() {
     try {
       setGenerandoId(id);
 
+      // CORREGIDO: contrato_id con guion bajo
       const response = await supabase.functions.invoke("contrato-pdf", {
-        body: { contratoId: id },
+        body: { contrato_id: id },
       });
 
       if (response.error) throw response.error;
 
       const rawData = response.data;
-      const urlGenerada = rawData?.pdf_url || rawData?.url || rawData?.path;
 
-      if (!urlGenerada) {
-        throw new Error("La función generadora no devolvió una URL válida.");
-      }
-
-      const { error: updateError } = await supabase
-        .from("contratos")
-        .update({ pdf_url: urlGenerada })
-        .eq("id", id);
-
-      if (updateError) {
-        throw new Error("Error al actualizar la URL: " + updateError.message);
-      }
-
-      await cargarContratos();
-
+      // CORREGIDO: Captura el HTML devuelto por la Edge Function para mostrarlo en el Modal
       let htmlContent = "";
       if (typeof rawData === "string") {
         htmlContent = rawData;
-      } else if (rawData instanceof Blob) {
-        htmlContent = await rawData.text();
-      } else if (typeof rawData === "object" && rawData !== null && rawData.html) {
+      } else if (rawData && rawData.html) {
         htmlContent = rawData.html;
       }
 
-      if (htmlContent && (htmlContent.includes("<!DOCTYPE") || htmlContent.includes("<html") || htmlContent.includes("<div"))) {
+      if (htmlContent) {
         setModalHtml(htmlContent);
       } else {
-        alert("¡PDF generado y vinculado con éxito!");
+        alert("¡PDF generado con éxito!");
       }
 
     } catch (err) {
@@ -107,8 +91,9 @@ export default function Contratos() {
 
       if (error) throw error;
 
+      // CORREGIDO: factura_id / contrato_id asignado según corresponda
       const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
-        body: { id, tipo: "contrato" }
+        body: { contrato_id: id, id, tipo: "contrato" }
       });
 
       if (errEmail) {
@@ -195,7 +180,6 @@ export default function Contratos() {
                 return (
                   <div key={c.id} style={{ background: "rgba(255,255,255,0.05)", padding: "18px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)" }}>
                     
-                    {/* ⭐ DATOS DEL CLIENTE Y VIVIENDA */}
                     <p style={{ margin: "4px 0", fontSize: "14px", color: "#9fb3c8" }}>
                       Cliente: {c.clientes?.nombre || "Sin cliente"}
                     </p>
@@ -234,7 +218,6 @@ export default function Contratos() {
                         </button>
                       </div>
 
-                      {/* ⭐ BOTÓN CORREGIDO */}
                       <button
                         onClick={() => generarPDF(c.id)}
                         disabled={generandoId === c.id}
