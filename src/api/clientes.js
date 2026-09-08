@@ -15,13 +15,13 @@ export async function getClientes() {
   return data
 }
 
-// Obtener un cliente por ID
+// Obtener un cliente por ID (corregido con maybeSingle)
 export async function getCliente(id) {
   const { data, error } = await supabase
     .from("clientes")
     .select("*")
     .eq("id", id)
-    .single()
+    .maybeSingle()
 
   if (error) {
     console.error("Error obteniendo cliente:", error)
@@ -37,7 +37,7 @@ export async function crearCliente(data) {
     .from("clientes")
     .insert(data)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) {
     console.error("Error creando cliente:", error)
@@ -54,7 +54,7 @@ export async function actualizarCliente(id, data) {
     .update(data)
     .eq("id", id)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) {
     console.error("Error actualizando cliente:", error)
