@@ -32,12 +32,12 @@ export default function TecnicoInspeccion() {
     setMensaje("");
 
     try {
-      // 1️⃣ Obtener técnico por email
+      // 1️⃣ Obtener técnico por email (cambiado a .maybeSingle())
       const { data: tecnico, error: tecError } = await supabase
         .from("tecnicos")
         .select("id")
         .eq("email", user?.email)
-        .single();
+        .maybeSingle();
 
       if (tecError || !tecnico) {
         setMensaje("No se pudo validar la cuenta del técnico.");
@@ -45,12 +45,12 @@ export default function TecnicoInspeccion() {
         return;
       }
 
-      // 2️⃣ Cargar datos de la inspección
+      // 2️⃣ Cargar datos de la inspección (cambiado a .maybeSingle())
       const { data: insp, error: inspError } = await supabase
         .from("inspecciones")
         .select("*")
         .eq("id", String(id))
-        .single();
+        .maybeSingle();
 
       if (inspError || !insp) {
         setMensaje("Inspección no encontrada.");
@@ -67,13 +67,13 @@ export default function TecnicoInspeccion() {
 
       setInspeccion(insp);
 
-      // 4️⃣ Cargar datos de la vivienda
+      // 4️⃣ Cargar datos de la vivienda (cambiado a .maybeSingle())
       if (insp.vivienda_id) {
         const { data: viv } = await supabase
           .from("viviendas")
           .select("*, clientes(nombre, telefono)")
           .eq("id", insp.vivienda_id)
-          .single();
+          .maybeSingle();
 
         if (viv) {
           setVivienda(viv);
@@ -83,20 +83,20 @@ export default function TecnicoInspeccion() {
         }
       }
 
-      // 5️⃣ Si hay contrato y no se obtuvo cliente previamente, buscarlo por contrato
+      // 5️⃣ Si hay contrato y no se obtuvo cliente previamente, buscarlo por contrato (cambiados a .maybeSingle())
       if (!cliente && insp.contrato_id) {
         const { data: contrato } = await supabase
           .from("contratos")
           .select("cliente_id")
           .eq("id", insp.contrato_id)
-          .single();
+          .maybeSingle();
 
         if (contrato?.cliente_id) {
           const { data: cli } = await supabase
             .from("clientes")
             .select("nombre, telefono")
             .eq("id", contrato.cliente_id)
-            .single();
+            .maybeSingle();
 
           if (cli) setCliente(cli);
         }
