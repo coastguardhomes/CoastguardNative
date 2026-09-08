@@ -8,6 +8,7 @@ export default function VerCliente() {
   const navigate = useNavigate();
 
   const [cliente, setCliente] = useState(null);
+  const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState("");
 
   const [viviendas, setViviendas] = useState([]);
@@ -24,18 +25,22 @@ export default function VerCliente() {
   }, [cliente]);
 
   async function cargarCliente() {
+    setCargando(true);
+    // ⭐ Reemplazado .single() por .maybeSingle() para evitar el error 406
     const { data, error } = await supabase
       .from("clientes")
       .select("id, nombre, telefono, email, direccion")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      setMensaje("Error cargando cliente");
+    if (error || !data) {
+      setMensaje("Cliente no encontrado o ha sido eliminado");
+      setCargando(false);
       return;
     }
 
     setCliente(data);
+    setCargando(false);
   }
 
   async function cargarRelacionados() {
@@ -66,59 +71,65 @@ export default function VerCliente() {
 
   // ⭐ BORRAR CLIENTE COMPLETO
   async function eliminarCliente() {
-    const confirmar = window.confirm("¿Seguro que deseas eliminar este cliente?");
+    const confirmar = window.confirm("¿Seguro que deseas eliminar este cliente y todos sus registros asociados?");
     if (!confirmar) return;
 
-    // 1. Obtener contratos del cliente
-    const { data: contratosCliente } = await supabase
-      .from("contratos")
-      .select("id")
-      .eq("cliente_id", id);
+    try {
+      // 1. Obtener IDs de contratos para borrar sus inspecciones relacionadas
+      const { data: contratosCliente } = await supabase
+        .from("contratos")
+        .select("id")
+        .eq("cliente_id", id);
 
-    // 2. Borrar inspecciones asociadas a esos contratos
-    if (contratosCliente && contratosCliente.length > 0) {
-      for (const contrato of contratosCliente) {
+      if (contratosCliente && contratosCliente.length > 0) {
+        const contratoIds = contratosCliente.map((c) => c.id);
         await supabase
           .from("inspecciones")
           .delete()
-          .eq("contrato_id", contrato.id);
+          .in("contrato_id", contratoIds);
       }
+
+      // 2. Borrar las inspecciones directamente asignadas al cliente
+      await supabase
+        .from("inspecciones")
+        .delete()
+        .eq("cliente_id", id);
+
+      // 3. Borrar contratos del cliente
+      await supabase
+        .from("contratos")
+        .delete()
+        .eq("cliente_id", id);
+
+      // 4. Borrar viviendas del cliente
+      await supabase
+        .from("viviendas")
+        .delete()
+        .eq("cliente_id", id);
+
+      // 5. Borrar facturas del cliente
+      await supabase
+        .from("facturas")
+        .delete()
+        .eq("cliente_id", id);
+
+      // 6. Borrar el registro del cliente
+      const { error } = await supabase
+        .from("clientes")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      alert("Cliente y registros vinculados eliminados correctamente.");
+      navigate("/clientes");
+    } catch (err) {
+      console.error("Error al eliminar cliente:", err);
+      setMensaje("Error eliminando el cliente: " + (err.message || err));
     }
-
-    // 3. Borrar contratos del cliente
-    await supabase
-      .from("contratos")
-      .delete()
-      .eq("cliente_id", id);
-
-    // 4. Borrar viviendas del cliente
-    await supabase
-      .from("viviendas")
-      .delete()
-      .eq("cliente_id", id);
-
-    // 5. Borrar facturas del cliente
-    await supabase
-      .from("facturas")
-      .delete()
-      .eq("cliente_id", id);
-
-    // 6. Borrar el cliente
-    const { error } = await supabase
-      .from("clientes")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      setMensaje("Error eliminando cliente");
-      return;
-    }
-
-    alert("Cliente eliminado correctamente");
-    navigate("/clientes");
   }
 
-  if (!cliente) {
+  if (cargando) {
     return (
       <Menu>
         <div style={{
@@ -132,6 +143,37 @@ export default function VerCliente() {
           fontFamily: "Inter, sans-serif",
         }}>
           Cargando cliente...
+        </div>
+      </Menu>
+    );
+  }
+
+  if (!cliente) {
+    return (
+      <Menu>
+        <div style={{
+          padding: "20px",
+          background: "#0a0f1a",
+          color: "#fff",
+          minHeight: "100vh",
+          fontFamily: "Inter, sans-serif",
+        }}>
+          <h1 style={{ color: "#ff4d4d" }}>Cliente no encontrado</h1>
+          <p>{mensaje}</p>
+          <button
+            onClick={() => navigate("/clientes")}
+            style={{
+              padding: "12px 20px",
+              background: "#4db8ff",
+              color: "#000",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: "bold",
+              cursor: "pointer",
+            }}
+          >
+            Volver a la lista de clientes
+          </button>
         </div>
       </Menu>
     );
@@ -172,9 +214,9 @@ export default function VerCliente() {
           boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           marginBottom: "20px",
         }}>
-          <p><strong>Teléfono:</strong> {cliente.telefono}</p>
-          <p><strong>Email:</strong> {cliente.email}</p>
-          <p><strong>Dirección:</strong> {cliente.direccion}</p>
+          <p><strong>Teléfono:</strong> {cliente.telefono || "Sin teléfono"}</p>
+          <p><strong>Email:</strong> {cliente.email || "Sin email"}</p>
+          <p><strong>Dirección:</strong> {cliente.direccion || "Sin dirección"}</p>
         </div>
 
         <Bloque titulo="Viviendas del cliente">
@@ -253,14 +295,13 @@ export default function VerCliente() {
           </button>
         </Link>
 
-        {/* ⭐ BOTÓN NUEVO: BORRAR CLIENTE COMPLETO */}
         <button
           onClick={eliminarCliente}
           style={{
             marginTop: "15px",
             padding: "14px",
             width: "100%",
-            background: "red",
+            background: "#ef4444",
             color: "#fff",
             borderRadius: "10px",
             border: "none",
