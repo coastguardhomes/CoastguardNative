@@ -80,8 +80,9 @@ export default function CrearContrato() {
     setTecnicos(tecnicosData || []);
   }
 
+  // Filtrado flexible para que nunca devuelva vacío si la relación no es estricta
   const viviendasFiltradas = form.cliente_id
-    ? viviendas.filter((v) => String(v.cliente_id) === String(form.cliente_id))
+    ? viviendas.filter((v) => !v.cliente_id || String(v.cliente_id) === String(form.cliente_id))
     : viviendas;
 
   function handleClienteChange(e) {
@@ -210,7 +211,7 @@ export default function CrearContrato() {
         fechaFinFinal = fechaInicioObj.toISOString().split("T")[0];
       }
 
-      // 1. Insertar el contrato con importes limpios
+      // 1. Insertar el contrato asegurando el cliente_id numérico limpio
       const { data, error } = await supabase
         .from("contratos")
         .insert([
@@ -237,7 +238,7 @@ export default function CrearContrato() {
 
       const contratoId = data.id;
 
-      // 2. Crear factura automática asociada asegurando importes correctos
+      // 2. Crear factura automática asociada
       const baseFactura = precioFinal;
       const ivaFactura = Number((baseFactura * 0.21).toFixed(2));
       const totalFactura = Number((baseFactura + ivaFactura).toFixed(2));
