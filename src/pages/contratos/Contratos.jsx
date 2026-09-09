@@ -49,16 +49,15 @@ export default function Contratos() {
     try {
       setGenerandoId(id);
 
-      // CORREGIDO: contrato_id con guion bajo
       const response = await supabase.functions.invoke("contrato-pdf", {
         body: { contrato_id: id },
       });
 
-      if (response.error) throw response.error;
+      if (response.error) throw new Error(response.error.message || "Error de red/servidor");
+      if (response.data?.error) throw new Error(response.data.error);
 
       const rawData = response.data;
 
-      // CORREGIDO: Captura el HTML devuelto por la Edge Function para mostrarlo en el Modal
       let htmlContent = "";
       if (typeof rawData === "string") {
         htmlContent = rawData;
@@ -68,13 +67,16 @@ export default function Contratos() {
 
       if (htmlContent) {
         setModalHtml(htmlContent);
-      } else {
+      } else if (rawData?.pdf_url) {
         alert("¡PDF generado con éxito!");
+        cargarContratos();
+      } else {
+        alert("¡PDF generado correctamente!");
       }
 
     } catch (err) {
       console.error("Error al generar PDF:", err);
-      alert("Error al generar el contrato: " + (err.message || JSON.stringify(err)));
+      alert("Error al generar el contrato: " + err.message);
     } finally {
       setGenerandoId(null);
     }
@@ -84,28 +86,26 @@ export default function Contratos() {
     try {
       setEnviandoId(id);
 
-      const { error } = await supabase
+      const response = await supabase.functions.invoke("enviar-email", {
+        body: { contrato_id: id, tipo: "contrato" }
+      });
+
+      if (response.error) throw new Error(response.error.message || "Error al conectar con la función de email");
+      if (response.data?.error) throw new Error(response.data.error);
+
+      const { error: errUpdate } = await supabase
         .from("contratos")
         .update({ estado: "enviado_al_cliente" })
         .eq("id", id);
 
-      if (error) throw error;
+      if (errUpdate) console.warn("Aviso al actualizar estado:", errUpdate.message);
 
-      // CORREGIDO: factura_id / contrato_id asignado según corresponda
-      const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
-        body: { contrato_id: id, id, tipo: "contrato" }
-      });
-
-      if (errEmail) {
-        console.warn("Aviso al enviar correo:", errEmail);
-        alert("Contrato actualizado, pero hubo un detalle al enviar el correo.");
-      } else {
-        alert("¡Contrato enviado al cliente por email con éxito!");
-      }
-
+      alert("¡Contrato enviado al cliente por email con éxito!");
       cargarContratos();
+
     } catch (err) {
-      alert("Error en el proceso: " + (err.message || err));
+      console.error("Error en el envío:", err);
+      alert("Error al enviar el correo: " + err.message);
     } finally {
       setEnviandoId(null);
     }
