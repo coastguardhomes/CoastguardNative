@@ -80,7 +80,6 @@ export default function CrearContrato() {
     setTecnicos(tecnicosData || []);
   }
 
-  // Filtrado flexible para que nunca devuelva vacío si la relación no es estricta
   const viviendasFiltradas = form.cliente_id
     ? viviendas.filter((v) => !v.cliente_id || String(v.cliente_id) === String(form.cliente_id))
     : viviendas;
@@ -211,12 +210,12 @@ export default function CrearContrato() {
         fechaFinFinal = fechaInicioObj.toISOString().split("T")[0];
       }
 
-      // 1. Insertar el contrato asegurando el cliente_id numérico limpio
+      // 1. Insertar el contrato (cliente_id como string UUID)
       const { data, error } = await supabase
         .from("contratos")
         .insert([
           {
-            cliente_id: Number(form.cliente_id),
+            cliente_id: String(form.cliente_id),
             vivienda_id: Number(form.vivienda_id),
             tecnico_id: String(form.tecnico_id),
             fecha_inicio: form.fecha_inicio,
@@ -227,8 +226,6 @@ export default function CrearContrato() {
             modalidad: form.modalidad,
             estado: "pendiente",
             duracion_meses: Number(form.duracion_meses || 12),
-            firma_url: null,
-            pdf_url: null,
           },
         ])
         .select("*")
@@ -238,7 +235,7 @@ export default function CrearContrato() {
 
       const contratoId = data.id;
 
-      // 2. Crear factura automática asociada
+      // 2. Crear factura automática asociada (cliente_id como string UUID)
       const baseFactura = precioFinal;
       const ivaFactura = Number((baseFactura * 0.21).toFixed(2));
       const totalFactura = Number((baseFactura + ivaFactura).toFixed(2));
@@ -247,7 +244,7 @@ export default function CrearContrato() {
         .from("facturas")
         .insert([
           {
-            cliente_id: Number(form.cliente_id),
+            cliente_id: String(form.cliente_id),
             vivienda_id: Number(form.vivienda_id),
             contrato_id: Number(contratoId),
             tipo: "contrato",
