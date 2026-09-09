@@ -262,40 +262,40 @@ export default function CrearContrato() {
       if (!facturaError && facturaData) {
         const facturaId = facturaData.id;
 
-        try {
-          await supabase.functions.invoke("factura-pdf", {
-            body: { facturaId, id: facturaId },
-          });
-        } catch (e) {
-          console.warn("Aviso menor al generar PDF de factura:", e);
+        // Esperar a que se genere el PDF de la factura síncronamente
+        const resFacturaPdf = await supabase.functions.invoke("factura-pdf", {
+          body: { facturaId, id: facturaId },
+        });
+        if (resFacturaPdf.error) {
+          console.error("Error generando PDF factura:", resFacturaPdf.error);
         }
 
-        try {
-          await supabase.functions.invoke("enviar-email", {
-            body: { facturaId, id: facturaId, tipo: "factura" },
-          });
-        } catch (e) {
-          console.warn("Aviso menor al enviar email de factura:", e);
+        // Esperar a que se envíe el email de la factura
+        const resFacturaEmail = await supabase.functions.invoke("enviar-email", {
+          body: { facturaId, id: facturaId, tipo: "factura" },
+        });
+        if (resFacturaEmail.error) {
+          console.error("Error enviando email factura:", resFacturaEmail.error);
         }
       }
 
-      try {
-        await supabase.functions.invoke("contrato-pdf", {
-          body: { contratoId: contratoId, id: contratoId },
-        });
-      } catch (e) {
-        console.warn("Aviso menor al generar PDF de contrato:", e);
+      // 3. Esperar a que se genere el PDF del contrato síncronamente
+      const resContratoPdf = await supabase.functions.invoke("contrato-pdf", {
+        body: { contratoId: contratoId, id: contratoId },
+      });
+      if (resContratoPdf.error) {
+        console.error("Error generando PDF contrato:", resContratoPdf.error);
       }
 
-      try {
-        await supabase.functions.invoke("enviar-email", {
-          body: { contratoId, id: contratoId, tipo: "contrato" },
-        });
-      } catch (e) {
-        console.warn("Aviso menor al enviar email de contrato:", e);
+      // 4. Esperar a que se envíe el email del contrato
+      const resContratoEmail = await supabase.functions.invoke("enviar-email", {
+        body: { contratoId: contratoId, id: contratoId, tipo: "contrato" },
+      });
+      if (resContratoEmail.error) {
+        console.error("Error enviando email contrato:", resContratoEmail.error);
       }
 
-      setMensaje("¡Contrato creado con éxito! ✔");
+      setMensaje("¡Contrato creado con éxito y PDFs generados/enviados! ✔");
       setTimeout(() => {
         navigate("/contratos");
       }, 1500);
