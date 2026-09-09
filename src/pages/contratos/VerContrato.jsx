@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
@@ -24,7 +24,7 @@ export default function VerContrato() {
       const { data, error } = await supabase
         .from("contratos")
         .select("*, clientes(nombre, email), viviendas(direccion)")
-        .eq("id", id)
+        .eq("id", Number(id))
         .single();
 
       if (error || !data) {
@@ -48,7 +48,7 @@ export default function VerContrato() {
 
       const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
         "contrato-pdf",
-        { body: { contratoId: Number(id) } }
+        { body: { contratoId: Number(id), id: Number(id) } }
       );
 
       if (pdfError) {
@@ -61,12 +61,12 @@ export default function VerContrato() {
         await supabase
           .from("contratos")
           .update({ pdf_url: pdfUrl })
-          .eq("id", id);
+          .eq("id", Number(id));
 
         await cargarContrato();
-        alert("PDF procesado correctamente.");
+        alert("PDF procesado y actualizado correctamente.");
       } else {
-        console.log("La función no devolvió URL directa, se mantiene el estado actual.");
+        await cargarContrato();
         alert("Proceso de contrato completado.");
       }
     } catch (e) {
@@ -85,9 +85,9 @@ export default function VerContrato() {
 
       if (errEmail) {
         console.warn("Aviso al enviar email:", errEmail);
-        alert("El correo no pudo ser enviado automáticamente.");
+        alert("El correo devolvió una advertencia, verifica el buzón.");
       } else {
-        alert("Email enviado al cliente.");
+        alert("¡Email enviado al cliente con éxito!");
       }
     } catch (e) {
       console.error(e);
@@ -97,7 +97,7 @@ export default function VerContrato() {
 
   const abrirPDF = () => {
     if (!contrato?.pdf_url) {
-      alert("Este contrato no tiene PDF generado.");
+      alert("Este contrato aún no tiene PDF generado.");
       return;
     }
 
@@ -112,6 +112,7 @@ export default function VerContrato() {
           background: "#0a0f1a",
           padding: "20px",
           color: "#fff",
+          boxSizing: "border-box",
         }}
       >
         <button
@@ -124,6 +125,7 @@ export default function VerContrato() {
             borderRadius: "8px",
             cursor: "pointer",
             marginBottom: "15px",
+            fontWeight: "600",
           }}
         >
           ⬅️ Volver
@@ -136,6 +138,7 @@ export default function VerContrato() {
             marginBottom: "15px",
             fontSize: "26px",
             fontWeight: "700",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
           📄 Contrato Legal Premium #{id}
@@ -152,9 +155,10 @@ export default function VerContrato() {
               padding: "20px",
               background: "#1a2332",
               borderRadius: "12px",
+              border: "1px solid rgba(255,77,77,0.3)",
             }}
           >
-            <p style={{ color: "#ff4d4d", marginBottom: "10px" }}>{errorMsg}</p>
+            <p style={{ color: "#ff4d4d", marginBottom: "10px", fontWeight: "600" }}>{errorMsg}</p>
           </div>
         ) : (
           <>
@@ -166,21 +170,24 @@ export default function VerContrato() {
                 borderRadius: "14px",
                 border: "1px solid rgba(255,255,255,0.1)",
                 marginBottom: "20px",
+                boxShadow: "0 0 12px rgba(0,153,255,0.2)",
               }}
             >
-              <h3 style={{ color: "#4db8ff", marginBottom: "10px" }}>
+              <h3 style={{ color: "#4db8ff", marginBottom: "12px", fontSize: "18px" }}>
                 🧾 Información del contrato
               </h3>
 
-              <p><strong>Cliente:</strong> {contrato.clientes?.nombre}</p>
-              <p><strong>Email:</strong> {contrato.clientes?.email}</p>
-              <p><strong>Vivienda:</strong> {contrato.viviendas?.direccion}</p>
-              <p><strong>Modalidad:</strong> {contrato.modalidad}</p>
-              <p><strong>Precio:</strong> {contrato.precio} €/mes</p>
-              <p><strong>Frecuencia:</strong> Cada {contrato.frecuencia} días</p>
-              <p><strong>Inicio:</strong> {contrato.fecha_inicio}</p>
-              <p><strong>Fin:</strong> {contrato.fecha_fin}</p>
-              <p><strong>Estado:</strong> {contrato.estado}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "15px" }}>
+                <p><strong>Cliente:</strong> {contrato.clientes?.nombre || "Sin cliente"}</p>
+                <p><strong>Email:</strong> {contrato.clientes?.email || "Sin email"}</p>
+                <p><strong>Vivienda:</strong> {contrato.viviendas?.direccion || "Sin dirección"}</p>
+                <p><strong>Modalidad:</strong> {contrato.modalidad || "N/D"}</p>
+                <p><strong>Precio:</strong> {contrato.precio} €/mes</p>
+                <p><strong>Frecuencia:</strong> Cada {contrato.frecuencia} días</p>
+                <p><strong>Inicio:</strong> {String(contrato.fecha_inicio || "").slice(0, 10)}</p>
+                <p><strong>Fin:</strong> {String(contrato.fecha_fin || "").slice(0, 10)}</p>
+                <p><strong>Estado:</strong> {contrato.estado}</p>
+              </div>
             </div>
 
             {/* BOTONES PREMIUM */}
@@ -204,6 +211,7 @@ export default function VerContrato() {
                   fontWeight: "700",
                   cursor: "pointer",
                   opacity: generando ? 0.6 : 1,
+                  boxShadow: "0 0 10px rgba(34,197,94,0.3)",
                 }}
               >
                 {generando ? "⌛ Procesando PDF..." : "📄 Actualizar PDF Premium"}
@@ -219,6 +227,7 @@ export default function VerContrato() {
                   border: "none",
                   fontWeight: "700",
                   cursor: "pointer",
+                  boxShadow: "0 0 10px rgba(0,153,255,0.4)",
                 }}
               >
                 📧 Enviar contrato al cliente
@@ -266,8 +275,8 @@ export default function VerContrato() {
                 />
               </div>
             ) : (
-              <p style={{ textAlign: "center", color: "#ff4d4d" }}>
-                Este contrato aún no tiene PDF generado.
+              <p style={{ textAlign: "center", color: "#ff4d4d", fontWeight: "600" }}>
+                Este contrato aún no tiene PDF generado. Usa el botón verde para generarlo.
               </p>
             )}
           </>
