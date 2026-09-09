@@ -1,256 +1,377 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../supabaseClient";
+
+const COLOR_DORADO = "#e0b034";
+const FONDO_PRINCIPAL = "#030509";
+const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
 
 export default function Contratos() {
   const navigate = useNavigate();
   const [contratos, setContratos] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [modalHtml, setModalHtml] = useState(null);
-  const [generandoId, setGenerandoId] = useState(null);
-  const [enviandoId, setEnviandoId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [actionLoading, setActionLoading] = useState(null);
 
   useEffect(() => {
     cargarContratos();
   }, []);
 
   const cargarContratos = async () => {
-    setCargando(true);
+    try {
+      setLoading(true);
+      setError("");
+      const { data, error: err } = await supabase
+        .from("contratos")
+        .select(`
+          *,
+          clientes ( id, nombre, email, direccion ),
+          viviendas ( id, ciudad, direccion, localidad )
+        `)
+        .order("id", { ascending: false });
 
-    const { data, error } = await supabase
-      .from("contratos")
-      .select(`
-        *,
-        clientes (
-          id,
-          nombre,
-          direccion,
-          email
-        ),
-        viviendas (
-          id,
-          direccion,
-          ciudad,
-          localidad
-        )
-      `)
-      .order("id", { ascending: false });
-
-    if (error) {
-      console.error("Error cargando contratos:", error);
-    } else {
+      if (err) throw err;
       setContratos(data || []);
-    }
-    setCargando(false);
-  };
-
-  const generarPDF = async (id) => {
-    try {
-      setGenerandoId(id);
-
-      const response = await supabase.functions.invoke("contrato-pdf", {
-        body: { contrato_id: id },
-      });
-
-      if (response.error) throw new Error(response.error.message || "Error de red/servidor");
-      if (response.data?.error) throw new Error(response.data.error);
-
-      const rawData = response.data;
-
-      let htmlContent = "";
-      if (typeof rawData === "string") {
-        htmlContent = rawData;
-      } else if (rawData && rawData.html) {
-        htmlContent = rawData.html;
-      }
-
-      if (htmlContent) {
-        setModalHtml(htmlContent);
-      } else if (rawData?.pdf_url) {
-        alert("¡PDF generado con éxito!");
-        cargarContratos();
-      } else {
-        alert("¡PDF generado correctamente!");
-      }
-
     } catch (err) {
-      console.error("Error al generar PDF:", err);
-      alert("Error al generar el contrato: " + err.message);
+      console.error("Error cargando contratos:", err);
+      setError("No se pudieron cargar los contratos.");
     } finally {
-      setGenerandoId(null);
+      setLoading(false);
     }
   };
 
-  const enviarACliente = async (id) => {
+  const enviarContratoEmail = async (contrato) => {
     try {
-      setEnviandoId(id);
+      setActionLoading(contrato.id);
 
-      const response = await supabase.functions.invoke("enviar-email", {
-        body: { contrato_id: id, tipo: "contrato" }
-      });
-
-      if (response.error) throw new Error(response.error.message || "Error al conectar con la función de email");
-      if (response.data?.error) throw new Error(response.data.error);
-
+      // 1. Cambiar el estado en la base de datos a enviado_cliente
       const { error: errUpdate } = await supabase
         .from("contratos")
-        .update({ estado: "enviado_al_cliente" })
-        .eq("id", id);
+        .update({ estado: "enviado_cliente" })
+        .eq("id", contrato.id);
 
-      if (errUpdate) console.warn("Aviso al actualizar estado:", errUpdate.message);
+      if (errUpdate) throw errUpdate;
 
-      alert("¡Contrato enviado al cliente por email con éxito!");
-      cargarContratos();
+      // 2. Enviar parámetros en snake_case y camelCase para compatibilidad con la Edge Function
+      const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
+        body: {
+          contrato_id: Number(contrato.id),
+          contratoId: Number(contrato.id),
+          id: Number(contrato.id),
+          tipo: "contrato"
+        }
+      });
 
-    } catch (err) {
-      console.error("Error en el envío:", err);
-      alert("Error al enviar el correo: " + err.message);
-    } finally {
-      setEnviandoId(null);
-    }
-  };
-
-  const eliminarContrato = async (id) => {
-    if (!window.confirm("¿Estás seguro de eliminar este contrato?")) return;
-
-    const { error } = await supabase.from("contratos").delete().eq("id", id);
-    if (error) {
-      alert("Error al eliminar: " + error.message);
-    } else {
-      alert("Contrato eliminado.");
-      cargarContratos();
-    }
-  };
-
-  const verDocumento = async (c) => {
-    const rawUrl = c.pdf_url;
-
-    if (!rawUrl) {
-      alert("Este contrato aún no tiene un PDF generado.");
-      return;
-    }
-
-    if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
-      window.open(`${rawUrl}${rawUrl.includes("?") ? "&" : "?"}t=${Date.now()}`, "_blank");
-      return;
-    }
-
-    const cleanPath = rawUrl.replace(/^contratos\//, "");
-    const { data: signedData, error: signedErr } = await supabase.storage
-      .from("contratos")
-      .createSignedUrl(cleanPath, 3600);
-
-    if (signedData?.signedUrl && !signedErr) {
-      window.open(`${signedData.signedUrl}&t=${Date.now()}`, "_blank");
-    } else {
-      const { data: publicData } = supabase.storage.from("contratos").getPublicUrl(cleanPath);
-      if (publicData?.publicUrl) {
-        window.open(`${publicData.publicUrl}?t=${Date.now()}`, "_blank");
+      if (errEmail) {
+        console.warn("Aviso al enviar email:", errEmail);
+        alert("El estado se actualizó a 'Enviado al cliente', pero el servicio de correo devolvió una advertencia.");
       } else {
-        alert("No se pudo obtener la ruta del archivo.");
+        alert("¡Contrato enviado por correo al cliente con éxito!");
       }
+
+      await cargarContratos();
+    } catch (err) {
+      console.error("Error al enviar contrato:", err);
+      alert("Error al procesar el envío: " + (err.message || ""));
+    } finally {
+      setActionLoading(null);
     }
+  };
+
+  const borrarContrato = async (id) => {
+    if (!window.confirm("¿Estás seguro de eliminar este contrato?")) return;
+    try {
+      setActionLoading(id);
+      const { error: err } = await supabase.from("contratos").delete().eq("id", id);
+      if (err) throw err;
+      setContratos((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      console.error("Error borrando contrato:", err);
+      alert("No se pudo eliminar el contrato.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const obtenerBadgeEstado = (estado) => {
+    const est = String(estado || "").toLowerCase();
+    
+    if (est === "firmado") {
+      return { 
+        texto: "✅ FIRMADO", 
+        color: "#34d399", 
+        bg: "rgba(52, 211, 153, 0.2)", 
+        border: "rgba(52, 211, 153, 0.5)" 
+      };
+    }
+    if (est === "enviado_cliente" || est === "enviado_al_cliente" || est === "enviada") {
+      return { 
+        texto: "📩 ENVIADO AL CLIENTE", 
+        color: "#60a5fa", 
+        bg: "rgba(96, 165, 250, 0.2)", 
+        border: "rgba(96, 165, 250, 0.5)" 
+      };
+    }
+    // Mapea 'enviado_al_admin', 'pendiente' o valores nulos a PENDIENTE
+    return { 
+      texto: "⏳ PENDIENTE", 
+      color: COLOR_DORADO, 
+      bg: "rgba(224, 176, 52, 0.2)", 
+      border: "rgba(224, 176, 52, 0.5)" 
+    };
   };
 
   return (
     <Menu>
-      <div style={{ minHeight: "100vh", background: "#0a0f1a", padding: "20px", color: "#fff", paddingBottom: "80px" }}>
-        <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-          <h1 style={{ textAlign: "center", color: "#4db8ff", fontSize: "24px", marginBottom: "15px" }}>
-            📋 Panel de Contratos (Admin)
-          </h1>
+      <div style={estilos.pagina}>
+        <h1 style={estilos.titulo}>📋 Panel de Contratos (Admin)</h1>
 
-          <button
-            onClick={() => navigate("/contratos/nuevo")}
-            style={{ width: "100%", padding: "14px", background: "#4db8ff", color: "#0a0f1a", border: "none", borderRadius: "10px", fontWeight: "bold", fontSize: "16px", cursor: "pointer", marginBottom: "20px" }}
-          >
-            ➕ Crear Nuevo Contrato
-          </button>
+        <button onClick={() => navigate("/contratos/crear")} style={estilos.botonCrear}>
+          ➕ Crear Nuevo Contrato
+        </button>
 
-          {cargando ? (
-            <p style={{ textAlign: "center" }}>Cargando contratos...</p>
-          ) : contratos.length === 0 ? (
-            <p style={{ textAlign: "center", opacity: 0.8 }}>No hay contratos registrados.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-              {contratos.map((c) => {
-                const esFirmado = c.estado === "firmado" || c.estado === "activo" || !!c.firma_url;
+        {error && <p style={estilos.error}>{error}</p>}
 
-                return (
-                  <div key={c.id} style={{ background: "rgba(255,255,255,0.05)", padding: "18px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)" }}>
-                    
-                    <p style={{ margin: "4px 0", fontSize: "14px", color: "#9fb3c8" }}>
-                      Cliente: {c.clientes?.nombre || "Sin cliente"}
-                    </p>
+        {loading ? (
+          <p style={estilos.texto}>Cargando contratos...</p>
+        ) : contratos.length === 0 ? (
+          <p style={estilos.texto}>No hay contratos registrados.</p>
+        ) : (
+          contratos.map((c) => {
+            const badge = obtenerBadgeEstado(c.estado);
+            const nombreCliente = c.clientes?.nombre || "Sin cliente";
+            const direccionCliente = c.clientes?.direccion || "Sin dirección";
+            const direccionVivienda = c.viviendas?.direccion || "Sin vivienda";
 
-                    <p style={{ margin: "4px 0", fontSize: "14px", color: "#9fb3c8" }}>
-                      Dirección cliente: {c.clientes?.direccion || "Sin dirección"}
-                    </p>
+            return (
+              <div key={c.id} style={estilos.tarjeta}>
+                <div style={estilos.infoBloque}>
+                  <p style={estilos.lineaInfo}>
+                    <span style={estilos.etiqueta}>Cliente:</span> {nombreCliente}
+                  </p>
+                  <p style={estilos.lineaInfo}>
+                    <span style={estilos.etiqueta}>Dirección cliente:</span> {direccionCliente}
+                  </p>
+                  <p style={estilos.lineaInfo}>
+                    <span style={estilos.etiqueta}>Vivienda:</span> {direccionVivienda}
+                  </p>
+                </div>
 
-                    <p style={{ margin: "4px 0 14px 0", fontSize: "14px", color: "#9fb3c8" }}>
-                      Vivienda: {c.viviendas?.direccion || "Sin vivienda asignada"}
-                    </p>
+                <div style={estilos.cabeceraContrato}>
+                  <span style={estilos.numeroContrato}>Contrato #{c.id}</span>
+                  <span
+                    style={{
+                      ...estilos.badge,
+                      color: badge.color,
+                      backgroundColor: badge.bg,
+                      borderColor: badge.border,
+                    }}
+                  >
+                    {badge.texto}
+                  </span>
+                </div>
 
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                      <h3 style={{ margin: 0, fontSize: "18px" }}>Contrato #{c.id}</h3>
-                      <span style={{ background: esFirmado ? "rgba(76, 217, 100, 0.2)" : "rgba(255, 184, 77, 0.2)", color: esFirmado ? "#4cd964" : "#ffb84d", padding: "4px 10px", borderRadius: "12px", fontSize: "12px", fontWeight: "bold" }}>
-                        {esFirmado ? "✅ FIRMADO" : `⏳ ${c.estado ? c.estado.toUpperCase() : "PENDIENTE"}`}
-                      </span>
-                    </div>
+                <p style={estilos.fechaInfo}>
+                  <span style={estilos.etiqueta}>Inicio:</span> {String(c.fecha_inicio || "").slice(0, 10)}
+                </p>
 
-                    <p style={{ margin: "4px 0 14px 0", fontSize: "14px", color: "#9fb3c8" }}>
-                      Inicio: {c.fecha_inicio || "Sin fecha"}
-                    </p>
+                <div style={estilos.gridBotones}>
+                  <button
+                    onClick={() => navigate(`/contratos/ver/${c.id}`)}
+                    style={estilos.botonGris}
+                  >
+                    🔍 Ver Ficha
+                  </button>
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                        <button onClick={() => navigate(`/contratos/ver/${c.id}`)} style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.15)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
-                          🔍 Ver Ficha
-                        </button>
+                  <button
+                    onClick={() => {
+                      if (c.pdf_url) window.open(c.pdf_url, "_blank");
+                      else alert("El PDF aún no ha sido generado.");
+                    }}
+                    style={estilos.botonGris}
+                  >
+                    📄 Ver PDF
+                  </button>
+                </div>
 
-                        <button onClick={() => verDocumento(c)} style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
-                          📄 Ver PDF
-                        </button>
+                <button
+                  onClick={() => borrarContrato(c.id)}
+                  disabled={actionLoading === c.id}
+                  style={estilos.botonBorrar}
+                >
+                  🗑️
+                </button>
 
-                        <button onClick={() => eliminarContrato(c.id)} style={{ padding: "12px 16px", background: "rgba(255, 77, 77, 0.2)", color: "#ff4d4d", border: "1px solid #ff4d4d", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>
-                          🗑️
-                        </button>
-                      </div>
+                <button
+                  onClick={() => navigate(`/contratos/ver/${c.id}`)}
+                  style={estilos.botonVerde}
+                >
+                  📄 Generar PDF / Ver Contrato
+                </button>
 
-                      <button
-                        onClick={() => generarPDF(c.id)}
-                        disabled={generandoId === c.id}
-                        style={{ width: "100%", padding: "12px", background: "#22c55e", color: "#ffffff", border: "none", borderRadius: "8px", fontWeight: "bold", fontSize: "14px", cursor: "pointer", opacity: generandoId === c.id ? 0.6 : 1 }}
-                      >
-                        {generandoId === c.id ? "⌛ Generando..." : "📄 Generar PDF / Ver Contrato"}
-                      </button>
-
-                      <button
-                        onClick={() => enviarACliente(c.id)}
-                        disabled={enviandoId === c.id}
-                        style={{ width: "100%", padding: "12px", background: "#3b82f6", color: "#ffffff", border: "none", borderRadius: "8px", fontWeight: "bold", fontSize: "14px", cursor: "pointer", opacity: enviandoId === c.id ? 0.6 : 1 }}
-                      >
-                        {enviandoId === c.id ? "⏳ Enviando correo..." : "✉️ Enviar Contrato por Email"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                <button
+                  onClick={() => enviarContratoEmail(c)}
+                  disabled={actionLoading === c.id}
+                  style={estilos.botonAzul}
+                >
+                  ✉️ Enviar Contrato por Email
+                </button>
+              </div>
+            );
+          })
+        )}
       </div>
-
-      {modalHtml && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.9)", zIndex: 9999, display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "12px 16px", background: "#0a0f1a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontWeight: "bold", color: "#4db8ff" }}>📄 Vista Previa HTML</span>
-            <button onClick={() => setModalHtml(null)} style={{ background: "#ff4d4d", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>✕ Cerrar</button>
-          </div>
-          <iframe title="Vista Previa" srcDoc={modalHtml} style={{ width: "100%", height: "100%", border: "none", background: "#fff" }} />
-        </div>
-      )}
     </Menu>
   );
 }
+
+const estilos = {
+  pagina: {
+    padding: "20px",
+    background: FONDO_PRINCIPAL,
+    minHeight: "100vh",
+    color: "#fff",
+    fontFamily: "Inter, sans-serif",
+    paddingBottom: "100px",
+    boxSizing: "border-box",
+  },
+  titulo: {
+    ...TEXTO_DORADO_BRILLO,
+    fontSize: "20px",
+    fontWeight: "900",
+    marginBottom: "20px",
+    textAlign: "center",
+  },
+  botonCrear: {
+    width: "100%",
+    padding: "14px",
+    background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
+    color: "#fff",
+    border: BORDE_DORADO_FINO,
+    borderRadius: "14px",
+    fontWeight: "900",
+    fontSize: "14px",
+    cursor: "pointer",
+    marginBottom: "20px",
+    boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
+  },
+  tarjeta: {
+    background: FONDO_TARJETA,
+    border: BORDE_DORADO_FINO,
+    borderRadius: "16px",
+    padding: "16px",
+    marginBottom: "16px",
+    boxShadow: SOMBRA_LUXURY,
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+    boxSizing: "border-box",
+  },
+  infoBloque: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+  },
+  lineaInfo: {
+    margin: 0,
+    fontSize: "13px",
+    color: "#e2e8f0",
+  },
+  etiqueta: {
+    color: "#94a3b8",
+    fontWeight: "600",
+  },
+  cabeceraContrato: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: "6px",
+  },
+  numeroContrato: {
+    fontSize: "16px",
+    fontWeight: "900",
+    color: "#38bdf8",
+  },
+  badge: {
+    fontSize: "11px",
+    fontWeight: "800",
+    border: "1px solid",
+    borderRadius: "20px",
+    padding: "4px 10px",
+    textTransform: "uppercase",
+  },
+  fechaInfo: {
+    margin: 0,
+    fontSize: "13px",
+    color: "#e2e8f0",
+  },
+  gridBotones: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "10px",
+    marginTop: "4px",
+  },
+  botonGris: {
+    padding: "10px",
+    background: "#2a2d3d",
+    color: "#fff",
+    border: "1px solid #3f4459",
+    borderRadius: "10px",
+    fontWeight: "700",
+    fontSize: "12px",
+    cursor: "pointer",
+  },
+  botonBorrar: {
+    width: "100%",
+    padding: "10px",
+    background: "rgba(220, 38, 38, 0.2)",
+    border: "1px solid rgba(220, 38, 38, 0.5)",
+    color: "#ef4444",
+    borderRadius: "10px",
+    fontWeight: "800",
+    fontSize: "14px",
+    cursor: "pointer",
+  },
+  botonVerde: {
+    width: "100%",
+    padding: "12px",
+    background: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+    color: "#fff",
+    border: "1px solid rgba(16, 185, 129, 0.5)",
+    borderRadius: "12px",
+    fontWeight: "800",
+    fontSize: "13px",
+    cursor: "pointer",
+  },
+  botonAzul: {
+    width: "100%",
+    padding: "12px",
+    background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+    color: "#fff",
+    border: "1px solid rgba(59, 130, 246, 0.5)",
+    borderRadius: "12px",
+    fontWeight: "800",
+    fontSize: "13px",
+    cursor: "pointer",
+  },
+  texto: {
+    color: "#aaa",
+    fontSize: "13px",
+    textAlign: "center",
+  },
+  error: {
+    marginBottom: "16px",
+    padding: "12px",
+    background: "rgba(239, 68, 68, 0.15)",
+    border: "1px solid rgba(239, 68, 68, 0.4)",
+    color: "#ef4444",
+    borderRadius: "12px",
+    fontWeight: "700",
+    textAlign: "center",
+    fontSize: "13px",
+  },
+};
