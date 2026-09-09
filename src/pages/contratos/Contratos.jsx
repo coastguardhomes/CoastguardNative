@@ -44,39 +44,76 @@ export default function Contratos() {
     }
   };
 
-  const enviarContratoEmail = async (contrato) => {
+  // Procesa la cadena completa (Contrato PDF + Factura DB + Factura PDF + Email) sin cambiar de vista
+  const procesarYEnviarTodo = async (contrato) => {
     try {
       setActionLoading(contrato.id);
 
-      // 1. Cambiar el estado en la base de datos a enviado_cliente
-      const { error: errUpdate } = await supabase
+      // 1. Generar PDF del contrato
+      const { error: errContratoPdf } = await supabase.functions.invoke("contrato-pdf", {
+        body: { contrato_id: Number(contrato.id) }
+      });
+      if (errContratoPdf) console.warn("Aviso en PDF de contrato:", errContratoPdf);
+
+      // 2. Crear o buscar la factura asociada
+      let facturaId;
+      const { data: facturaExistente } = await supabase
+        .from("facturas")
+        .select("id")
+        .eq("contrato_id", Number(contrato.id))
+        .maybeSingle();
+
+      if (facturaExistente) {
+        facturaId = facturaExistente.id;
+      } else {
+        const { data: nuevaFactura, error: errCrearFactura } = await supabase
+          .from("facturas")
+          .insert([
+            {
+              contrato_id: Number(contrato.id),
+              cliente_id: contrato.cliente_id || contrato.clientes?.id,
+              monto: contrato.precio || 0,
+              estado: "pendiente_pago"
+            }
+          ])
+          .select()
+          .single();
+
+        if (errCrearFactura) throw errCrearFactura;
+        facturaId = nuevaFactura.id;
+      }
+
+      // 3. Generar PDF de la factura
+      const { error: errFacturaPdf } = await supabase.functions.invoke("factura-pdf", {
+        body: { factura_id: facturaId }
+      });
+      if (errFacturaPdf) console.warn("Aviso en PDF de factura:", errFacturaPdf);
+
+      // 4. Actualizar estado del contrato en DB
+      await supabase
         .from("contratos")
         .update({ estado: "enviado_cliente" })
         .eq("id", contrato.id);
 
-      if (errUpdate) throw errUpdate;
-
-      // 2. Enviar parámetros en snake_case y camelCase para compatibilidad con la Edge Function
+      // 5. Enviar Email con los documentos
       const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
         body: {
           contrato_id: Number(contrato.id),
-          contratoId: Number(contrato.id),
-          id: Number(contrato.id),
+          factura_id: facturaId,
           tipo: "contrato"
         }
       });
 
       if (errEmail) {
-        console.warn("Aviso al enviar email:", errEmail);
-        alert("El estado se actualizó a 'Enviado al cliente', pero el servicio de correo devolvió una advertencia.");
+        alert("Documentos procesados, pero el servicio de correo devolvió una advertencia.");
       } else {
-        alert("¡Contrato enviado por correo al cliente con éxito!");
+        alert("¡Contrato y Factura procesados y enviados al cliente con éxito!");
       }
 
       await cargarContratos();
     } catch (err) {
-      console.error("Error al enviar contrato:", err);
-      alert("Error al procesar el envío: " + (err.message || ""));
+      console.error("Error al procesar todo:", err);
+      alert("Error al procesar: " + (err.message || ""));
     } finally {
       setActionLoading(null);
     }
@@ -116,7 +153,6 @@ export default function Contratos() {
         border: "rgba(96, 165, 250, 0.5)" 
       };
     }
-    // Mapea 'enviado_al_admin', 'pendiente' o valores nulos a PENDIENTE
     return { 
       texto: "⏳ PENDIENTE", 
       color: COLOR_DORADO, 
@@ -146,6 +182,7 @@ export default function Contratos() {
             const nombreCliente = c.clientes?.nombre || "Sin cliente";
             const direccionCliente = c.clientes?.direccion || "Sin dirección";
             const direccionVivienda = c.viviendas?.direccion || "Sin vivienda";
+            const estaProcesando = actionLoading === c.id;
 
             return (
               <div key={c.id} style={estilos.tarjeta}>
@@ -181,6 +218,7 @@ export default function Contratos() {
 
                 <div style={estilos.gridBotones}>
                   <button
+                    type="button"
                     onClick={() => navigate(`/contratos/ver/${c.id}`)}
                     style={estilos.botonGris}
                   >
@@ -188,6 +226,7 @@ export default function Contratos() {
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => {
                       if (c.pdf_url) window.open(c.pdf_url, "_blank");
                       else alert("El PDF aún no ha sido generado.");
@@ -199,26 +238,25 @@ export default function Contratos() {
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => borrarContrato(c.id)}
-                  disabled={actionLoading === c.id}
+                  disabled={estaProcesando}
                   style={estilos.botonBorrar}
                 >
-                  🗑️
+                  🗑️ Eliminar
                 </button>
 
                 <button
-                  onClick={() => navigate(`/contratos/ver/${c.id}`)}
-                  style={estilos.botonVerde}
+                  type="button"
+                  onClick={() => procesarYEnviarTodo(c)}
+                  disabled={estaProcesando}
+                  style={{
+                    ...estilos.botonVerde,
+                    opacity: estaProcesando ? 0.6 : 1,
+                    cursor: estaProcesando ? "not-allowed" : "pointer"
+                  }}
                 >
-                  📄 Generar PDF / Ver Contrato
-                </button>
-
-                <button
-                  onClick={() => enviarContratoEmail(c)}
-                  disabled={actionLoading === c.id}
-                  style={estilos.botonAzul}
-                >
-                  ✉️ Enviar Contrato por Email
+                  {estaProcesando ? "⏳ Procesando..." : "⚡ Generar y Enviar Todo (Contrato + Factura)"}
                 </button>
               </div>
             );
@@ -342,17 +380,6 @@ const estilos = {
     background: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
     color: "#fff",
     border: "1px solid rgba(16, 185, 129, 0.5)",
-    borderRadius: "12px",
-    fontWeight: "800",
-    fontSize: "13px",
-    cursor: "pointer",
-  },
-  botonAzul: {
-    width: "100%",
-    padding: "12px",
-    background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
-    color: "#fff",
-    border: "1px solid rgba(59, 130, 246, 0.5)",
     borderRadius: "12px",
     fontWeight: "800",
     fontSize: "13px",
