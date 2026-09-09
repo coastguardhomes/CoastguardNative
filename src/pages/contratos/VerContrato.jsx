@@ -46,17 +46,19 @@ export default function VerContrato() {
     try {
       setGenerando(true);
 
-      const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
-        "contrato-pdf",
-        { body: { contratoId: Number(id), id: Number(id) } }
-      );
+      const response = await supabase.functions.invoke("contrato-pdf", {
+        body: { contratoId: Number(id), id: Number(id) }
+      });
 
-      if (pdfError) {
-        console.warn("Aviso al invocar contrato-pdf:", pdfError);
+      if (response.error) {
+        console.error("Error desde Edge Function:", response.error);
+        alert("Error generando PDF: " + JSON.stringify(response.error));
+        return;
       }
 
-      const pdfUrl = pdfData?.pdf_url || pdfData?.pdfUrl;
-      
+      const dataRes = response.data;
+      const pdfUrl = dataRes?.pdf_url || dataRes?.pdfUrl || (typeof dataRes === 'string' ? JSON.parse(dataRes)?.pdf_url : null);
+
       if (pdfUrl) {
         await supabase
           .from("contratos")
@@ -64,13 +66,13 @@ export default function VerContrato() {
           .eq("id", Number(id));
 
         await cargarContrato();
-        alert("PDF procesado y actualizado correctamente.");
+        alert("¡PDF generado y actualizado con éxito! ✔");
       } else {
         await cargarContrato();
-        alert("Proceso de contrato completado.");
+        alert("Proceso completado, recargando datos...");
       }
     } catch (e) {
-      console.error(e);
+      console.error("Excepción en regenerarPDF:", e);
       alert("Error procesando la solicitud del PDF.");
     } finally {
       setGenerando(false);
