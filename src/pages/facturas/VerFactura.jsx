@@ -83,9 +83,14 @@ export default function VerFactura() {
 
       setFactura(prev => ({ ...prev, estado: 'pagada' }));
 
-      // ⭐ Tolerancia a fallos: no bloquea si falla el envío
+      // CORREGIDO: Enviar factura_id explícito para que el backend localice el email del cliente
       const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
-        body: { id: Number(id), facturaId: Number(id), tipo: 'factura' }
+        body: { 
+          factura_id: Number(id), 
+          facturaId: Number(id), 
+          id: Number(id), 
+          tipo: 'factura' 
+        }
       });
 
       if (errEmail) {
@@ -113,12 +118,17 @@ export default function VerFactura() {
         .eq('id', id);
 
       if (err) throw err;
-      
+
       setFactura(prev => ({ ...prev, estado: nuevoEstado }));
 
-      // ⭐ Eliminado el "throw errEmail" que rompía el proceso entero
+      // CORREGIDO: Enviar factura_id explícito para asegurar el destinatario cliente
       const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
-        body: { id: Number(id), facturaId: Number(id), tipo: 'factura' }
+        body: { 
+          factura_id: Number(id), 
+          facturaId: Number(id), 
+          id: Number(id), 
+          tipo: 'factura' 
+        }
       });
 
       if (errEmail) {
