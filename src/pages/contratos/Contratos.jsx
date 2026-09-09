@@ -44,18 +44,21 @@ export default function Contratos() {
     }
   };
 
-  // Procesa la cadena completa (Contrato PDF + Factura DB + Factura PDF + Email) sin cambiar de vista
+  // Procesa la cadena completa (Contrato PDF + Factura DB + Factura PDF + Email) de forma segura y blindada
   const procesarYEnviarTodo = async (contrato) => {
     try {
       setActionLoading(contrato.id);
 
-      // 1. Generar PDF del contrato
-      const { error: errContratoPdf } = await supabase.functions.invoke("contrato-pdf", {
-        body: { contrato_id: Number(contrato.id) }
-      });
-      if (errContratoPdf) console.warn("Aviso en PDF de contrato:", errContratoPdf);
+      // 1. Intentar generar PDF del contrato (con control de errores para no bloquear el flujo)
+      try {
+        await supabase.functions.invoke("contrato-pdf", {
+          body: { contrato_id: Number(contrato.id) }
+        });
+      } catch (errContratoPdf) {
+        console.warn("Aviso menor en PDF de contrato (continuando proceso):", errContratoPdf);
+      }
 
-      // 2. Crear o buscar la factura asociada
+      // 2. Crear o buscar la factura asociada asegurando importes válidos
       let facturaId;
       const { data: facturaExistente } = await supabase
         .from("facturas")
@@ -66,13 +69,14 @@ export default function Contratos() {
       if (facturaExistente) {
         facturaId = facturaExistente.id;
       } else {
+        const montoFactura = Number(contrato.precio || 0);
         const { data: nuevaFactura, error: errCrearFactura } = await supabase
           .from("facturas")
           .insert([
             {
               contrato_id: Number(contrato.id),
               cliente_id: contrato.cliente_id || contrato.clientes?.id,
-              monto: contrato.precio || 0,
+              monto: montoFactura,
               estado: "pendiente_pago"
             }
           ])
@@ -83,17 +87,22 @@ export default function Contratos() {
         facturaId = nuevaFactura.id;
       }
 
-      // 3. Generar PDF de la factura
-      const { error: errFacturaPdf } = await supabase.functions.invoke("factura-pdf", {
-        body: { factura_id: facturaId }
-      });
-      if (errFacturaPdf) console.warn("Aviso en PDF de factura:", errFacturaPdf);
+      // 3. Intentar generar PDF de la factura de forma segura
+      try {
+        await supabase.functions.invoke("factura-pdf", {
+          body: { factura_id: facturaId }
+        });
+      } catch (errFacturaPdf) {
+        console.warn("Aviso menor en PDF de factura (continuando proceso):", errFacturaPdf);
+      }
 
       // 4. Actualizar estado del contrato en DB
-      await supabase
+      const { error: errUpdate } = await supabase
         .from("contratos")
         .update({ estado: "enviado_cliente" })
         .eq("id", contrato.id);
+
+      if (errUpdate) console.warn("No se pudo actualizar el estado visual del contrato:", errUpdate);
 
       // 5. Enviar Email con los documentos
       const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
@@ -229,7 +238,7 @@ export default function Contratos() {
                     type="button"
                     onClick={() => {
                       if (c.pdf_url) window.open(c.pdf_url, "_blank");
-                      else alert("El PDF aún no ha sido generado.");
+                      else alert("El PDF aún no ha sido generado. Usa el botón verde para generarlo y enviarlo.");
                     }}
                     style={estilos.botonGris}
                   >
