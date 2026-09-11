@@ -178,17 +178,20 @@ export default function Extras() {
           { body: { facturaId: factura.id } }
         );
 
-        if (!errorPdf && pdfData?.url) {
-          const disponible = await pdfDisponible(pdfData.url);
+        // ⭐ CORRECCIÓN: usar pdf_url en vez de url
+        if (!errorPdf && pdfData?.pdf_url) {
+          const disponible = await pdfDisponible(pdfData.pdf_url);
+
           if (disponible) {
+            // ⭐ CORRECCIÓN: guardar pdf_url correctamente
             await supabase
               .from("facturas")
-              .update({ pdf_url: pdfData.url })
+              .update({ pdf_url: pdfData.pdf_url })
               .eq("id", factura.id);
 
             const cliente = clientes.find((c) => c.id === Number(clienteId));
 
-            // ⭐ CORRECCIÓN CRÍTICA: llamada correcta a enviar-email
+            // Enviar email (ya estaba bien)
             if (enviarEmail && cliente?.email) {
               const { error: errorEmail } = await supabase.functions.invoke(
                 "enviar-email",
