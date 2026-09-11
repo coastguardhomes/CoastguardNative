@@ -33,7 +33,6 @@ export default function Register() {
       } catch (e) {}
     }
 
-    // Si sigue vacío o es el objeto "{}" de Supabase, ponemos un mensaje descriptivo
     if (!msg || msg === "{}") {
       msg = "Error de conexión con el servidor o credenciales inválidas";
     }
@@ -57,10 +56,13 @@ export default function Register() {
 
     setLoading(true);
 
-    // 1️⃣ Registrar usuario en Supabase Auth
+    // 1️⃣ Registrar usuario en Supabase Auth con redirección dinámico
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}`,
+      },
     });
 
     if (error) {
@@ -173,7 +175,7 @@ export default function Register() {
               marginBottom: "15px",
               textAlign: "center",
               fontSize: "13px",
-              wordBreak: "break-word"
+              wordBreak: "break-word",
             }}
           >
             {errorMsg}
@@ -229,7 +231,6 @@ export default function Register() {
           }}
         />
 
-        {/* Selector de idioma */}
         <div style={{ marginBottom: "20px" }}>
           <label
             style={{
