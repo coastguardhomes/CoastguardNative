@@ -105,12 +105,31 @@ export default function Facturas() {
                   <Fila clave="Fecha" valor={String(f.fecha || "").slice(0, 10)} />
                   <Fila clave="Base" valor={`${Number(f.base || 0).toFixed(2)} €`} />
                   <Fila clave="IVA" valor={`${Number(f.iva || 0).toFixed(2)} €`} />
-                  <Fila
-                    clave="Total"
-                    valor={`${Number(f.total || 0).toFixed(2)} €`}
-                    destacado
-                  />
+                  <Fila clave="Total" valor={`${Number(f.total || 0).toFixed(2)} €`} destacado />
                   {f.descripcion && <Fila clave="Concepto" valor={f.descripcion} />}
+
+                  {/* ⭐ NUEVO: Mostrar botón PDF si existe */}
+                  {f.pdf_url && (
+                    <a
+                      href={f.pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        marginTop: "10px",
+                        display: "inline-block",
+                        padding: "8px 12px",
+                        background: "rgba(224,176,52,0.15)",
+                        border: "1px solid rgba(224,176,52,0.4)",
+                        borderRadius: "10px",
+                        color: COLOR_DORADO,
+                        fontWeight: "700",
+                        fontSize: "12px",
+                        textAlign: "center",
+                      }}
+                    >
+                      📄 Ver PDF
+                    </a>
+                  )}
                 </div>
               </Link>
             ))}
