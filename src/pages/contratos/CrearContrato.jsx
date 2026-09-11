@@ -210,7 +210,7 @@ export default function CrearContrato() {
         fechaFinFinal = fechaInicioObj.toISOString().split("T")[0];
       }
 
-      // 1. Insertar el contrato (cliente_id como string UUID)
+      // 1. Insertar contrato
       const { data, error } = await supabase
         .from("contratos")
         .insert([
@@ -235,10 +235,11 @@ export default function CrearContrato() {
 
       const contratoId = data.id;
 
-      // 2. Crear factura automática asociada (cliente_id como string UUID)
-      const baseFactura = precioFinal;
-      const ivaFactura = Number((baseFactura * 0.21).toFixed(2));
-      const totalFactura = Number((baseFactura + ivaFactura).toFixed(2));
+      // 2. Crear factura del contrato (CORREGIDO)
+      const precio = Number(form.precio || 0);
+      const baseFactura = precio;
+      const ivaFactura = Number((precio * 0.21).toFixed(2));
+      const totalFactura = Number((precio * 1.21).toFixed(2));
 
       const { data: facturaData, error: facturaError } = await supabase
         .from("facturas")
@@ -247,12 +248,18 @@ export default function CrearContrato() {
             cliente_id: String(form.cliente_id),
             vivienda_id: Number(form.vivienda_id),
             contrato_id: Number(contratoId),
+
             tipo: "contrato",
-            descripcion: `Contrato ${form.modalidad} — ${form.duracion_meses} meses`,
+            descripcion: "Subscripción mensual",
+
             base: baseFactura,
             iva: ivaFactura,
             total: totalFactura,
+
+            estado_tecnico: "no_enviar",
             estado: "pendiente",
+            estado_pago: "pendiente",
+
             fecha: new Date().toISOString().slice(0, 10),
           },
         ])
@@ -262,38 +269,24 @@ export default function CrearContrato() {
       if (!facturaError && facturaData) {
         const facturaId = facturaData.id;
 
-        // Esperar a que se genere el PDF de la factura síncronamente
-        const resFacturaPdf = await supabase.functions.invoke("factura-pdf", {
+        await supabase.functions.invoke("factura-pdf", {
           body: { facturaId, id: facturaId },
         });
-        if (resFacturaPdf.error) {
-          console.error("Error generando PDF factura:", resFacturaPdf.error);
-        }
 
-        // Esperar a que se envíe el email de la factura
-        const resFacturaEmail = await supabase.functions.invoke("enviar-email", {
+        await supabase.functions.invoke("enviar-email", {
           body: { facturaId, id: facturaId, tipo: "factura" },
         });
-        if (resFacturaEmail.error) {
-          console.error("Error enviando email factura:", resFacturaEmail.error);
-        }
       }
 
-      // 3. Esperar a que se genere el PDF del contrato síncronamente
-      const resContratoPdf = await supabase.functions.invoke("contrato-pdf", {
+      // 3. PDF contrato
+      await supabase.functions.invoke("contrato-pdf", {
         body: { contratoId: contratoId, id: contratoId },
       });
-      if (resContratoPdf.error) {
-        console.error("Error generando PDF contrato:", resContratoPdf.error);
-      }
 
-      // 4. Esperar a que se envíe el email del contrato
-      const resContratoEmail = await supabase.functions.invoke("enviar-email", {
+      // 4. Email contrato
+      await supabase.functions.invoke("enviar-email", {
         body: { contratoId: contratoId, id: contratoId, tipo: "contrato" },
       });
-      if (resContratoEmail.error) {
-        console.error("Error enviando email contrato:", resContratoEmail.error);
-      }
 
       setMensaje("¡Contrato creado con éxito y PDFs generados/enviados! ✔");
       setTimeout(() => {
@@ -348,10 +341,14 @@ export default function CrearContrato() {
               marginBottom: "15px",
               padding: "10px",
               borderRadius: "8px",
-              background: mensaje.includes("éxito") ? "rgba(74,222,128,0.1)" : "rgba(0,153,255,0.1)",
+              background: mensaje.includes("éxito")
+                ? "rgba(74,222,128,0.1)"
+                : "rgba(0,153,255,0.1)",
               color: mensaje.includes("éxito") ? "#4ade80" : "#4db8ff",
               fontWeight: "600",
-              border: mensaje.includes("éxito") ? "1px solid rgba(74,222,128,0.3)" : "1px solid rgba(0,153,255,0.3)",
+              border: mensaje.includes("éxito")
+                ? "1px solid rgba(74,222,128,0.3)"
+                : "1px solid rgba(0,153,255,0.3)",
             }}
           >
             {mensaje}
@@ -367,7 +364,9 @@ export default function CrearContrato() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>Cliente:</label>
+          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+            Cliente:
+          </label>
           <select
             value={form.cliente_id}
             onChange={handleClienteChange}
@@ -381,7 +380,9 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>DNI / NIE:</label>
+          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+            DNI / NIE:
+          </label>
           <input
             type="text"
             placeholder="Introduce o edita el DNI / NIE"
@@ -390,7 +391,9 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>Vivienda:</label>
+          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+            Vivienda:
+          </label>
           <select
             value={form.vivienda_id}
             onChange={handleViviendaChange}
@@ -404,7 +407,9 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>Técnico:</label>
+          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+            Técnico:
+          </label>
           <select
             value={form.tecnico_id}
             onChange={(e) =>
@@ -420,7 +425,9 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>Modalidad:</label>
+          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+            Modalidad:
+          </label>
           <select
             value={form.modalidad}
             onChange={(e) => seleccionarModalidad(e.target.value)}
@@ -434,7 +441,9 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>Duración (meses):</label>
+          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+            Duración (meses):
+          </label>
           <input
             type="number"
             value={form.duracion_meses}
@@ -442,7 +451,9 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>Fecha inicio:</label>
+          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+            Fecha inicio:
+          </label>
           <input
             type="date"
             value={form.fecha_inicio}
@@ -450,7 +461,9 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>Fecha de finalización:</label>
+          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+            Fecha de finalización:
+          </label>
           <input
             type="date"
             value={form.fecha_fin}
@@ -458,15 +471,24 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>Precio total (€/mes):</label>
+          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+            Precio total (€/mes):
+          </label>
           <input
             type="number"
             value={form.precio}
             readOnly
-            style={{ ...inputStyle, background: "rgba(255,255,255,0.15)", fontWeight: "bold", color: "#4db8ff" }}
+            style={{
+              ...inputStyle,
+              background: "rgba(255,255,255,0.15)",
+              fontWeight: "bold",
+              color: "#4db8ff",
+            }}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>Frecuencia de visitas (días):</label>
+          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+            Frecuencia de visitas (días):
+          </label>
           <input
             type="number"
             value={form.frecuencia}
@@ -474,7 +496,9 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>Notas adicionales:</label>
+          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+            Notas adicionales:
+          </label>
           <textarea
             value={form.notas}
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
