@@ -131,7 +131,7 @@ export default function Extras() {
     try {
       const numero = await siguienteNumero();
 
-      // 1. Insertar factura asegurando importes numéricos limpios
+      // 1. Insertar factura
       const { data: factura, error: errorFactura } = await supabase
         .from("facturas")
         .insert({
@@ -149,7 +149,7 @@ export default function Extras() {
 
       if (errorFactura) throw new Error(errorFactura.message);
 
-      // 2. Insertar desglose de líneas
+      // 2. Insertar desglose
       const { error: errorLineas } = await supabase.from("facturas_lineas").insert(
         lineas.map((l) => ({
           factura_id: factura.id,
@@ -171,7 +171,7 @@ export default function Extras() {
 
       let avisoPdf = "";
 
-      // 3. Intento de generación remota de PDF mediante Edge Function (con control de errores robusto)
+      // 3. Generación PDF + envío email
       try {
         const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
           "factura-pdf",
@@ -188,10 +188,11 @@ export default function Extras() {
 
             const cliente = clientes.find((c) => c.id === Number(clienteId));
 
+            // ⭐ CORRECCIÓN CRÍTICA: llamada correcta a enviar-email
             if (enviarEmail && cliente?.email) {
               const { error: errorEmail } = await supabase.functions.invoke(
                 "enviar-email",
-                { body: { email: cliente.email, pdfUrl: pdfData.url } }
+                { body: { facturaId: factura.id, id: factura.id, tipo: "factura" } }
               );
 
               if (errorEmail) {
@@ -210,7 +211,7 @@ export default function Extras() {
           avisoPdf = " Factura creada correctamente.";
         }
       } catch (pdfErr) {
-        console.warn("Aviso menor: La Edge Function del PDF no respondió, factura guardada con éxito:", pdfErr);
+        console.warn("Aviso menor: La Edge Function del PDF no respondió:", pdfErr);
         avisoPdf = " Factura creada correctamente.";
       }
 
