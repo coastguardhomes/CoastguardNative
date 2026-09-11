@@ -66,7 +66,7 @@ export default function InspeccionExtra() {
 
         // Sube al bucket de Supabase
         const { error: uploadError } = await supabase.storage
-          .from("facturas") 
+          .from("facturas")
           .upload(filePath, file);
 
         if (uploadError) {
@@ -100,6 +100,37 @@ export default function InspeccionExtra() {
       setError("");
       setMensaje("");
 
+      // 1️⃣ Crear registro de inspección extra
+      const { data: nuevaInspeccion, error: errIns } = await supabase
+        .from("inspecciones")
+        .insert({
+          factura_id: id,
+          descripcion,
+          materiales,
+          tiempo_empleado: tiempoEmpleado,
+          tipo: "extra",
+          fecha: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (errIns) throw errIns;
+
+      // 2️⃣ Guardar fotos en inspecciones_fotos
+      if (fotos.length > 0) {
+        const fotosInsert = fotos.map((url) => ({
+          inspeccion_id: nuevaInspeccion.id,
+          url,
+        }));
+
+        const { error: errFotos } = await supabase
+          .from("inspecciones_fotos")
+          .insert(fotosInsert);
+
+        if (errFotos) throw errFotos;
+      }
+
+      // 3️⃣ Actualizar factura (como ya hacías)
       const { error: updateError } = await supabase
         .from("facturas")
         .update({
