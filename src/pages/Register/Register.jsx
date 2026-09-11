@@ -56,12 +56,12 @@ export default function Register() {
 
     setLoading(true);
 
-    // 1️⃣ Registrar usuario en Supabase Auth con redirección dinámico
+    // ⭐ REDIRECCIÓN CORRECTA PARA SUPABASE (evita el 404)
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}`,
+        emailRedirectTo: "https://coastguardhomes.webador.com",
       },
     });
 
@@ -79,7 +79,7 @@ export default function Register() {
       return;
     }
 
-    // 2️⃣ Crear perfil en la tabla 'profiles'
+    // ⭐ Crear perfil en la tabla 'profiles'
     const { error: perfilError } = await supabase
       .from("profiles")
       .insert({ id: user.id, rol: "cliente" });
@@ -88,7 +88,7 @@ export default function Register() {
       console.error("Error creando perfil:", perfilError);
     }
 
-    // 3️⃣ Gestionar la tabla 'clientes' de forma segura
+    // ⭐ Gestionar la tabla 'clientes'
     const { data: clienteExistente } = await supabase
       .from("clientes")
       .select("id")
@@ -123,7 +123,7 @@ export default function Register() {
     changeLanguage(idioma);
     localStorage.setItem("app_idioma", idioma);
 
-    // 4️⃣ Mensaje final + redirección
+    // ⭐ Mensaje final + redirección
     setMensaje("Cuenta creada correctamente. Ya puedes iniciar sesión.");
     setLoading(false);
 
