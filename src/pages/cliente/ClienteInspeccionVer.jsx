@@ -40,11 +40,13 @@ export default function ClienteInspeccionVer() {
       try {
         const parsed = JSON.parse(fotosRaw);
         if (Array.isArray(parsed)) return parsed;
+        if (typeof parsed === "object" && parsed !== null) return [parsed];
         return [parsed];
       } catch {
         return fotosRaw.trim() ? [fotosRaw] : [];
       }
     }
+    if (typeof fotosRaw === "object") return [fotosRaw];
     return [];
   };
 
@@ -75,6 +77,7 @@ export default function ClienteInspeccionVer() {
 
       let fotosEncontradas = [];
 
+      // ⭐ BLOQUE DE INSPECCIÓN EXTRA
       if (!insp) {
         const { data: dataExtra } = await supabase
           .from("extras")
@@ -95,9 +98,11 @@ export default function ClienteInspeccionVer() {
             pdf_url: dataExtra.pdf_url
           };
           setEsExtra(true);
+
+          // 1️⃣ Fotos guardadas en el objeto extra
           fotosEncontradas = parsearFotos(dataExtra.fotos);
 
-          // Búsqueda robusta de fotos asociadas al extra en la tabla fotos
+          // 2️⃣ Búsqueda robusta de fotos asociadas en la tabla 'fotos'
           if (fotosEncontradas.length === 0) {
             const { data: fotosTabla } = await supabase
               .from("fotos")
@@ -105,6 +110,18 @@ export default function ClienteInspeccionVer() {
               .or(`extra_id.eq.${id},factura_id.eq.${id},inspeccion_id.eq.${id}`);
             if (fotosTabla && fotosTabla.length > 0) {
               fotosEncontradas = fotosTabla;
+            }
+          }
+
+          // 3️⃣ Búsqueda en la tabla 'inspecciones_fotos'
+          if (fotosEncontradas.length === 0) {
+            const { data: fotosExtra } = await supabase
+              .from("inspecciones_fotos")
+              .select("*")
+              .or(`inspeccion_id.eq.${id},extra_id.eq.${id}`);
+
+            if (fotosExtra && fotosExtra.length > 0) {
+              fotosEncontradas = fotosExtra;
             }
           }
 
@@ -120,6 +137,7 @@ export default function ClienteInspeccionVer() {
             .eq("id", id);
         }
       } else {
+        // Bloque de Inspección Estándar
         if (insp.fotos) {
           fotosEncontradas = parsearFotos(insp.fotos);
         }
@@ -131,7 +149,7 @@ export default function ClienteInspeccionVer() {
               fotosEncontradas = fotosCargadas;
             }
           } catch {
-            // Ignorar fallback de helper
+            // Ignorar fallback
           }
         }
 
@@ -140,10 +158,10 @@ export default function ClienteInspeccionVer() {
             .from("fotos")
             .select("*")
             .eq("inspeccion_id", String(id));
-          if (fotosData) fotosEncontradas = fotosData;
+          if (fotosData && fotosData.length > 0) fotosEncontradas = fotosData;
         }
 
-        // Marcar alerta como vista en inspecciones normales si aplica
+        // Marcar alerta como vista en inspecciones normales
         if (insp.alerta && !insp.alerta_vista) {
           await supabase
             .from("inspecciones")
