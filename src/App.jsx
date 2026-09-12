@@ -6,11 +6,12 @@ import PrivateRoute from "./guards/PrivateRoute.jsx";
 import ClienteRoute from "./pages/cliente/ClienteRoute.jsx";
 import { LanguageProvider } from "./context/LanguageContext.jsx"; // ⭐ CONTEXTO GLOBAL DE TRADUCCIÓN
 
-// LOGIN / REGISTER / RECUPERAR CONTRASEÑA
+// LOGIN / REGISTER / RECUPERAR CONTRASEÑA / CALLBACK
 import Login from "./pages/Login/Login.jsx";
 import Register from "./pages/Register/Register.jsx";
 import ResetPassword from "./pages/auth/ResetPassword.jsx";
 import UpdatePassword from "./pages/auth/UpdatePassword.jsx";
+import AuthCallback from "./pages/AuthCallback.jsx"; // ⭐ AÑADIDO
 
 // DASHBOARDS POR ROL
 import ClienteDashboard from "./pages/cliente/ClienteDashboard.jsx";
@@ -154,6 +155,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/update-password" element={<UpdatePassword />} />
+        <Route path="/auth/callback" element={<AuthCallback />} /> {/* ⭐ RUTA CALLBACK AÑADIDA */}
 
         {/* ---------------- REDIRECCIÓN INICIAL ---------------- */}
         <Route path="/" element={<Navigate to="/login" replace />} />
