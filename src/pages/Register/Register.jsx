@@ -14,7 +14,6 @@ export default function Register() {
   const navigate = useNavigate();
   const { changeLanguage } = useLanguage();
 
-  // 🛡️ Filtro blindado para evitar que un objeto vacío muestre "{}"
   const handleError = (err, customPrefix = "") => {
     let msg = "";
 
@@ -56,12 +55,11 @@ export default function Register() {
 
     setLoading(true);
 
-    // ⭐ REDIRECCIÓN CORRECTA PARA SUPABASE (evita el 404)
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: "https://coastguardhomes.webador.com",
+        emailRedirectTo: "https://coastguardhomes.es",
       },
     });
 
@@ -79,7 +77,6 @@ export default function Register() {
       return;
     }
 
-    // ⭐ Crear perfil en la tabla 'profiles'
     const { error: perfilError } = await supabase
       .from("profiles")
       .insert({ id: user.id, rol: "cliente" });
@@ -88,7 +85,6 @@ export default function Register() {
       console.error("Error creando perfil:", perfilError);
     }
 
-    // ⭐ Gestionar la tabla 'clientes'
     const { data: clienteExistente } = await supabase
       .from("clientes")
       .select("id")
@@ -119,11 +115,9 @@ export default function Register() {
       }
     }
 
-    // ⭐ Sincronizar el idioma localmente
     changeLanguage(idioma);
     localStorage.setItem("app_idioma", idioma);
 
-    // ⭐ Mensaje final + redirección
     setMensaje("Cuenta creada correctamente. Ya puedes iniciar sesión.");
     setLoading(false);
 
