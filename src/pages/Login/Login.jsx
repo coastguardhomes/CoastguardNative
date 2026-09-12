@@ -1,4 +1,4 @@
-            import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext";
@@ -228,6 +228,39 @@ export default function Login() {
         >
           ¿No tienes cuenta? Regístrate
         </button>
+
+        {/* ⭐ BOTÓN DE RECUPERAR CONTRASEÑA AÑADIDO ⭐ */}
+        <button
+          onClick={async () => {
+            const correo = prompt("Introduce tu email para recuperar la contraseña:");
+            if (!correo) return;
+
+            const { error } = await supabase.auth.resetPasswordForEmail(correo, {
+              redirectTo: "https://coastguardhomes.es/update-password",
+            });
+
+            if (error) {
+              alert("No se pudo enviar el email de recuperación.");
+              console.error(error);
+            } else {
+              alert("Te hemos enviado un email para recuperar tu contraseña.");
+            }
+          }}
+          style={{
+            width: "100%",
+            marginTop: "10px",
+            background: "transparent",
+            border: "none",
+            color: COLOR_DORADO,
+            fontSize: "13px",
+            fontWeight: "700",
+            cursor: "pointer",
+            textDecoration: "underline",
+          }}
+        >
+          ¿Olvidaste tu contraseña?
+        </button>
+
       </div>
     </div>
   );
