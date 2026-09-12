@@ -59,7 +59,7 @@ export default function Register() {
       email,
       password,
       options: {
-        emailRedirectTo: "https://coastguardnative.vercel.app/auth/callback",
+        emailRedirectTo: "https://coastguardhomes.es/auth/callback",
       },
     });
 
