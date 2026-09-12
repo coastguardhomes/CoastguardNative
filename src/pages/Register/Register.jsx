@@ -59,7 +59,7 @@ export default function Register() {
       email,
       password,
       options: {
-        emailRedirectTo: "https://coastguardhomes.es",
+        emailRedirectTo: "https://coastguardhomes.es/auth/callback",
       },
     });
 
@@ -118,12 +118,12 @@ export default function Register() {
     changeLanguage(idioma);
     localStorage.setItem("app_idioma", idioma);
 
-    setMensaje("Cuenta creada correctamente. Ya puedes iniciar sesión.");
+    setMensaje("Cuenta creada correctamente. Se ha enviado un enlace de confirmación a tu correo.");
     setLoading(false);
 
     setTimeout(() => {
       navigate("/login", { replace: true });
-    }, 1500);
+    }, 2000);
   };
 
   return (
