@@ -27,14 +27,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # ⭐ ESTE ACTION SÍ ACEPTA TODAS LAS LICENCIAS
+      - name: Install Android SDK
+        uses: reactivecircus/android-emulator-runner@v2
         with:
-          accept-android-sdk-licenses: true
-
-      - name: Force accept all Android SDK licenses
-        run: |
-          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+          api-level: 33
+          arch: x86_64
+          force-avd-creation: false
+          disable-animations: true
+          script: echo "SDK installed"
 
       - name: Install dependencies
         run: npm ci
