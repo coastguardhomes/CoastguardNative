@@ -4,6 +4,7 @@ on:
   push:
     branches: [ main, master ]
   pull_request:
+    branches: [ main, master ]
 
 jobs:
   build:
@@ -20,14 +21,14 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      # Utiliza el SDK del sistema sin descargar ZIPs manuales
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: false
 
-      # Acepta licencias automáticamente desde el ejecutable preinstalado
-      - name: Accept Android Licenses
+      - name: Accept All Android Licenses
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || yes | $ANDROID_HOME/cmdline-tools/14.0/bin/sdkmanager --licenses || true
 
       - name: Build Debug APK
         run: |
