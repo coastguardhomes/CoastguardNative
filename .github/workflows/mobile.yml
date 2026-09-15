@@ -30,15 +30,15 @@ jobs:
           npm run build --if-present
           npx cap sync android
 
-      # 3. Configurar entorno Java
-      - name: Set up JDK 17
+      # 3. Configurar entorno Java 21 (Requerido por la versión de Gradle/Capacitor)
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
           cache: 'gradle'
 
-      # 4. Aceptar licencias de Android al instante (0 segundos de espera)
+      # 4. Aceptar licencias de Android al instante
       - name: Accept Android SDK Licenses
         run: |
           mkdir -p $ANDROID_HOME/licenses
@@ -53,7 +53,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      # 6. Subir el APK generado como artefacto para poder descargarlo
+      # 6. Subir el APK generado como artefacto
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
