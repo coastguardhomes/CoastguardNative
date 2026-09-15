@@ -27,6 +27,7 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Build Debug APK
+        working-directory: ./android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug
