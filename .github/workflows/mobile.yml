@@ -1,22 +1,21 @@
-name: Build Android APK
+name: Android build (assembleDebug)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  pull_request:
 
 jobs:
-  build:
+  build-android:
     runs-on: ubuntu-latest
-
     env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -25,28 +24,42 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: 17
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept ALL Android SDK licenses
+      - name: Create Android SDK directories
         run: |
-          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          mkdir -p $ANDROID_SDK_ROOT/licenses
+          mkdir -p $ANDROID_SDK_ROOT/platform-tools
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Download Android commandline tools
+        run: |
+          cd $HOME
+          curl -sSfLo tools.zip "https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
+          unzip -q tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools-temp
+          mv $ANDROID_SDK_ROOT/cmdline-tools-temp/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+          rm -f tools.zip
 
-      - name: Build web assets
-        run: npm run build
+      - name: Add SDK tools to PATH
+        run: |
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+
+      - name: Install required SDK packages
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | $SDKMANAGER --sdk_root="$ANDROID_SDK_ROOT" --licenses || true
+          $SDKMANAGER --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-33" "build-tools;33.0.2" "extras;google;m2repository" "extras;android;m2repository"
+
+      - name: Force accept licenses (defensive)
+        run: |
+          mkdir -p "$ANDROID_SDK_ROOT/licenses"
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > $ANDROID_SDK_ROOT/licenses/android-sdk-license
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $ANDROID_SDK_ROOT/licenses/android-sdk-license
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" >> $ANDROID_SDK_ROOT/licenses/android-sdk-license
 
       - name: Build APK
+        working-directory: android
         run: |
-          cd android
-          ./gradlew assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: coastguard-apk-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
