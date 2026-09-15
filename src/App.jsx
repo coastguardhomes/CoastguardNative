@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { App as CapacitorApp } from "@capacitor/app";
 import { supabase } from "./supabaseClient";
 
 import PrivateRoute from "./guards/PrivateRoute.jsx";
@@ -94,16 +95,43 @@ import Ajustes from "./pages/Ajustes/Ajustes.jsx";
 import Idioma from "./pages/Ajustes/Idioma.jsx"; 
 
 export default function App() {
+  const navigate = useNavigate();
+
+  // 1. Escuchar eventos de apertura de URL nativa (Deep Linking)
+  useEffect(() => {
+    const listener = CapacitorApp.addListener("appUrlOpen", (event) => {
+      try {
+        const url = new URL(event.url);
+        const path = url.pathname;
+        const hash = url.hash; // Contiene los tokens de sesión de Supabase
+
+        if (path.includes("update-password")) {
+          navigate(`/update-password${hash}`);
+        } else if (path.includes("auth/callback")) {
+          navigate(`/auth/callback${hash}`);
+        } else {
+          navigate(`/login`);
+        }
+      } catch (error) {
+        console.error("Error al procesar enlace directo:", error);
+        navigate("/login");
+      }
+    });
+
+    return () => {
+      listener.then((h) => h.remove());
+    };
+  }, [navigate]);
+
+  // 2. Lógica existente de auto-vinculación de cliente
   useEffect(() => {
     const vincularClienteSiEsNecesario = async (user) => {
       if (!user?.email) return;
 
       try {
-        // 1. Validar que realmente exista sesión activa antes de consultar
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        // 2. Usar .limit(1) para evitar el error 406 si hay múltiples registros con el mismo email en pruebas
         const { data: clientesEncontrados, error: errorBusq } = await supabase
           .from("clientes")
           .select("id, usuario_id")
@@ -155,7 +183,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/update-password" element={<UpdatePassword />} />
-        <Route path="/auth/callback" element={<AuthCallback />} /> {/* ⭐ RUTA CALLBACK AÑADIDA */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
 
         {/* ---------------- REDIRECCIÓN INICIAL ---------------- */}
         <Route path="/" element={<Navigate to="/login" replace />} />
