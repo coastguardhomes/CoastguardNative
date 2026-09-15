@@ -29,18 +29,14 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          accept-licenses: true
 
       - name: Install dependencies
         run: npm ci
 
       - name: Build web assets
         run: npm run build
-
-      # ⚠️ IMPORTANTE:
-      # NO ejecutar "npx cap sync android"
-      # NO regenerar la carpeta android
-      # NO tocar nada de Capacitor
-      # Tu carpeta android del ZIP ya está perfecta
 
       - name: Build APK
         run: |
