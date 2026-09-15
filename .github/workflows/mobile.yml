@@ -22,7 +22,7 @@ jobs:
           node-version: '20'
 
       - name: Setup Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -30,18 +30,13 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          accept-android-sdk-licenses: 'all'
+          accept-android-sdk-licenses: true
 
       - name: Install dependencies
         run: npm ci
 
       - name: Build web assets
         run: npm run build
-
-      # ⚠️ IMPORTANTE:
-      # NO ejecutar "npx cap sync android"
-      # NO regenerar la carpeta android
-      # Tu carpeta android del ZIP ya está perfecta
 
       - name: Build APK
         run: |
