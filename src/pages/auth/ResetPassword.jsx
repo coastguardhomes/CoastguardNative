@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../supabaseClient";
 
 export default function ResetPassword() {
   const [email, setEmail] = useState("");
@@ -12,7 +12,7 @@ export default function ResetPassword() {
     }
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://coastguard.app/#/update-password", // URL FIJA Y SEGURA
+      redirectTo: "https://coastguardhomes.es/update-password",
     });
 
     if (error) {
