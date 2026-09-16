@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { supabase } from "../../supabaseClient";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [idioma, setIdioma] = useState("es");
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -53,13 +54,38 @@ export default function Register() {
       return;
     }
 
+    if (!aceptaTerminos) {
+      setErrorMsg("Debes aceptar la Política de Privacidad y el Contrato Marco");
+      return;
+    }
+
     setLoading(true);
 
+    // 1. Obtener la IP pública del usuario para la auditoría legal
+    let userIp = "IP_NO_DISPONIBLE";
+    try {
+      const ipRes = await fetch("https://api64.ipify.org?format=json");
+      const ipData = await ipRes.json();
+      userIp = ipData.ip;
+    } catch (err) {
+      console.warn("No se pudo obtener la IP del cliente", err);
+    }
+
+    const fechaAceptacion = new Date().toISOString();
+    const versionTerminos = "v1.0";
+
+    // 2. Registrar usuario en Supabase Auth guardando los metadatos legales
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: "coastguard://auth/callback",
+        data: {
+          acepta_terminos: true,
+          terminos_aceptados_at: fechaAceptacion,
+          ip_registro: userIp,
+          version_terminos: versionTerminos,
+        },
       },
     });
 
@@ -257,19 +283,35 @@ export default function Register() {
           </select>
         </div>
 
+        {/* CHECKBOX OBLIGATORIO DE POLÍTICAS Y CONTRATO */}
+        <div style={{ marginBottom: "20px", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left" }}>
+          <input
+            type="checkbox"
+            id="terminos"
+            checked={aceptaTerminos}
+            onChange={(e) => setAceptaTerminos(e.target.checked)}
+            style={{ marginTop: "4px", cursor: "pointer", width: "18px", height: "18px" }}
+          />
+          <label htmlFor="terminos" style={{ fontSize: "12px", lineHeight: "1.4", color: "#9fb3c8", cursor: "pointer" }}>
+            He leído y acepto la <Link to="/politica-privacidad" target="_blank" style={{ color: "#4db8ff", textDecoration: "underline" }}>Política de Privacidad</Link> y el Contrato Marco de Servicios.
+          </label>
+        </div>
+
+        {/* BOTÓN BLOQUEADO HASTA MARCAR EL CHECKBOX */}
         <button
           onClick={handleRegister}
-          disabled={loading}
+          disabled={loading || !aceptaTerminos}
           style={{
             width: "100%",
             padding: "12px",
-            background: loading ? "#0a4a7a" : "#0077cc",
+            background: (!aceptaTerminos || loading) ? "#1a365d" : "#0077cc",
             color: "#fff",
             border: "none",
             borderRadius: "8px",
             fontSize: "16px",
-            cursor: "pointer",
-            opacity: loading ? 0.7 : 1,
+            cursor: (!aceptaTerminos || loading) ? "not-allowed" : "pointer",
+            opacity: (!aceptaTerminos || loading) ? 0.6 : 1,
+            transition: "background 0.2s",
           }}
         >
           {loading ? "Creando cuenta..." : "Registrarse"}
