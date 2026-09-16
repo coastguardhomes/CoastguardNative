@@ -1,109 +1,233 @@
-import { useState } from "react";
-import { supabase } from "../../lib/supabase";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "../../supabaseClient";
 
 export default function UpdatePassword() {
-  const [password, setPassword] = useState("");
-  const [mensaje, setMensaje] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  async function actualizar() {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+
+  useEffect(() => {
+    async function initSession() {
+      try {
+        const hash = location.hash || window.location.hash || "";
+        if (hash) {
+          const hashString = hash.startsWith("#") ? hash.substring(1) : hash;
+          const params = new URLSearchParams(hashString);
+          const accessToken = params.get("access_token");
+          const refreshToken = params.get("refresh_token");
+
+          if (accessToken && refreshToken) {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            if (error) {
+              setErrorMsg("El enlace ha expirado o no es válido. Por favor, solicita uno nuevo.");
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error al establecer la sesión:", err);
+      } finally {
+        setSessionReady(true);
+      }
+    }
+
+    initSession();
+  }, [location]);
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setMensaje("");
+    setErrorMsg("");
+
     if (!password || password.length < 6) {
-      setMensaje("La contraseña debe tener al menos 6 caracteres.");
+      setErrorMsg("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
 
-    const { error } = await supabase.auth.updateUser({ password });
+    if (password !== confirmPassword) {
+      setErrorMsg("Las contraseñas no coinciden.");
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: password,
+    });
+
+    setLoading(false);
 
     if (error) {
-      setMensaje("Error: " + error.message);
-    } else {
-      setMensaje("Contraseña actualizada correctamente.");
+      setErrorMsg(error.message || "Error actualizando la contraseña.");
+      return;
     }
+
+    setMensaje("¡Contraseña actualizada con éxito! Redirigiendo al inicio de sesión...");
+
+    // Cerramos la sesión de recuperación para requerir login limpio
+    await supabase.auth.signOut();
+
+    setTimeout(() => {
+      navigate("/login", { replace: true });
+    }, 2000);
+  };
+
+  if (!sessionReady) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "radial-gradient(circle at center, #10192d 0%, #080c14 100%)",
+          color: "#d4af37",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          fontFamily: "sans-serif",
+        }}
+      >
+        Verificando enlace de seguridad...
+      </div>
+    );
   }
 
   return (
     <div
       style={{
-        height: "100%",
-        background: "#0a0f1a",
-        padding: "20px",
+        minHeight: "100vh",
+        background: "radial-gradient(circle at center, #10192d 0%, #080c14 100%)",
         color: "#fff",
-        fontFamily: "Inter, sans-serif",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
+        padding: "20px",
+        fontFamily: "sans-serif",
       }}
     >
       <div
         style={{
           width: "100%",
-          maxWidth: "380px",
-          background: "rgba(255,255,255,0.05)",
-          padding: "30px",
-          borderRadius: "14px",
-          border: "1px solid rgba(255,255,255,0.1)",
-          boxShadow: "0 0 18px rgba(0,153,255,0.25)",
+          maxWidth: "400px",
+          background: "rgba(16, 25, 45, 0.85)",
+          padding: "32px 24px",
+          borderRadius: "16px",
+          border: "1px solid rgba(212, 175, 55, 0.3)",
+          boxShadow: "0 0 25px rgba(212, 175, 55, 0.15)",
+          backdropFilter: "blur(10px)",
         }}
       >
-        <h2
-          style={{
-            textAlign: "center",
-            color: "#4db8ff",
-            marginBottom: "20px",
-            fontSize: "26px",
-            fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
-          }}
-        >
-          Crear nueva contraseña
-        </h2>
+        <div style={{ textAlign: "center", marginBottom: "24px" }}>
+          <h2 style={{ color: "#d4af37", margin: "0 0 8px 0", fontSize: "22px" }}>
+            Nueva Contraseña
+          </h2>
+          <p style={{ color: "#a0aec0", fontSize: "14px", margin: 0 }}>
+            Introduce tu nueva clave de acceso
+          </p>
+        </div>
+
+        {errorMsg && (
+          <div
+            style={{
+              background: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              padding: "12px",
+              borderRadius: "8px",
+              color: "#fca5a5",
+              marginBottom: "16px",
+              fontSize: "14px",
+              textAlign: "center",
+            }}
+          >
+            {errorMsg}
+          </div>
+        )}
 
         {mensaje && (
-          <p
+          <div
             style={{
+              background: "rgba(34, 197, 94, 0.15)",
+              border: "1px solid rgba(34, 197, 94, 0.4)",
+              padding: "12px",
+              borderRadius: "8px",
+              color: "#86efac",
+              marginBottom: "16px",
+              fontSize: "14px",
               textAlign: "center",
-              color: "#4db8ff",
-              marginBottom: "15px",
-              fontSize: "15px",
             }}
           >
             {mensaje}
-          </p>
+          </div>
         )}
 
-        <input
-          type="password"
-          placeholder="Nueva contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{
-            padding: "12px",
-            width: "100%",
-            borderRadius: "8px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            background: "rgba(255,255,255,0.08)",
-            color: "#fff",
-            marginBottom: "20px",
-            fontSize: "15px",
-          }}
-        />
+        <form onSubmit={handleUpdate}>
+          <div style={{ marginBottom: "16px" }}>
+            <input
+              type="password"
+              placeholder="Nueva contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: "8px",
+                border: "1px solid rgba(212, 175, 55, 0.25)",
+                background: "rgba(255, 255, 255, 0.05)",
+                color: "#fff",
+                fontSize: "15px",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
 
-        <button
-          onClick={actualizar}
-          style={{
-            width: "100%",
-            padding: "12px",
-            background: "#4db8ff",
-            color: "#000",
-            borderRadius: "8px",
-            border: "none",
-            fontWeight: "700",
-            fontSize: "16px",
-            cursor: "pointer",
-            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-          }}
-        >
-          Guardar nueva contraseña
-        </button>
+          <div style={{ marginBottom: "20px" }}>
+            <input
+              type="password"
+              placeholder="Confirmar nueva contraseña"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: "8px",
+                border: "1px solid rgba(212, 175, 55, 0.25)",
+                background: "rgba(255, 255, 255, 0.05)",
+                color: "#fff",
+                fontSize: "15px",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "14px",
+              background: "linear-gradient(135deg, #d4af37 0%, #aa7c11 100%)",
+              color: "#0a0f1d",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              cursor: loading ? "wait" : "pointer",
+              boxShadow: "0 4px 12px rgba(212, 175, 55, 0.25)",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? "Guardando..." : "Guardar contraseña"}
+          </button>
+        </form>
       </div>
     </div>
   );
