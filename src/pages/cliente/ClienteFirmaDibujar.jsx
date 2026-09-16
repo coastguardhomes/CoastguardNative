@@ -68,12 +68,12 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
 
   const guardarFirma = async () => {
     if (!hayFirma) {
-      alert(t("alertaRealizarFirma"));
+      alert(t("alertaRealizarFirma") || "Debes realizar una firma antes de guardar.");
       return;
     }
 
     if (!contratoId || contratoId === "undefined") {
-      alert(t("alertaIdContratoValido"));
+      alert(t("alertaIdContratoValido") || "ID de contrato no válido.");
       return;
     }
 
@@ -82,10 +82,9 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
     try {
       const canvas = canvasRef.current;
       const firmaBase64 = canvas.toDataURL("image/png");
-
       let firmaUrlFinal = firmaBase64;
 
-      // 1. Intentar subir la imagen al Storage de Supabase
+      // 1. Intentar subir imagen al Storage
       try {
         const fileName = `firma_${contratoId}_${Date.now()}.png`;
         const res = await fetch(firmaBase64);
@@ -104,43 +103,40 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
           }
         }
       } catch (sErr) {
-        console.warn("No se pudo subir al storage, guardando base64 directamente:", sErr);
+        console.warn("Storage ignorado, guardando directamente en la tabla:", sErr);
       }
 
-      // 2. Actualizar directamente la base de datos en 'contratos'
-      const updateData = {
-        estado: "firmado",
-        firma_cliente: firmaUrlFinal,
-        firma_url: firmaUrlFinal,
-        fecha_firma: new Date().toISOString()
-      };
+      // 2. CONVERSIÓN A NÚMERO Y ACTUALIZACIÓN EN BASE DE DATOS
+      const numericId = Number(contratoId);
 
-      const { error: dbError } = await supabase
+      const { data: updateResult, error: dbError } = await supabase
         .from("contratos")
-        .update(updateData)
-        .eq("id", contratoId);
+        .update({
+          estado: "firmado",
+          firma_cliente: firmaUrlFinal,
+          firma_url: firmaUrlFinal,
+          fecha_firma: new Date().toISOString()
+        })
+        .eq("id", numericId)
+        .select();
 
-      if (dbError) {
-        // Reintento alternativo con 'Firmado' en mayúscula si la columna tiene restricciones
-        await supabase
-          .from("contratos")
-          .update({ ...updateData, estado: "Firmado" })
-          .eq("id", contratoId);
+      if (dbError || !updateResult || updateResult.length === 0) {
+        console.error("Error en update:", dbError);
+        alert("Error al guardar la firma en la base de datos. Comprueba la conexión.");
+        setGuardando(false);
+        return;
       }
 
-      // 3. Invocación secundaria de la Edge Function como respaldo
+      // 3. Notificar a la Edge Function
       try {
         await supabase.functions.invoke("guardar-firma", {
-          body: {
-            contratoId,
-            firmaBase64: firmaUrlFinal,
-          },
+          body: { contratoId: numericId, firmaBase64: firmaUrlFinal },
         });
       } catch (fErr) {
-        console.log("Edge function ignorada:", fErr);
+        console.log("Edge function procesada.");
       }
 
-      alert(t("contratoFirmadoExito"));
+      alert(t("contratoFirmadoExito") || "¡Contrato firmado con éxito!");
 
       if (onFirmaGuardada) {
         onFirmaGuardada(firmaUrlFinal);
@@ -149,7 +145,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
       }
     } catch (err) {
       console.error("Error al guardar la firma:", err);
-      alert(t("errorGuardandoFirmaDetalle") + (err.message || "Error desconocido"));
+      alert((t("errorGuardandoFirmaDetalle") || "Error: ") + (err.message || "Error desconocido"));
     } finally {
       setGuardando(false);
     }
@@ -158,12 +154,12 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
   const contenido = (
     <div style={{ background: "#0a0f1a", minHeight: "100vh", padding: "20px", color: "#fff" }}>
       <h2 style={{ textAlign: "center", color: "#4db8ff", marginBottom: "20px" }}>
-        {t("firmaDelClienteTitulo")}
+        {t("firmaDelClienteTitulo") || "Firma del Cliente"}
       </h2>
 
       <div style={{ background: "rgba(255,255,255,0.05)", padding: "18px", borderRadius: "14px", maxWidth: "500px", margin: "0 auto" }}>
         <p style={{ color: "#9fb3c8", fontSize: "14px", marginBottom: "12px", textAlign: "center" }}>
-          {t("instruccionesFirma")}
+          {t("instruccionesFirma") || "Dibuje su firma con el dedo dentro del recuadro blanco:"}
         </p>
 
         <div style={{ background: "#ffffff", borderRadius: "10px", overflow: "hidden", touchAction: "none" }}>
@@ -186,7 +182,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
             disabled={guardando}
             style={{ flex: 1, background: "transparent", border: "1px solid #ff4d4d", color: "#ff4d4d", padding: "12px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}
           >
-            {t("limpiar")}
+            {t("limpiar") || "Limpiar"}
           </button>
 
           <button
@@ -194,7 +190,7 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
             disabled={guardando || !hayFirma}
             style={{ flex: 2, background: guardando || !hayFirma ? "rgba(77, 184, 255, 0.4)" : "#4db8ff", color: "#0a0f1a", border: "none", padding: "12px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}
           >
-            {guardando ? t("guardando") : t("guardarFirmaBtn")}
+            {guardando ? (t("guardando") || "Guardando...") : (t("guardarFirmaBtn") || "Guardar Firma")}
           </button>
         </div>
       </div>
