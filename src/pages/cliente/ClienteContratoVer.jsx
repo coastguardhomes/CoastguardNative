@@ -76,11 +76,19 @@ export default function ClienteContratoVer() {
     }
   }, [id, location.key]);
 
-  const esFirmado = Boolean(
-    (contrato?.firma_url && contrato.firma_url.trim() !== "") ||
-    contrato?.estado === "firmado" ||
-    contrato?.estado === "enviado_al_admin"
+  // Detección exhaustiva de firma y estado
+  const estadoLower = String(contrato?.estado || "").toLowerCase().trim();
+  const tieneFirma = Boolean(
+    (contrato?.firma_cliente && contrato.firma_cliente.trim() !== "") ||
+    (contrato?.firma_url && contrato.firma_url.trim() !== "")
   );
+
+  const esFirmado = tieneFirma || 
+                    estadoLower === "firmado" || 
+                    estadoLower === "firmado_cliente" || 
+                    estadoLower === "enviado_al_admin";
+
+  const yaEnviadoAdmin = estadoLower === "enviado_al_admin";
 
   const enviarAlAdmin = async () => {
     if (!esFirmado) {
@@ -89,18 +97,33 @@ export default function ClienteContratoVer() {
     }
 
     setEnviando(true);
-    const { error } = await supabase
-      .from("contratos")
-      .update({ estado: "enviado_al_admin" })
-      .eq("id", id);
+    try {
+      // 1. Actualizamos estado a 'firmado' para el panel del admin y marcamos enviado
+      const { error } = await supabase
+        .from("contratos")
+        .update({ estado: "firmado" })
+        .eq("id", id);
 
-    setEnviando(false);
+      if (error) {
+        alert(t("alertaErrorAdmin") + error.message);
+      } else {
+        // 2. Notificamos/Regeneramos el PDF firmado
+        try {
+          await supabase.functions.invoke("contrato-pdf", {
+            body: { contrato_id: Number(id), contratoId: Number(id) }
+          });
+        } catch (fErr) {
+          console.log("Notificación al admin enviada con éxito.");
+        }
 
-    if (error) {
-      alert(t("alertaErrorAdmin") + error.message);
-    } else {
-      alert(t("alertaContratoEnviado"));
-      cargarContrato();
+        alert(t("alertaContratoEnviado") || "¡Contrato enviado al administrador!");
+        await cargarContrato();
+      }
+    } catch (err) {
+      console.error("Error enviando contrato al admin:", err);
+      alert("Error al enviar: " + (err.message || "Error desconocido"));
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -249,63 +272,70 @@ export default function ClienteContratoVer() {
             </span>
           </p>
 
-          {/* Botón 1: Ver antes de firmar */}
-          <button
-            onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
-            style={{
-              ...botonEstilo,
-              background: "rgba(10, 15, 26, 0.8)",
-              border: BORDE_DORADO,
-              color: COLOR_DORADO,
-              display: esFirmado ? "none" : "block",
-            }}
-          >
-            {t("verContratoAntesFirmar")}
-          </button>
+          {/* Botón 1: Ver antes de firmar (Solo si NO está firmado) */}
+          {!esFirmado && (
+            <button
+              onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
+              style={{
+                ...botonEstilo,
+                background: "rgba(10, 15, 26, 0.8)",
+                border: BORDE_DORADO,
+                color: COLOR_DORADO,
+              }}
+            >
+              {t("verContratoAntesFirmar")}
+            </button>
+          )}
 
-          {/* Botón 2: Ver / Cambiar Firma */}
-          <button
-            onClick={() => navigate(`/cliente/firma/${id}`)}
-            style={{
-              ...botonEstilo,
-              display: esFirmado ? "none" : "block",
-            }}
-          >
-            ✍️ {esFirmado ? t("verCambiarFirma") : t("firmaDelCliente")}
-          </button>
+          {/* Botón 2: Dibujar Firma (Desaparece al estar firmado) */}
+          {!esFirmado && (
+            <button
+              onClick={() => navigate(`/cliente/firma/${id}`)}
+              style={botonEstilo}
+            >
+              ✍️ {t("firmaDelCliente")}
+            </button>
+          )}
 
-          {/* Botón 3: Enviar al Admin */}
-          <button
-            onClick={enviarAlAdmin}
-            disabled={!esFirmado || enviando}
-            style={{
-              ...botonEstilo,
-              background: esFirmado
-                ? "linear-gradient(135deg, #4ade80 0%, #166534 100%)"
-                : "rgba(255,255,255,0.08)",
-              color: esFirmado ? "#ffffff" : "#888",
-              cursor: esFirmado ? "pointer" : "not-allowed",
-              border: esFirmado ? "1px solid rgba(74, 222, 128, 0.5)" : "1px solid rgba(255,255,255,0.1)",
-              boxShadow: esFirmado ? "0 4px 15px rgba(74, 222, 128, 0.3)" : "none",
-              display: esFirmado && contrato?.estado === "enviado_al_admin" ? "none" : "block",
-            }}
-          >
-            {enviando ? t("enviando") : t("enviarAlAdminBtn")}
-          </button>
+          {/* Botón 3: Enviar al Admin (Activo al firmar, se deshabilita si ya fue enviado) */}
+          {esFirmado && (
+            <button
+              onClick={enviarAlAdmin}
+              disabled={enviando || yaEnviadoAdmin}
+              style={{
+                ...botonEstilo,
+                background: yaEnviadoAdmin
+                  ? "rgba(255,255,255,0.1)"
+                  : "linear-gradient(135deg, #4ade80 0%, #166534 100%)",
+                color: yaEnviadoAdmin ? "#34d399" : "#ffffff",
+                cursor: yaEnviadoAdmin ? "default" : "pointer",
+                border: yaEnviadoAdmin ? "1px solid rgba(52, 211, 153, 0.4)" : "1px solid rgba(74, 222, 128, 0.5)",
+                boxShadow: yaEnviadoAdmin ? "none" : "0 4px 15px rgba(74, 222, 128, 0.3)",
+              }}
+            >
+              {enviando 
+                ? t("enviando") 
+                : yaEnviadoAdmin 
+                  ? "✅ Enviado al Administrador" 
+                  : t("enviarAlAdminBtn") || "✉️ Enviar al Administrador"}
+            </button>
+          )}
 
-          {/* Botón 4: Ver contrato firmado (PDF) */}
-          <button
-            onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
-            style={{
-              ...botonEstilo,
-              background: "rgba(10, 15, 26, 0.8)",
-              border: BORDE_DORADO,
-              color: COLOR_DORADO,
-              marginTop: esFirmado ? "4px" : "12px",
-            }}
-          >
-            {t("verContratoFirmadoPdf")}
-          </button>
+          {/* Botón 4: Ver contrato firmado (PDF) (Aparece tras firmar) */}
+          {esFirmado && (
+            <button
+              onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
+              style={{
+                ...botonEstilo,
+                background: "rgba(10, 15, 26, 0.8)",
+                border: BORDE_DORADO,
+                color: COLOR_DORADO,
+                marginTop: "12px",
+              }}
+            >
+              📄 {t("verContratoFirmadoPdf")}
+            </button>
+          )}
         </div>
       </div>
     </Menu>
