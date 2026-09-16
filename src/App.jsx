@@ -5,14 +5,14 @@ import { supabase } from "./supabaseClient";
 
 import PrivateRoute from "./guards/PrivateRoute.jsx";
 import ClienteRoute from "./pages/cliente/ClienteRoute.jsx";
-import { LanguageProvider } from "./context/LanguageContext.jsx"; // ⭐ CONTEXTO GLOBAL DE TRADUCCIÓN
+import { LanguageProvider } from "./context/LanguageContext.jsx";
 
 // LOGIN / REGISTER / RECUPERAR CONTRASEÑA / CALLBACK
 import Login from "./pages/Login/Login.jsx";
 import Register from "./pages/Register/Register.jsx";
 import ResetPassword from "./pages/auth/ResetPassword.jsx";
 import UpdatePassword from "./pages/auth/UpdatePassword.jsx";
-import AuthCallback from "./pages/AuthCallback.jsx"; // ⭐ AÑADIDO
+import AuthCallback from "./pages/AuthCallback.jsx";
 
 // DASHBOARDS POR ROL
 import ClienteDashboard from "./pages/cliente/ClienteDashboard.jsx";
@@ -99,30 +99,14 @@ export default function App() {
 
   // 1. Escuchar eventos de apertura de URL nativa (Deep Linking)
   useEffect(() => {
-    const listener = CapacitorApp.addListener("appUrlOpen", async (event) => {
+    const listener = CapacitorApp.addListener("appUrlOpen", (event) => {
       try {
         const rawUrl = event.url || "";
-        
-        // Extraer hash y tokens de sesión de Supabase si existen
         const hashIndex = rawUrl.indexOf("#");
-        let hash = "";
-        
-        if (hashIndex !== -1) {
-          hash = rawUrl.substring(hashIndex);
-          const hashString = rawUrl.substring(hashIndex + 1);
-          const params = new URLSearchParams(hashString);
-          const accessToken = params.get("access_token");
-          const refreshToken = params.get("refresh_token");
-
-          if (accessToken && refreshToken) {
-            await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-          }
-        }
+        const hash = hashIndex !== -1 ? rawUrl.substring(hashIndex) : "";
 
         if (rawUrl.includes("update-password")) {
+          // Redirige directamente a la pantalla pasando el hash con los tokens
           navigate(`/update-password${hash}`);
         } else if (rawUrl.includes("auth/callback")) {
           navigate(`/auth/callback${hash}`);
