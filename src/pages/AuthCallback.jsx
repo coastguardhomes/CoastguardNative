@@ -1,59 +1,47 @@
 import React, { useEffect } from "react";
-import { supabase } from "../supabaseClient";
 import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    async function procesar() {
-      try {
-        // Extraer el hash de la URL donde Supabase envía los tokens (ej: #access_token=...&type=recovery)
-        const hash = location.hash || window.location.hash;
-        const params = new URLSearchParams(hash.replace("#", "?"));
-        const type = params.get("type");
+    const handleAuthCallback = async () => {
+      const hash = location.hash || window.location.hash || "";
+      const search = location.search || window.location.search || "";
+      const combined = hash + search;
 
-        // 1. Caso de Recuperación de Contraseña
-        if (type === "recovery") {
-          navigate(`/update-password${hash}`, { replace: true });
-          return;
-        }
-
-        // 2. Caso de Confirmación de Correo (signup / email_change)
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session) {
-          // Cerramos la sesión automática del enlace para que el cliente inicie sesión de forma manual
-          await supabase.auth.signOut();
-        }
-
-        // Redirigir al Login indicando que ya se puede autenticar
-        navigate("/login", {
-          replace: true,
-          state: { mensaje: "¡Cuenta confirmada con éxito! Ya puedes iniciar sesión." },
-        });
-      } catch (error) {
-        console.error("Error al procesar el callback de autenticación:", error);
-        navigate("/login", { replace: true });
+      // Si es un flujo de recuperación de contraseña, redirigimos inmediatamente a /update-password
+      if (combined.includes("type=recovery") || combined.includes("update-password")) {
+        navigate(`/update-password${hash}`, { replace: true });
+        return;
       }
-    }
 
-    procesar();
+      // Si es otro flujo (por ejemplo, confirmación de registro)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.auth.signOut();
+      }
+      navigate("/login", { replace: true });
+    };
+
+    handleAuthCallback();
   }, [navigate, location]);
 
   return (
     <div
       style={{
-        height: "100vh",
+        minHeight: "100vh",
+        background: "radial-gradient(circle at center, #10192d 0%, #080c14 100%)",
+        color: "#d4af37",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        color: "#fff",
-        background: "#0a0f1a",
+        fontFamily: "sans-serif",
       }}
     >
-      Confirmando tu cuenta, un momento…
+      Verificando autenticación...
     </div>
   );
 }
