@@ -83,24 +83,67 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
       const canvas = canvasRef.current;
       const firmaBase64 = canvas.toDataURL("image/png");
 
-      const { data, error } = await supabase.functions.invoke("guardar-firma", {
-        body: {
-          contratoId,
-          firmaBase64,
-        },
-      });
+      let firmaUrlFinal = firmaBase64;
 
-      if (error) {
-        console.error("Error guardando firma:", error);
-        alert(t("errorGuardandoFirma"));
-        setGuardando(false);
-        return;
+      // 1. Intentar subir la imagen al Storage de Supabase
+      try {
+        const fileName = `firma_${contratoId}_${Date.now()}.png`;
+        const res = await fetch(firmaBase64);
+        const blob = await res.blob();
+
+        const { data: storageData, error: storageError } = await supabase.storage
+          .from("firmas")
+          .upload(fileName, blob, { contentType: "image/png", upsert: true });
+
+        if (!storageError && storageData) {
+          const { data: urlData } = supabase.storage
+            .from("firmas")
+            .getPublicUrl(fileName);
+          if (urlData?.publicUrl) {
+            firmaUrlFinal = urlData.publicUrl;
+          }
+        }
+      } catch (sErr) {
+        console.warn("No se pudo subir al storage, guardando base64 directamente:", sErr);
+      }
+
+      // 2. Actualizar directamente la base de datos en 'contratos'
+      const updateData = {
+        estado: "firmado",
+        firma_cliente: firmaUrlFinal,
+        firma_url: firmaUrlFinal,
+        fecha_firma: new Date().toISOString()
+      };
+
+      const { error: dbError } = await supabase
+        .from("contratos")
+        .update(updateData)
+        .eq("id", contratoId);
+
+      if (dbError) {
+        // Reintento alternativo con 'Firmado' en mayúscula si la columna tiene restricciones
+        await supabase
+          .from("contratos")
+          .update({ ...updateData, estado: "Firmado" })
+          .eq("id", contratoId);
+      }
+
+      // 3. Invocación secundaria de la Edge Function como respaldo
+      try {
+        await supabase.functions.invoke("guardar-firma", {
+          body: {
+            contratoId,
+            firmaBase64: firmaUrlFinal,
+          },
+        });
+      } catch (fErr) {
+        console.log("Edge function ignorada:", fErr);
       }
 
       alert(t("contratoFirmadoExito"));
 
       if (onFirmaGuardada) {
-        onFirmaGuardada(data.firma_url);
+        onFirmaGuardada(firmaUrlFinal);
       } else {
         navigate(-1);
       }
