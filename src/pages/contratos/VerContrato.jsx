@@ -11,6 +11,7 @@ export default function VerContrato() {
   const [cargando, setCargando] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
   const [generando, setGenerando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
     cargarContrato();
@@ -46,7 +47,6 @@ export default function VerContrato() {
     try {
       setGenerando(true);
 
-      // Enviamos tanto contrato_id como contratoId e id para asegurar compatibilidad total con la Edge Function
       const response = await supabase.functions.invoke("contrato-pdf", {
         body: { 
           contrato_id: Number(id), 
@@ -65,7 +65,6 @@ export default function VerContrato() {
       const pdfUrlRaw = dataRes?.pdf_url || dataRes?.pdfUrl || (typeof dataRes === 'string' ? JSON.parse(dataRes)?.pdf_url : null);
 
       if (pdfUrlRaw) {
-        // Añadir timestamp para romper la caché del navegador al visualizarlo
         const pdfUrl = `${pdfUrlRaw}?t=${Date.now()}`;
 
         await supabase
@@ -87,26 +86,28 @@ export default function VerContrato() {
     }
   };
 
-  const enviarEmail = async () => {
+  // Botón Azul: Pone el contrato a disposición del rol cliente para que pueda firmarlo (SIN ENVÍO DE EMAIL)
+  const enviarAlRolCliente = async () => {
     try {
-      const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
-        body: { 
-          contrato_id: Number(id), 
-          contratoId: Number(id), 
-          id: Number(id), 
-          tipo: "contrato" 
-        },
-      });
+      setEnviando(true);
 
-      if (errEmail) {
-        console.warn("Aviso al enviar email:", errEmail);
-        alert("El correo devolvió una advertencia, verifica el buzón.");
+      const { error } = await supabase
+        .from("contratos")
+        .update({ estado: "enviado_cliente" })
+        .eq("id", Number(id));
+
+      if (error) {
+        console.error("Error al actualizar estado:", error);
+        alert("Error al poner el contrato disponible para el cliente.");
       } else {
-        alert("¡Email enviado al cliente con éxito!");
+        await cargarContrato();
+        alert("¡Contrato enviado al rol cliente con éxito! Ya está disponible para su firma en su panel.");
       }
     } catch (e) {
       console.error(e);
-      alert("Error enviando email.");
+      alert("Error procesando la solicitud.");
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -280,7 +281,8 @@ export default function VerContrato() {
               </button>
 
               <button
-                onClick={enviarEmail}
+                onClick={enviarAlRolCliente}
+                disabled={enviando}
                 style={{
                   padding: "12px",
                   background: "#4db8ff",
@@ -289,10 +291,11 @@ export default function VerContrato() {
                   border: "none",
                   fontWeight: "700",
                   cursor: "pointer",
+                  opacity: enviando ? 0.6 : 1,
                   boxShadow: "0 0 10px rgba(0,153,255,0.4)",
                 }}
               >
-                📧 Enviar contrato al cliente
+                {enviando ? "⌛ Actualizando..." : "📩 Enviar contrato al rol cliente"}
               </button>
 
               <button
