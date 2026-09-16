@@ -15,7 +15,7 @@ const botonEstilo = {
   width: "100%",
   borderRadius: "8px",
   cursor: "pointer",
-  marginTop: "12px",
+  marginTop: "10px",
   fontWeight: "600",
   fontSize: "15px",
   border: BORDE_DORADO,
@@ -70,53 +70,49 @@ export default function ClienteContratoVer() {
     }
   };
 
+  // Re-cargar automáticamente los datos cada vez que la pantalla gana foco o vuelve de firmar
   useEffect(() => {
     if (id) {
       cargarContrato();
     }
   }, [id, location.key]);
 
-  // Detección exhaustiva de firma y estado
-  const estadoLower = String(contrato?.estado || "").toLowerCase().trim();
+  // Verificación flexibilizada de estado de firma
+  const est = String(contrato?.estado || "").toLowerCase().trim();
   const tieneFirma = Boolean(
     (contrato?.firma_cliente && contrato.firma_cliente.trim() !== "") ||
     (contrato?.firma_url && contrato.firma_url.trim() !== "")
   );
 
-  const esFirmado = tieneFirma || 
-                    estadoLower === "firmado" || 
-                    estadoLower === "firmado_cliente" || 
-                    estadoLower === "enviado_al_admin";
-
-  const yaEnviadoAdmin = estadoLower === "enviado_al_admin";
+  const esFirmado = tieneFirma || est === "firmado" || est === "enviado_al_admin";
+  const yaEnviadoAdmin = est === "enviado_al_admin";
 
   const enviarAlAdmin = async () => {
     if (!esFirmado) {
-      alert(t("alertaDebesFirmar"));
+      alert(t("alertaDebesFirmar") || "Debes firmar el contrato antes de enviarlo al administrador.");
       return;
     }
 
     setEnviando(true);
     try {
-      // 1. Actualizamos estado a 'firmado' para el panel del admin y marcamos enviado
       const { error } = await supabase
         .from("contratos")
         .update({ estado: "firmado" })
         .eq("id", id);
 
       if (error) {
-        alert(t("alertaErrorAdmin") + error.message);
+        alert((t("alertaErrorAdmin") || "Error: ") + error.message);
       } else {
-        // 2. Notificamos/Regeneramos el PDF firmado
+        // Notificar a la Edge Function
         try {
           await supabase.functions.invoke("contrato-pdf", {
-            body: { contrato_id: Number(id), contratoId: Number(id) }
+            body: { contrato_id: Number(id), id: Number(id) }
           });
         } catch (fErr) {
-          console.log("Notificación al admin enviada con éxito.");
+          console.log("PDF notificado.");
         }
 
-        alert(t("alertaContratoEnviado") || "¡Contrato enviado al administrador!");
+        alert(t("alertaContratoEnviado") || "¡Contrato firmado enviado al administrador!");
         await cargarContrato();
       }
     } catch (err) {
@@ -129,7 +125,7 @@ export default function ClienteContratoVer() {
 
   const manejarAbrirPDF = (url) => {
     if (!url) {
-      alert(t("alertaNoPdfAdmin"));
+      alert(t("alertaNoPdfAdmin") || "El PDF del contrato aún no está disponible.");
       return;
     }
 
@@ -268,74 +264,54 @@ export default function ClienteContratoVer() {
           <p style={{ margin: "6px 0 16px 0" }}>
             <strong>{t("estado")}:</strong>{" "}
             <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d", fontWeight: "bold", textShadow: esFirmado ? "0 0 8px rgba(77,255,136,0.4)" : "0 0 8px rgba(255,184,77,0.4)" }}>
-              {esFirmado ? `✅ ${t("firmado")}` : `⏳ ${t("pendienteFirma")}`}
+              {esFirmado ? `✅ ${t("firmado") || "Firmado"}` : `⏳ ${t("pendienteFirma") || "Pendiente de firma"}`}
             </span>
           </p>
 
-          {/* Botón 1: Ver antes de firmar (Solo si NO está firmado) */}
-          {!esFirmado && (
-            <button
-              onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
-              style={{
-                ...botonEstilo,
-                background: "rgba(10, 15, 26, 0.8)",
-                border: BORDE_DORADO,
-                color: COLOR_DORADO,
-              }}
-            >
-              {t("verContratoAntesFirmar")}
-            </button>
-          )}
+          {/* BOTÓN 1: Ver contrato en PDF */}
+          <button
+            onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
+            style={{
+              ...botonEstilo,
+              background: "rgba(10, 15, 26, 0.8)",
+              border: BORDE_DORADO,
+              color: COLOR_DORADO,
+            }}
+          >
+            📄 {esFirmado ? (t("verContratoFirmadoPdf") || "Ver contrato firmado (PDF)") : (t("verContratoAntesFirmar") || "Ver contrato antes de firmar")}
+          </button>
 
-          {/* Botón 2: Dibujar Firma (Desaparece al estar firmado) */}
-          {!esFirmado && (
-            <button
-              onClick={() => navigate(`/cliente/firma/${id}`)}
-              style={botonEstilo}
-            >
-              ✍️ {t("firmaDelCliente")}
-            </button>
-          )}
+          {/* BOTÓN 2: Dibujar / Cambiar Firma */}
+          <button
+            onClick={() => navigate(`/cliente/firma/${id}`)}
+            style={botonEstilo}
+          >
+            ✍️ {esFirmado ? "Cambiar / Volver a Firmar" : (t("firmaDelCliente") || "Firma del Cliente")}
+          </button>
 
-          {/* Botón 3: Enviar al Admin (Activo al firmar, se deshabilita si ya fue enviado) */}
-          {esFirmado && (
-            <button
-              onClick={enviarAlAdmin}
-              disabled={enviando || yaEnviadoAdmin}
-              style={{
-                ...botonEstilo,
-                background: yaEnviadoAdmin
-                  ? "rgba(255,255,255,0.1)"
-                  : "linear-gradient(135deg, #4ade80 0%, #166534 100%)",
-                color: yaEnviadoAdmin ? "#34d399" : "#ffffff",
-                cursor: yaEnviadoAdmin ? "default" : "pointer",
-                border: yaEnviadoAdmin ? "1px solid rgba(52, 211, 153, 0.4)" : "1px solid rgba(74, 222, 128, 0.5)",
-                boxShadow: yaEnviadoAdmin ? "none" : "0 4px 15px rgba(74, 222, 128, 0.3)",
-              }}
-            >
-              {enviando 
-                ? t("enviando") 
-                : yaEnviadoAdmin 
-                  ? "✅ Enviado al Administrador" 
-                  : t("enviarAlAdminBtn") || "✉️ Enviar al Administrador"}
-            </button>
-          )}
-
-          {/* Botón 4: Ver contrato firmado (PDF) (Aparece tras firmar) */}
-          {esFirmado && (
-            <button
-              onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
-              style={{
-                ...botonEstilo,
-                background: "rgba(10, 15, 26, 0.8)",
-                border: BORDE_DORADO,
-                color: COLOR_DORADO,
-                marginTop: "12px",
-              }}
-            >
-              📄 {t("verContratoFirmadoPdf")}
-            </button>
-          )}
+          {/* BOTÓN 3: Enviar al Admin (Siempre visible, verde si está listo para enviar) */}
+          <button
+            onClick={enviarAlAdmin}
+            disabled={enviando || yaEnviadoAdmin}
+            style={{
+              ...botonEstilo,
+              background: yaEnviadoAdmin
+                ? "rgba(255,255,255,0.1)"
+                : esFirmado
+                  ? "linear-gradient(135deg, #4ade80 0%, #166534 100%)"
+                  : "rgba(255,255,255,0.08)",
+              color: yaEnviadoAdmin ? "#34d399" : esFirmado ? "#ffffff" : "#888",
+              cursor: (esFirmado && !yaEnviadoAdmin) ? "pointer" : "not-allowed",
+              border: esFirmado ? "1px solid rgba(74, 222, 128, 0.5)" : "1px solid rgba(255,255,255,0.1)",
+              boxShadow: esFirmado ? "0 4px 15px rgba(74, 222, 128, 0.3)" : "none",
+            }}
+          >
+            {enviando 
+              ? (t("enviando") || "Enviando...") 
+              : yaEnviadoAdmin 
+                ? "✅ Enviado al Administrador" 
+                : (t("enviarAlAdminBtn") || "✉️ Enviar al Administrador")}
+          </button>
         </div>
       </div>
     </Menu>
