@@ -1,12 +1,17 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 
 export default function UpdatePassword() {
+  const navigate = useNavigate();
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleUpdate = async () => {
+  const handleUpdate = async (e) => {
+    e.preventDefault();
     setMensaje("");
     setErrorMsg("");
 
@@ -15,53 +20,75 @@ export default function UpdatePassword() {
       return;
     }
 
-    const { data, error } = await supabase.auth.updateUser({
-      password: password,
-    });
-
-    if (error) {
-      setErrorMsg(error.message || "Error actualizando contraseña.");
+    if (password !== confirmPassword) {
+      setErrorMsg("Las contraseñas no coinciden.");
       return;
     }
 
-    setMensaje("Contraseña actualizada correctamente. Ya puedes iniciar sesión.");
+    setLoading(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setErrorMsg(error.message || "Error actualizando la contraseña.");
+      return;
+    }
+
+    setMensaje("¡Contraseña actualizada con éxito! Redirigiendo al inicio de sesión...");
+    
+    setTimeout(() => {
+      navigate("/login");
+    }, 2500);
   };
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "#0a0f1a",
+        background: "radial-gradient(circle at center, #10192d 0%, #080c14 100%)",
         color: "#fff",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
         padding: "20px",
+        fontFamily: "sans-serif",
       }}
     >
       <div
         style={{
           width: "100%",
-          maxWidth: "380px",
-          background: "rgba(255,255,255,0.05)",
-          padding: "30px",
-          borderRadius: "14px",
-          border: "1px solid rgba(255,255,255,0.1)",
-          boxShadow: "0 0 18px rgba(0,153,255,0.25)",
+          maxWidth: "400px",
+          background: "rgba(16, 25, 45, 0.85)",
+          padding: "32px 24px",
+          borderRadius: "16px",
+          border: "1px solid rgba(212, 175, 55, 0.3)",
+          boxShadow: "0 0 25px rgba(212, 175, 55, 0.15)",
+          backdropFilter: "blur(10px)",
         }}
       >
-        <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
-          Cambiar contraseña
-        </h2>
+        <div style={{ textAlign: "center", marginBottom: "24px" }}>
+          <h2 style={{ color: "#d4af37", margin: "0 0 8px 0", fontSize: "22px" }}>
+            Nueva Contraseña
+          </h2>
+          <p style={{ color: "#a0aec0", fontSize: "14px", margin: 0 }}>
+            Introduce tu nueva clave de acceso
+          </p>
+        </div>
 
         {errorMsg && (
           <div
             style={{
-              background: "rgba(255,0,0,0.15)",
-              padding: "10px",
+              background: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              padding: "12px",
               borderRadius: "8px",
-              color: "#ff6b6b",
-              marginBottom: "15px",
+              color: "#fca5a5",
+              marginBottom: "16px",
+              fontSize: "14px",
               textAlign: "center",
             }}
           >
@@ -72,11 +99,13 @@ export default function UpdatePassword() {
         {mensaje && (
           <div
             style={{
-              background: "rgba(0,255,0,0.15)",
-              padding: "10px",
+              background: "rgba(34, 197, 94, 0.15)",
+              border: "1px solid rgba(34, 197, 94, 0.4)",
+              padding: "12px",
               borderRadius: "8px",
-              color: "#4dff88",
-              marginBottom: "15px",
+              color: "#86efac",
+              marginBottom: "16px",
+              fontSize: "14px",
               textAlign: "center",
             }}
           >
@@ -84,38 +113,67 @@ export default function UpdatePassword() {
           </div>
         )}
 
-        <input
-          type="password"
-          placeholder="Nueva contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "12px",
-            marginBottom: "15px",
-            borderRadius: "8px",
-            border: "1px solid rgba(255,255,255,0.2)",
-            background: "rgba(255,255,255,0.08)",
-            color: "#fff",
-            fontSize: "15px",
-          }}
-        />
+        <form onSubmit={handleUpdate}>
+          <div style={{ marginBottom: "16px" }}>
+            <input
+              type="password"
+              placeholder="Nueva contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: "8px",
+                border: "1px solid rgba(212, 175, 55, 0.25)",
+                background: "rgba(255, 255, 255, 0.05)",
+                color: "#fff",
+                fontSize: "15px",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
 
-        <button
-          onClick={handleUpdate}
-          style={{
-            width: "100%",
-            padding: "12px",
-            background: "#0077cc",
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "16px",
-            cursor: "pointer",
-          }}
-        >
-          Guardar nueva contraseña
-        </button>
+          <div style={{ marginBottom: "20px" }}>
+            <input
+              type="password"
+              placeholder="Confirmar nueva contraseña"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: "8px",
+                border: "1px solid rgba(212, 175, 55, 0.25)",
+                background: "rgba(255, 255, 255, 0.05)",
+                color: "#fff",
+                fontSize: "15px",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "14px",
+              background: "linear-gradient(135deg, #d4af37 0%, #aa7c11 100%)",
+              color: "#0a0f1d",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              cursor: loading ? "wait" : "pointer",
+              boxShadow: "0 4px 12px rgba(212, 175, 55, 0.25)",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? "Guardando..." : "Guardar contraseña"}
+          </button>
+        </form>
       </div>
     </div>
   );
