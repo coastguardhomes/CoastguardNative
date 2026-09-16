@@ -46,8 +46,13 @@ export default function VerContrato() {
     try {
       setGenerando(true);
 
+      // Enviamos tanto contrato_id como contratoId e id para asegurar compatibilidad total con la Edge Function
       const response = await supabase.functions.invoke("contrato-pdf", {
-        body: { contratoId: Number(id), id: Number(id) }
+        body: { 
+          contrato_id: Number(id), 
+          contratoId: Number(id), 
+          id: Number(id) 
+        }
       });
 
       if (response.error) {
@@ -57,9 +62,12 @@ export default function VerContrato() {
       }
 
       const dataRes = response.data;
-      const pdfUrl = dataRes?.pdf_url || dataRes?.pdfUrl || (typeof dataRes === 'string' ? JSON.parse(dataRes)?.pdf_url : null);
+      const pdfUrlRaw = dataRes?.pdf_url || dataRes?.pdfUrl || (typeof dataRes === 'string' ? JSON.parse(dataRes)?.pdf_url : null);
 
-      if (pdfUrl) {
+      if (pdfUrlRaw) {
+        // Añadir timestamp para romper la caché del navegador al visualizarlo
+        const pdfUrl = `${pdfUrlRaw}?t=${Date.now()}`;
+
         await supabase
           .from("contratos")
           .update({ pdf_url: pdfUrl })
@@ -82,7 +90,12 @@ export default function VerContrato() {
   const enviarEmail = async () => {
     try {
       const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
-        body: { contratoId: Number(id), id: Number(id), tipo: "contrato" },
+        body: { 
+          contrato_id: Number(id), 
+          contratoId: Number(id), 
+          id: Number(id), 
+          tipo: "contrato" 
+        },
       });
 
       if (errEmail) {
@@ -105,6 +118,19 @@ export default function VerContrato() {
 
     window.open(contrato.pdf_url, "_blank");
   };
+
+  const obtenerBadgeEstado = (estado) => {
+    const est = String(estado || "").toLowerCase().trim();
+    if (est === "firmado" || est === "firmado_cliente" || est === "completado") {
+      return { texto: "✅ FIRMADO", color: "#34d399", bg: "rgba(52, 211, 153, 0.2)", border: "rgba(52, 211, 153, 0.5)" };
+    }
+    if (est === "enviado_cliente" || est === "enviado_al_cliente" || est === "enviada") {
+      return { texto: "📩 ENVIADO AL CLIENTE", color: "#60a5fa", bg: "rgba(96, 165, 250, 0.2)", border: "rgba(96, 165, 250, 0.5)" };
+    }
+    return { texto: "⏳ PENDIENTE", color: "#e0b034", bg: "rgba(224, 176, 52, 0.2)", border: "rgba(224, 176, 52, 0.5)" };
+  };
+
+  const firmaUrl = contrato?.firma_cliente || contrato?.firma_url;
 
   return (
     <Menu>
@@ -175,9 +201,30 @@ export default function VerContrato() {
                 boxShadow: "0 0 12px rgba(0,153,255,0.2)",
               }}
             >
-              <h3 style={{ color: "#4db8ff", marginBottom: "12px", fontSize: "18px" }}>
-                🧾 Información del contrato
-              </h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <h3 style={{ color: "#4db8ff", margin: 0, fontSize: "18px" }}>
+                  🧾 Información del contrato
+                </h3>
+                {(() => {
+                  const badge = obtenerBadgeEstado(contrato.estado);
+                  return (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: "800",
+                        color: badge.color,
+                        backgroundColor: badge.bg,
+                        border: `1px solid ${badge.border}`,
+                        borderRadius: "20px",
+                        padding: "4px 10px",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {badge.texto}
+                    </span>
+                  );
+                })()}
+              </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "15px" }}>
                 <p><strong>Cliente:</strong> {contrato.clientes?.nombre || "Sin cliente"}</p>
@@ -188,11 +235,24 @@ export default function VerContrato() {
                 <p><strong>Frecuencia:</strong> Cada {contrato.frecuencia} días</p>
                 <p><strong>Inicio:</strong> {String(contrato.fecha_inicio || "").slice(0, 10)}</p>
                 <p><strong>Fin:</strong> {String(contrato.fecha_fin || "").slice(0, 10)}</p>
-                <p><strong>Estado:</strong> {contrato.estado}</p>
+                
+                {/* PREVISUALIZACIÓN DE LA FIRMA EN EL PANEL ADMIN */}
+                {firmaUrl ? (
+                  <div style={{ marginTop: "12px", padding: "10px", background: "rgba(255,255,255,0.08)", borderRadius: "10px" }}>
+                    <p style={{ margin: "0 0 8px 0", color: "#34d399", fontWeight: "bold" }}>✍️ Firma del Cliente Registrada:</p>
+                    <img 
+                      src={firmaUrl} 
+                      alt="Firma cliente" 
+                      style={{ maxHeight: "80px", background: "#fff", padding: "4px", borderRadius: "6px" }} 
+                    />
+                  </div>
+                ) : (
+                  <p style={{ color: "#e0b034", marginTop: "8px" }}>⚠️ Pendiente de firma del cliente.</p>
+                )}
               </div>
             </div>
 
-            {/* BOTONES PREMIUM */}
+            {/* BOTONES */}
             <div
               style={{
                 display: "flex",
@@ -216,7 +276,7 @@ export default function VerContrato() {
                   boxShadow: "0 0 10px rgba(34,197,94,0.3)",
                 }}
               >
-                {generando ? "⌛ Procesando PDF..." : "📄 Actualizar PDF Premium"}
+                {generando ? "⌛ Procesando PDF..." : "📄 Regenerar / Actualizar PDF con Firma"}
               </button>
 
               <button
@@ -251,7 +311,7 @@ export default function VerContrato() {
               </button>
             </div>
 
-            {/* VISOR PDF PREMIUM */}
+            {/* VISOR PDF */}
             {contrato.pdf_url ? (
               <div
                 style={{
