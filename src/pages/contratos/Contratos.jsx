@@ -55,21 +55,25 @@ export default function Contratos() {
         return;
       }
 
-      // Si no existe la URL, invocamos la Edge Function para generar el PDF firmado en el acto
+      // Si no existe la URL, invocamos la Edge Function para generar el PDF
       const { data, error: errPdf } = await supabase.functions.invoke("contrato-pdf", {
-        body: { contrato_id: Number(contrato.id) }
+        body: { 
+          contrato_id: Number(contrato.id),
+          contratoId: Number(contrato.id),
+          id: Number(contrato.id)
+        }
       });
 
       if (errPdf) throw errPdf;
 
-      // Volvemos a consultar el registro para obtener la URL recién generada
+      // Consultamos de nuevo para obtener la URL guardada
       const { data: updatedContrato } = await supabase
         .from("contratos")
         .select("pdf_url")
         .eq("id", contrato.id)
         .single();
 
-      const finalPdfUrl = updatedContrato?.pdf_url || data?.pdf_url;
+      const finalPdfUrl = updatedContrato?.pdf_url || data?.pdf_url || data?.pdfUrl;
 
       if (finalPdfUrl) {
         window.open(finalPdfUrl, "_blank");
@@ -90,14 +94,36 @@ export default function Contratos() {
   const procesarYEnviarTodo = async (contrato) => {
     try {
       setActionLoading(contrato.id);
+      const numericContratoId = Number(contrato.id);
 
-      // 1. Intentar generar PDF del contrato
+      // 1. Generar PDF del contrato y capturar su URL explícitamente
+      let contratoPdfUrl = contrato.pdf_url || null;
+
       try {
-        await supabase.functions.invoke("contrato-pdf", {
-          body: { contrato_id: Number(contrato.id) }
+        const { data: resPdf } = await supabase.functions.invoke("contrato-pdf", {
+          body: { 
+            contrato_id: numericContratoId,
+            contratoId: numericContratoId,
+            id: numericContratoId
+          }
         });
+
+        if (resPdf?.pdf_url || resPdf?.pdfUrl) {
+          contratoPdfUrl = resPdf.pdf_url || resPdf.pdfUrl;
+        }
       } catch (errContratoPdf) {
-        console.warn("Aviso menor en PDF de contrato:", errContratoPdf);
+        console.warn("Aviso menor en generación PDF de contrato:", errContratoPdf);
+      }
+
+      // 1b. Si aún no tenemos la URL del PDF, consultamos la DB para confirmar que se haya guardado
+      const { data: contratoDb } = await supabase
+        .from("contratos")
+        .select("pdf_url")
+        .eq("id", numericContratoId)
+        .maybeSingle();
+
+      if (contratoDb?.pdf_url) {
+        contratoPdfUrl = contratoDb.pdf_url;
       }
 
       // 2. Crear o buscar la factura asociada
@@ -105,7 +131,7 @@ export default function Contratos() {
       const { data: facturaExistente } = await supabase
         .from("facturas")
         .select("id")
-        .eq("contrato_id", Number(contrato.id))
+        .eq("contrato_id", numericContratoId)
         .maybeSingle();
 
       if (facturaExistente) {
@@ -116,7 +142,7 @@ export default function Contratos() {
           .from("facturas")
           .insert([
             {
-              contrato_id: Number(contrato.id),
+              contrato_id: numericContratoId,
               cliente_id: contrato.cliente_id || contrato.clientes?.id,
               monto: montoFactura,
               estado: "pendiente_pago"
@@ -132,26 +158,35 @@ export default function Contratos() {
       // 3. Intentar generar PDF de la factura
       try {
         await supabase.functions.invoke("factura-pdf", {
-          body: { factura_id: facturaId }
+          body: { 
+            factura_id: Number(facturaId),
+            facturaId: Number(facturaId),
+            id: Number(facturaId)
+          }
         });
       } catch (errFacturaPdf) {
         console.warn("Aviso menor en PDF de factura:", errFacturaPdf);
       }
 
       // 4. Actualizar estado del contrato en DB (Solo si sigue pendiente)
-      const estadoActual = String(contrato.estado || "").toLowerCase();
+      const estadoActual = String(contrato.estado || "").toLowerCase().trim();
       if (estadoActual !== "firmado" && estadoActual !== "firmado_cliente") {
         await supabase
           .from("contratos")
           .update({ estado: "enviado_cliente" })
-          .eq("id", contrato.id);
+          .eq("id", numericContratoId);
       }
 
-      // 5. Enviar Email con los documentos
+      // 5. Enviar Email pasando todos los alias de parámetros e incluye la URL directa del PDF
       const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
         body: {
-          contrato_id: Number(contrato.id),
-          factura_id: facturaId,
+          contrato_id: numericContratoId,
+          contratoId: numericContratoId,
+          id: numericContratoId,
+          factura_id: Number(facturaId),
+          facturaId: Number(facturaId),
+          pdf_url: contratoPdfUrl,
+          contrato_pdf_url: contratoPdfUrl,
           tipo: "contrato"
         }
       });
@@ -165,7 +200,7 @@ export default function Contratos() {
       await cargarContratos();
     } catch (err) {
       console.error("Error al procesar todo:", err);
-      alert("Error al procesar: " + (err.message || ""));
+      alert("Error al procesar: " + (err.message || "Error desconocido"));
     } finally {
       setActionLoading(null);
     }
