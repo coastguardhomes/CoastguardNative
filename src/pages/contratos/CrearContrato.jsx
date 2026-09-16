@@ -192,7 +192,7 @@ export default function CrearContrato() {
     }
 
     setProcesando(true);
-    setMensaje("Creando contrato y generando documentación...");
+    setMensaje("Creando contrato y generando documentación interna...");
 
     try {
       if (form.dni && form.cliente_id) {
@@ -235,7 +235,7 @@ export default function CrearContrato() {
 
       const contratoId = data.id;
 
-      // 2. Crear factura del contrato (CORREGIDO)
+      // 2. Crear factura del contrato (SIN ENVÍO DE EMAIL)
       const precio = Number(form.precio || 0);
       const baseFactura = precio;
       const ivaFactura = Number((precio * 0.21).toFixed(2));
@@ -269,26 +269,18 @@ export default function CrearContrato() {
       if (!facturaError && facturaData) {
         const facturaId = facturaData.id;
 
+        // Generar PDF de factura internamente sin enviar correo
         await supabase.functions.invoke("factura-pdf", {
           body: { facturaId, id: facturaId },
         });
-
-        await supabase.functions.invoke("enviar-email", {
-          body: { facturaId, id: facturaId, tipo: "factura" },
-        });
       }
 
-      // 3. PDF contrato
+      // 3. Generar PDF del contrato internamente sin enviar correo
       await supabase.functions.invoke("contrato-pdf", {
         body: { contratoId: contratoId, id: contratoId },
       });
 
-      // 4. Email contrato
-      await supabase.functions.invoke("enviar-email", {
-        body: { contratoId: contratoId, id: contratoId, tipo: "contrato" },
-      });
-
-      setMensaje("¡Contrato creado con éxito y PDFs generados/enviados! ✔");
+      setMensaje("¡Contrato creado con éxito! ✔ (No se ha enviado ningún correo)");
       setTimeout(() => {
         navigate("/contratos");
       }, 1500);
@@ -320,7 +312,7 @@ export default function CrearContrato() {
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
-          boxSizing: "border-box",
+          boxSizing: "box-sizing",
         }}
       >
         <h1
