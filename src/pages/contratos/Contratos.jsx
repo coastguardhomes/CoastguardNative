@@ -44,21 +44,63 @@ export default function Contratos() {
     }
   };
 
-  // Procesa la cadena completa (Contrato PDF + Factura DB + Factura PDF + Email) de forma segura y blindada
+  // Ver o generar el PDF actualizado del contrato en tiempo real
+  const verOPaginarPdf = async (contrato) => {
+    try {
+      setActionLoading(contrato.id);
+
+      // Si ya existe la URL directa, la abrimos
+      if (contrato.pdf_url) {
+        window.open(contrato.pdf_url, "_blank");
+        return;
+      }
+
+      // Si no existe la URL, invocamos la Edge Function para generar el PDF firmado en el acto
+      const { data, error: errPdf } = await supabase.functions.invoke("contrato-pdf", {
+        body: { contrato_id: Number(contrato.id) }
+      });
+
+      if (errPdf) throw errPdf;
+
+      // Volvemos a consultar el registro para obtener la URL recién generada
+      const { data: updatedContrato } = await supabase
+        .from("contratos")
+        .select("pdf_url")
+        .eq("id", contrato.id)
+        .single();
+
+      const finalPdfUrl = updatedContrato?.pdf_url || data?.pdf_url;
+
+      if (finalPdfUrl) {
+        window.open(finalPdfUrl, "_blank");
+        await cargarContratos();
+      } else {
+        alert("El PDF se procesó correctamente. Vuelve a pulsar 'Ver PDF'.");
+        await cargarContratos();
+      }
+    } catch (err) {
+      console.error("Error al visualizar PDF:", err);
+      alert("No se pudo generar/visualizar el PDF: " + (err.message || "Error desconocido"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Procesa la cadena completa (Contrato PDF + Factura DB + Factura PDF + Email)
   const procesarYEnviarTodo = async (contrato) => {
     try {
       setActionLoading(contrato.id);
 
-      // 1. Intentar generar PDF del contrato (con control de errores para no bloquear el flujo)
+      // 1. Intentar generar PDF del contrato
       try {
         await supabase.functions.invoke("contrato-pdf", {
           body: { contrato_id: Number(contrato.id) }
         });
       } catch (errContratoPdf) {
-        console.warn("Aviso menor en PDF de contrato (continuando proceso):", errContratoPdf);
+        console.warn("Aviso menor en PDF de contrato:", errContratoPdf);
       }
 
-      // 2. Crear o buscar la factura asociada asegurando importes válidos
+      // 2. Crear o buscar la factura asociada
       let facturaId;
       const { data: facturaExistente } = await supabase
         .from("facturas")
@@ -87,22 +129,23 @@ export default function Contratos() {
         facturaId = nuevaFactura.id;
       }
 
-      // 3. Intentar generar PDF de la factura de forma segura
+      // 3. Intentar generar PDF de la factura
       try {
         await supabase.functions.invoke("factura-pdf", {
           body: { factura_id: facturaId }
         });
       } catch (errFacturaPdf) {
-        console.warn("Aviso menor en PDF de factura (continuando proceso):", errFacturaPdf);
+        console.warn("Aviso menor en PDF de factura:", errFacturaPdf);
       }
 
-      // 4. Actualizar estado del contrato en DB
-      const { error: errUpdate } = await supabase
-        .from("contratos")
-        .update({ estado: "enviado_cliente" })
-        .eq("id", contrato.id);
-
-      if (errUpdate) console.warn("No se pudo actualizar el estado visual del contrato:", errUpdate);
+      // 4. Actualizar estado del contrato en DB (Solo si sigue pendiente)
+      const estadoActual = String(contrato.estado || "").toLowerCase();
+      if (estadoActual !== "firmado" && estadoActual !== "firmado_cliente") {
+        await supabase
+          .from("contratos")
+          .update({ estado: "enviado_cliente" })
+          .eq("id", contrato.id);
+      }
 
       // 5. Enviar Email con los documentos
       const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
@@ -144,9 +187,9 @@ export default function Contratos() {
   };
 
   const obtenerBadgeEstado = (estado) => {
-    const est = String(estado || "").toLowerCase();
+    const est = String(estado || "").toLowerCase().trim();
     
-    if (est === "firmado") {
+    if (est === "firmado" || est === "firmado_cliente" || est === "completado") {
       return { 
         texto: "✅ FIRMADO", 
         color: "#34d399", 
@@ -192,6 +235,7 @@ export default function Contratos() {
             const direccionCliente = c.clientes?.direccion || "Sin dirección";
             const direccionVivienda = c.viviendas?.direccion || "Sin vivienda";
             const estaProcesando = actionLoading === c.id;
+            const tieneFirma = Boolean(c.firma_cliente || c.firma_url);
 
             return (
               <div key={c.id} style={estilos.tarjeta}>
@@ -223,6 +267,11 @@ export default function Contratos() {
 
                 <p style={estilos.fechaInfo}>
                   <span style={estilos.etiqueta}>Inicio:</span> {String(c.fecha_inicio || "").slice(0, 10)}
+                  {tieneFirma && (
+                    <span style={{ color: "#34d399", marginLeft: "10px", fontSize: "12px", fontWeight: "bold" }}>
+                      ✍️ Firma registrada
+                    </span>
+                  )}
                 </p>
 
                 <div style={estilos.gridBotones}>
@@ -236,11 +285,13 @@ export default function Contratos() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      if (c.pdf_url) window.open(c.pdf_url, "_blank");
-                      else alert("El PDF aún no ha sido generado. Usa el botón verde para generarlo y enviarlo.");
+                    onClick={() => verOPaginarPdf(c)}
+                    disabled={estaProcesando}
+                    style={{
+                      ...estilos.botonGris,
+                      borderColor: tieneFirma ? "#34d399" : "#3f4459",
+                      color: tieneFirma ? "#34d399" : "#fff"
                     }}
-                    style={estilos.botonGris}
                   >
                     📄 Ver PDF
                   </button>
