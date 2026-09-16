@@ -82,70 +82,47 @@ export default function ClienteFirmaDibujar({ contratoId: propContratoId, onFirm
     try {
       const canvas = canvasRef.current;
       const firmaBase64 = canvas.toDataURL("image/png");
-      let firmaUrlFinal = firmaBase64;
-
-      // 1. Intentar subir imagen al Storage
-      try {
-        const fileName = `firma_${contratoId}_${Date.now()}.png`;
-        const res = await fetch(firmaBase64);
-        const blob = await res.blob();
-
-        const { data: storageData, error: storageError } = await supabase.storage
-          .from("firmas")
-          .upload(fileName, blob, { contentType: "image/png", upsert: true });
-
-        if (!storageError && storageData) {
-          const { data: urlData } = supabase.storage
-            .from("firmas")
-            .getPublicUrl(fileName);
-          if (urlData?.publicUrl) {
-            firmaUrlFinal = urlData.publicUrl;
-          }
-        }
-      } catch (sErr) {
-        console.warn("Storage ignorado, guardando directamente en la tabla:", sErr);
-      }
-
-      // 2. CONVERSIÓN A NÚMERO Y ACTUALIZACIÓN EN BASE DE DATOS
       const numericId = Number(contratoId);
 
-      const { data: updateResult, error: dbError } = await supabase
+      // 1. Guardar vía Edge Function (Modo Principal - Bypass RLS)
+      const { data: funcData, error: funcError } = await supabase.functions.invoke("guardar-firma", {
+        body: { 
+          contratoId: numericId, 
+          contrato_id: numericId, 
+          firmaBase64 
+        },
+      });
+
+      // 2. Intento de respaldo directo en la base de datos
+      const { error: dbError } = await supabase
         .from("contratos")
         .update({
           estado: "firmado",
-          firma_cliente: firmaUrlFinal,
-          firma_url: firmaUrlFinal,
+          firma_cliente: firmaBase64,
+          firma_url: firmaBase64,
           fecha_firma: new Date().toISOString()
         })
-        .eq("id", numericId)
-        .select();
+        .eq("id", numericId);
 
-      if (dbError || !updateResult || updateResult.length === 0) {
-        console.error("Error en update:", dbError);
-        alert("Error al guardar la firma en la base de datos. Comprueba la conexión.");
+      // Si ambas vías fallan por completo, mostrar el detalle real del error
+      if (funcError && dbError) {
+        console.error("Error Edge Function:", funcError);
+        console.error("Error DB:", dbError);
+        alert("Error guardando firma: " + (funcError?.message || dbError?.message));
         setGuardando(false);
         return;
-      }
-
-      // 3. Notificar a la Edge Function
-      try {
-        await supabase.functions.invoke("guardar-firma", {
-          body: { contratoId: numericId, firmaBase64: firmaUrlFinal },
-        });
-      } catch (fErr) {
-        console.log("Edge function procesada.");
       }
 
       alert(t("contratoFirmadoExito") || "¡Contrato firmado con éxito!");
 
       if (onFirmaGuardada) {
-        onFirmaGuardada(firmaUrlFinal);
+        onFirmaGuardada(firmaBase64);
       } else {
         navigate(-1);
       }
     } catch (err) {
-      console.error("Error al guardar la firma:", err);
-      alert((t("errorGuardandoFirmaDetalle") || "Error: ") + (err.message || "Error desconocido"));
+      console.error("Excepción al guardar la firma:", err);
+      alert("Error: " + (err.message || "Error desconocido"));
     } finally {
       setGuardando(false);
     }
