@@ -22,12 +22,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- CAPTURA DE ENLACES DE CORREO -->
-            <intent-filter android:autoVerify="true">
+            <!-- CAPTURA DIRECTA DE ESQUEMA NATIVO (SIN PASAR POR WEBADOR) -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="coastguardhomes.es" />
+                <data android:scheme="coastguard" />
             </intent-filter>
 
         </activity>
