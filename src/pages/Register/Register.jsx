@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "../../supabaseClient";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
 export default function Register() {
@@ -11,13 +11,13 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [modalAbierto, setModalAbierto] = useState(false);
 
   const navigate = useNavigate();
   const { changeLanguage } = useLanguage();
 
   const handleError = (err, customPrefix = "") => {
     let msg = "";
-
     if (!err) {
       msg = "Error desconocido";
     } else if (typeof err === "string") {
@@ -32,11 +32,9 @@ export default function Register() {
         }
       } catch (e) {}
     }
-
     if (!msg || msg === "{}") {
       msg = "Error de conexión con el servidor o credenciales inválidas";
     }
-
     setErrorMsg(customPrefix ? `${customPrefix}: ${msg}` : msg);
   };
 
@@ -61,7 +59,6 @@ export default function Register() {
 
     setLoading(true);
 
-    // 1. Obtener la IP pública del usuario para la auditoría de privacidad
     let userIp = "IP_NO_DISPONIBLE";
     try {
       const ipRes = await fetch("https://api64.ipify.org?format=json");
@@ -74,7 +71,6 @@ export default function Register() {
     const fechaAceptacion = new Date().toISOString();
     const versionPrivacidad = "v1.0";
 
-    // 2. Registrar usuario en Supabase Auth guardando los metadatos de privacidad
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -96,7 +92,6 @@ export default function Register() {
     }
 
     const user = data?.user;
-
     if (!user) {
       setErrorMsg("Error inesperado creando usuario (sin datos de usuario)");
       setLoading(false);
@@ -137,14 +132,10 @@ export default function Register() {
         return;
       }
     } else {
-      const { error: vincularError } = await supabase
+      await supabase
         .from("clientes")
         .update(datosPrivacidadCliente)
         .eq("email", user.email);
-
-      if (vincularError) {
-        console.error("Error actualizando datos del cliente:", vincularError);
-      }
     }
 
     changeLanguage(idioma);
@@ -166,12 +157,14 @@ export default function Register() {
         padding: "20px",
         color: "#fff",
         fontFamily: "Inter, sans-serif",
+        boxSizing: "border-box",
+        overflowY: "auto",
       }}
     >
       <div
         style={{
           maxWidth: "380px",
-          margin: "0 auto",
+          margin: "20px auto",
           background: "rgba(255,255,255,0.05)",
           padding: "30px",
           borderRadius: "14px",
@@ -237,6 +230,7 @@ export default function Register() {
             background: "rgba(255,255,255,0.08)",
             color: "#fff",
             fontSize: "15px",
+            boxSizing: "border-box",
           }}
         />
 
@@ -254,6 +248,7 @@ export default function Register() {
             background: "rgba(255,255,255,0.08)",
             color: "#fff",
             fontSize: "15px",
+            boxSizing: "border-box",
           }}
         />
 
@@ -281,6 +276,7 @@ export default function Register() {
               background: "rgba(255,255,255,0.08)",
               color: "#fff",
               fontSize: "15px",
+              boxSizing: "border-box",
             }}
           >
             <option value="es" style={{ background: "#0a0f1a", color: "#fff" }}>🇪🇸 Español</option>
@@ -289,35 +285,45 @@ export default function Register() {
           </select>
         </div>
 
-        {/* CHECKBOX OBLIGATORIO DE POLÍTICA DE PRIVACIDAD */}
+        {/* CHECKBOX OBLIGATORIO Y ENLACE AL MODAL DE PRIVACIDAD */}
         <div style={{ marginBottom: "20px", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left" }}>
           <input
             type="checkbox"
             id="terminos"
             checked={aceptaTerminos}
             onChange={(e) => setAceptaTerminos(e.target.checked)}
-            style={{ marginTop: "4px", cursor: "pointer", width: "18px", height: "18px" }}
+            style={{ marginTop: "4px", cursor: "pointer", width: "18px", height: "18px", flexShrink: 0 }}
           />
           <label htmlFor="terminos" style={{ fontSize: "12px", lineHeight: "1.4", color: "#9fb3c8", cursor: "pointer" }}>
-            He leído y acepto la <Link to="/politica-privacidad" target="_blank" style={{ color: "#4db8ff", textDecoration: "underline" }}>Política de Privacidad</Link>.
+            He leído y acepto la{" "}
+            <span
+              onClick={(e) => {
+                e.preventDefault();
+                setModalAbierto(true);
+              }}
+              style={{ color: "#4db8ff", textDecoration: "underline", cursor: "pointer" }}
+            >
+              Política de Privacidad
+            </span>
+            .
           </label>
         </div>
 
-        {/* BOTÓN BLOQUEADO HASTA MARCAR EL CHECKBOX */}
+        {/* BOTÓN REALMENTE BLOQUEADO SI NO ESTÁ MARCADO */}
         <button
           onClick={handleRegister}
           disabled={loading || !aceptaTerminos}
           style={{
             width: "100%",
             padding: "12px",
-            background: (!aceptaTerminos || loading) ? "#1a365d" : "#0077cc",
+            background: (!aceptaTerminos || loading) ? "#2a324b" : "#0077cc",
             color: "#fff",
             border: "none",
             borderRadius: "8px",
             fontSize: "16px",
             cursor: (!aceptaTerminos || loading) ? "not-allowed" : "pointer",
-            opacity: (!aceptaTerminos || loading) ? 0.6 : 1,
-            transition: "background 0.2s",
+            opacity: (!aceptaTerminos || loading) ? "0.4" : "1",
+            transition: "background 0.2s, opacity 0.2s",
           }}
         >
           {loading ? "Creando cuenta..." : "Registrarse"}
@@ -341,6 +347,65 @@ export default function Register() {
           Volver al login
         </button>
       </div>
+
+      {/* VENTANA MODAL PARA LEER LA POLÍTICA DE PRIVACIDAD SIN SALIR DE LA PANTALLA */}
+      {modalAbierto && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            padding: "20px",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            style={{
+              background: "#101726",
+              padding: "25px",
+              borderRadius: "12px",
+              maxWidth: "500px",
+              width: "100%",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              border: "1px solid rgba(255,255,255,0.2)",
+              color: "#fff",
+              textAlign: "left",
+            }}
+          >
+            <h3 style={{ color: "#4db8ff", marginTop: 0, marginBottom: "15px" }}>Política de Privacidad</h3>
+            <div style={{ fontSize: "13px", lineHeight: "1.6", color: "#ccc", marginBottom: "20px" }}>
+              <p><strong>1. Responsable del tratamiento:</strong> Roxana Collazo Alonso / Coastguard Homes.</p>
+              <p><strong>2. Datos que recopilamos:</strong> Datos de identificación, correo electrónico, datos del inmueble y de facturación necesarios para la prestación del servicio.</p>
+              <p><strong>3. Finalidad:</strong> Gestión administrativa, facturación y atención de avisos o emergencias en la plataforma web y móvil.</p>
+              <p><strong>4. Legitimación:</strong> Ejecución de contrato y consentimiento explícito del usuario mediante el registro.</p>
+              <p><strong>5. Derechos:</strong> Puedes ejercer tus derechos de acceso, rectificación y supresión enviando un correo de contacto a soporte.</p>
+            </div>
+            <button
+              onClick={() => setModalAbierto(false)}
+              style={{
+                width: "100%",
+                padding: "10px",
+                background: "#0077cc",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+            >
+              Cerrar y volver
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
