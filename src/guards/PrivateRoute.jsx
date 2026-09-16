@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../supabaseClient";
 import { useEffect, useState } from "react";
 
 export default function PrivateRoute({ allowedRole }) {
@@ -10,10 +10,11 @@ export default function PrivateRoute({ allowedRole }) {
   const [checkingRole, setCheckingRole] = useState(true);
 
   const rutasPublicas = ["/login", "/register", "/reset-password", "/update-password"];
-  const esPublica = rutasPublicas.includes(pathname);
+  const esPublica = rutasPublicas.includes(pathname) || pathname.startsWith("/update-password");
 
   useEffect(() => {
     async function verifyRole() {
+      // Si la ruta es pública o no hay usuario, cancelamos verificación de rol privado
       if (!user || esPublica) {
         setAuthorized(false);
         setCheckingRole(false);
@@ -84,8 +85,8 @@ export default function PrivateRoute({ allowedRole }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Si está logueado pero el rol no corresponde (intenta entrar por el botón atrás)
-  if (user && allowedRole && authorized === false) {
+  // Si está logueado pero el rol no corresponde
+  if (user && allowedRole && authorized === false && !esPublica) {
     return <Navigate to="/login" replace />;
   }
 
