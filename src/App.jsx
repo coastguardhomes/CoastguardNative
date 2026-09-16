@@ -99,18 +99,35 @@ export default function App() {
 
   // 1. Escuchar eventos de apertura de URL nativa (Deep Linking)
   useEffect(() => {
-    const listener = CapacitorApp.addListener("appUrlOpen", (event) => {
+    const listener = CapacitorApp.addListener("appUrlOpen", async (event) => {
       try {
-        const url = new URL(event.url);
-        const path = url.pathname;
-        const hash = url.hash; // Contiene los tokens de sesión de Supabase
+        const rawUrl = event.url || "";
+        
+        // Extraer hash y tokens de sesión de Supabase si existen
+        const hashIndex = rawUrl.indexOf("#");
+        let hash = "";
+        
+        if (hashIndex !== -1) {
+          hash = rawUrl.substring(hashIndex);
+          const hashString = rawUrl.substring(hashIndex + 1);
+          const params = new URLSearchParams(hashString);
+          const accessToken = params.get("access_token");
+          const refreshToken = params.get("refresh_token");
 
-        if (path.includes("update-password")) {
+          if (accessToken && refreshToken) {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+          }
+        }
+
+        if (rawUrl.includes("update-password")) {
           navigate(`/update-password${hash}`);
-        } else if (path.includes("auth/callback")) {
+        } else if (rawUrl.includes("auth/callback")) {
           navigate(`/auth/callback${hash}`);
         } else {
-          navigate(`/login`);
+          navigate("/login");
         }
       } catch (error) {
         console.error("Error al procesar enlace directo:", error);
