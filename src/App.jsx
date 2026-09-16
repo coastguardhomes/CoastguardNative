@@ -105,8 +105,8 @@ export default function App() {
         const hashIndex = rawUrl.indexOf("#");
         const hash = hashIndex !== -1 ? rawUrl.substring(hashIndex) : "";
 
-        if (rawUrl.includes("update-password")) {
-          // Redirige directamente a la pantalla pasando el hash con los tokens
+        // Si la URL contiene 'type=recovery' O 'update-password', es recuperación de contraseña
+        if (rawUrl.includes("type=recovery") || rawUrl.includes("update-password")) {
           navigate(`/update-password${hash}`);
         } else if (rawUrl.includes("auth/callback")) {
           navigate(`/auth/callback${hash}`);
