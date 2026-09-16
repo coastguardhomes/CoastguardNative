@@ -229,18 +229,17 @@ export default function Login() {
           ¿No tienes cuenta? Regístrate
         </button>
 
-        {/* ⭐ BOTÓN DE RECUPERAR CONTRASEÑA AÑADIDO ⭐ */}
         <button
           onClick={async () => {
             const correo = prompt("Introduce tu email para recuperar la contraseña:");
             if (!correo) return;
 
             const { error } = await supabase.auth.resetPasswordForEmail(correo, {
-              redirectTo: "https://coastguardhomes.es/update-password",
+              redirectTo: "coastguard://update-password",
             });
 
             if (error) {
-              alert("No se pudo enviar el email de recuperación.");
+              alert("No se pudo enviar el email de recuperación: " + error.message);
               console.error(error);
             } else {
               alert("Te hemos enviado un email para recuperar tu contraseña.");
