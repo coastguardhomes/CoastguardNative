@@ -1,14 +1,56 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 
 export default function UpdatePassword() {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function setupRecoverySession() {
+      try {
+        const hash = location.hash || window.location.hash || "";
+        if (hash) {
+          const hashString = hash.startsWith("#") ? hash.substring(1) : hash;
+          const params = new URLSearchParams(hashString);
+          const accessToken = params.get("access_token");
+          const refreshToken = params.get("refresh_token");
+
+          if (accessToken && refreshToken) {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            if (error && isMounted) {
+              setErrorMsg("El enlace de recuperación ha caducado. Por favor, solicita uno nuevo.");
+            }
+          }
+        } else {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session && isMounted) {
+            setErrorMsg("No se encontró una sesión válida. Por favor, solicita un nuevo correo de recuperación.");
+          }
+        }
+      } catch (err) {
+        console.error("Error en setupRecoverySession:", err);
+      } finally {
+        if (isMounted) setReady(true);
+      }
+    }
+
+    setupRecoverySession();
+
+    return () => { isMounted = false; };
+  }, [location]);
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -34,16 +76,37 @@ export default function UpdatePassword() {
     setLoading(false);
 
     if (error) {
-      setErrorMsg(error.message || "Error actualizando la contraseña.");
+      setErrorMsg(error.message || "Error al actualizar la contraseña.");
       return;
     }
 
-    setMensaje("¡Contraseña actualizada con éxito! Redirigiendo al inicio de sesión...");
-    
+    setMensaje("¡Contraseña actualizada correctamente! Redirigiendo al inicio de sesión...");
+
+    // Cerramos la sesión temporal para obligar a iniciar sesión con la nueva clave
+    await supabase.auth.signOut();
+
     setTimeout(() => {
-      navigate("/login");
-    }, 2500);
+      navigate("/login", { replace: true });
+    }, 2000);
   };
+
+  if (!ready) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "radial-gradient(circle at center, #10192d 0%, #080c14 100%)",
+          color: "#d4af37",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          fontFamily: "sans-serif",
+        }}
+      >
+        Cargando formulario de seguridad...
+      </div>
+    );
+  }
 
   return (
     <div
@@ -75,7 +138,7 @@ export default function UpdatePassword() {
             Nueva Contraseña
           </h2>
           <p style={{ color: "#a0aec0", fontSize: "14px", margin: 0 }}>
-            Introduce tu nueva clave de acceso
+            Escribe tu nueva clave de acceso
           </p>
         </div>
 
