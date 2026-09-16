@@ -84,6 +84,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (loading) return;
 
+    // ⭐ SI ESTAMOS CAMBIANDO CONTRASEÑA, NO REDIRIGIR AL DASHBOARD
+    if (pathname.includes("update-password")) {
+      return;
+    }
+
     const rutasPublicas = [
       "/",
       "/login",
