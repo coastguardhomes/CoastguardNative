@@ -456,7 +456,7 @@ export default function Register() {
             <div style={{ fontSize: "13px", lineHeight: "1.6", color: "#ccc", marginBottom: "20px" }}>
               <p><strong>1. Objeto:</strong> Regulación de la prestación de servicios de gestión, avisos y mantenimiento a través de la aplicación.</p>
               <p><strong>2. Condiciones de contratación y pagos:</strong> Los servicios contratados mediante la plataforma implican las condiciones de cobro y pagos por adelantado o según tarifa acordada.</p>
-              <p><strong>3. Limitación de responsabilidad:</strong> La prestación de servicios se realiza bajo los estándares profesionales establecidos, limitando la responsabilidad a los términos legalmente aplicables.</p>
+              <p><strong>3. Exención de responsabilidad por fallos en el servicio:</strong> El Prestador realiza los máximos esfuerzos para mantener la aplicación web operativa las 24 horas del día. No obstante, no se garantiza el acceso continuado, ni la correcta visualización, descarga o utilidad de los elementos e información contenidos en la plataforma, que puedan verse impedidos, dificultados o interrumpidos por factores o circunstancias ajenas a su control (caídas del servidor, fallos en las redes de telecomunicaciones, actualizaciones de mantenimiento o errores de software). El Prestador no se hará responsable de los perjuicios, pérdidas o reclamaciones derivados de interferencias, interrupciones, fallos, omisiones o averías telefónicas o del sistema informático.</p>
               <p><strong>4. Validez:</strong> La aceptación de este contrato se realiza de forma telemática durante el proceso de registro del usuario.</p>
             </div>
             <button
