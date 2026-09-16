@@ -47,7 +47,10 @@ export default function Login() {
     setLoading(true);
     setErrorMsg("");
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email: email.trim(), 
+        password 
+      });
       if (error) { 
         setErrorMsg(error.message || JSON.stringify(error)); 
         setLoading(false); 
@@ -231,16 +234,18 @@ export default function Login() {
 
         <button
           onClick={async () => {
-            const correo = prompt("Introduce tu email para recuperar la contraseña:");
-            if (!correo) return;
+            const correoInput = prompt("Introduce tu email para recuperar la contraseña:");
+            if (!correoInput) return;
+            const correo = correoInput.trim();
 
             const { error } = await supabase.auth.resetPasswordForEmail(correo, {
               redirectTo: "coastguard://update-password",
             });
 
             if (error) {
-              alert("No se pudo enviar el email de recuperación: " + error.message);
-              console.error(error);
+              const msg = error.message || (typeof error === "object" ? JSON.stringify(error) : String(error));
+              alert("No se pudo enviar el email de recuperación: " + msg);
+              console.error("Error al resetear contraseña:", error);
             } else {
               alert("Te hemos enviado un email para recuperar tu contraseña.");
             }
