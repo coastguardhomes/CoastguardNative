@@ -55,13 +55,13 @@ export default function Register() {
     }
 
     if (!aceptaTerminos) {
-      setErrorMsg("Debes aceptar la Política de Privacidad y el Contrato Marco");
+      setErrorMsg("Debes aceptar la Política de Privacidad");
       return;
     }
 
     setLoading(true);
 
-    // 1. Obtener la IP pública del usuario para la auditoría legal
+    // 1. Obtener la IP pública del usuario para la auditoría de privacidad
     let userIp = "IP_NO_DISPONIBLE";
     try {
       const ipRes = await fetch("https://api64.ipify.org?format=json");
@@ -72,19 +72,19 @@ export default function Register() {
     }
 
     const fechaAceptacion = new Date().toISOString();
-    const versionTerminos = "v1.0";
+    const versionPrivacidad = "v1.0";
 
-    // 2. Registrar usuario en Supabase Auth guardando los metadatos legales
+    // 2. Registrar usuario en Supabase Auth guardando los metadatos de privacidad
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: "coastguard://auth/callback",
         data: {
-          acepta_terminos: true,
-          terminos_aceptados_at: fechaAceptacion,
+          acepta_privacidad: true,
+          privacidad_aceptada_at: fechaAceptacion,
           ip_registro: userIp,
-          version_terminos: versionTerminos,
+          version_privacidad: versionPrivacidad,
         },
       },
     });
@@ -117,13 +117,19 @@ export default function Register() {
       .eq("email", user.email)
       .maybeSingle();
 
+    const datosPrivacidadCliente = {
+      email: user.email,
+      idioma: idioma,
+      acepta_privacidad: true,
+      privacidad_aceptada_at: fechaAceptacion,
+      ip_registro: userIp,
+      version_privacidad: versionPrivacidad,
+    };
+
     if (!clienteExistente) {
       const { error: crearClienteError } = await supabase
         .from("clientes")
-        .insert({
-          email: user.email,
-          idioma: idioma,
-        });
+        .insert(datosPrivacidadCliente);
 
       if (crearClienteError) {
         handleError(crearClienteError, "Error DB (Crear)");
@@ -133,11 +139,11 @@ export default function Register() {
     } else {
       const { error: vincularError } = await supabase
         .from("clientes")
-        .update({ idioma: idioma })
+        .update(datosPrivacidadCliente)
         .eq("email", user.email);
 
       if (vincularError) {
-        console.error("Error actualizando idioma del cliente:", vincularError);
+        console.error("Error actualizando datos del cliente:", vincularError);
       }
     }
 
@@ -283,7 +289,7 @@ export default function Register() {
           </select>
         </div>
 
-        {/* CHECKBOX OBLIGATORIO DE POLÍTICAS Y CONTRATO */}
+        {/* CHECKBOX OBLIGATORIO DE POLÍTICA DE PRIVACIDAD */}
         <div style={{ marginBottom: "20px", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left" }}>
           <input
             type="checkbox"
@@ -293,7 +299,7 @@ export default function Register() {
             style={{ marginTop: "4px", cursor: "pointer", width: "18px", height: "18px" }}
           />
           <label htmlFor="terminos" style={{ fontSize: "12px", lineHeight: "1.4", color: "#9fb3c8", cursor: "pointer" }}>
-            He leído y acepto la <Link to="/politica-privacidad" target="_blank" style={{ color: "#4db8ff", textDecoration: "underline" }}>Política de Privacidad</Link> y el Contrato Marco de Servicios.
+            He leído y acepto la <Link to="/politica-privacidad" target="_blank" style={{ color: "#4db8ff", textDecoration: "underline" }}>Política de Privacidad</Link>.
           </label>
         </div>
 
