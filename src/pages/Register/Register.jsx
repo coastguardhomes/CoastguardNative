@@ -11,7 +11,10 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  const [modalAbierto, setModalAbierto] = useState(false);
+  
+  // Estados para controlar los dos modales por separado
+  const [modalPrivacidad, setModalPrivacidad] = useState(false);
+  const [modalContrato, setModalContrato] = useState(false);
 
   const navigate = useNavigate();
   const { changeLanguage } = useLanguage();
@@ -53,7 +56,7 @@ export default function Register() {
     }
 
     if (!aceptaTerminos) {
-      setErrorMsg("Debes aceptar la Política de Privacidad");
+      setErrorMsg("Debes aceptar la Política de Privacidad y el Contrato Marco de Servicios");
       return;
     }
 
@@ -69,7 +72,7 @@ export default function Register() {
     }
 
     const fechaAceptacion = new Date().toISOString();
-    const versionPrivacidad = "v1.0";
+    const versionTerminos = "v1.0";
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -77,10 +80,10 @@ export default function Register() {
       options: {
         emailRedirectTo: "coastguard://auth/callback",
         data: {
-          acepta_privacidad: true,
-          privacidad_aceptada_at: fechaAceptacion,
+          acepta_terminos: true,
+          terminos_aceptados_at: fechaAceptacion,
           ip_registro: userIp,
-          version_privacidad: versionPrivacidad,
+          version_terminos: versionTerminos,
         },
       },
     });
@@ -112,19 +115,19 @@ export default function Register() {
       .eq("email", user.email)
       .maybeSingle();
 
-    const datosPrivacidadCliente = {
+    const datosLegalesCliente = {
       email: user.email,
       idioma: idioma,
-      acepta_privacidad: true,
-      privacidad_aceptada_at: fechaAceptacion,
+      acepta_terminos: true,
+      terminos_aceptados_at: fechaAceptacion,
       ip_registro: userIp,
-      version_privacidad: versionPrivacidad,
+      version_terminos: versionTerminos,
     };
 
     if (!clienteExistente) {
       const { error: crearClienteError } = await supabase
         .from("clientes")
-        .insert(datosPrivacidadCliente);
+        .insert(datosLegalesCliente);
 
       if (crearClienteError) {
         handleError(crearClienteError, "Error DB (Crear)");
@@ -134,7 +137,7 @@ export default function Register() {
     } else {
       await supabase
         .from("clientes")
-        .update(datosPrivacidadCliente)
+        .update(datosLegalesCliente)
         .eq("email", user.email);
     }
 
@@ -285,7 +288,7 @@ export default function Register() {
           </select>
         </div>
 
-        {/* CHECKBOX OBLIGATORIO Y ENLACE AL MODAL DE PRIVACIDAD */}
+        {/* CHECKBOX LEGAL (POLÍTICA DE PRIVACIDAD + CONTRATO MARCO) */}
         <div style={{ marginBottom: "20px", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left" }}>
           <input
             type="checkbox"
@@ -299,17 +302,27 @@ export default function Register() {
             <span
               onClick={(e) => {
                 e.preventDefault();
-                setModalAbierto(true);
+                setModalPrivacidad(true);
               }}
               style={{ color: "#4db8ff", textDecoration: "underline", cursor: "pointer" }}
             >
               Política de Privacidad
+            </span>{" "}
+            y los términos del{" "}
+            <span
+              onClick={(e) => {
+                e.preventDefault();
+                setModalContrato(true);
+              }}
+              style={{ color: "#4db8ff", textDecoration: "underline", cursor: "pointer" }}
+            >
+              Contrato Marco de Servicios
             </span>
             .
           </label>
         </div>
 
-        {/* BOTÓN REALMENTE BLOQUEADO SI NO ESTÁ MARCADO */}
+        {/* BOTÓN BLOQUEADO HASTA MARCAR LA CASILLA */}
         <button
           onClick={handleRegister}
           disabled={loading || !aceptaTerminos}
@@ -348,8 +361,8 @@ export default function Register() {
         </button>
       </div>
 
-      {/* VENTANA MODAL PARA LEER LA POLÍTICA DE PRIVACIDAD SIN SALIR DE LA PANTALLA */}
-      {modalAbierto && (
+      {/* MODAL 1: POLÍTICA DE PRIVACIDAD */}
+      {modalPrivacidad && (
         <div
           style={{
             position: "fixed",
@@ -382,14 +395,14 @@ export default function Register() {
           >
             <h3 style={{ color: "#4db8ff", marginTop: 0, marginBottom: "15px" }}>Política de Privacidad</h3>
             <div style={{ fontSize: "13px", lineHeight: "1.6", color: "#ccc", marginBottom: "20px" }}>
-              <p><strong>1. Responsable del tratamiento:</strong> Roxana Collazo Alonso / Coastguard Homes.</p>
+              <p><strong>1. Responsable del tratamiento:</strong> Roxana Collazo Alonso (NIE: Z1968154A).</p>
               <p><strong>2. Datos que recopilamos:</strong> Datos de identificación, correo electrónico, datos del inmueble y de facturación necesarios para la prestación del servicio.</p>
               <p><strong>3. Finalidad:</strong> Gestión administrativa, facturación y atención de avisos o emergencias en la plataforma web y móvil.</p>
               <p><strong>4. Legitimación:</strong> Ejecución de contrato y consentimiento explícito del usuario mediante el registro.</p>
-              <p><strong>5. Derechos:</strong> Puedes ejercer tus derechos de acceso, rectificación y supresión enviando un correo de contacto a soporte.</p>
+              <p><strong>5. Derechos:</strong> Puedes ejercer tus derechos escribiendo un correo a coastguardhomes@gmail.com para solicitar el acceso, rectificación o supresión de tus datos.</p>
             </div>
             <button
-              onClick={() => setModalAbierto(false)}
+              onClick={() => setModalPrivacidad(false)}
               style={{
                 width: "100%",
                 padding: "10px",
@@ -401,7 +414,65 @@ export default function Register() {
                 cursor: "pointer",
               }}
             >
-              Cerrar y volver
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: CONTRATO MARCO DE SERVICIOS */}
+      {modalContrato && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            padding: "20px",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            style={{
+              background: "#101726",
+              padding: "25px",
+              borderRadius: "12px",
+              maxWidth: "500px",
+              width: "100%",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              border: "1px solid rgba(255,255,255,0.2)",
+              color: "#fff",
+              textAlign: "left",
+            }}
+          >
+            <h3 style={{ color: "#4db8ff", marginTop: 0, marginBottom: "15px" }}>Contrato Marco de Servicios</h3>
+            <div style={{ fontSize: "13px", lineHeight: "1.6", color: "#ccc", marginBottom: "20px" }}>
+              <p><strong>1. Objeto:</strong> Regulación de la prestación de servicios de gestión, avisos y mantenimiento a través de la aplicación.</p>
+              <p><strong>2. Condiciones de contratación y pagos:</strong> Los servicios contratados mediante la plataforma implican las condiciones de cobro y pagos por adelantado o según tarifa acordada.</p>
+              <p><strong>3. Limitación de responsabilidad:</strong> La prestación de servicios se realiza bajo los estándares profesionales establecidos, limitando la responsabilidad a los términos legalmente aplicables.</p>
+              <p><strong>4. Validez:</strong> La aceptación de este contrato se realiza de forma telemática durante el proceso de registro del usuario.</p>
+            </div>
+            <button
+              onClick={() => setModalContrato(false)}
+              style={{
+                width: "100%",
+                padding: "10px",
+                background: "#0077cc",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+            >
+              Cerrar
             </button>
           </div>
         </div>
