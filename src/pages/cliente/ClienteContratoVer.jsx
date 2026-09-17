@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app"; // 👈 Importante para detectar cuando vuelves a la app
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#0a0f1a";
@@ -40,7 +41,6 @@ export default function ClienteContratoVer() {
   const [pagandoStripe, setPagandoStripe] = useState(false);
 
   const cargarContrato = async () => {
-    setCargando(true);
     try {
       const { data: contratoData, error: contratoError } = await supabase
         .from("contratos")
@@ -50,7 +50,6 @@ export default function ClienteContratoVer() {
 
       if (contratoError || !contratoData) {
         console.error("Error cargando contrato:", contratoError);
-        setContrato({ error: true, mensaje: contratoError?.message || t("contratoNoEncontrado") });
         return;
       }
 
@@ -67,17 +66,43 @@ export default function ClienteContratoVer() {
       }
     } catch (err) {
       console.error("Excepción en contrato:", err);
-      setContrato({ error: true, mensaje: err.message });
-    } finally {
-      setCargando(false);
     }
   };
 
+  // Carga inicial
   useEffect(() => {
     if (id) {
-      cargarContrato();
+      setCargando(true);
+      cargarContrato().finally(() => setCargando(false));
     }
   }, [id, location.key]);
+
+  // 🔄 RECARGA AUTOMÁTICA AL VOLVER A LA APP TRAS PAGAR EN STRIPE
+  useEffect(() => {
+    let appStateListener = null;
+
+    if (Capacitor.isNativePlatform()) {
+      App.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) {
+          console.log("La app ha vuelto a primer plano, actualizando contrato...");
+          cargarContrato();
+        }
+      }).then((listener) => {
+        appStateListener = listener;
+      });
+    }
+
+    // Por si se usa en navegador web al enfocar pestaña
+    const handleFocus = () => cargarContrato();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      if (appStateListener) {
+        appStateListener.remove();
+      }
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [id]);
 
   const est = String(contrato?.estado || "").toLowerCase().trim();
   const tieneFirma = Boolean(
@@ -156,12 +181,9 @@ export default function ClienteContratoVer() {
       }
 
       if (data?.url) {
-        // 📱 LÓGICA MULTIPLATAFORMA INTELIGENTE:
         if (Capacitor.isNativePlatform()) {
-          // En la APK de Android abre el navegador seguro integrado
           await Browser.open({ url: data.url });
         } else {
-          // En web / iPhone abre la redirección estándar limpia
           window.location.href = data.url;
         }
       } else {
@@ -341,7 +363,7 @@ export default function ClienteContratoVer() {
             ✍️ {esFirmado ? "Cambiar / Volver a Firmar" : (t("firmaDelCliente") || "Firma del Cliente")}
           </button>
 
-          {/* BOTÓN 3: Pagar con Stripe (Tarjeta y SEPA) - Solo se muestra si NO está pagado */}
+          {/* BOTÓN 3: Pagar con Stripe - Se oculta automáticamente al volver si ya se pagó */}
           {!yaPagado && contrato.precio != null && Number(contrato.precio) > 0 && (
             <button
               onClick={manejarPagoStripe}
@@ -353,11 +375,11 @@ export default function ClienteContratoVer() {
                 boxShadow: "0 4px 15px rgba(99, 91, 255, 0.3)",
               }}
             >
-              {pagandoStripe ? "Conectando con Stripe..." : `💳 Suscribirse y Pagar (${contrato.precio} €/mes)`}
+              {pagandoStripe ? "Conectando con Stripe..." : `💳 Suscribirse y Pay (${contrato.precio} €/mes)`}
             </button>
           )}
 
-          {/* BOTÓN 4: Enviar al Admin - Se bloquea si ya fue enviado */}
+          {/* BOTÓN 4: Enviar al Admin */}
           <button
             onClick={enviarAlAdmin}
             disabled={enviando || yaEnviadoAdmin}
