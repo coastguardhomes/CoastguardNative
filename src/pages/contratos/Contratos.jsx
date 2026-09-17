@@ -90,8 +90,8 @@ export default function Contratos() {
     }
   };
 
-  // Procesa la cadena completa (Contrato PDF + Factura DB + Factura PDF + Email)
-  const procesarYEnviarTodo = async (contrato) => {
+  // Procesa y envía únicamente el contrato al cliente
+  const generarYEnviarContrato = async (contrato) => {
     try {
       setActionLoading(contrato.id);
       const numericContratoId = Number(contrato.id);
@@ -126,49 +126,7 @@ export default function Contratos() {
         contratoPdfUrl = contratoDb.pdf_url;
       }
 
-      // 2. Crear o buscar la factura asociada
-      let facturaId;
-      const { data: facturaExistente } = await supabase
-        .from("facturas")
-        .select("id")
-        .eq("contrato_id", numericContratoId)
-        .maybeSingle();
-
-      if (facturaExistente) {
-        facturaId = facturaExistente.id;
-      } else {
-        const montoFactura = Number(contrato.precio || 0);
-        const { data: nuevaFactura, error: errCrearFactura } = await supabase
-          .from("facturas")
-          .insert([
-            {
-              contrato_id: numericContratoId,
-              cliente_id: contrato.cliente_id || contrato.clientes?.id,
-              monto: montoFactura,
-              estado: "pendiente_pago"
-            }
-          ])
-          .select()
-          .single();
-
-        if (errCrearFactura) throw errCrearFactura;
-        facturaId = nuevaFactura.id;
-      }
-
-      // 3. Intentar generar PDF de la factura
-      try {
-        await supabase.functions.invoke("factura-pdf", {
-          body: { 
-            factura_id: Number(facturaId),
-            facturaId: Number(facturaId),
-            id: Number(facturaId)
-          }
-        });
-      } catch (errFacturaPdf) {
-        console.warn("Aviso menor en PDF de factura:", errFacturaPdf);
-      }
-
-      // 4. Actualizar estado del contrato en DB (Solo si sigue pendiente)
+      // 2. Actualizar estado del contrato en DB (Solo si sigue pendiente)
       const estadoActual = String(contrato.estado || "").toLowerCase().trim();
       if (estadoActual !== "firmado" && estadoActual !== "firmado_cliente") {
         await supabase
@@ -177,14 +135,12 @@ export default function Contratos() {
           .eq("id", numericContratoId);
       }
 
-      // 5. Enviar Email pasando todos los alias de parámetros e incluye la URL directa del PDF
+      // 3. Enviar Email pasando la URL directa del PDF del contrato
       const { error: errEmail } = await supabase.functions.invoke("enviar-email", {
         body: {
           contrato_id: numericContratoId,
           contratoId: numericContratoId,
           id: numericContratoId,
-          factura_id: Number(facturaId),
-          facturaId: Number(facturaId),
           pdf_url: contratoPdfUrl,
           contrato_pdf_url: contratoPdfUrl,
           tipo: "contrato"
@@ -192,14 +148,14 @@ export default function Contratos() {
       });
 
       if (errEmail) {
-        alert("Documentos procesados, pero el servicio de correo devolvió una advertencia.");
+        alert("Contrato procesado, pero el servicio de correo devolvió una advertencia.");
       } else {
-        alert("¡Contrato y Factura procesados y enviados al cliente con éxito!");
+        alert("¡Contrato procesado y enviado al cliente con éxito!");
       }
 
       await cargarContratos();
     } catch (err) {
-      console.error("Error al procesar todo:", err);
+      console.error("Error al procesar el contrato:", err);
       alert("Error al procesar: " + (err.message || "Error desconocido"));
     } finally {
       setActionLoading(null);
@@ -343,7 +299,7 @@ export default function Contratos() {
 
                 <button
                   type="button"
-                  onClick={() => procesarYEnviarTodo(c)}
+                  onClick={() => generarYEnviarContrato(c)}
                   disabled={estaProcesando}
                   style={{
                     ...estilos.botonVerde,
@@ -351,7 +307,7 @@ export default function Contratos() {
                     cursor: estaProcesando ? "not-allowed" : "pointer"
                   }}
                 >
-                  {estaProcesando ? "⏳ Procesando..." : "⚡ Generar y Enviar Todo (Contrato + Factura)"}
+                  {estaProcesando ? "⏳ Procesando..." : "⚡ Generar y Enviar Contrato"}
                 </button>
               </div>
             );
