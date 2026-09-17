@@ -1,36 +1,52 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "../../supabaseClient"; // Ajusta la ruta de importación si es distinta
+import { supabase } from "../../lib/supabase"; // Asegúrate de que esta sea tu ruta correcta
 
 export default function ClienteContratoExito() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const contractId = searchParams.get("contract_id");
   const navigate = useNavigate();
-  const [actualizando, setActualizando] = useState(true);
+  const [mensajeEstado, setMensajeEstado] = useState("Actualizando el estado de tu contrato...");
+  const [errorDetalle, setErrorDetalle] = useState(null);
 
   useEffect(() => {
     const actualizarContrato = async () => {
-      if (contractId) {
-        try {
-          // Actualizamos únicamente el estado a "activo" para que desaparezca el botón de pago
-          const { error } = await supabase
-            .from("contratos")
-            .update({ 
-              estado: "activo" 
-            })
-            .eq("id", contractId);
-
-          if (error) {
-            console.error("Error al actualizar contrato en BD:", error.message);
-          } else {
-            console.log("Contrato actualizado a activo con éxito.");
-          }
-        } catch (err) {
-          console.error("Excepción al actualizar contrato:", err);
-        }
+      if (!contractId) {
+        setMensajeEstado("Error: No se encontró el ID del contrato en el enlace.");
+        return;
       }
-      setActualizando(false);
+
+      try {
+        console.log("Intentando actualizar contrato ID:", contractId);
+
+        // Intentamos actualizar el estado a activo
+        const { data, error } = await supabase
+          .from("contratos")
+          .update({ estado: "activo" })
+          .eq("id", contractId)
+          .select(); // .select() es clave para que devuelva si realmente actualizó algo
+
+        if (error) {
+          console.error("Error de Supabase:", error);
+          setErrorDetalle(error.message);
+          setMensajeEstado("❌ Error al actualizar en la base de datos.");
+          alert(`Error de Supabase: ${error.message} (Código: ${error.code})`);
+        } else if (!data || data.length === 0) {
+          console.warn("No se encontró ninguna fila con ese ID o RLS lo bloqueó.");
+          setErrorDetalle("No se encontró el contrato o permisos insuficientes.");
+          setMensajeEstado("⚠️ El pago se realizó, pero no se encontró el contrato para actualizarlo.");
+          alert("Aviso: El pago se hizo, pero Supabase no encontró el contrato (o las políticas RLS lo impiden).");
+        } else {
+          console.log("Contrato actualizado con éxito:", data);
+          setMensajeEstado("¡Tu contrato ya se encuentra activo y la suscripción está en marcha!");
+        }
+      } catch (err) {
+        console.error("Excepción inesperada:", err);
+        setErrorDetalle(err.message);
+        setMensajeEstado("❌ Error inesperado al procesar.");
+        alert(`Excepción: ${err.message}`);
+      }
     };
 
     actualizarContrato();
@@ -62,21 +78,24 @@ export default function ClienteContratoExito() {
           boxShadow: "0 0 25px rgba(255, 215, 0, 0.15)",
         }}
       >
-        <div style={{ fontSize: "50px", marginBottom: "20px" }}>🎉</div>
+        <div style={{ fontSize: "50px", marginBottom: "20px" }}>{errorDetalle ? "⚠️" : "🎉"}</div>
         
         <h1 style={{ color: "#e0b034", fontSize: "24px", marginBottom: "15px", fontWeight: "700" }}>
-          ¡Pago y Suscripción Exitosa!
+          {errorDetalle ? "Aviso en la Actualización" : "¡Pago y Suscripción Exitosa!"}
         </h1>
         
-        <p style={{ color: "#9ca3af", fontSize: "15px", lineHeight: "1.5", marginBottom: "25px" }}>
-          {actualizando 
-            ? "Actualizando el estado de tu contrato..." 
-            : "Tu contrato ya se encuentra activo y la suscripción está en marcha."}
+        <p style={{ color: errorDetalle ? "#ff6b6b" : "#9ca3af", fontSize: "15px", lineHeight: "1.5", marginBottom: "25px" }}>
+          {mensajeEstado}
         </p>
+
+        {errorDetalle && (
+          <div style={{ background: "rgba(255,0,0,0.1)", border: "1px solid red", padding: "10px", borderRadius: "8px", fontSize: "12px", color: "#ff8080", marginBottom: "20px", textAlign: "left", wordBreak: "break-all" }}>
+            <strong>Detalle técnico:</strong> {errorDetalle}
+          </div>
+        )}
 
         <button
           onClick={() => navigate(`/cliente/contrato/${contractId}`)}
-          disabled={actualizando}
           style={{
             background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
             color: "#ffffff",
@@ -88,10 +107,9 @@ export default function ClienteContratoExito() {
             cursor: "pointer",
             width: "100%",
             boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
-            opacity: actualizando ? 0.6 : 1,
           }}
         >
-          {actualizando ? "Guardando..." : "Ver mi Contrato"}
+          Ver mi Contrato
         </button>
       </div>
     </div>
