@@ -35,6 +35,7 @@ export default function ClienteContratoVer() {
   const [cliente, setCliente] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const [pagandoStripe, setPagandoStripe] = useState(false); // Estado para el botón de pago
 
   const cargarContrato = async () => {
     setCargando(true);
@@ -120,6 +121,45 @@ export default function ClienteContratoVer() {
       alert("Error al enviar: " + (err.message || "Error desconocido"));
     } finally {
       setEnviando(false);
+    }
+  };
+
+  // Función para iniciar la suscripción y pago con Stripe (Tarjeta y SEPA)
+  const manejarPagoStripe = async () => {
+    if (!contrato?.precio || contrato.precio <= 0) {
+      alert("Este contrato no tiene un precio mensual válido configurado.");
+      return;
+    }
+
+    setPagandoStripe(true);
+    try {
+      // Stripe requiere el importe en céntimos (ej: 50.00 € -> 5000)
+      const amountInCents = Math.round(Number(contrato.precio) * 100);
+      const customerEmail = cliente?.email || contrato?.cliente_email || "";
+      const clientId = contrato?.cliente_id || cliente?.id || null;
+
+      // Invocamos la Edge Function de Supabase que creamos antes
+      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+        body: {
+          amount: amountInCents,
+          customerEmail: customerEmail,
+          clientId: clientId
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        // Redirigir de forma segura al Checkout oficial de Stripe
+        window.location.href = data.url;
+      } else {
+        throw new Error("No se ha recibido la URL de redirección de Stripe.");
+      }
+    } catch (err) {
+      console.error("Error al iniciar pago con Stripe:", err);
+      alert("No se pudo conectar con la pasarela de pago: " + (err.message || "Error desconocido"));
+    } finally {
+      setPagandoStripe(false);
     }
   };
 
@@ -289,7 +329,23 @@ export default function ClienteContratoVer() {
             ✍️ {esFirmado ? "Cambiar / Volver a Firmar" : (t("firmaDelCliente") || "Firma del Cliente")}
           </button>
 
-          {/* BOTÓN 3: Enviar al Admin (Siempre visible, verde si está listo para enviar) */}
+          {/* NUEVO BOTÓN: Pagar Suscripción Mensual (Stripe - Tarjeta y SEPA) */}
+          {contrato.precio != null && Number(contrato.precio) > 0 && (
+            <button
+              onClick={manejarPagoStripe}
+              disabled={pagandoStripe}
+              style={{
+                ...botonEstilo,
+                background: "linear-gradient(135deg, #635bff 0%, #4338ca 100%)", // Color identificativo de Stripe
+                border: "1px solid rgba(99, 91, 255, 0.5)",
+                boxShadow: "0 4px 15px rgba(99, 91, 255, 0.3)",
+              }}
+            >
+              {pagandoStripe ? "Conectando con Stripe..." : `💳 Suscribirse y Pagar (${contrato.precio} €/mes)`}
+            </button>
+          )}
+
+          {/* BOTÓN 3: Enviar al Admin */}
           <button
             onClick={enviarAlAdmin}
             disabled={enviando || yaEnviadoAdmin}
