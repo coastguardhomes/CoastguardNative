@@ -35,7 +35,7 @@ export default function ClienteContratoVer() {
   const [cliente, setCliente] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(true);
-  const [pagandoStripe, setPagandoStripe] = useState(false); // Estado para el botón de pago
+  const [pagandoStripe, setPagandoStripe] = useState(false);
 
   const cargarContrato = async () => {
     setCargando(true);
@@ -71,14 +71,12 @@ export default function ClienteContratoVer() {
     }
   };
 
-  // Re-cargar automáticamente los datos cada vez que la pantalla gana foco o vuelve de firmar
   useEffect(() => {
     if (id) {
       cargarContrato();
     }
   }, [id, location.key]);
 
-  // Verificación flexibilizada de estado de firma
   const est = String(contrato?.estado || "").toLowerCase().trim();
   const tieneFirma = Boolean(
     (contrato?.firma_cliente && contrato.firma_cliente.trim() !== "") ||
@@ -104,7 +102,6 @@ export default function ClienteContratoVer() {
       if (error) {
         alert((t("alertaErrorAdmin") || "Error: ") + error.message);
       } else {
-        // Notificar a la Edge Function
         try {
           await supabase.functions.invoke("contrato-pdf", {
             body: { contrato_id: Number(id), id: Number(id) }
@@ -124,21 +121,18 @@ export default function ClienteContratoVer() {
     }
   };
 
-  // Función para iniciar la suscripción y pago con Stripe (Tarjeta y SEPA)
   const manejarPagoStripe = async () => {
-    if (!contrato?.precio || contrato.precio <= 0) {
+    if (!contrato?.precio || Number(contrato.precio) <= 0) {
       alert("Este contrato no tiene un precio mensual válido configurado.");
       return;
     }
 
     setPagandoStripe(true);
     try {
-      // Stripe requiere el importe en céntimos (ej: 50.00 € -> 5000)
       const amountInCents = Math.round(Number(contrato.precio) * 100);
       const customerEmail = cliente?.email || contrato?.cliente_email || "";
       const clientId = contrato?.cliente_id || cliente?.id || null;
 
-      // Invocamos la Edge Function de Supabase que creamos antes
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
         body: {
           amount: amountInCents,
@@ -147,17 +141,24 @@ export default function ClienteContratoVer() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Capturamos el mensaje detallado que devuelve la Edge Function
+        let errorMsg = error.message;
+        try {
+          const body = await error.context?.json();
+          if (body?.error) errorMsg = body.error;
+        } catch (e) {}
+        throw new Error(errorMsg);
+      }
 
       if (data?.url) {
-        // Redirigir de forma segura al Checkout oficial de Stripe
         window.location.href = data.url;
       } else {
         throw new Error("No se ha recibido la URL de redirección de Stripe.");
       }
     } catch (err) {
       console.error("Error al iniciar pago con Stripe:", err);
-      alert("No se pudo conectar con la pasarela de pago: " + (err.message || "Error desconocido"));
+      alert("Error de Stripe: " + (err.message || "Error desconocido"));
     } finally {
       setPagandoStripe(false);
     }
@@ -329,14 +330,14 @@ export default function ClienteContratoVer() {
             ✍️ {esFirmado ? "Cambiar / Volver a Firmar" : (t("firmaDelCliente") || "Firma del Cliente")}
           </button>
 
-          {/* NUEVO BOTÓN: Pagar Suscripción Mensual (Stripe - Tarjeta y SEPA) */}
+          {/* BOTÓN 3: Pagar con Stripe (Tarjeta y SEPA) */}
           {contrato.precio != null && Number(contrato.precio) > 0 && (
             <button
               onClick={manejarPagoStripe}
               disabled={pagandoStripe}
               style={{
                 ...botonEstilo,
-                background: "linear-gradient(135deg, #635bff 0%, #4338ca 100%)", // Color identificativo de Stripe
+                background: "linear-gradient(135deg, #635bff 0%, #4338ca 100%)",
                 border: "1px solid rgba(99, 91, 255, 0.5)",
                 boxShadow: "0 4px 15px rgba(99, 91, 255, 0.3)",
               }}
@@ -345,7 +346,7 @@ export default function ClienteContratoVer() {
             </button>
           )}
 
-          {/* BOTÓN 3: Enviar al Admin */}
+          {/* BOTÓN 4: Enviar al Admin */}
           <button
             onClick={enviarAlAdmin}
             disabled={enviando || yaEnviadoAdmin}
