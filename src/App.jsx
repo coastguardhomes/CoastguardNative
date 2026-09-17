@@ -81,6 +81,7 @@ import Servicios from "./pages/servicios/Servicios.jsx";
 // ÁREA DEL CLIENTE
 import ClienteContratosLista from "./pages/cliente/ClienteContratosLista.jsx";
 import ClienteContratoVer from "./pages/cliente/ClienteContratoVer.jsx";
+import ClienteContratoExito from "./pages/cliente/ClienteContratoExito.jsx"; // 👈 NUEVO IMPORT
 import VerPDFContrato from "./pages/cliente/VerPDFContrato.jsx";
 import ClienteFirmaDibujar from "./pages/cliente/ClienteFirmaDibujar.jsx";
 import PerfilCliente from "./pages/cliente/Perfilcliente.jsx";
@@ -105,7 +106,6 @@ export default function App() {
         const hashIndex = rawUrl.indexOf("#");
         const hash = hashIndex !== -1 ? rawUrl.substring(hashIndex) : "";
 
-        // Si la URL contiene 'type=recovery' O 'update-password', es recuperación de contraseña
         if (rawUrl.includes("type=recovery") || rawUrl.includes("update-password")) {
           navigate(`/update-password${hash}`);
         } else if (rawUrl.includes("auth/callback")) {
@@ -216,6 +216,7 @@ export default function App() {
           <Route index element={<ClienteDashboard />} />
           <Route path="contratos" element={<ClienteContratosLista />} />
           <Route path="contrato/:id" element={<ClienteContratoVer />} />
+          <Route path="contrato/exito" element={<ClienteContratoExito />} /> {/* 👈 RUTA DE ÉXITO INTEGRADA */}
           <Route path="contrato/:id/pdf" element={<VerPDFContrato />} />
           <Route path="firma/:id" element={<ClienteFirmaDibujar />} />
           <Route path="perfil" element={<PerfilCliente />} />
