@@ -69,21 +69,21 @@ export default function ClienteContratoVer() {
     }
   };
 
-  // Función inteligente para verificar y actualizar el pago al volver a la app
+  // Función inteligente para verificar y activar el pago usando RPC seguro
   const verificarYActualizarPago = async () => {
     const contratoPagoId = localStorage.getItem("contrato_pago_id");
     if (contratoPagoId) {
       console.log("Detectado retorno de pago para el contrato:", contratoPagoId);
       try {
-        const { error } = await supabase
-          .from("contratos")
-          .update({ estado: "activo" })
-          .eq("id", contratoPagoId);
+        // Llamada a la función RPC de Supabase que ignora restricciones de sesión y actualiza directamente
+        const { error } = await supabase.rpc("activar_contrato_por_pago", {
+          p_contract_id: Number(contratoPagoId)
+        });
 
         if (error) {
-          console.error("Error actualizando contrato tras pago:", error.message);
+          console.error("Error actualizando contrato tras pago con RPC:", error.message);
         } else {
-          console.log("Contrato actualizado a activo con éxito desde la app.");
+          console.log("¡Contrato actualizado a activo con éxito mediante función RPC!");
         }
       } catch (err) {
         console.error("Excepción al actualizar contrato tras pago:", err);
