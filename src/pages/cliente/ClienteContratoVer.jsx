@@ -137,12 +137,12 @@ export default function ClienteContratoVer() {
         body: {
           amount: amountInCents,
           customerEmail: customerEmail,
-          clientId: clientId
+          clientId: clientId,
+          originUrl: window.location.origin // <--- URL dinámica enviada desde el cliente (móvil, local o producción)
         }
       });
 
       if (error) {
-        // Capturamos el mensaje detallado que devuelve la Edge Function
         let errorMsg = error.message;
         try {
           const body = await error.context?.json();
