@@ -83,8 +83,9 @@ export default function ClienteContratoVer() {
     (contrato?.firma_url && contrato.firma_url.trim() !== "")
   );
 
-  const esFirmado = tieneFirma || est === "firmado" || est === "enviado_al_admin";
-  const yaEnviadoAdmin = est === "enviado_al_admin";
+  const esFirmado = tieneFirma || est === "firmado" || est === "enviado_al_admin" || est === "activo";
+  const yaEnviadoAdmin = est === "enviado_al_admin" || est === "activo";
+  const yaPagado = contrato?.pagado === true || est === "activo" || est === "pagado";
 
   const enviarAlAdmin = async () => {
     if (!esFirmado) {
@@ -96,7 +97,7 @@ export default function ClienteContratoVer() {
     try {
       const { error } = await supabase
         .from("contratos")
-        .update({ estado: "firmado" })
+        .update({ estado: "enviado_al_admin" })
         .eq("id", id);
 
       if (error) {
@@ -138,7 +139,8 @@ export default function ClienteContratoVer() {
           amount: amountInCents,
           customerEmail: customerEmail,
           clientId: clientId,
-          originUrl: window.location.origin // <--- URL dinámica enviada desde el cliente (móvil, local o producción)
+          contractId: Number(id), // <--- Añadido para que al volver de Stripe sepa qué contrato marcar como pagado
+          originUrl: window.location.origin
         }
       });
 
@@ -305,7 +307,7 @@ export default function ClienteContratoVer() {
           <p style={{ margin: "6px 0 16px 0" }}>
             <strong>{t("estado")}:</strong>{" "}
             <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d", fontWeight: "bold", textShadow: esFirmado ? "0 0 8px rgba(77,255,136,0.4)" : "0 0 8px rgba(255,184,77,0.4)" }}>
-              {esFirmado ? `✅ ${t("firmado") || "Firmado"}` : `⏳ ${t("pendienteFirma") || "Pendiente de firma"}`}
+              {yaPagado ? `✅ Activo / Pagado` : esFirmado ? `✅ ${t("firmado") || "Firmado"}` : `⏳ ${t("pendienteFirma") || "Pendiente de firma"}`}
             </span>
           </p>
 
@@ -330,8 +332,8 @@ export default function ClienteContratoVer() {
             ✍️ {esFirmado ? "Cambiar / Volver a Firmar" : (t("firmaDelCliente") || "Firma del Cliente")}
           </button>
 
-          {/* BOTÓN 3: Pagar con Stripe (Tarjeta y SEPA) */}
-          {contrato.precio != null && Number(contrato.precio) > 0 && (
+          {/* BOTÓN 3: Pagar con Stripe (Tarjeta y SEPA) - Solo se muestra si NO está pagado */}
+          {!yaPagado && contrato.precio != null && Number(contrato.precio) > 0 && (
             <button
               onClick={manejarPagoStripe}
               disabled={pagandoStripe}
@@ -346,7 +348,7 @@ export default function ClienteContratoVer() {
             </button>
           )}
 
-          {/* BOTÓN 4: Enviar al Admin */}
+          {/* BOTÓN 4: Enviar al Admin - Se bloquea si ya fue enviado */}
           <button
             onClick={enviarAlAdmin}
             disabled={enviando || yaEnviadoAdmin}
