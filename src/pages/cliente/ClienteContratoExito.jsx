@@ -13,17 +13,16 @@ export default function ClienteContratoExito() {
     const actualizarContrato = async () => {
       if (contractId) {
         try {
-          // Actualizamos el estado del contrato en Supabase a activo/pagado
+          // Actualizamos únicamente el estado a "activo" para que desaparezca el botón de pago
           const { error } = await supabase
             .from("contratos")
             .update({ 
-              estado: "activo", // Cambia esto según el valor que use tu app para contratos pagados
-              pagado: true 
+              estado: "activo" 
             })
             .eq("id", contractId);
 
           if (error) {
-            console.error("Error al actualizar contrato en BD:", error);
+            console.error("Error al actualizar contrato en BD:", error.message);
           } else {
             console.log("Contrato actualizado a activo con éxito.");
           }
@@ -76,7 +75,7 @@ export default function ClienteContratoExito() {
         </p>
 
         <button
-          onClick={() => navigate("/cliente/contratos")}
+          onClick={() => navigate(`/cliente/contrato/${contractId}`)}
           disabled={actualizando}
           style={{
             background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
@@ -92,7 +91,7 @@ export default function ClienteContratoExito() {
             opacity: actualizando ? 0.6 : 1,
           }}
         >
-          {actualizando ? "Guardando..." : "Ir a Mis Contratos"}
+          {actualizando ? "Guardando..." : "Ver mi Contrato"}
         </button>
       </div>
     </div>
