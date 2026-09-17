@@ -5,7 +5,7 @@ import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
-import { App } from "@capacitor/app"; // 👈 Importante para detectar cuando vuelves a la app
+import { App } from "@capacitor/app";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#0a0f1a";
@@ -69,31 +69,59 @@ export default function ClienteContratoVer() {
     }
   };
 
+  // Función inteligente para verificar y actualizar el pago al volver a la app
+  const verificarYActualizarPago = async () => {
+    const contratoPagoId = localStorage.getItem("contrato_pago_id");
+    if (contratoPagoId) {
+      console.log("Detectado retorno de pago para el contrato:", contratoPagoId);
+      try {
+        const { error } = await supabase
+          .from("contratos")
+          .update({ estado: "activo" })
+          .eq("id", contratoPagoId);
+
+        if (error) {
+          console.error("Error actualizando contrato tras pago:", error.message);
+        } else {
+          console.log("Contrato actualizado a activo con éxito desde la app.");
+        }
+      } catch (err) {
+        console.error("Excepción al actualizar contrato tras pago:", err);
+      } finally {
+        localStorage.removeItem("contrato_pago_id");
+        await cargarContrato();
+      }
+    } else {
+      await cargarContrato();
+    }
+  };
+
   // Carga inicial
   useEffect(() => {
     if (id) {
       setCargando(true);
-      cargarContrato().finally(() => setCargando(false));
+      verificarYActualizarPago().finally(() => setCargando(false));
     }
   }, [id, location.key]);
 
-  // 🔄 RECARGA AUTOMÁTICA AL VOLVER A LA APP TRAS PAGAR EN STRIPE
+  // Listener multiplataforma: se activa en cuanto vuelves a la app (Android APK o Web/iPhone)
   useEffect(() => {
     let appStateListener = null;
 
     if (Capacitor.isNativePlatform()) {
       App.addListener("appStateChange", ({ isActive }) => {
         if (isActive) {
-          console.log("La app ha vuelto a primer plano, actualizando contrato...");
-          cargarContrato();
+          console.log("La app ha vuelto a primer plano, verificando pago...");
+          verificarYActualizarPago();
         }
       }).then((listener) => {
         appStateListener = listener;
       });
     }
 
-    // Por si se usa en navegador web al enfocar pestaña
-    const handleFocus = () => cargarContrato();
+    const handleFocus = () => {
+      verificarYActualizarPago();
+    };
     window.addEventListener("focus", handleFocus);
 
     return () => {
@@ -157,6 +185,9 @@ export default function ClienteContratoVer() {
 
     setPagandoStripe(true);
     try {
+      // Guardamos la marca de que estamos pagando este contrato
+      localStorage.setItem("contrato_pago_id", id);
+
       const amountInCents = Math.round(Number(contrato.precio) * 100);
       const customerEmail = cliente?.email || contrato?.cliente_email || "";
       const clientId = contrato?.cliente_id || cliente?.id || null;
@@ -181,9 +212,11 @@ export default function ClienteContratoVer() {
       }
 
       if (data?.url) {
+        // En APK Android abrimos Stripe con el navegador nativo seguro
         if (Capacitor.isNativePlatform()) {
           await Browser.open({ url: data.url });
         } else {
+          // En iPhone / Web usamos redirección estándar
           window.location.href = data.url;
         }
       } else {
@@ -191,6 +224,7 @@ export default function ClienteContratoVer() {
       }
     } catch (err) {
       console.error("Error al iniciar pago con Stripe:", err);
+      localStorage.removeItem("contrato_pago_id");
       alert("Error de Stripe: " + (err.message || "Error desconocido"));
     } finally {
       setPagandoStripe(false);
@@ -363,7 +397,7 @@ export default function ClienteContratoVer() {
             ✍️ {esFirmado ? "Cambiar / Volver a Firmar" : (t("firmaDelCliente") || "Firma del Cliente")}
           </button>
 
-          {/* BOTÓN 3: Pagar con Stripe - Se oculta automáticamente al volver si ya se pagó */}
+          {/* BOTÓN 3: Pagar con Stripe - Se oculta automáticamente al volverse yaPagado = true */}
           {!yaPagado && contrato.precio != null && Number(contrato.precio) > 0 && (
             <button
               onClick={manejarPagoStripe}
@@ -375,7 +409,7 @@ export default function ClienteContratoVer() {
                 boxShadow: "0 4px 15px rgba(99, 91, 255, 0.3)",
               }}
             >
-              {pagandoStripe ? "Conectando con Stripe..." : `💳 Suscribirse y Pay (${contrato.precio} €/mes)`}
+              {pagandoStripe ? "Conectando con Stripe..." : `💳 Suscribirse y Pagar (${contrato.precio} €/mes)`}
             </button>
           )}
 
