@@ -3,6 +3,8 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
+import { Browser } from "@capacitor/browser";
+import { Capacitor } from "@capacitor/core";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#0a0f1a";
@@ -139,7 +141,7 @@ export default function ClienteContratoVer() {
           amount: amountInCents,
           customerEmail: customerEmail,
           clientId: clientId,
-          contractId: Number(id), // <--- Añadido para que al volver de Stripe sepa qué contrato marcar como pagado
+          contractId: Number(id),
           originUrl: window.location.origin
         }
       });
@@ -154,7 +156,14 @@ export default function ClienteContratoVer() {
       }
 
       if (data?.url) {
-        window.location.href = data.url;
+        // 📱 LÓGICA MULTIPLATAFORMA INTELIGENTE:
+        if (Capacitor.isNativePlatform()) {
+          // En la APK de Android abre el navegador seguro integrado
+          await Browser.open({ url: data.url });
+        } else {
+          // En web / iPhone abre la redirección estándar limpia
+          window.location.href = data.url;
+        }
       } else {
         throw new Error("No se ha recibido la URL de redirección de Stripe.");
       }
