@@ -1,12 +1,5 @@
 import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import Menu from "../../layouts/Menu";
-
-const COLOR_DORADO = "#e0b034";
-const FONDO_PRINCIPAL = "#0a0f1a";
-const FONDO_TARJETA = "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))";
-const BORDE_DORADO = "1px solid rgba(255, 215, 0, 0.3)";
-const TEXTO_DORADO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(255,215,0,0.5)" };
 
 export default function ClienteContratoExito() {
   const [searchParams] = useSearchParams();
@@ -14,82 +7,69 @@ export default function ClienteContratoExito() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (sessionId) {
-      console.log("Pago de suscripción completado con éxito, ID de sesión:", sessionId);
-    }
+    console.log("Sesión de Stripe recibida:", sessionId);
   }, [sessionId]);
 
   return (
-    <Menu>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#0a0f1a",
+        color: "#ffffff",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "20px",
+        fontFamily: "Inter, sans-serif",
+        textAlign: "center",
+      }}
+    >
       <div
         style={{
-          minHeight: "100vh",
-          background: FONDO_PRINCIPAL,
-          padding: "40px 20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          textAlign: "center",
+          background: "rgba(255, 255, 255, 0.05)",
+          border: "1px solid rgba(255, 215, 0, 0.3)",
+          borderRadius: "16px",
+          padding: "40px 30px",
+          maxWidth: "450px",
+          width: "100%",
+          boxShadow: "0 0 25px rgba(255, 215, 0, 0.15)",
         }}
       >
-        <div
+        <div style={{ fontSize: "50px", marginBottom: "20px" }}>🎉</div>
+        
+        <h1 style={{ color: "#e0b034", fontSize: "24px", marginBottom: "15px", fontWeight: "700" }}>
+          ¡Pago Realizado con Éxito!
+        </h1>
+        
+        <p style={{ color: "#9ca3af", fontSize: "15px", lineHeight: "1.5", marginBottom: "25px" }}>
+          Tu suscripción se ha procesado correctamente a través de Stripe y tu contrato ya está activo.
+        </p>
+
+        {sessionId && (
+          <p style={{ color: "#4b5563", fontSize: "11px", marginBottom: "25px", wordBreak: "break-all" }}>
+            ID: {sessionId}
+          </p>
+        )}
+
+        <button
+          onClick={() => navigate("/cliente/contratos")}
           style={{
-            background: FONDO_TARJETA,
-            padding: "40px 30px",
-            borderRadius: "16px",
-            border: BORDE_DORADO,
-            boxShadow: "0 0 25px rgba(255, 215, 0, 0.2)",
-            maxWidth: "500px",
+            background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "10px",
+            padding: "14px 20px",
+            fontSize: "16px",
+            fontWeight: "600",
+            cursor: "pointer",
             width: "100%",
+            boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
           }}
         >
-          <div style={{ fontSize: "50px", marginBottom: "15px" }}>🎉</div>
-          
-          <h2
-            style={{
-              ...TEXTO_DORADO,
-              fontSize: "26px",
-              fontWeight: "700",
-              marginBottom: "15px",
-              marginTop: 0,
-            }}
-          >
-            ¡Suscripción y Pago Exitosos!
-          </h2>
-
-          <p style={{ color: "#d1d5db", fontSize: "15px", lineHeight: "1.6", marginBottom: "25px" }}>
-            El pago se ha procesado correctamente a través de Stripe. Tu contrato y la suscripción mensual ya se encuentran activos.
-          </p>
-
-          {sessionId && (
-            <p style={{ color: "#6b7280", fontSize: "11px", marginBottom: "25px", wordBreak: "break-all" }}>
-              Ref: {sessionId}
-            </p>
-          )}
-
-          <button
-            onClick={() => navigate("/contratos")} // Ajusta esta ruta si en tu router usas otra distinta para los contratos
-            style={{
-              padding: "14px 24px",
-              width: "100%",
-              borderRadius: "10px",
-              cursor: "pointer",
-              fontWeight: "600",
-              fontSize: "16px",
-              border: BORDE_DORADO,
-              background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
-              color: "#ffffff",
-              boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
-              transition: "all 0.2s ease",
-            }}
-          >
-            Ver Mis Contratos
-          </button>
-        </div>
+          Ir a Mis Contratos
+        </button>
       </div>
-    </Menu>
+    </div>
   );
 }
