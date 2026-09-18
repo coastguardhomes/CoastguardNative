@@ -40,7 +40,7 @@ export default function EditarFactura() {
       if (dataClientes) setClientes(dataClientes);
       if (dataViviendas) setViviendas(dataViviendas);
 
-      // Cargar factura específica
+      // Cargar aviso de cobro específico (tabla facturas en backend)
       const { data, error } = await supabase
         .from("facturas")
         .select("*")
@@ -48,7 +48,7 @@ export default function EditarFactura() {
         .single();
 
       if (error || !data) {
-        setMensaje("Error cargando factura");
+        setMensaje("Error cargando aviso de cobro");
       } else {
         setForm({
           cliente_id: data.cliente_id || "",
@@ -83,12 +83,12 @@ export default function EditarFactura() {
       .eq("id", id);
 
     if (error) {
-      console.error("Error al actualizar factura:", error);
+      console.error("Error al actualizar aviso de cobro:", error);
       setMensaje("Error guardando cambios");
       return;
     }
 
-    setMensaje("Factura actualizada correctamente");
+    setMensaje("Aviso de cobro actualizado correctamente");
     setTimeout(() => navigate("/facturas/lista"), 1200);
   }
 
@@ -96,7 +96,7 @@ export default function EditarFactura() {
     return (
       <Menu>
         <div style={{ padding: "40px", textAlign: "center", color: COLOR_DORADO, background: FONDO_PRINCIPAL, minHeight: "100vh" }}>
-          Cargando datos de la factura...
+          Cargando datos del aviso de cobro...
         </div>
       </Menu>
     );
@@ -125,7 +125,7 @@ export default function EditarFactura() {
             textTransform: "uppercase",
           }}
         >
-          Editar Factura
+          Editar Aviso de Cobro
         </h1>
 
         {mensaje && (
