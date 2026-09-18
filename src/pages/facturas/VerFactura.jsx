@@ -64,13 +64,38 @@ export default function VerFactura() {
       setFactura(facturaData);
     } catch (err) {
       console.error('Error al cargar datos:', err);
-      setError(t("facturaNoEncontrada") || 'No se pudieron cargar los datos de la factura.');
+      setError('No se pudieron cargar los datos del aviso de cobro.');
     } finally {
       setLoading(false);
     }
   };
 
-  const marcarPagadaYEnviarEmail = async () => {
+  // BOTÓN 1: Aviso de pago (Envía el email de aviso con el enlace de pago seguro)
+  const enviarAvisoPago = async () => {
+    try {
+      setSaving(true);
+      const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
+        body: { 
+          factura_id: Number(id), 
+          facturaId: Number(id), 
+          id: Number(id), 
+          tipo: 'aviso_pago' 
+        }
+      });
+
+      if (errEmail) throw errEmail;
+
+      alert('¡Aviso de pago enviado por email al cliente correctamente!');
+    } catch (err) {
+      console.error('Error al enviar aviso de pago:', err);
+      alert('Error al enviar el aviso: ' + (err.message || ''));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // BOTÓN 2: Marcar como pagada (Cambia estado, envía trabajo extra al técnico y emite la factura oficial)
+  const marcarComoPagada = async () => {
     try {
       setSaving(true);
 
@@ -83,62 +108,60 @@ export default function VerFactura() {
 
       setFactura(prev => ({ ...prev, estado: 'pagada' }));
 
-      // CORREGIDO: Enviar factura_id explícito para que el backend localice el email del cliente
-      const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
+      const { error: errBackend } = await supabase.functions.invoke('enviar-email', {
         body: { 
           factura_id: Number(id), 
           facturaId: Number(id), 
           id: Number(id), 
-          tipo: 'factura' 
+          tipo: 'factura_pagada' 
         }
       });
 
-      if (errEmail) {
-        console.warn('Aviso: Factura marcada como pagada pero hubo un detalle con el correo:', errEmail);
-        alert('¡Factura marcada como pagada! (Nota: el envío del correo automático podría haber fallado o estar retrasado)');
+      if (errBackend) {
+        console.warn('Aviso: Marcado como pagado pero hubo incidencia en notificaciones:', errBackend);
+        alert('¡Aviso de cobro marcado como pagada! (Nota: el backend procesó el estado pero el aviso automático reportó un detalle)');
       } else {
-        alert('¡Factura marcada como pagada y enviada por email al cliente correctamente!');
+        alert('¡Marcado como pagada! Trabajo enviado al técnico y factura oficial generada y enviada al cliente.');
       }
     } catch (err) {
-      console.error('Error al procesar:', err);
+      console.error('Error al procesar pago:', err);
       alert('Error: ' + err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const enviarAlCliente = async () => {
+  // BOTÓN 3: Enviar inspección al cliente (Manda el resultado revisado por el admin al rol del cliente)
+  const enviarInspeccionCliente = async () => {
     try {
       setSaving(true);
-      const nuevoEstado = factura.estado === 'pagada' ? 'pagada' : 'enviado_cliente';
 
       const { error: err } = await supabase
         .from('facturas')
-        .update({ estado: nuevoEstado })
+        .update({ estado_cliente: 'inspeccion_enviada' })
         .eq('id', id);
 
       if (err) throw err;
 
-      setFactura(prev => ({ ...prev, estado: nuevoEstado }));
+      setFactura(prev => ({ ...prev, estado_cliente: 'inspeccion_enviada' }));
 
-      // CORREGIDO: Enviar factura_id explícito para asegurar el destinatario cliente
       const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
         body: { 
           factura_id: Number(id), 
           facturaId: Number(id), 
           id: Number(id), 
-          tipo: 'factura' 
+          tipo: 'inspeccion_cliente' 
         }
       });
 
       if (errEmail) {
-        console.warn('Aviso al enviar el correo al cliente:', errEmail);
-        alert('El estado de la factura se ha actualizado, pero el servidor de correo reportó un problema. Se reintentará más tarde.');
+        console.warn('Aviso al notificar inspección al cliente:', errEmail);
+        alert('Inspección liberada, pero el correo de notificación al cliente reportó un aviso.');
       } else {
-        alert('¡Factura enviada al cliente por email con éxito!');
+        alert('¡Inspección y fotografías enviadas al cliente con éxito!');
       }
     } catch (err) {
-      console.error('Error al enviar al cliente:', err);
+      console.error('Error al enviar inspección al cliente:', err);
       alert('Ocurrió un error al procesar la solicitud: ' + (err.message || ''));
     } finally {
       setSaving(false);
@@ -146,7 +169,7 @@ export default function VerFactura() {
   };
 
   const borrarFactura = async () => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta factura?')) {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este aviso de cobro?')) {
       return;
     }
 
@@ -156,11 +179,11 @@ export default function VerFactura() {
 
       if (err) throw err;
 
-      alert('Factura eliminada correctamente.');
+      alert('Aviso de cobro eliminado correctamente.');
       navigate('/facturas');
     } catch (err) {
       console.error('Error al borrar:', err);
-      alert('No se pudo borrar la factura.');
+      alert('No se pudo borrar el registro.');
     } finally {
       setSaving(false);
     }
@@ -169,19 +192,17 @@ export default function VerFactura() {
   const obtenerTextoEstado = (estado) => {
     switch (estado?.toLowerCase()) {
       case 'pagada':
-        return { texto: t("estadoPagada") || 'PAGADA', color: '#34d399' };
-      case 'enviado_cliente':
-      case 'enviada':
-        return { texto: t("estadoEnviadaCliente") || 'ENVIADA AL CLIENTE', color: '#60a5fa' };
+      case 'finalizado':
+        return { texto: 'PAGADA', color: '#34d399' };
       default:
-        return { texto: t("estadoPendiente") || 'PENDIENTE', color: COLOR_DORADO };
+        return { texto: 'PENDIENTE', color: COLOR_DORADO };
     }
   };
 
   if (loading) {
     return (
       <div style={{ backgroundColor: FONDO_PRINCIPAL, minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Inter, sans-serif' }}>
-        <h3 style={TEXTO_DORADO_BRILLO}>{t("cargandoInformacion") || "Cargando información..."}</h3>
+        <h3 style={TEXTO_DORADO_BRILLO}>Cargando información...</h3>
       </div>
     );
   }
@@ -189,15 +210,16 @@ export default function VerFactura() {
   if (error || !factura) {
     return (
       <div style={{ backgroundColor: FONDO_PRINCIPAL, minHeight: '100vh', padding: '20px', fontFamily: 'Inter, sans-serif', color: '#fff' }}>
-        <button onClick={() => navigate('/facturas')} style={estilos.botonVolver}>{t("volver") || "← Volver"}</button>
-        <p style={{ color: '#ef4444', textAlign: 'center', marginTop: '40px' }}>{error || t("facturaNoEncontrada") || 'Factura no encontrada.'}</p>
+        <button onClick={() => navigate('/facturas')} style={estilos.botonVolver}>← Volver</button>
+        <p style={{ color: '#ef4444', textAlign: 'center', marginTop: '40px' }}>{error || 'Aviso de cobro no encontrado.'}</p>
       </div>
     );
   }
 
-  const tecnicoFinalizado = factura.estado_tecnico === 'completado' || factura.estado === 'finalizado';
+  const tecnicoFinalizado = factura.estado_tecnico === 'completado' || factura.estado_tecnico === 'finalizado';
   const fotosFinales = Array.isArray(factura.fotos) ? factura.fotos : [];
   const infoEstado = obtenerTextoEstado(factura.estado);
+  const inspeccionYaEnviada = factura.estado_cliente === 'inspeccion_enviada';
 
   return (
     <div style={estilos.pagina}>
@@ -206,17 +228,17 @@ export default function VerFactura() {
         {/* Cabecera */}
         <div style={estilos.cabecera}>
           <button onClick={() => navigate('/facturas')} style={estilos.botonVolver}>
-            {t("volver") || "← Volver"}
+            ← Volver
           </button>
           <h2 style={estilos.titulo}>
-            {t("facturaLabel") || "Factura"} {factura.numero || `#${factura.id}`}
+            Aviso de Cobro {factura.numero || `#${factura.id}`}
           </h2>
         </div>
 
-        {/* Tarjeta de Datos de la Factura */}
+        {/* Tarjeta de Estado de Pago y Botones 1 & 2 */}
         <div style={estilos.tarjeta}>
           <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '13px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>
-            {t("facturaLabel") || "Factura"}
+            Estado de Pago
           </h3>
           <div style={estilos.filaInfo}>
             <span style={estilos.etiqueta}>Estado:</span>
@@ -229,29 +251,39 @@ export default function VerFactura() {
             </span>
           </div>
           <div style={estilos.filaInfo}>
-            <span style={estilos.etiqueta}>{t("total") || "Total:"}</span>
+            <span style={estilos.etiqueta}>Total:</span>
             <span style={{ ...estilos.valor, color: COLOR_DORADO, fontSize: '15px', fontWeight: '900' }}>
               {Number(factura.total || 0).toFixed(2)} €
             </span>
           </div>
 
           {factura.estado !== 'pagada' && (
-            <div style={{ marginTop: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+              {/* BOTÓN 1: Aviso de pago */}
               <button 
-                onClick={marcarPagadaYEnviarEmail} 
+                onClick={enviarAvisoPago} 
+                disabled={saving}
+                style={estilos.botonAzul}
+              >
+                ✉️ Aviso de pago
+              </button>
+
+              {/* BOTÓN 2: Marcar como pagada */}
+              <button 
+                onClick={marcarComoPagada} 
                 disabled={saving}
                 style={estilos.botonVerde}
               >
-                💳 Marcar Pagada y Enviar Factura
+                💳 Marcar como pagada
               </button>
             </div>
           )}
         </div>
 
-        {/* Sección del Trabajo / Inspección del Técnico */}
+        {/* Sección del Trabajo / Inspección del Técnico (Panel de revisión del Admin) */}
         <div style={estilos.tarjeta}>
           <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '13px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>
-            {t("servicioInspeccion") || "Servicio / Inspección"}
+            Servicio / Inspección (Revisión Admin)
           </h3>
 
           <div style={estilos.filaInfo}>
@@ -261,14 +293,14 @@ export default function VerFactura() {
               color: tecnicoFinalizado ? '#34d399' : '#f59e0b',
               borderColor: tecnicoFinalizado ? '#34d399' : '#f59e0b'
             }}>
-              {tecnicoFinalizado ? (t("estadoCompletado") || 'Completado') : (factura.estado_tecnico || t("estadoPendiente") || 'Pendiente')}
+              {tecnicoFinalizado ? 'Completado' : 'Pendiente'}
             </span>
           </div>
 
           {tecnicoFinalizado ? (
             <div style={{ background: 'rgba(11, 19, 32, 0.7)', padding: '12px', borderRadius: '10px', border: BORDE_DORADO_FINO, display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
-                <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Descripción:</span>
+                <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Descripción / Observaciones:</span>
                 <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0 0 0', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
                   {traducirConcepto(factura.descripcion, currentLang) || 'Sin descripción'}
                 </p>
@@ -276,21 +308,21 @@ export default function VerFactura() {
 
               {factura.materiales && (
                 <div>
-                  <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>{t("materialesUtilizados") || "Materiales utilizados:"}</span>
+                  <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Materiales utilizados:</span>
                   <p style={{ fontSize: '13px', color: '#fff', margin: '2px 0 0 0' }}>{factura.materiales}</p>
                 </div>
               )}
 
               {factura.tiempo_empleado && (
                 <div>
-                  <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>{t("tiempoEmpleado") || "Tiempo empleado:"}</span>
+                  <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Tiempo empleado:</span>
                   <p style={{ fontSize: '13px', color: '#fff', margin: '2px 0 0 0' }}>{factura.tiempo_empleado}</p>
                 </div>
               )}
 
               {fotosFinales.length > 0 ? (
                 <div>
-                  <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>{t("fotografiasInspeccion") || "Fotografías de Inspección:"}</span>
+                  <span style={{ fontSize: '11px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>Fotografías de Inspección (Verificadas por Admin):</span>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
                     {fotosFinales.map((url, idx) => (
                       <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
@@ -302,32 +334,38 @@ export default function VerFactura() {
               ) : (
                 <p style={{ fontSize: '11px', color: '#888', fontStyle: 'italic', margin: 0 }}>No se adjuntaron fotos en esta inspección.</p>
               )}
+
+              {/* BOTÓN 3: Enviar inspección al cliente (Una vez verificado por el admin) */}
+              <div style={{ marginTop: '10px', borderTop: '1px dashed rgba(224,176,52,0.3)', paddingTop: '10px' }}>
+                <button 
+                  onClick={enviarInspeccionCliente} 
+                  disabled={saving}
+                  style={estilos.botonDorado}
+                >
+                  {inspeccionYaEnviada ? '🚀 Reenviar Inspección al Cliente' : '🚀 Enviar Inspección al Cliente'}
+                </button>
+                {inspeccionYaEnviada && (
+                  <p style={{ fontSize: '10px', color: '#34d399', textAlign: 'center', marginTop: '4px', fontWeight: '700' }}>
+                    ✓ Inspección ya enviada al rol del cliente
+                  </p>
+                )}
+              </div>
             </div>
           ) : (
             <p style={{ fontSize: '12px', color: '#f59e0b', margin: 0 }}>
-              ⏳ El técnico aún está realizando la inspección o no la ha enviado.
+              ⏳ El técnico aún está realizando la inspección o no la ha enviado. Las fotos y observaciones aparecerán aquí cuando finalice para su revisión.
             </p>
           )}
         </div>
 
-        {/* Acciones Finales */}
+        {/* Acciones de borrado */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
-          {tecnicoFinalizado && (
-            <button 
-              onClick={enviarAlCliente} 
-              disabled={saving}
-              style={estilos.botonDorado}
-            >
-              📤 Reenviar Factura por Email
-            </button>
-          )}
-
           <button 
             onClick={borrarFactura} 
             disabled={saving}
             style={estilos.botonRojo}
           >
-            🗑️ Borrar Factura
+            🗑️ Borrar Aviso de Cobro
           </button>
         </div>
 
@@ -414,6 +452,19 @@ const estilos = {
     border: '1px solid',
     borderRadius: '20px',
     padding: '2px 8px'
+  },
+  botonAzul: {
+    width: '100%',
+    padding: '12px',
+    background: 'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)',
+    color: '#fff',
+    border: '1px solid rgba(56, 189, 248, 0.5)',
+    borderRadius: '12px',
+    fontWeight: '900',
+    fontSize: '12px',
+    cursor: 'pointer',
+    textTransform: 'uppercase',
+    boxShadow: '0 4px 15px rgba(56, 189, 248, 0.3)'
   },
   botonVerde: {
     width: '100%',
