@@ -22,14 +22,11 @@ export default function EstadisticasFacturas() {
         return;
       }
 
-      // La tabla facturas no tiene `usuario_id` (se relaciona por
-      // `cliente_id`), así que este filtro no devolvía nada nunca. No hace
-      // falta filtrar aquí: la política RLS facturas_select ya limita el
-      // resultado (el admin ve todas y el cliente sólo las suyas).
+      // La tabla facturas se mantiene por debajo en el backend
       const { data, error } = await supabase.from("facturas").select("*");
 
       if (error) {
-        console.error("Error cargando facturas:", error);
+        console.error("Error cargando avisos de cobro:", error);
       } else {
         setFacturas(data || []);
       }
@@ -79,7 +76,7 @@ export default function EstadisticasFacturas() {
           }}
         >
           <p style={{ fontSize: "14px", color: "#aaa", margin: 0 }}>
-            No hay facturas para mostrar estadísticas.
+            No hay avisos de cobro para mostrar estadísticas.
           </p>
         </div>
       </Menu>
@@ -87,8 +84,6 @@ export default function EstadisticasFacturas() {
   }
 
   const totalFacturas = facturas.length;
-  // `importe` no existe en la tabla facturas: el importe está en `total`, así
-  // que esta suma daba siempre 0.00 €.
   const totalImporte = facturas.reduce((acc, f) => acc + Number(f.total || 0), 0);
   const pagadas = facturas.filter((f) => f.estado === "pagada").length;
   const pendientes = facturas.filter((f) => f.estado === "pendiente").length;
@@ -116,7 +111,7 @@ export default function EstadisticasFacturas() {
             textTransform: "uppercase",
           }}
         >
-          Estadísticas de Facturas
+          Estadísticas de Avisos de Cobro
         </h1>
 
         <div
@@ -133,17 +128,17 @@ export default function EstadisticasFacturas() {
           }}
         >
           <p style={{ margin: "0 0 8px 0" }}>
-            <strong style={{ color: COLOR_DORADO }}>Total de facturas:</strong> {totalFacturas}
+            <strong style={{ color: COLOR_DORADO }}>Total de avisos de cobro:</strong> {totalFacturas}
           </p>
           <p style={{ margin: "0 0 8px 0" }}>
             <strong style={{ color: COLOR_DORADO }}>Importe total:</strong> {totalImporte.toFixed(2)} €
           </p>
           <p style={{ margin: "0 0 8px 0" }}>
-            <strong style={{ color: COLOR_DORADO }}>Facturas pagadas:</strong>{" "}
+            <strong style={{ color: COLOR_DORADO }}>Avisos pagados:</strong>{" "}
             <span style={{ color: "#34d399", fontWeight: "700" }}>{pagadas}</span>
           </p>
           <p style={{ margin: 0 }}>
-            <strong style={{ color: COLOR_DORADO }}>Facturas pendientes:</strong>{" "}
+            <strong style={{ color: COLOR_DORADO }}>Avisos pendientes:</strong>{" "}
             <span style={{ color: "#facc15", fontWeight: "700" }}>{pendientes}</span>
           </p>
         </div>
@@ -159,7 +154,7 @@ export default function EstadisticasFacturas() {
               letterSpacing: "0.5px",
             }}
           >
-            Últimas facturas
+            Últimos avisos de cobro
           </h2>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
