@@ -11,13 +11,13 @@ const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 1
 const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
 
 /**
- * Filtros de facturas.
+ * Filtros de avisos de cobro.
  *
  * Este componente estaba pensado para recibir `filtros` y `setFiltros` como
  * props, pero App.jsx lo monta directamente en /facturas/filtros SIN props:
  * `filtros.cliente` lanzaba un TypeError y la pantalla se quedaba en blanco
  * nada más entrar. Ahora, si no recibe props, gestiona su propio estado,
- * carga las facturas y muestra el resultado filtrado debajo.
+ * carga los avisos y muestra el resultado filtrado debajo.
  */
 export default function FiltrosFacturas({ filtros: filtrosProp, setFiltros: setFiltrosProp }) {
   const [filtrosLocal, setFiltrosLocal] = useState({
@@ -182,7 +182,7 @@ export default function FiltrosFacturas({ filtros: filtrosProp, setFiltros: setF
             textTransform: "uppercase",
           }}
         >
-          Buscar facturas
+          Buscar avisos de cobro
         </h1>
 
         {panel}
