@@ -52,24 +52,24 @@ export default function CrearFactura() {
     if (!error) setViviendas(data);
   }
 
-  async function crearFactura() {
+  async function crearAvisoCobro() {
     setMensaje("");
 
     if (!form.cliente_id) {
-      setMensaje(t("errorSeleccionarCliente") || "Selecciona un cliente.");
+      setMensaje("Selecciona un cliente.");
       return;
     }
     if (!form.vivienda_id) {
-      setMensaje(t("errorSeleccionarVivienda") || "Selecciona una vivienda.");
+      setMensaje("Selecciona una vivienda.");
       return;
     }
     if (!form.importe) {
-      setMensaje(t("errorIntroducirImporte") || "Introduce el importe.");
+      setMensaje("Introduce el importe.");
       return;
     }
 
     try {
-      const { data: facturaCreada, error } = await supabase
+      const { data: avisoCreado, error } = await supabase
         .from("facturas")
         .insert([
           {
@@ -85,17 +85,17 @@ export default function CrearFactura() {
         .select()
         .single();
 
-      if (error || !facturaCreada) {
-        console.error("Error creando factura:", error);
-        setMensaje(t("errorCreandoFactura") || "Error creando factura");
+      if (error || !avisoCreado) {
+        console.error("Error creando aviso de cobro:", error);
+        setMensaje("Error creando aviso de cobro");
         return;
       }
 
-      setMensaje(t("facturaCreadaCorrectamente") || "Factura creada correctamente");
+      setMensaje("Aviso de cobro creado correctamente");
       setTimeout(() => navigate("/facturas"), 1200);
     } catch (e) {
-      console.error("Error en crearFactura:", e);
-      setMensaje(t("errorCreandoFactura") || "Error creando factura");
+      console.error("Error en crearAvisoCobro:", e);
+      setMensaje("Error creando aviso de cobro");
     }
   }
 
@@ -122,7 +122,7 @@ export default function CrearFactura() {
             textTransform: "uppercase",
           }}
         >
-          {t("tituloNuevaFactura") || "Nueva Factura / Extra"}
+          Nuevo Aviso de Cobro / Servicio Extra
         </h1>
 
         {mensaje && (
@@ -130,13 +130,13 @@ export default function CrearFactura() {
             style={{
               marginBottom: "16px",
               padding: "12px 16px",
-              background: mensaje.includes("correctamente") || mensaje.includes(t("facturaCreadaCorrectamente"))
+              background: mensaje.includes("correctamente")
                 ? "rgba(16, 185, 129, 0.15)"
                 : "rgba(239, 68, 68, 0.15)",
-              border: mensaje.includes("correctamente") || mensaje.includes(t("facturaCreadaCorrectamente"))
+              border: mensaje.includes("correctamente")
                 ? "1px solid rgba(16, 185, 129, 0.4)"
                 : "1px solid rgba(239, 68, 68, 0.4)",
-              color: mensaje.includes("correctamente") || mensaje.includes(t("facturaCreadaCorrectamente")) ? "#34d399" : "#ef4444",
+              color: mensaje.includes("correctamente") ? "#34d399" : "#ef4444",
               borderRadius: "12px",
               fontWeight: "700",
               textAlign: "center",
@@ -193,15 +193,15 @@ export default function CrearFactura() {
             style={inputStyle}
           />
 
-          <label style={labelStyle}>{t("concepto") || "Concepto"}</label>
-          <input
+          <label style={labelStyle}>Explicación de los servicios a realizar</label>
+          <textarea
             value={form.concepto}
             onChange={(e) => setForm({ ...form, concepto: e.target.value })}
-            style={inputStyle}
-            placeholder={t("placeholderConcepto") || "Descripción del servicio..."}
+            style={{ ...inputStyle, minHeight: "90px", resize: "vertical" }}
+            placeholder="Descripción detallada de los servicios extra..."
           />
 
-          <label style={labelStyle}>{t("importe") || "Importe"}</label>
+          <label style={labelStyle}>{t("importe") || "Importe (€)"}</label>
           <input
             type="number"
             value={form.importe}
@@ -211,7 +211,7 @@ export default function CrearFactura() {
           />
 
           <button
-            onClick={crearFactura}
+            onClick={crearAvisoCobro}
             style={{
               width: "100%",
               padding: "14px",
@@ -228,7 +228,7 @@ export default function CrearFactura() {
               boxSizing: "border-box",
             }}
           >
-            {t("btnCrearFactura") || "Crear Factura"}
+            Crear Aviso de Cobro
           </button>
         </div>
       </div>
