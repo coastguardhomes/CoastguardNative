@@ -44,6 +44,7 @@ export default function VerFactura() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [mensajeExitoPago, setMensajeExitoPago] = useState(false);
 
   useEffect(() => {
     cargarDatos();
@@ -61,6 +62,22 @@ export default function VerFactura() {
         .single();
 
       if (facturaErr) throw facturaErr;
+
+      // Detectar si el usuario acaba de volver de Stripe con ?pagado=true
+      const queryParams = new URLSearchParams(window.location.search);
+      if (queryParams.get('pagado') === 'true') {
+        setMensajeExitoPago(true);
+        if (facturaData.estado !== 'pagada') {
+          // Actualizar estado a pagada automáticamente en Supabase si venimos de Stripe
+          await supabase
+            .from('facturas')
+            .update({ estado: 'pagada' })
+            .eq('id', id);
+          
+          facturaData.estado = 'pagada';
+        }
+      }
+
       setFactura(facturaData);
     } catch (err) {
       console.error('Error al cargar datos:', err);
@@ -119,7 +136,7 @@ export default function VerFactura() {
 
       if (errBackend) {
         console.warn('Aviso: Marcado como pagado pero hubo incidencia en notificaciones:', errBackend);
-        alert('¡Aviso de cobro marcado como pagada! (Nota: el backend procesó el estado pero el aviso automático reportó un detalle)');
+        alert('¡Aviso de cobro marcado como pagada!');
       } else {
         alert('¡Marcado como pagada! Trabajo enviado al técnico y factura oficial generada y enviada al cliente.');
       }
@@ -234,6 +251,15 @@ export default function VerFactura() {
             Aviso de Cobro {factura.numero || `#${factura.id}`}
           </h2>
         </div>
+
+        {/* Banner de éxito si viene de Stripe */}
+        {mensajeExitoPago && (
+          <div style={{ background: 'rgba(52, 211, 153, 0.155)', border: '1px solid #34d399', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
+            <p style={{ color: '#34d399', fontSize: '13px', fontWeight: 'bold', margin: 0 }}>
+              ¡Pago procesado con éxito a través de Stripe! 🎉
+            </p>
+          </div>
+        )}
 
         {/* Tarjeta de Estado de Pago y Botones 1 & 2 */}
         <div style={estilos.tarjeta}>
