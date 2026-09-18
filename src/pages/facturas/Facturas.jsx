@@ -10,7 +10,7 @@ const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
 const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
 
-export default function Facturas() {
+export default function AvisosCobro() {
   const navigate = useNavigate();
 
   const [facturas, setFacturas] = useState([]);
@@ -21,6 +21,7 @@ export default function Facturas() {
     let cancelado = false;
 
     async function cargarFacturas() {
+      // Mantenemos la tabla interna de Supabase 'facturas' por estructura, pero comercialmente es un Aviso de Cobro
       const { data, error: errorFacturas } = await supabase
         .from("facturas")
         .select("*")
@@ -29,8 +30,8 @@ export default function Facturas() {
       if (cancelado) return;
 
       if (errorFacturas) {
-        console.error("Error cargando facturas:", errorFacturas);
-        setError("No se pudieron cargar las facturas.");
+        console.error("Error cargando avisos de cobro:", errorFacturas);
+        setError("No se pudieron cargar los avisos de cobro.");
       } else {
         setFacturas(data || []);
       }
@@ -51,20 +52,20 @@ export default function Facturas() {
   return (
     <Menu>
       <div style={estilos.pagina}>
-        <h1 style={estilos.titulo}>Facturas</h1>
+        <h1 style={estilos.titulo}>Avisos de Cobro</h1>
 
         {error && <p style={estilos.error}>{error}</p>}
 
         {loading ? (
-          <p style={estilos.texto}>Cargando facturas...</p>
+          <p style={estilos.texto}>Cargando avisos de cobro...</p>
         ) : facturas.length === 0 ? (
-          <p style={estilos.texto}>No hay facturas registradas.</p>
+          <p style={estilos.texto}>No hay avisos de cobro registrados.</p>
         ) : (
           <>
             <div style={estilos.resumen}>
               <div style={estilos.dato}>
                 <span style={estilos.valor}>{facturas.length}</span>
-                <span style={estilos.clave}>Facturas</span>
+                <span style={estilos.clave}>Avisos</span>
               </div>
               <div style={estilos.dato}>
                 <span style={{ ...estilos.valor, color: COLOR_DORADO }}>
@@ -108,7 +109,6 @@ export default function Facturas() {
                   <Fila clave="Total" valor={`${Number(f.total || 0).toFixed(2)} €`} destacado />
                   {f.descripcion && <Fila clave="Concepto" valor={f.descripcion} />}
 
-                  {/* ⭐ NUEVO: Mostrar botón PDF si existe */}
                   {f.pdf_url && (
                     <a
                       href={f.pdf_url}
@@ -127,7 +127,7 @@ export default function Facturas() {
                         textAlign: "center",
                       }}
                     >
-                      📄 Ver PDF
+                      📄 Ver Documento
                     </a>
                   )}
                 </div>
@@ -137,7 +137,7 @@ export default function Facturas() {
         )}
 
         <button onClick={() => navigate("/facturas/crear")} style={estilos.boton}>
-          + Nueva factura
+          + Nuevo aviso de cobro
         </button>
 
         <div style={estilos.acciones}>
@@ -148,7 +148,7 @@ export default function Facturas() {
             Estadísticas
           </button>
           <button onClick={() => navigate("/extras")} style={estilos.botonSec}>
-            Facturar extras
+            Servicios extra
           </button>
         </div>
       </div>
