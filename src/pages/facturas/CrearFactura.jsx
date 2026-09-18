@@ -69,8 +69,7 @@ export default function CrearFactura() {
     }
 
     try {
-      // Nota: Mantenemos la tabla 'facturas' en la base de datos para no romper relaciones, 
-      // pero conceptualmente y visualmente actúa como Aviso de Cobro / Pendiente de Pago.
+      // Nota: La tabla en Supabase se llama 'facturas' por estructura interna, pero para el usuario y la ley es un Aviso de Cobro
       const { data: avisoCreado, error } = await supabase
         .from("facturas")
         .insert([
@@ -124,7 +123,7 @@ export default function CrearFactura() {
             textTransform: "uppercase",
           }}
         >
-          {t("tituloNuevoAvisoCobro") || "Nuevo Aviso de Cobro (Pendiente de Pago)"}
+          {t("tituloNuevoAvisoCobro") || "Nuevo Aviso de Cobro / Pendiente de Pago"}
         </h1>
 
         {mensaje && (
@@ -195,12 +194,12 @@ export default function CrearFactura() {
             style={inputStyle}
           />
 
-          <label style={labelStyle}>{t("conceptoExplicacion") || "Explicación detallada de los servicios a realizar"}</label>
+          <label style={labelStyle}>{t("conceptoExplicacion") || "Concepto / Descripción del servicio"}</label>
           <textarea
             value={form.concepto}
             onChange={(e) => setForm({ ...form, concepto: e.target.value })}
             style={{ ...inputStyle, minHeight: "90px", resize: "vertical" }}
-            placeholder={t("placeholderConceptoAviso") || "Describa detalladamente los servicios extra a realizar..."}
+            placeholder={t("placeholderConceptoAviso") || "Descripción detallada del servicio extra..."}
           />
 
           <label style={labelStyle}>{t("importe") || "Importe (€)"}</label>
