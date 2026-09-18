@@ -56,19 +56,21 @@ export default function CrearFactura() {
     setMensaje("");
 
     if (!form.cliente_id) {
-      setMensaje("Selecciona un cliente.");
+      setMensaje(t("errorSeleccionarCliente") || "Selecciona un cliente.");
       return;
     }
     if (!form.vivienda_id) {
-      setMensaje("Selecciona una vivienda.");
+      setMensaje(t("errorSeleccionarVivienda") || "Selecciona una vivienda.");
       return;
     }
     if (!form.importe) {
-      setMensaje("Introduce el importe.");
+      setMensaje(t("errorIntroducirImporte") || "Introduce el importe.");
       return;
     }
 
     try {
+      // Nota: Mantenemos la tabla 'facturas' en la base de datos para no romper relaciones, 
+      // pero conceptualmente y visualmente actúa como Aviso de Cobro / Pendiente de Pago.
       const { data: avisoCreado, error } = await supabase
         .from("facturas")
         .insert([
@@ -87,15 +89,15 @@ export default function CrearFactura() {
 
       if (error || !avisoCreado) {
         console.error("Error creando aviso de cobro:", error);
-        setMensaje("Error creando aviso de cobro");
+        setMensaje(t("errorCreandoAviso") || "Error creando aviso de cobro");
         return;
       }
 
-      setMensaje("Aviso de cobro creado correctamente");
+      setMensaje(t("avisoCreadoCorrectamente") || "Aviso de cobro creado correctamente");
       setTimeout(() => navigate("/facturas"), 1200);
     } catch (e) {
       console.error("Error en crearAvisoCobro:", e);
-      setMensaje("Error creando aviso de cobro");
+      setMensaje(t("errorCreandoAviso") || "Error creando aviso de cobro");
     }
   }
 
@@ -122,7 +124,7 @@ export default function CrearFactura() {
             textTransform: "uppercase",
           }}
         >
-          Nuevo Aviso de Cobro / Servicio Extra
+          {t("tituloNuevoAvisoCobro") || "Nuevo Aviso de Cobro (Pendiente de Pago)"}
         </h1>
 
         {mensaje && (
@@ -130,13 +132,13 @@ export default function CrearFactura() {
             style={{
               marginBottom: "16px",
               padding: "12px 16px",
-              background: mensaje.includes("correctamente")
+              background: mensaje.includes("correctamente") || mensaje.includes(t("avisoCreadoCorrectamente"))
                 ? "rgba(16, 185, 129, 0.15)"
                 : "rgba(239, 68, 68, 0.15)",
-              border: mensaje.includes("correctamente")
+              border: mensaje.includes("correctamente") || mensaje.includes(t("avisoCreadoCorrectamente"))
                 ? "1px solid rgba(16, 185, 129, 0.4)"
                 : "1px solid rgba(239, 68, 68, 0.4)",
-              color: mensaje.includes("correctamente") ? "#34d399" : "#ef4444",
+              color: mensaje.includes("correctamente") || mensaje.includes(t("avisoCreadoCorrectamente")) ? "#34d399" : "#ef4444",
               borderRadius: "12px",
               fontWeight: "700",
               textAlign: "center",
@@ -193,12 +195,12 @@ export default function CrearFactura() {
             style={inputStyle}
           />
 
-          <label style={labelStyle}>Explicación de los servicios a realizar</label>
+          <label style={labelStyle}>{t("conceptoExplicacion") || "Explicación detallada de los servicios a realizar"}</label>
           <textarea
             value={form.concepto}
             onChange={(e) => setForm({ ...form, concepto: e.target.value })}
             style={{ ...inputStyle, minHeight: "90px", resize: "vertical" }}
-            placeholder="Descripción detallada de los servicios extra..."
+            placeholder={t("placeholderConceptoAviso") || "Describa detalladamente los servicios extra a realizar..."}
           />
 
           <label style={labelStyle}>{t("importe") || "Importe (€)"}</label>
@@ -228,7 +230,7 @@ export default function CrearFactura() {
               boxSizing: "border-box",
             }}
           >
-            Crear Aviso de Cobro
+            {t("btnCrearAvisoCobro") || "Crear Aviso de Cobro"}
           </button>
         </div>
       </div>
