@@ -25,13 +25,14 @@ export default function FacturasLista() {
         return;
       }
 
+      // Mantenemos la consulta a la tabla interna 'facturas' de Supabase
       const { data, error } = await supabase
         .from("facturas")
         .select("*")
         .order("fecha", { ascending: false });
 
       if (error) {
-        console.error("Error cargando facturas:", error);
+        console.error("Error cargando avisos de cobro:", error);
       } else {
         setFacturas(data || []);
       }
@@ -43,7 +44,7 @@ export default function FacturasLista() {
   }, []);
 
   const handleVerPDF = async (facturaId, e) => {
-    e.stopPropagation(); // Evita que se abra la tarjeta al pulsar el PDF
+    e.stopPropagation(); // Evita que se abra la tarjeta al pulsar el documento
     setPdfCargandoId(facturaId);
     try {
       const { data, error } = await supabase.functions.invoke("factura-pdf", {
@@ -51,16 +52,14 @@ export default function FacturasLista() {
       });
 
       if (error) {
-        console.warn("Aviso al generar PDF desde Edge Function:", error);
+        console.warn("Aviso al generar documento desde Edge Function:", error);
       }
 
-      // ⭐ Tolerancia a múltiples formatos de respuesta de la Edge Function
       const pdfUrl = data?.url || data?.pdf_url || data?.pdfUrl;
 
       if (pdfUrl) {
         window.open(pdfUrl, "_blank");
       } else {
-        // ⭐ Fallback: Revisar si la función guardó la URL en la base de datos pero no la devolvió directamente
         const { data: facturaData } = await supabase
           .from("facturas")
           .select("pdf_url")
@@ -70,12 +69,12 @@ export default function FacturasLista() {
         if (facturaData && facturaData.pdf_url) {
           window.open(facturaData.pdf_url, "_blank");
         } else {
-          alert("El PDF se está procesando o no se pudo obtener la URL en este momento. Inténtalo de nuevo en unos segundos.");
+          alert("El documento se está procesando o no se pudo obtener la URL en este momento. Inténtalo de nuevo en unos segundos.");
         }
       }
     } catch (err) {
-      console.error("Error al gestionar la vista del PDF:", err);
-      alert("Ocurrió un problema de conexión al intentar recuperar el documento PDF.");
+      console.error("Error al gestionar la vista del documento:", err);
+      alert("Ocurrió un problema de conexión al intentar recuperar el documento.");
     } finally {
       setPdfCargandoId(null);
     }
@@ -97,7 +96,7 @@ export default function FacturasLista() {
             fontWeight: "700",
           }}
         >
-          Cargando lista de facturas...
+          Cargando lista de avisos de cobro...
         </div>
       </Menu>
     );
@@ -120,7 +119,7 @@ export default function FacturasLista() {
           }}
         >
           <p style={{ fontSize: "14px", color: "#aaa", margin: 0 }}>
-            No hay facturas registradas.
+            No hay avisos de cobro registrados.
           </p>
         </div>
       </Menu>
@@ -150,7 +149,7 @@ export default function FacturasLista() {
             textTransform: "uppercase",
           }}
         >
-          Lista de Facturas
+          Lista de Avisos de Cobro
         </h1>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -231,7 +230,7 @@ export default function FacturasLista() {
                   boxSizing: "border-box",
                 }}
               >
-                {pdfCargandoId === f.id ? "Generando..." : "📄 Ver PDF"}
+                {pdfCargandoId === f.id ? "Generando..." : "📄 Ver Documento"}
               </button>
             </div>
           ))}
