@@ -118,13 +118,15 @@ export default function VerFactura() {
       confirmarPagoAutomatico();
     }
 
-    // 2. DETECTOR PARA LA APP MÓVIL (APK): 
-    // Cuando el usuario paga en Stripe y vuelve a enfocar la app del móvil, 
-    // recargamos los datos automáticamente de Supabase para ver si el webhook ya la marcó como pagada.
+    // 2. DETECTOR SEGURO PARA LA APP MÓVIL (APK)
+    let ultimoChequeo = 0;
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log("La app ha vuelto a primer plano, comprobando estado de factura...");
-        cargarDatosSeguros();
+        const ahora = Date.now();
+        if (ahora - ultimoChequeo > 3000) {
+          ultimoChequeo = ahora;
+          cargarDatosSeguros();
+        }
       }
     };
 
@@ -315,5 +317,5 @@ const estilos = {
   valorEstado: { fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', border: '1px solid', borderRadius: '20px', padding: '2px 10px' },
   botonAzul: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)', color: '#fff', border: '1px solid rgba(56, 189, 248, 0.5)', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' },
   botonVerde: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)', color: '#fff', border: '1px solid rgba(16, 185, 129, 0.6)', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' },
-  botonEliminar: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)', color: '#fff', border: '19px solid rgba(239, 68, 68, 0.5)', borderRadius: '14px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', marginTop: '10px' }
+  botonEliminar: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)', color: '#fff', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: '14px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', marginTop: '10px' }
 };
