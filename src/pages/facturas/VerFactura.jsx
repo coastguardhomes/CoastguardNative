@@ -50,7 +50,7 @@ export default function VerFactura() {
   const [cliente, setCliente] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
-  const [eliminando, setEliminando] = useState(false);
+  const [procesando, setProcesando] = useState(false);
 
   useEffect(() => {
     async function cargarDatosSeguros() {
@@ -72,7 +72,7 @@ export default function VerFactura() {
 
         setFactura(facturaData);
 
-        // 2. Consultar el cliente por separado para obtener sus datos e idioma asignado
+        // 2. Consultar el cliente por separado para evitar fallos de relación
         if (facturaData.cliente_id) {
           const { data: clienteData } = await supabase
             .from('clientes')
@@ -94,14 +94,47 @@ export default function VerFactura() {
     cargarDatosSeguros();
   }, [id]);
 
-  // Idioma prioritario según el cliente, respaldado por el contexto general de la app
   const idiomaFinal = cliente?.idioma || cliente?.language || currentLang;
+
+  // ==========================================
+  // FUNCIONES RECUPERADAS: ENVIAR EMAIL Y MARCAR PAGADA
+  // ==========================================
+  const enviarAvisoPago = async () => {
+    try {
+      setProcesando(true);
+      const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
+        body: { factura_id: Number(id), facturaId: Number(id), id: Number(id), tipo: 'aviso_pago' }
+      });
+      if (errEmail) throw errEmail;
+      alert('¡Aviso de pago enviado por email al cliente correctamente!');
+    } catch (err) {
+      alert('Error al enviar el aviso: ' + (err.message || ''));
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  const marcarComoPagada = async () => {
+    try {
+      setProcesando(true);
+      await supabase.from('facturas').update({ estado: 'pagada' }).eq('id', id);
+      setFactura(prev => ({ ...prev, estado: 'pagada' }));
+      await supabase.functions.invoke('enviar-email', {
+        body: { factura_id: Number(id), facturaId: Number(id), id: Number(id), tipo: 'factura_pagada' }
+      });
+      alert('¡Marcado como pagada con éxito!');
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setProcesando(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!window.confirm("¿Estás seguro de que deseas eliminar este aviso de cobro?")) return;
 
     try {
-      setEliminando(true);
+      setProcesando(true);
       const { error } = await supabase.from('facturas').delete().eq('id', id);
       if (error) throw error;
       alert("Aviso de cobro eliminado correctamente.");
@@ -109,7 +142,7 @@ export default function VerFactura() {
     } catch (err) {
       alert("Error: " + err.message);
     } finally {
-      setEliminando(false);
+      setProcesando(false);
     }
   };
 
@@ -143,7 +176,6 @@ export default function VerFactura() {
     <div style={estilos.pagina}>
       <div style={estilos.contenedor}>
         
-        {/* Barra superior de navegación */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button onClick={() => navigate(-1)} style={estilos.botonVolver}>
             ← Volver
@@ -151,12 +183,10 @@ export default function VerFactura() {
           <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Panel de Administración</span>
         </div>
 
-        {/* Cabecera */}
         <div style={estilos.cabecera}>
           <h2 style={estilos.titulo}>AVISO DE COBRO {factura.numero || `#${factura.id}`}</h2>
         </div>
 
-        {/* Datos del Cliente */}
         <div style={estilos.tarjeta}>
           <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '12px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Datos del Cliente</h3>
           <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0' }}><strong>Nombre:</strong> {cliente?.nombre || 'N/A'}</p>
@@ -164,7 +194,6 @@ export default function VerFactura() {
           <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0' }}><strong>Teléfono:</strong> {cliente?.telefono || 'N/A'}</p>
         </div>
 
-        {/* Datos Generales */}
         <div style={estilos.tarjeta}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <span style={estilos.etiqueta}>Fecha:</span>
@@ -189,9 +218,20 @@ export default function VerFactura() {
               {descripcionTraducida || 'Sin descripción'}
             </p>
           </div>
+
+          {/* BOTONES DE ACCIÓN RESTAURADOS */}
+          {!esPagada && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '15px' }}>
+              <button onClick={enviarAvisoPago} disabled={procesando} style={estilos.botonAzul}>
+                ✉️ Enviar Aviso de Pago (Stripe)
+              </button>
+              <button onClick={marcarComoPagada} disabled={procesando} style={estilos.botonVerde}>
+                💳 Marcar como pagada
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Desglose de Conceptos */}
         {itemsDetalle.length > 0 && (
           <div style={estilos.tarjeta}>
             <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '12px', margin: '0 0 10px 0', textTransform: 'uppercase' }}>Desglose de Conceptos</h3>
@@ -206,13 +246,8 @@ export default function VerFactura() {
           </div>
         )}
 
-        {/* BOTÓN DE ELIMINAR */}
-        <button 
-          onClick={handleDelete} 
-          disabled={eliminando}
-          style={estilos.botonEliminar}
-        >
-          {eliminando ? 'Eliminando...' : '🗑️ Eliminar Aviso de Cobro'}
+        <button onClick={handleDelete} disabled={procesando} style={estilos.botonEliminar}>
+          {procesando ? 'Procesando...' : '🗑️ Eliminar Aviso de Cobro'}
         </button>
 
       </div>
@@ -230,5 +265,7 @@ const estilos = {
   etiqueta: { fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' },
   valor: { fontSize: '13px', color: '#fff', fontWeight: '600', textAlign: 'right' },
   valorEstado: { fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', border: '1px solid', borderRadius: '20px', padding: '2px 10px' },
+  botonAzul: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)', color: '#fff', border: '1px solid rgba(56, 189, 248, 0.5)', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' },
+  botonVerde: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)', color: '#fff', border: '1px solid rgba(16, 185, 129, 0.6)', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' },
   botonEliminar: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)', color: '#fff', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: '14px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', marginTop: '10px' }
 };
