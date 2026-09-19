@@ -180,32 +180,6 @@ export default function VerFactura() {
     }
   };
 
-  // ==========================================
-  // NUEVO BOTÓN: FORZAR ENVÍO DE EMAIL / PDF
-  // ==========================================
-  const forzarEnvioEmailStripe = async () => {
-    try {
-      setProcesando(true);
-      const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
-        body: { 
-          factura_id: Number(id), 
-          facturaId: Number(id), 
-          id: Number(id), 
-          tipo: 'factura_pagada',
-          customerEmail: cliente?.email,
-          amount: Number(factura.total) * 100,
-          title: `Factura ${factura.numero || `#${factura.id}`}`
-        }
-      });
-      if (errEmail) throw errEmail;
-      alert('¡Orden de envío de factura y PDF lanzada correctamente!');
-    } catch (err) {
-      alert('Error al enviar el email: ' + (err.message || ''));
-    } finally {
-      setProcesando(false);
-    }
-  };
-
   const handleDelete = async () => {
     if (!window.confirm("¿Estás seguro de que deseas eliminar este aviso de cobro?")) return;
 
@@ -295,19 +269,13 @@ export default function VerFactura() {
             </p>
           </div>
 
-          {!esPagada ? (
+          {!esPagada && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '15px' }}>
               <button onClick={enviarAvisoPago} disabled={procesando} style={estilos.botonAzul}>
                 ✉️ Enviar Aviso de Pago (Stripe)
               </button>
               <button onClick={marcarComoPagada} disabled={procesando} style={estilos.botonVerde}>
                 💳 Marcar como pagada
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '15px' }}>
-              <button onClick={forzarEnvioEmailStripe} disabled={procesando} style={estilos.botonMorado}>
-                📨 Reenviar Factura / PDF al Cliente
               </button>
             </div>
           )}
@@ -348,6 +316,5 @@ const estilos = {
   valorEstado: { fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', border: '1px solid', borderRadius: '20px', padding: '2px 10px' },
   botonAzul: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)', color: '#fff', border: '1px solid rgba(56, 189, 248, 0.5)', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' },
   botonVerde: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)', color: '#fff', border: '1px solid rgba(16, 185, 129, 0.6)', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' },
-  botonMorado: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #8b5cf6 0%, #4c1d95 100%)', color: '#fff', border: '1px solid rgba(139, 92, 246, 0.6)', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' },
   botonEliminar: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)', color: '#fff', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: '14px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', marginTop: '10px' }
 };
