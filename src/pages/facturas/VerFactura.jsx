@@ -52,14 +52,11 @@ export default function VerFactura() {
   const [errorMsg, setErrorMsg] = useState('');
   const [procesando, setProcesando] = useState(false);
 
-  // Función centralizada para cargar datos desde Supabase
   const cargarDatosSeguros = async () => {
     try {
       setErrorMsg('');
-
       if (!id) throw new Error("ID de factura no proporcionado.");
 
-      // 1. Consultar la factura de forma independiente
       const { data: facturaData, error: facturaError } = await supabase
         .from('facturas')
         .select('*')
@@ -71,7 +68,6 @@ export default function VerFactura() {
 
       setFactura(facturaData);
 
-      // 2. Consultar el cliente por separado para evitar fallos de relación
       if (facturaData.cliente_id) {
         const { data: clienteData } = await supabase
           .from('clientes')
@@ -81,7 +77,6 @@ export default function VerFactura() {
 
         if (clienteData) setCliente(clienteData);
       }
-
     } catch (err) {
       console.error('Error al cargar la factura:', err);
       setErrorMsg(err.message || 'No se pudo cargar la información.');
@@ -94,11 +89,7 @@ export default function VerFactura() {
     cargarDatosSeguros();
   }, [id]);
 
-  // ==========================================
-  // DOBLE RED DE SEGURIDAD (WEB Y APK NATIVA)
-  // ==========================================
   useEffect(() => {
-    // 1. Si viene con parámetros de éxito en la URL web
     const queryParams = new URLSearchParams(window.location.search);
     const fuePagado = queryParams.get('pagado');
 
@@ -118,7 +109,6 @@ export default function VerFactura() {
       confirmarPagoAutomatico();
     }
 
-    // 2. DETECTOR SEGURO PARA LA APP MÓVIL (APK)
     let ultimoChequeo = 0;
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -138,9 +128,6 @@ export default function VerFactura() {
 
   const idiomaFinal = cliente?.idioma || cliente?.language || currentLang;
 
-  // ==========================================
-  // ENVIAR AVISO DE PAGO (INCLUYENDO EL ID DE FACTURA PARA STRIPE)
-  // ==========================================
   const enviarAvisoPago = async () => {
     try {
       setProcesando(true);
@@ -150,7 +137,7 @@ export default function VerFactura() {
           facturaId: Number(id), 
           id: Number(id), 
           tipo: 'aviso_pago',
-          amount: Number(factura.total) * 100, // Importe en céntimos
+          amount: Number(factura.total) * 100,
           customerEmail: cliente?.email,
           extraId: id,
           title: `Aviso de Cobro ${factura.numero || `#${factura.id}`}`
@@ -165,15 +152,33 @@ export default function VerFactura() {
     }
   };
 
+  // ==========================================
+  // BOTÓN MEJORADO: MARCAR COMO PAGADA Y FORZAR ENVÍO DE FACTURA
+  // ==========================================
   const marcarComoPagada = async () => {
     try {
       setProcesando(true);
-      await supabase.from('facturas').update({ estado: 'pagada' }).eq('id', id);
+      
+      // 1. Actualizar estado en Supabase
+      const { error: errDb } = await supabase.from('facturas').update({ estado: 'pagada' }).eq('id', id);
+      if (errDb) throw errDb;
+
       setFactura(prev => ({ ...prev, estado: 'pagada' }));
+
+      // 2. Llamar a la Edge Function para disparar el correo y la orden hacia Stripe
       await supabase.functions.invoke('enviar-email', {
-        body: { factura_id: Number(id), facturaId: Number(id), id: Number(id), tipo: 'factura_pagada' }
+        body: { 
+          factura_id: Number(id), 
+          facturaId: Number(id), 
+          id: Number(id), 
+          tipo: 'factura_pagada',
+          customerEmail: cliente?.email,
+          amount: Number(factura.total) * 100,
+          title: `Factura ${factura.numero || `#${factura.id}`}`
+        }
       });
-      alert('¡Marcado como pagada con éxito!');
+
+      alert('¡Marcado como pagada y factura/correo de pago enviado con éxito!');
     } catch (err) {
       alert('Error: ' + err.message);
     } finally {
@@ -276,7 +281,7 @@ export default function VerFactura() {
                 ✉️ Enviar Aviso de Pago (Stripe)
               </button>
               <button onClick={marcarComoPagada} disabled={procesando} style={estilos.botonVerde}>
-                💳 Marcar como pagada
+                💳 Marcar como pagada y Enviar Factura
               </button>
             </div>
           )}
