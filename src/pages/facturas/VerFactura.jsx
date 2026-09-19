@@ -94,6 +94,39 @@ export default function VerFactura() {
     cargarDatosSeguros();
   }, [id]);
 
+  // ==========================================
+  // RED DE SEGURIDAD: DETECTAR VUELTA DE STRIPE Y ACTUALIZAR
+  // ==========================================
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const fuePagado = queryParams.get('pagado');
+
+    if (fuePagado === 'true' && factura && factura.estado?.toLowerCase() !== 'pagada') {
+      async function confirmarPagoAutomatico() {
+        try {
+          // 1. Actualiza el estado a pagada en Supabase automáticamente
+          await supabase.from('facturas').update({ estado: 'pagada' }).eq('id', id);
+          setFactura(prev => ({ ...prev, estado: 'pagada' }));
+
+          // 2. Dispara el correo de confirmación de factura pagada
+          await supabase.functions.invoke('enviar-email', {
+            body: { 
+              factura_id: Number(id), 
+              facturaId: Number(id), 
+              id: Number(id), 
+              tipo: 'factura_pagada' 
+            }
+          });
+
+          console.log("¡Factura actualizada a pagada automáticamente tras volver de Stripe!");
+        } catch (err) {
+          console.error("Error al actualizar el pago automático:", err);
+        }
+      }
+      confirmarPagoAutomatico();
+    }
+  }, [factura, id]);
+
   const idiomaFinal = cliente?.idioma || cliente?.language || currentLang;
 
   // ==========================================
@@ -108,8 +141,10 @@ export default function VerFactura() {
           facturaId: Number(id), 
           id: Number(id), 
           tipo: 'aviso_pago',
-          amount: Number(factura.total) * 100, // Pasamos el importe en céntimos por si se procesa pago
-          customerEmail: cliente?.email
+          amount: Number(factura.total) * 100, // Importe en céntimos
+          customerEmail: cliente?.email,
+          extraId: id, // Vital para que Stripe lo guarde en metadata como extra_id
+          title: `Aviso de Cobro ${factura.numero || `#${factura.id}`}`
         }
       });
       if (errEmail) throw errEmail;
@@ -226,7 +261,6 @@ export default function VerFactura() {
             </p>
           </div>
 
-          {/* BOTONES DE ACCIÓN RESTAURADOS */}
           {!esPagada && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '15px' }}>
               <button onClick={enviarAvisoPago} disabled={procesando} style={estilos.botonAzul}>
