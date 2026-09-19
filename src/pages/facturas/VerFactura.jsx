@@ -47,188 +47,172 @@ export default function VerFactura() {
   }
 
   const [factura, setFactura] = useState(null);
+  const [cliente, setCliente] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [mensajeExitoPago, setMensajeExitoPago] = useState(false);
-  const [renderError, setRenderError] = useState(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [eliminando, setEliminando] = useState(false);
 
   useEffect(() => {
-    try {
-      const queryParams = new URLSearchParams(window.location.search);
-      if (queryParams.get('pagado') === 'true') {
-        setMensajeExitoPago(true);
+    async function cargarDatosSeguros() {
+      try {
+        setLoading(true);
+        setErrorMsg('');
+
+        if (!id) throw new Error("ID de factura no proporcionado.");
+
+        // 1. Consultar la factura de forma independiente
+        const { data: facturaData, error: facturaError } = await supabase
+          .from('facturas')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (facturaError) throw facturaError;
+        if (!facturaData) throw new Error("No se encontró el aviso de cobro.");
+
+        setFactura(facturaData);
+
+        // 2. Consultar el cliente por separado para obtener sus datos e idioma asignado
+        if (facturaData.cliente_id) {
+          const { data: clienteData } = await supabase
+            .from('clientes')
+            .select('*')
+            .eq('id', facturaData.cliente_id)
+            .single();
+
+          if (clienteData) setCliente(clienteData);
+        }
+
+      } catch (err) {
+        console.error('Error al cargar la factura:', err);
+        setErrorMsg(err.message || 'No se pudo cargar la información.');
+      } finally {
+        setLoading(false);
       }
-      cargarDatos();
-    } catch (err) {
-      setRenderError(err.message);
-      setLoading(false);
     }
+
+    cargarDatosSeguros();
   }, [id]);
 
-  const cargarDatos = async () => {
+  // Idioma prioritario según el cliente, respaldado por el contexto general de la app
+  const idiomaFinal = cliente?.idioma || cliente?.language || currentLang;
+
+  const handleDelete = async () => {
+    if (!window.confirm("¿Estás seguro de que deseas eliminar este aviso de cobro?")) return;
+
     try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('facturas')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (error) {
-        console.warn("Aviso al consultar BD:", error);
-      }
-
-      const queryParams = new URLSearchParams(window.location.search);
-      const pagado = queryParams.get('pagado') === 'true';
-
-      setFactura(data || {
-        id: id,
-        numero: `CG-${String(id).padStart(5, '0')}`,
-        estado: pagado ? 'pagada' : 'pendiente',
-        total: 0,
-        descripcion: pagado ? 'Pago procesado correctamente a través de Stripe.' : 'Aviso de cobro'
-      });
+      setEliminando(true);
+      const { error } = await supabase.from('facturas').delete().eq('id', id);
+      if (error) throw error;
+      alert("Aviso de cobro eliminado correctamente.");
+      navigate(-1);
     } catch (err) {
-      console.error('Error al cargar factura:', err);
-      setFactura({
-        id: id,
-        numero: `CG-${String(id).padStart(5, '0')}`,
-        estado: 'pagada',
-        total: 0,
-        descripcion: 'Pago procesado correctamente.'
-      });
-      setMensajeExitoPago(true);
+      alert("Error: " + err.message);
     } finally {
-      setLoading(false);
+      setEliminando(false);
     }
   };
 
-  const enviarAvisoPago = async () => {
-    try {
-      setSaving(true);
-      const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
-        body: { factura_id: Number(id), facturaId: Number(id), id: Number(id), tipo: 'aviso_pago' }
-      });
-      if (errEmail) throw errEmail;
-      alert('¡Aviso de pago enviado por email al cliente correctamente!');
-    } catch (err) {
-      alert('Error al enviar el aviso: ' + (err.message || ''));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const marcarComoPagada = async () => {
-    try {
-      setSaving(true);
-      await supabase.from('facturas').update({ estado: 'pagada' }).eq('id', id);
-      setFactura(prev => ({ ...prev, estado: 'pagada' }));
-      await supabase.functions.invoke('enviar-email', {
-        body: { factura_id: Number(id), facturaId: Number(id), id: Number(id), tipo: 'factura_pagada' }
-      });
-      alert('¡Marcado como pagada con éxito!');
-    } catch (err) {
-      alert('Error: ' + err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const borrarFactura = async () => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este aviso de cobro?')) return;
-    try {
-      setSaving(true);
-      const { error: err } = await supabase.from('facturas').delete().eq('id', id);
-      if (err) throw err;
-      navigate('/facturas');
-    } catch (err) {
-      alert('No se pudo borrar el registro.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (renderError) {
+  if (loading) {
     return (
-      <div style={{ backgroundColor: '#030509', minHeight: '100vh', padding: '20px', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
-        <h2 style={{ color: '#ef4444' }}>Error de renderizado:</h2>
-        <p style={{ background: '#111', padding: '10px', borderRadius: '8px', color: '#fca5a5' }}>{renderError}</p>
-        <button onClick={() => navigate('/facturas')} style={{ padding: '10px 20px', background: COLOR_DORADO, border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-          Volver a facturas
+      <div style={{ backgroundColor: FONDO_PRINCIPAL, minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Inter, sans-serif' }}>
+        <h3 style={TEXTO_DORADO_BRILLO}>Cargando detalle...</h3>
+      </div>
+    );
+  }
+
+  if (errorMsg || !factura) {
+    return (
+      <div style={{ backgroundColor: FONDO_PRINCIPAL, minHeight: '100vh', padding: '20px', color: '#fff', fontFamily: 'Inter, sans-serif', textAlign: 'center' }}>
+        <h2 style={{ color: '#ef4444', marginTop: '40px' }}>⚠️ Error</h2>
+        <p style={{ color: '#cbd5e1', fontSize: '14px' }}>{errorMsg || 'El registro no existe o no está accesible.'}</p>
+        <button onClick={() => navigate(-1)} style={{ marginTop: '20px', padding: '12px 20px', background: COLOR_DORADO, border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#000' }}>
+          Volver Atrás
         </button>
       </div>
     );
   }
 
-  if (loading) {
-    return (
-      <div style={{ backgroundColor: FONDO_PRINCIPAL, minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Inter, sans-serif' }}>
-        <h3 style={TEXTO_DORADO_BRILLO}>Cargando información...</h3>
-      </div>
-    );
-  }
-
-  const estadoActual = factura?.estado?.toLowerCase() === 'pagada' ? 'PAGADA' : 'PENDIENTE';
-  const colorEstado = factura?.estado?.toLowerCase() === 'pagada' ? '#34d399' : COLOR_DORADO;
+  const esPagada = factura.estado?.toLowerCase() === 'pagada';
+  const colorEstado = esPagada ? '#34d399' : COLOR_DORADO;
+  const textoEstado = esPagada ? 'PAGADA' : 'PENDIENTE';
+  const itemsDetalle = Array.isArray(factura.items) ? factura.items : [];
+  const descripcionTraducida = traducirConcepto(factura.descripcion, idiomaFinal);
 
   return (
     <div style={estilos.pagina}>
       <div style={estilos.contenedor}>
         
-        {/* Cabecera */}
-        <div style={estilos.cabecera}>
-          <button onClick={() => navigate('/facturas')} style={estilos.botonVolver}>← Volver</button>
-          <h2 style={estilos.titulo}>Aviso {factura?.numero || `#${factura?.id}`}</h2>
+        {/* Barra superior de navegación */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button onClick={() => navigate(-1)} style={estilos.botonVolver}>
+            ← Volver
+          </button>
+          <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Panel de Administración</span>
         </div>
 
-        {/* Banner de éxito de Stripe */}
-        {mensajeExitoPago && (
-          <div style={{ background: 'rgba(52, 211, 153, 0.15)', border: '1px solid #34d399', padding: '14px', borderRadius: '12px', textAlign: 'center' }}>
-            <p style={{ color: '#34d399', fontSize: '13px', fontWeight: 'bold', margin: 0 }}>
-              ¡Pago procesado con éxito en Stripe! 🎉
-            </p>
-          </div>
-        )}
+        {/* Cabecera */}
+        <div style={estilos.cabecera}>
+          <h2 style={estilos.titulo}>AVISO DE COBRO {factura.numero || `#${factura.id}`}</h2>
+        </div>
 
-        {/* Tarjeta de Estado */}
+        {/* Datos del Cliente */}
         <div style={estilos.tarjeta}>
-          <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '13px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Estado de Pago</h3>
-          <div style={estilos.filaInfo}>
-            <span style={estilos.etiqueta}>Estado:</span>
-            <span style={{ ...estilos.valorEstado, color: colorEstado, borderColor: colorEstado }}>{estadoActual}</span>
+          <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '12px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Datos del Cliente</h3>
+          <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0' }}><strong>Nombre:</strong> {cliente?.nombre || 'N/A'}</p>
+          <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0' }}><strong>Email:</strong> {cliente?.email || 'N/A'}</p>
+          <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0' }}><strong>Teléfono:</strong> {cliente?.telefono || 'N/A'}</p>
+        </div>
+
+        {/* Datos Generales */}
+        <div style={estilos.tarjeta}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <span style={estilos.etiqueta}>Fecha:</span>
+            <span style={estilos.valor}>{factura.created_at ? factura.created_at.split('T')[0] : 'N/D'}</span>
           </div>
-          <div style={estilos.filaInfo}>
-            <span style={estilos.etiqueta}>Total:</span>
-            <span style={{ ...estilos.valor, color: COLOR_DORADO, fontSize: '15px', fontWeight: '900' }}>
-              {Number(factura?.total || 0).toFixed(2)} €
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <span style={estilos.etiqueta}>Estado:</span>
+            <span style={{ ...estilos.valorEstado, color: colorEstado, borderColor: colorEstado }}>{textoEstado}</span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <span style={estilos.etiqueta}>Importe Total:</span>
+            <span style={{ fontSize: '16px', color: COLOR_DORADO, fontWeight: '900' }}>
+              {Number(factura.total || 0).toFixed(2)} €
             </span>
           </div>
 
-          {factura?.estado !== 'pagada' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-              <button onClick={enviarAvisoPago} disabled={saving} style={estilos.botonAzul}>
-                ✉️ Enviar Aviso de Pago (Email)
-              </button>
-              <button onClick={marcarComoPagada} disabled={saving} style={estilos.botonVerde}>
-                💳 Marcar como pagada
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Descripción con traducción integrada */}
-        <div style={estilos.tarjeta}>
-          <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '13px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Descripción del Servicio</h3>
-          <div style={{ background: 'rgba(11, 19, 32, 0.7)', padding: '12px', borderRadius: '10px', border: BORDE_DORADO_FINO }}>
-            <p style={{ fontSize: '13px', color: '#fff', margin: 0, whiteSpace: 'pre-wrap' }}>
-              {traducirConcepto(factura?.descripcion, currentLang) || 'Sin descripción'}
+          <div style={{ marginTop: '10px', background: 'rgba(11, 19, 32, 0.7)', padding: '12px', borderRadius: '10px', border: BORDE_DORADO_FINO }}>
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px 0', textTransform: 'uppercase', fontWeight: 'bold' }}>Descripción:</p>
+            <p style={{ fontSize: '13px', color: '#fff', margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
+              {descripcionTraducida || 'Sin descripción'}
             </p>
           </div>
         </div>
 
-        {/* Botón de Borrar Factura */}
-        <button onClick={borrarFactura} disabled={saving} style={estilos.botonRojo}>
-          🗑️ Borrar Aviso de Cobro
+        {/* Desglose de Conceptos */}
+        {itemsDetalle.length > 0 && (
+          <div style={estilos.tarjeta}>
+            <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '12px', margin: '0 0 10px 0', textTransform: 'uppercase' }}>Desglose de Conceptos</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {itemsDetalle.map((item, index) => (
+                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <span style={{ fontSize: '12px', color: '#e2e8f0', maxWidth: '70%' }}>{traducirConcepto(item.concepto || item.descripcion, idiomaFinal)}</span>
+                  <span style={{ fontSize: '12px', color: COLOR_DORADO, fontWeight: 'bold' }}>{Number(item.precio || item.total || 0).toFixed(2)} €</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* BOTÓN DE ELIMINAR */}
+        <button 
+          onClick={handleDelete} 
+          disabled={eliminando}
+          style={estilos.botonEliminar}
+        >
+          {eliminando ? 'Eliminando...' : '🗑️ Eliminar Aviso de Cobro'}
         </button>
 
       </div>
@@ -239,15 +223,12 @@ export default function VerFactura() {
 const estilos = {
   pagina: { backgroundColor: FONDO_PRINCIPAL, minHeight: '100vh', padding: '16px', display: 'flex', justifyContent: 'center', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' },
   contenedor: { width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' },
-  cabecera: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: BORDE_DORADO_FINO, paddingBottom: '12px' },
-  titulo: { ...TEXTO_DORADO_BRILLO, fontSize: '17px', fontWeight: '900', margin: 0, textTransform: 'uppercase' },
-  botonVolver: { background: 'transparent', border: BORDE_DORADO_FINO, color: COLOR_DORADO, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '700' },
-  tarjeta: { background: FONDO_TARJETA, border: BORDE_DORADO_FINO, borderRadius: '16px', padding: '16px', boxShadow: SOMBRA_LUXURY, display: 'flex', flexDirection: 'column', gap: '10px', boxSizing: 'border-box' },
-  filaInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  botonVolver: { background: 'transparent', border: BORDE_DORADO_FINO, color: COLOR_DORADO, padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' },
+  cabecera: { display: 'flex', justifyContent: 'center', alignItems: 'center', borderBottom: BORDE_DORADO_FINO, paddingBottom: '12px' },
+  titulo: { ...TEXTO_DORADO_BRILLO, fontSize: '16px', fontWeight: '900', margin: 0, textTransform: 'uppercase', textAlign: 'center' },
+  tarjeta: { background: FONDO_TARJETA, border: BORDE_DORADO_FINO, borderRadius: '16px', padding: '16px', boxShadow: SOMBRA_LUXURY, display: 'flex', flexDirection: 'column', boxSizing: 'border-box' },
   etiqueta: { fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' },
-  valor: { fontSize: '13px', color: '#fff', fontWeight: '600', textAlign: 'right', maxWidth: '65%' },
-  valorEstado: { fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', border: '1px solid', borderRadius: '20px', padding: '2px 8px' },
-  botonAzul: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)', color: '#fff', border: '1px solid rgba(56, 189, 248, 0.5)', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' },
-  botonVerde: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)', color: '#fff', border: '1px solid rgba(16, 185, 129, 0.6)', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' },
-  botonRojo: { width: '100%', padding: '12px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '14px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }
+  valor: { fontSize: '13px', color: '#fff', fontWeight: '600', textAlign: 'right' },
+  valorEstado: { fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', border: '1px solid', borderRadius: '20px', padding: '2px 10px' },
+  botonEliminar: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)', color: '#fff', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: '14px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', marginTop: '10px' }
 };
