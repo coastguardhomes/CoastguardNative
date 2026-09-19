@@ -31,13 +31,13 @@ export default function ClienteDashboard() {
   const [pagoExitoso, setPagoExitoso] = useState(false);
 
   const datosGrafico = [
-    { dia: t('lun'), inspecciones: 4 },
-    { dia: t('mar'), inspecciones: 3 },
-    { dia: t('mie'), inspecciones: 5 },
-    { dia: t('jue'), inspecciones: 7 },
-    { dia: t('vie'), inspecciones: 9 },
-    { dia: t('sab'), inspecciones: 6 },
-    { dia: t('dom'), inspecciones: 8 },
+    { dia: t('lun') || 'Lun', inspecciones: 4 },
+    { dia: t('mar') || 'Mar', inspecciones: 3 },
+    { dia: t('mie') || 'Mie', inspecciones: 5 },
+    { dia: t('jue') || 'Jue', inspecciones: 7 },
+    { dia: t('vie') || 'Vie', inspecciones: 9 },
+    { dia: t('sab') || 'Sab', inspecciones: 6 },
+    { dia: t('dom') || 'Dom', inspecciones: 8 },
   ];
 
   useEffect(() => {
@@ -121,26 +121,36 @@ export default function ClienteDashboard() {
     cargarDatos();
   }, [user]);
 
+  // Se abre y se oculta automáticamente
   const manejarVerFactura = async (extraId) => {
     try {
-      // Marcar como visto en extras
-      await supabase
-        .from("extras")
-        .update({ visto: true })
-        .eq("id", extraId);
-
-      // Limpiar también la alerta en facturas para que el contador baje inmediatamente
-      await supabase
-        .from("facturas")
-        .update({ alerta_vista: true })
-        .eq("id", extraId);
+      await supabase.from("extras").update({ visto: true }).eq("id", extraId);
+      await supabase.from("facturas").update({ alerta_vista: true }).eq("id", extraId);
 
       setNuevosExtras((prev) => prev.filter((item) => item.id !== extraId));
     } catch (err) {
       console.error("Error al actualizar el extra:", err);
     }
-
     navigate('/cliente/facturas');
+  };
+
+  // Novedad: Borrado directo para que no se le llene la vista al cliente
+  const manejarEliminarFactura = async (e, extraId) => {
+    e.stopPropagation(); // Evita que se dispare el click de "Ver Factura"
+    if (!window.confirm("¿Estás seguro de que deseas eliminar esta factura/notificación? Esta acción la quitará de tu historial.")) return;
+
+    try {
+      // Borramos el aviso de "extras"
+      await supabase.from("extras").delete().eq("id", extraId);
+      // Borramos la factura asociada
+      await supabase.from("facturas").delete().eq("id", extraId);
+
+      // Lo quitamos de la pantalla instantáneamente
+      setNuevosExtras((prev) => prev.filter((item) => item.id !== extraId));
+      setNumAlertas((prev) => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error("Error al eliminar la factura:", err);
+    }
   };
 
   const estiloTarjetaDato = {
@@ -215,26 +225,49 @@ export default function ClienteDashboard() {
             
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {nuevosExtras.map((extra) => (
-                <div key={extra.id} onClick={() => manejarVerFactura(extra.id)} style={{ background: DEGRADADO_AZUL_BOTON, border: BORDE_DORADO_FINO, borderRadius: "12px", padding: "14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)" }}>
-                  <div>
-                    <div style={{ fontSize: "13px", fontWeight: "800", color: "#fff" }}>{t('trabajoExtraFactura')}</div>
-                    <div style={{ fontSize: "11px", color: "#e2e8f0", marginTop: "2px" }}>{extra.descripcion || extra.observaciones || t('verDetallesFotosFacturas')}</div>
+                <div key={extra.id} style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
+                  
+                  {/* Tarjeta de información (abre factura) */}
+                  <div onClick={() => manejarVerFactura(extra.id)} style={{ flex: 1, background: DEGRADADO_AZUL_BOTON, border: BORDE_DORADO_FINO, borderRadius: "12px", padding: "14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)" }}>
+                    <div>
+                      <div style={{ fontSize: "13px", fontWeight: "800", color: "#fff" }}>{t('trabajoExtraFactura')}</div>
+                      <div style={{ fontSize: "11px", color: "#e2e8f0", marginTop: "2px" }}>{extra.descripcion || extra.observaciones || t('verDetallesFotosFacturas')}</div>
+                    </div>
+                    <span style={{ fontSize: "11px", fontWeight: "900", color: COLOR_DORADO, textShadow: "0 0 8px rgba(224,176,52,0.8)" }}>{t('verFactura')}</span>
                   </div>
-                  <span style={{ fontSize: "11px", fontWeight: "900", color: COLOR_DORADO, textShadow: "0 0 8px rgba(224,176,52,0.8)" }}>{t('verFactura')}</span>
+
+                  {/* Botón directo de eliminar */}
+                  <button 
+                    onClick={(e) => manejarEliminarFactura(e, extra.id)}
+                    style={{ 
+                      background: "rgba(239, 68, 68, 0.15)", 
+                      border: "1px solid rgba(239, 68, 68, 0.4)", 
+                      borderRadius: "12px", 
+                      padding: "0 14px", 
+                      cursor: "pointer", 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center",
+                      boxShadow: "0 4px 10px rgba(239, 68, 68, 0.2)"
+                    }}
+                    title="Eliminar factura permanentemente"
+                  >
+                    <span style={{ fontSize: "16px" }}>🗑️</span>
+                  </button>
+
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* TARJETAS */}
+        {/* TARJETAS PRINCIPALES */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginBottom: "20px" }}>
           <div style={estiloTarjetaDato} onClick={() => navigate('/cliente/inspecciones')}>
             <span style={{ fontSize: "10px", fontWeight: "800", color: "#94a3b8", textTransform: "uppercase" }}>{t('inspecciones')}</span>
             <span style={{ fontSize: "26px", fontWeight: "900", ...TEXTO_DORADO_BRILLO }}>{numInspecciones}</span>
           </div>
 
-          {/* ALERTAS TOTALES (INSPECCIONES + FACTURAS) */}
           <div style={estiloTarjetaDato} onClick={() => navigate('/cliente/alertas')}>
             <span style={{ fontSize: "10px", fontWeight: "800", color: numAlertas > 0 ? "#ef4444" : "#94a3b8", textTransform: "uppercase" }}>{t('alertas')}</span>
             <span style={{ fontSize: "26px", fontWeight: "900", color: numAlertas > 0 ? "#ef4444" : COLOR_DORADO, textShadow: numAlertas > 0 ? "0 0 10px rgba(239,68,68,0.6)" : "0 0 12px rgba(224,176,52,0.6)" }}>
