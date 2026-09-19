@@ -38,6 +38,7 @@ export default function VerFactura() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  // Obtener idioma de forma protegida para evitar bloqueos
   let currentLang = 'es';
   try {
     const langCtx = useLanguage();
@@ -72,7 +73,7 @@ export default function VerFactura() {
       setFactura(data);
     } catch (err) {
       console.error('Error al cargar factura:', err);
-      // Fallback seguro si entra desde Stripe sin sesión de admin
+      // Fallback de seguridad para que nunca dé pantalla en blanco
       setFactura({
         id: id,
         numero: `CG-${String(id).padStart(5, '0')}`,
@@ -86,7 +87,7 @@ export default function VerFactura() {
     }
   };
 
-  // BOTÓN 1: Enviar correo de aviso de pago con el enlace de Stripe
+  // Enviar email de aviso de pago con el enlace de Stripe
   const enviarAvisoPago = async () => {
     try {
       setSaving(true);
@@ -109,7 +110,7 @@ export default function VerFactura() {
     }
   };
 
-  // BOTÓN 2: Marcar como pagada manualmente
+  // Marcar como pagada manualmente
   const marcarComoPagada = async () => {
     try {
       setSaving(true);
@@ -167,11 +168,13 @@ export default function VerFactura() {
     <div style={estilos.pagina}>
       <div style={estilos.contenedor}>
         
+        {/* Cabecera */}
         <div style={estilos.cabecera}>
           <button onClick={() => navigate('/facturas')} style={estilos.botonVolver}>← Volver</button>
           <h2 style={estilos.titulo}>Aviso {factura?.numero || `#${factura?.id}`}</h2>
         </div>
 
+        {/* Banner de éxito de Stripe */}
         {mensajeExitoPago && (
           <div style={{ background: 'rgba(52, 211, 153, 0.15)', border: '1px solid #34d399', padding: '14px', borderRadius: '12px', textAlign: 'center' }}>
             <p style={{ color: '#34d399', fontSize: '13px', fontWeight: 'bold', margin: 0 }}>
@@ -180,6 +183,7 @@ export default function VerFactura() {
           </div>
         )}
 
+        {/* Tarjeta de Estado */}
         <div style={estilos.tarjeta}>
           <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '13px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Estado de Pago</h3>
           <div style={estilos.filaInfo}>
@@ -195,14 +199,19 @@ export default function VerFactura() {
 
           {factura?.estado !== 'pagada' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-              <button onClick={enviarAvisoPago} disabled={saving} style={estilos.botonAzul}>✉️ Aviso de pago</button>
-              <button onClick={marcarComoPagada} disabled={saving} style={estilos.botonVerde}>💳 Marcar como pagada</button>
+              <button onClick={enviarAvisoPago} disabled={saving} style={estilos.botonAzul}>
+                ✉️ Enviar Aviso de Pago (Email)
+              </button>
+              <button onClick={marcarComoPagada} disabled={saving} style={estilos.botonVerde}>
+                💳 Marcar como pagada
+              </button>
             </div>
           )}
         </div>
 
+        {/* Descripción con traducción integrada */}
         <div style={estilos.tarjeta}>
-          <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '13px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Descripción</h3>
+          <h3 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '13px', margin: '0 0 8px 0', textTransform: 'uppercase' }}>Descripción del Servicio</h3>
           <div style={{ background: 'rgba(11, 19, 32, 0.7)', padding: '12px', borderRadius: '10px', border: BORDE_DORADO_FINO }}>
             <p style={{ fontSize: '13px', color: '#fff', margin: 0, whiteSpace: 'pre-wrap' }}>
               {traducirConcepto(factura?.descripcion, currentLang) || 'Sin descripción'}
@@ -210,7 +219,9 @@ export default function VerFactura() {
           </div>
         </div>
 
-        <button onClick={borrarFactura} disabled={saving} style={estilos.botonRojo}>🗑️ Borrar Aviso de Cobro</button>
+        <button onClick={borrarFactura} disabled={saving} style={estilos.botonRojo}>
+          🗑️ Borrar Aviso de Cobro
+        </button>
 
       </div>
     </div>
