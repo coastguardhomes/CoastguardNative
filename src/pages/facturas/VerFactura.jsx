@@ -97,13 +97,20 @@ export default function VerFactura() {
   const idiomaFinal = cliente?.idioma || cliente?.language || currentLang;
 
   // ==========================================
-  // FUNCIONES RECUPERADAS: ENVIAR EMAIL Y MARCAR PAGADA
+  // ENVIAR AVISO DE PAGO (INCLUYENDO EL ID DE FACTURA PARA STRIPE)
   // ==========================================
   const enviarAvisoPago = async () => {
     try {
       setProcesando(true);
       const { error: errEmail } = await supabase.functions.invoke('enviar-email', {
-        body: { factura_id: Number(id), facturaId: Number(id), id: Number(id), tipo: 'aviso_pago' }
+        body: { 
+          factura_id: Number(id), 
+          facturaId: Number(id), 
+          id: Number(id), 
+          tipo: 'aviso_pago',
+          amount: Number(factura.total) * 100, // Pasamos el importe en céntimos por si se procesa pago
+          customerEmail: cliente?.email
+        }
       });
       if (errEmail) throw errEmail;
       alert('¡Aviso de pago enviado por email al cliente correctamente!');
