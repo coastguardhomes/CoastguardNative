@@ -28,6 +28,7 @@ export default function ClienteDashboard() {
   const [numViviendas, setNumViviendas] = useState(0);
   const [nuevosExtras, setNuevosExtras] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pagoExitoso, setPagoExitoso] = useState(false);
 
   const datosGrafico = [
     { dia: t('lun'), inspecciones: 4 },
@@ -38,6 +39,14 @@ export default function ClienteDashboard() {
     { dia: t('sab'), inspecciones: 6 },
     { dia: t('dom'), inspecciones: 8 },
   ];
+
+  useEffect(() => {
+    // Detectar si el usuario acaba de volver de Stripe con ?pagado=true
+    const queryParams = new URLSearchParams(window.location.search);
+    if (queryParams.get('pagado') === 'true') {
+      setPagoExitoso(true);
+    }
+  }, []);
 
   useEffect(() => {
     async function cargarDatos() {
@@ -178,6 +187,18 @@ export default function ClienteDashboard() {
             <span style={{ color: "#34d399", fontSize: "10px", fontWeight: "700" }}>{t('operativo')}</span>
           </div>
         </div>
+
+        {/* BANNER DE PAGO EXITOSO DE STRIPE */}
+        {pagoExitoso && (
+          <div style={{ background: 'rgba(52, 211, 153, 0.15)', border: '1px solid #34d399', padding: '16px', borderRadius: '16px', textAlign: 'center', marginBottom: '20px', boxShadow: '0 10px 30px rgba(52, 211, 153, 0.2)' }}>
+            <p style={{ color: '#34d399', fontSize: '14px', fontWeight: 'bold', margin: 0 }}>
+              ¡Pago realizado con éxito a través de Stripe! 🎉
+            </p>
+            <p style={{ color: '#fff', fontSize: '11px', margin: '4px 0 0 0', opacity: 0.8 }}>
+              Gracias por completar el pago. El servicio ha sido procesado correctamente.
+            </p>
+          </div>
+        )}
 
         {/* AVISO DE EXTRAS */}
         {nuevosExtras.length > 0 && (
