@@ -52,79 +52,86 @@ export default function VerFactura() {
   const [errorMsg, setErrorMsg] = useState('');
   const [procesando, setProcesando] = useState(false);
 
-  useEffect(() => {
-    async function cargarDatosSeguros() {
-      try {
-        setLoading(true);
-        setErrorMsg('');
+  // Función centralizada para cargar datos desde Supabase
+  const cargarDatosSeguros = async () => {
+    try {
+      setErrorMsg('');
 
-        if (!id) throw new Error("ID de factura no proporcionado.");
+      if (!id) throw new Error("ID de factura no proporcionado.");
 
-        // 1. Consultar la factura de forma independiente
-        const { data: facturaData, error: facturaError } = await supabase
-          .from('facturas')
+      // 1. Consultar la factura de forma independiente
+      const { data: facturaData, error: facturaError } = await supabase
+        .from('facturas')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (facturaError) throw facturaError;
+      if (!facturaData) throw new Error("No se encontró el aviso de cobro.");
+
+      setFactura(facturaData);
+
+      // 2. Consultar el cliente por separado para evitar fallos de relación
+      if (facturaData.cliente_id) {
+        const { data: clienteData } = await supabase
+          .from('clientes')
           .select('*')
-          .eq('id', id)
+          .eq('id', facturaData.cliente_id)
           .single();
 
-        if (facturaError) throw facturaError;
-        if (!facturaData) throw new Error("No se encontró el aviso de cobro.");
-
-        setFactura(facturaData);
-
-        // 2. Consultar el cliente por separado para evitar fallos de relación
-        if (facturaData.cliente_id) {
-          const { data: clienteData } = await supabase
-            .from('clientes')
-            .select('*')
-            .eq('id', facturaData.cliente_id)
-            .single();
-
-          if (clienteData) setCliente(clienteData);
-        }
-
-      } catch (err) {
-        console.error('Error al cargar la factura:', err);
-        setErrorMsg(err.message || 'No se pudo cargar la información.');
-      } finally {
-        setLoading(false);
+        if (clienteData) setCliente(clienteData);
       }
-    }
 
+    } catch (err) {
+      console.error('Error al cargar la factura:', err);
+      setErrorMsg(err.message || 'No se pudo cargar la información.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     cargarDatosSeguros();
   }, [id]);
 
   // ==========================================
-  // RED DE SEGURIDAD: DETECTAR VUELTA DE STRIPE Y ACTUALIZAR
+  // DOBLE RED DE SEGURIDAD (WEB Y APK NATIVA)
   // ==========================================
   useEffect(() => {
+    // 1. Si viene con parámetros de éxito en la URL web
     const queryParams = new URLSearchParams(window.location.search);
     const fuePagado = queryParams.get('pagado');
 
     if (fuePagado === 'true' && factura && factura.estado?.toLowerCase() !== 'pagada') {
       async function confirmarPagoAutomatico() {
         try {
-          // 1. Actualiza el estado a pagada en Supabase automáticamente
           await supabase.from('facturas').update({ estado: 'pagada' }).eq('id', id);
           setFactura(prev => ({ ...prev, estado: 'pagada' }));
-
-          // 2. Dispara el correo de confirmación de factura pagada
+          
           await supabase.functions.invoke('enviar-email', {
-            body: { 
-              factura_id: Number(id), 
-              facturaId: Number(id), 
-              id: Number(id), 
-              tipo: 'factura_pagada' 
-            }
+            body: { factura_id: Number(id), facturaId: Number(id), id: Number(id), tipo: 'factura_pagada' }
           });
-
-          console.log("¡Factura actualizada a pagada automáticamente tras volver de Stripe!");
         } catch (err) {
           console.error("Error al actualizar el pago automático:", err);
         }
       }
       confirmarPagoAutomatico();
     }
+
+    // 2. DETECTOR PARA LA APP MÓVIL (APK): 
+    // Cuando el usuario paga en Stripe y vuelve a enfocar la app del móvil, 
+    // recargamos los datos automáticamente de Supabase para ver si el webhook ya la marcó como pagada.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log("La app ha vuelto a primer plano, comprobando estado de factura...");
+        cargarDatosSeguros();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [factura, id]);
 
   const idiomaFinal = cliente?.idioma || cliente?.language || currentLang;
@@ -143,7 +150,7 @@ export default function VerFactura() {
           tipo: 'aviso_pago',
           amount: Number(factura.total) * 100, // Importe en céntimos
           customerEmail: cliente?.email,
-          extraId: id, // Vital para que Stripe lo guarde en metadata como extra_id
+          extraId: id,
           title: `Aviso de Cobro ${factura.numero || `#${factura.id}`}`
         }
       });
@@ -308,5 +315,5 @@ const estilos = {
   valorEstado: { fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', border: '1px solid', borderRadius: '20px', padding: '2px 10px' },
   botonAzul: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)', color: '#fff', border: '1px solid rgba(56, 189, 248, 0.5)', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' },
   botonVerde: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)', color: '#fff', border: '1px solid rgba(16, 185, 129, 0.6)', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' },
-  botonEliminar: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)', color: '#fff', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: '14px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', marginTop: '10px' }
+  botonEliminar: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)', color: '#fff', border: '19px solid rgba(239, 68, 68, 0.5)', borderRadius: '14px', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', marginTop: '10px' }
 };
