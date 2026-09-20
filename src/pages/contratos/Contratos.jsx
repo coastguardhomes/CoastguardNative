@@ -177,12 +177,12 @@ export default function Contratos() {
     }
   };
 
-  const obtenerBadgeEstado = (estado) => {
+  const obtenerBadgeEstado = (estado, pagado) => {
     const est = String(estado || "").toLowerCase().trim();
     
-    if (est === "firmado" || est === "firmado_cliente" || est === "completado") {
+    if (pagado || est === "firmado" || est === "firmado_cliente" || est === "completado") {
       return { 
-        texto: "✅ FIRMADO", 
+        texto: pagado ? "✅ FIRMADO Y PAGADO" : "✅ FIRMADO", 
         color: "#34d399", 
         bg: "rgba(52, 211, 153, 0.2)", 
         border: "rgba(52, 211, 153, 0.5)" 
@@ -221,7 +221,7 @@ export default function Contratos() {
           <p style={estilos.texto}>No hay contratos registrados.</p>
         ) : (
           contratos.map((c) => {
-            const badge = obtenerBadgeEstado(c.estado);
+            const badge = obtenerBadgeEstado(c.estado, c.pagado);
             const nombreCliente = c.clientes?.nombre || "Sin cliente";
             const direccionCliente = c.clientes?.direccion || "Sin dirección";
             const direccionVivienda = c.viviendas?.direccion || "Sin vivienda";
