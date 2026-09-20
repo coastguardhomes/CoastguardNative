@@ -69,42 +69,28 @@ export default function ClienteContratoVer() {
     }
   };
 
-  // Función inteligente para verificar y activar el pago asegurando sincronización con el Admin
   const verificarYActualizarPago = async () => {
     const contratoPagoId = localStorage.getItem("contrato_pago_id");
-    
-    // Comprobamos también si viene ?pagado=true en la URL de retorno de Vercel
     const queryParams = new URLSearchParams(window.location.search);
     const esRetornoExitoso = queryParams.get('pagado') === 'true';
 
     if (contratoPagoId || esRetornoExitoso) {
       const targetId = contratoPagoId || id;
-      console.log("Detectado retorno de pago para el contrato:", targetId);
       try {
-        // 1. Intentamos actualizar mediante la función RPC si existe
         await supabase.rpc("activar_contrato_por_pago", {
           p_contract_id: Number(targetId)
-        }).catch(() => {});
+        });
 
-        // 2. Forzamos actualización directa para asegurar que el Admin lo vea como 'firmado' / pagado
-        const { error: updateError } = await supabase
+        // Aseguramos que el estado sea 'firmado' para que el admin lo detecte verde
+        await supabase
           .from("contratos")
-          .update({ 
-            pagado: true, 
-            estado: "firmado" 
-          })
+          .update({ pagado: true, estado: "firmado" })
           .eq("id", Number(targetId));
 
-        if (updateError) {
-          console.error("Error actualizando contrato directamente:", updateError.message);
-        } else {
-          console.log("¡Contrato actualizado a pagado y firmado con éxito!");
-        }
       } catch (err) {
         console.error("Excepción al actualizar contrato tras pago:", err);
       } finally {
         localStorage.removeItem("contrato_pago_id");
-        // Limpiamos la URL para evitar bucles con ?pagado=true
         if (esRetornoExitoso) {
           window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -115,7 +101,6 @@ export default function ClienteContratoVer() {
     }
   };
 
-  // Carga inicial
   useEffect(() => {
     if (id) {
       setCargando(true);
@@ -123,14 +108,12 @@ export default function ClienteContratoVer() {
     }
   }, [id, location.key]);
 
-  // Listener multiplataforma: se activa al volver a la app (Android APK o Web/iPhone)
   useEffect(() => {
     let appStateListener = null;
 
     if (Capacitor.isNativePlatform()) {
       App.addListener("appStateChange", ({ isActive }) => {
         if (isActive) {
-          console.log("La app ha vuelto a primer plano, verificando pago...");
           verificarYActualizarPago();
         }
       }).then((listener) => {
