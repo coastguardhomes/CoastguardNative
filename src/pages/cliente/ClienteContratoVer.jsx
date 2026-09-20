@@ -37,7 +37,7 @@ export default function ClienteContratoVer() {
   const [contrato, setContrato] = useState(null);
   const [cliente, setCliente] = useState(null);
   const [enviando, setEnviando] = useState(false);
-  const [cargando, setCargando] = useState(true);
+  const [cargando,setCargando] = useState(true);
   const [pagandoStripe, setPagandoStripe] = useState(false);
 
   const cargarContrato = async () => {
@@ -72,12 +72,17 @@ export default function ClienteContratoVer() {
   // Función inteligente para verificar y activar el pago usando RPC seguro
   const verificarYActualizarPago = async () => {
     const contratoPagoId = localStorage.getItem("contrato_pago_id");
-    if (contratoPagoId) {
-      console.log("Detectado retorno de pago para el contrato:", contratoPagoId);
+    
+    // Comprobamos también si viene ?pagado=true en la URL de retorno de Vercel
+    const queryParams = new URLSearchParams(window.location.search);
+    const esRetornoExitoso = queryParams.get('pagado') === 'true';
+
+    if (contratoPagoId || esRetornoExitoso) {
+      const targetId = contratoPagoId || id;
+      console.log("Detectado retorno de pago para el contrato:", targetId);
       try {
-        // Llamada a la función RPC de Supabase que ignora restricciones de sesión y actualiza directamente
         const { error } = await supabase.rpc("activar_contrato_por_pago", {
-          p_contract_id: Number(contratoPagoId)
+          p_contract_id: Number(targetId)
         });
 
         if (error) {
@@ -89,6 +94,10 @@ export default function ClienteContratoVer() {
         console.error("Excepción al actualizar contrato tras pago:", err);
       } finally {
         localStorage.removeItem("contrato_pago_id");
+        // Limpiamos la URL para evitar bucles con ?pagado=true
+        if (esRetornoExitoso) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
         await cargarContrato();
       }
     } else {
@@ -104,7 +113,7 @@ export default function ClienteContratoVer() {
     }
   }, [id, location.key]);
 
-  // Listener multiplataforma: se activa en cuanto vuelves a la app (Android APK o Web/iPhone)
+  // Listener multiplataforma: se activa al volver a la app (Android APK o Web/iPhone)
   useEffect(() => {
     let appStateListener = null;
 
@@ -185,7 +194,6 @@ export default function ClienteContratoVer() {
 
     setPagandoStripe(true);
     try {
-      // Guardamos la marca de que estamos pagando este contrato
       localStorage.setItem("contrato_pago_id", id);
 
       const amountInCents = Math.round(Number(contrato.precio) * 100);
@@ -212,11 +220,9 @@ export default function ClienteContratoVer() {
       }
 
       if (data?.url) {
-        // En APK Android abrimos Stripe con el navegador nativo seguro
         if (Capacitor.isNativePlatform()) {
           await Browser.open({ url: data.url });
         } else {
-          // En iPhone / Web usamos redirección estándar
           window.location.href = data.url;
         }
       } else {
@@ -236,68 +242,14 @@ export default function ClienteContratoVer() {
       alert(t("alertaNoPdfAdmin") || "El PDF del contrato aún no está disponible.");
       return;
     }
-
-    if (url.startsWith("data:")) {
-      try {
-        fetch(url)
-          .then((res) => res.blob())
-          .then((blob) => {
-            const blobUrl = URL.createObjectURL(blob);
-            window.open(blobUrl, "_blank");
-          })
-          .catch(() => {
-            window.open(url, "_blank");
-          });
-      } catch (e) {
-        window.open(url, "_blank");
-      }
-    } else {
-      window.open(url, "_blank");
-    }
+    window.open(url, "_blank");
   };
 
   if (cargando) {
     return (
       <Menu>
-        <div
-          style={{
-            minHeight: "100vh",
-            background: FONDO_PRINCIPAL,
-            color: COLOR_DORADO,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            fontFamily: "Inter, sans-serif",
-          }}
-        >
+        <div style={{ minHeight: "100vh", background: FONDO_PRINCIPAL, color: COLOR_DORADO, display: "flex", justifyContent: "center", alignItems: "center", fontFamily: "Inter, sans-serif" }}>
           <h3 style={TEXTO_DORADO}>{t("clienteContratoCargando")}</h3>
-        </div>
-      </Menu>
-    );
-  }
-
-  if (!contrato || contrato.error) {
-    return (
-      <Menu>
-        <div
-          style={{
-            minHeight: "100vh",
-            background: FONDO_PRINCIPAL,
-            color: "#ff4d4d",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: "20px",
-            textAlign: "center",
-            fontFamily: "Inter, sans-serif",
-          }}
-        >
-          <h3 style={{ marginBottom: "10px" }}>{t("noSePudoCargarContrato")}</h3>
-          <p style={{ fontSize: "14px", color: "#aaa", marginBottom: "20px" }}>{contrato?.mensaje || t("compruebaTuConexion")}</p>
-          <button onClick={() => navigate(-1)} style={{ ...botonEstilo, width: "auto", padding: "10px 20px" }}>
-            {t("volver")}
-          </button>
         </div>
       </Menu>
     );
@@ -305,39 +257,13 @@ export default function ClienteContratoVer() {
 
   return (
     <Menu>
-      <div
-        style={{
-          minHeight: "100vh",
-          background: FONDO_PRINCIPAL,
-          padding: "20px",
-          color: "#fff",
-          fontFamily: "Inter, sans-serif",
-          paddingBottom: "80px",
-        }}
-      >
-        <h2
-          style={{
-            textAlign: "center",
-            ...TEXTO_DORADO,
-            marginBottom: "25px",
-            fontSize: "28px",
-            fontWeight: "700",
-          }}
-        >
+      <div style={{ minHeight: "100vh", background: FONDO_PRINCIPAL, padding: "20px", color: "#fff", fontFamily: "Inter, sans-serif", paddingBottom: "80px" }}>
+        <h2 style={{ textAlign: "center", ...TEXTO_DORADO, marginBottom: "25px", fontSize: "28px", fontWeight: "700" }}>
           {t("clienteContratoTitulo")}
         </h2>
 
         {/* Datos del Cliente */}
-        <div
-          style={{
-            background: FONDO_TARJETA,
-            padding: "20px",
-            borderRadius: "14px",
-            border: BORDE_DORADO,
-            boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)",
-            marginBottom: "20px",
-          }}
-        >
+        <div style={{ background: FONDO_TARJETA, padding: "20px", borderRadius: "14px", border: BORDE_DORADO, boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)", marginBottom: "20px" }}>
           <h3 style={{ ...TEXTO_DORADO, marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
             {t("clienteContratoDatosCliente")}
           </h3>
@@ -347,15 +273,7 @@ export default function ClienteContratoVer() {
         </div>
 
         {/* Detalles del Contrato */}
-        <div
-          style={{
-            background: FONDO_TARJETA,
-            padding: "25px 20px",
-            borderRadius: "14px",
-            border: BORDE_DORADO,
-            boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)",
-          }}
-        >
+        <div style={{ background: FONDO_TARJETA, padding: "25px 20px", borderRadius: "14px", border: BORDE_DORADO, boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)" }}>
           <h3 style={{ ...TEXTO_DORADO, marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
             {t("clienteContratoDetalles")}
           </h3>
@@ -371,70 +289,27 @@ export default function ClienteContratoVer() {
           </p>
           <p style={{ margin: "6px 0 16px 0" }}>
             <strong>{t("estado")}:</strong>{" "}
-            <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d", fontWeight: "bold", textShadow: esFirmado ? "0 0 8px rgba(77,255,136,0.4)" : "0 0 8px rgba(255,184,77,0.4)" }}>
+            <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d", fontWeight: "bold" }}>
               {yaPagado ? `✅ Activo / Pagado` : esFirmado ? `✅ ${t("firmado") || "Firmado"}` : `⏳ ${t("pendienteFirma") || "Pendiente de firma"}`}
             </span>
           </p>
 
-          {/* BOTÓN 1: Ver contrato en PDF */}
-          <button
-            onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
-            style={{
-              ...botonEstilo,
-              background: "rgba(10, 15, 26, 0.8)",
-              border: BORDE_DORADO,
-              color: COLOR_DORADO,
-            }}
-          >
+          <button onClick={() => manejarAbrirPDF(contrato?.pdf_url)} style={{ ...botonEstilo, background: "rgba(10, 15, 26, 0.8)", border: BORDE_DORADO, color: COLOR_DORADO }}>
             📄 {esFirmado ? (t("verContratoFirmadoPdf") || "Ver contrato firmado (PDF)") : (t("verContratoAntesFirmar") || "Ver contrato antes de firmar")}
           </button>
 
-          {/* BOTÓN 2: Dibujar / Cambiar Firma */}
-          <button
-            onClick={() => navigate(`/cliente/firma/${id}`)}
-            style={botonEstilo}
-          >
+          <button onClick={() => navigate(`/cliente/firma/${id}`)} style={botonEstilo}>
             ✍️ {esFirmado ? "Cambiar / Volver a Firmar" : (t("firmaDelCliente") || "Firma del Cliente")}
           </button>
 
-          {/* BOTÓN 3: Pagar con Stripe - Se oculta automáticamente al volverse yaPagado = true */}
           {!yaPagado && contrato.precio != null && Number(contrato.precio) > 0 && (
-            <button
-              onClick={manejarPagoStripe}
-              disabled={pagandoStripe}
-              style={{
-                ...botonEstilo,
-                background: "linear-gradient(135deg, #635bff 0%, #4338ca 100%)",
-                border: "1px solid rgba(99, 91, 255, 0.5)",
-                boxShadow: "0 4px 15px rgba(99, 91, 255, 0.3)",
-              }}
-            >
+            <button onClick={manejarPagoStripe} disabled={pagandoStripe} style={{ ...botonEstilo, background: "linear-gradient(135deg, #635bff 0%, #4338ca 100%)", border: "1px solid rgba(99, 91, 255, 0.5)" }}>
               {pagandoStripe ? "Conectando con Stripe..." : `💳 Suscribirse y Pagar (${contrato.precio} €/mes)`}
             </button>
           )}
 
-          {/* BOTÓN 4: Enviar al Admin */}
-          <button
-            onClick={enviarAlAdmin}
-            disabled={enviando || yaEnviadoAdmin}
-            style={{
-              ...botonEstilo,
-              background: yaEnviadoAdmin
-                ? "rgba(255,255,255,0.1)"
-                : esFirmado
-                  ? "linear-gradient(135deg, #4ade80 0%, #166534 100%)"
-                  : "rgba(255,255,255,0.08)",
-              color: yaEnviadoAdmin ? "#34d399" : esFirmado ? "#ffffff" : "#888",
-              cursor: (esFirmado && !yaEnviadoAdmin) ? "pointer" : "not-allowed",
-              border: esFirmado ? "1px solid rgba(74, 222, 128, 0.5)" : "1px solid rgba(255,255,255,0.1)",
-              boxShadow: esFirmado ? "0 4px 15px rgba(74, 222, 128, 0.3)" : "none",
-            }}
-          >
-            {enviando 
-              ? (t("enviando") || "Enviando...") 
-              : yaEnviadoAdmin 
-                ? "✅ Enviado al Administrador" 
-                : (t("enviarAlAdminBtn") || "✉️ Enviar al Administrador")}
+          <button onClick={enviarAlAdmin} disabled={enviando || yaEnviadoAdmin} style={{ ...botonEstilo, background: yaEnviadoAdmin ? "rgba(255,255,255,0.1)" : esFirmado ? "linear-gradient(135deg, #4ade80 0%, #166534 100%)" : "rgba(255,255,255,0.08)", color: yaEnviadoAdmin ? "#34d399" : esFirmado ? "#ffffff" : "#888", cursor: (esFirmado && !yaEnviadoAdmin) ? "pointer" : "not-allowed" }}>
+            {enviando ? "Enviando..." : yaEnviadoAdmin ? "✅ Enviado al Administrador" : "✉️ Enviar al Administrador"}
           </button>
         </div>
       </div>
