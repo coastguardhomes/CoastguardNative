@@ -41,14 +41,6 @@ export default function ClienteDashboard() {
   ];
 
   useEffect(() => {
-    // Detectar si el usuario acaba de volver de Stripe con ?pagado=true
-    const queryParams = new URLSearchParams(window.location.search);
-    if (queryParams.get('pagado') === 'true') {
-      setPagoExitoso(true);
-    }
-  }, []);
-
-  useEffect(() => {
     async function cargarDatos() {
       if (!user) return;
 
@@ -77,7 +69,6 @@ export default function ClienteDashboard() {
               .select("*", { count: "exact", head: true })
               .eq("cliente_id", clienteId),
 
-            // Alertas en inspecciones normales
             supabase
               .from("inspecciones")
               .select("*", { count: "exact", head: true })
@@ -85,7 +76,6 @@ export default function ClienteDashboard() {
               .eq("alerta", true)
               .eq("alerta_vista", false),
 
-            // Alertas en facturas / inspecciones extra
             supabase
               .from("facturas")
               .select("*", { count: "exact", head: true })
@@ -110,6 +100,30 @@ export default function ClienteDashboard() {
           setNumAlertas((resAlertasInsp.count || 0) + (resAlertasFacturas.count || 0));
           setNumViviendas(resViviendas.count || 0);
           setNuevosExtras(resExtras.data || []);
+
+          // VERIFICACIÓN REAL: Comprobamos si el parámetro viene en la URL Y además validamos contra base de datos / factura
+          const queryParams = new URLSearchParams(window.location.search);
+          const facturaIdParam = queryParams.get('factura');
+          
+          if (queryParams.get('pagado') === 'true' && facturaIdParam) {
+            // Consultamos en la tabla de facturas/contratos si realmente consta como pagado
+            const { data: facturaData } = await supabase
+              .from("facturas")
+              .select("*")
+              .eq("id", facturaIdParam)
+              .maybeSingle();
+
+            // Si la factura existe y está marcada como pagada (o el webhook ya actualizó su estado)
+            if (facturaData && facturaData.estado === 'pagada') {
+              setPagoExitoso(true);
+            } else {
+              // Si Stripe redirigió pero en base de datos sigue pendiente, no mostramos el éxito falso
+              setPagoExitoso(false);
+            }
+            
+            // Limpiamos la URL para quitar el parámetro ?pagado=true y que no ensucie la navegación
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
         }
       } catch (err) {
         console.error("Error en dashboard:", err);
@@ -121,7 +135,6 @@ export default function ClienteDashboard() {
     cargarDatos();
   }, [user]);
 
-  // Se abre y se oculta automáticamente
   const manejarVerFactura = async (extraId) => {
     try {
       await supabase.from("extras").update({ visto: true }).eq("id", extraId);
@@ -134,18 +147,14 @@ export default function ClienteDashboard() {
     navigate('/cliente/facturas');
   };
 
-  // Novedad: Borrado directo para que no se le llene la vista al cliente
   const manejarEliminarFactura = async (e, extraId) => {
-    e.stopPropagation(); // Evita que se dispare el click de "Ver Factura"
+    e.stopPropagation();
     if (!window.confirm("¿Estás seguro de que deseas eliminar esta factura/notificación? Esta acción la quitará de tu historial.")) return;
 
     try {
-      // Borramos el aviso de "extras"
       await supabase.from("extras").delete().eq("id", extraId);
-      // Borramos la factura asociada
       await supabase.from("facturas").delete().eq("id", extraId);
 
-      // Lo quitamos de la pantalla instantáneamente
       setNuevosExtras((prev) => prev.filter((item) => item.id !== extraId));
       setNumAlertas((prev) => Math.max(0, prev - 1));
     } catch (err) {
@@ -198,7 +207,7 @@ export default function ClienteDashboard() {
           </div>
         </div>
 
-        {/* BANNER DE PAGO EXITOSO DE STRIPE */}
+        {/* BANNER DE PAGO EXITOSO REAL */}
         {pagoExitoso && (
           <div style={{ background: 'rgba(52, 211, 153, 0.15)', border: '1px solid #34d399', padding: '16px', borderRadius: '16px', textAlign: 'center', marginBottom: '20px', boxShadow: '0 10px 30px rgba(52, 211, 153, 0.2)' }}>
             <p style={{ color: '#34d399', fontSize: '14px', fontWeight: 'bold', margin: 0 }}>
@@ -226,8 +235,6 @@ export default function ClienteDashboard() {
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {nuevosExtras.map((extra) => (
                 <div key={extra.id} style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
-                  
-                  {/* Tarjeta de información (abre factura) */}
                   <div onClick={() => manejarVerFactura(extra.id)} style={{ flex: 1, background: DEGRADADO_AZUL_BOTON, border: BORDE_DORADO_FINO, borderRadius: "12px", padding: "14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)" }}>
                     <div>
                       <div style={{ fontSize: "13px", fontWeight: "800", color: "#fff" }}>{t('trabajoExtraFactura')}</div>
@@ -236,7 +243,6 @@ export default function ClienteDashboard() {
                     <span style={{ fontSize: "11px", fontWeight: "900", color: COLOR_DORADO, textShadow: "0 0 8px rgba(224,176,52,0.8)" }}>{t('verFactura')}</span>
                   </div>
 
-                  {/* Botón directo de eliminar */}
                   <button 
                     onClick={(e) => manejarEliminarFactura(e, extra.id)}
                     style={{ 
@@ -254,7 +260,6 @@ export default function ClienteDashboard() {
                   >
                     <span style={{ fontSize: "16px" }}>🗑️</span>
                   </button>
-
                 </div>
               ))}
             </div>
