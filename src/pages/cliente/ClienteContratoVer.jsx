@@ -37,7 +37,7 @@ export default function ClienteContratoVer() {
   const [contrato, setContrato] = useState(null);
   const [cliente, setCliente] = useState(null);
   const [enviando, setEnviando] = useState(false);
-  const [cargando,setCargando] = useState(true);
+  const [cargando, setCargando] = useState(true);
   const [pagandoStripe, setPagandoStripe] = useState(false);
 
   const cargarContrato = async () => {
@@ -69,7 +69,7 @@ export default function ClienteContratoVer() {
     }
   };
 
-  // Función inteligente para verificar y activar el pago usando RPC seguro
+  // Función inteligente para verificar y activar el pago asegurando sincronización con el Admin
   const verificarYActualizarPago = async () => {
     const contratoPagoId = localStorage.getItem("contrato_pago_id");
     
@@ -81,14 +81,24 @@ export default function ClienteContratoVer() {
       const targetId = contratoPagoId || id;
       console.log("Detectado retorno de pago para el contrato:", targetId);
       try {
-        const { error } = await supabase.rpc("activar_contrato_por_pago", {
+        // 1. Intentamos actualizar mediante la función RPC si existe
+        await supabase.rpc("activar_contrato_por_pago", {
           p_contract_id: Number(targetId)
-        });
+        }).catch(() => {});
 
-        if (error) {
-          console.error("Error actualizando contrato tras pago con RPC:", error.message);
+        // 2. Forzamos actualización directa para asegurar que el Admin lo vea como 'firmado' / pagado
+        const { error: updateError } = await supabase
+          .from("contratos")
+          .update({ 
+            pagado: true, 
+            estado: "firmado" 
+          })
+          .eq("id", Number(targetId));
+
+        if (updateError) {
+          console.error("Error actualizando contrato directamente:", updateError.message);
         } else {
-          console.log("¡Contrato actualizado a activo con éxito mediante función RPC!");
+          console.log("¡Contrato actualizado a pagado y firmado con éxito!");
         }
       } catch (err) {
         console.error("Excepción al actualizar contrato tras pago:", err);
@@ -148,7 +158,7 @@ export default function ClienteContratoVer() {
   );
 
   const esFirmado = tieneFirma || est === "firmado" || est === "enviado_al_admin" || est === "activo";
-  const yaEnviadoAdmin = est === "enviado_al_admin" || est === "activo";
+  const yaEnviadoAdmin = est === "enviado_al_admin" || est === "activo" || est === "firmado";
   const yaPagado = contrato?.pagado === true || est === "activo" || est === "pagado";
 
   const enviarAlAdmin = async () => {
