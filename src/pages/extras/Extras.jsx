@@ -3,11 +3,6 @@ import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 
-/**
- * Facturación de extras.
- * Crea una factura a partir de los servicios sueltos seleccionados y guarda el desglose de forma segura.
- */
-
 const EXTRAS = [
   { nombre: "Urgencia / Emergencia", precio: 50 },
   { nombre: "Apertura de vivienda", precio: 30 },
@@ -19,8 +14,6 @@ const EXTRAS = [
   { nombre: "Gestión y custodia de llaves", precio: 15 },
   { nombre: "Coste del técnico", precio: null }
 ];
-
-const IVA = 0.21;
 
 const redondear = (n) => Math.round(n * 100) / 100;
 
@@ -86,9 +79,8 @@ export default function Extras() {
     return { nombre, precio };
   });
 
-  const base = redondear(lineas.reduce((acc, l) => acc + l.precio, 0));
-  const iva = redondear(base * IVA);
-  const total = redondear(base + iva);
+  // Solo base imponible pura, sin calcular IVA en el frontend para evitar duplicados
+  const totalBase = redondear(lineas.reduce((acc, l) => acc + l.precio, 0));
 
   async function siguienteNumero() {
     const { data, error: errorNum } = await supabase
@@ -132,16 +124,16 @@ export default function Extras() {
     try {
       const numero = await siguienteNumero();
 
-      // 1. Insertar factura
+      // Guardamos la base como total o dejamos que el backend/FacturaDirecta aplique el IVA correspondiente
       const { data: factura, error: errorFactura } = await supabase
         .from("facturas")
         .insert({
           numero,
           cliente_id: Number(clienteId),
           fecha: new Date().toISOString().slice(0, 10),
-          base: Number(base),
-          iva: Number(iva),
-          total: Number(total),
+          base: Number(totalBase),
+          iva: Number(redondear(totalBase * 0.21)),
+          total: Number(redondear(totalBase * 1.21)),
           descripcion: lineas.map((l) => l.nombre).join(", "),
           estado: "pendiente"
         })
@@ -150,7 +142,6 @@ export default function Extras() {
 
       if (errorFactura) throw new Error(errorFactura.message);
 
-      // 2. Insertar desglose
       const { error: errorLineas } = await supabase.from("facturas_lineas").insert(
         lineas.map((l) => ({
           factura_id: factura.id,
@@ -172,7 +163,6 @@ export default function Extras() {
 
       let avisoPdf = "";
 
-      // 3. Generación PDF + envío email
       try {
         const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
           "factura-pdf",
@@ -220,7 +210,7 @@ export default function Extras() {
       setPrecios({});
 
       setMensaje(
-        `¡Factura ${factura.numero} creada correctamente (${total.toFixed(2)} €)!${avisoPdf}`
+        `¡Factura ${factura.numero} creada correctamente!${avisoPdf}`
       );
       setGuardando(false);
     } catch (e) {
@@ -233,7 +223,7 @@ export default function Extras() {
   return (
     <Menu>
       <div style={estilos.pagina}>
-        <h1 style={estilos.titulo}>Servicios y Extras</h1>
+        <h1 style={estilos.titulo}>Emitir Servicio y Facturar</h1>
         <p style={estilos.subtitulo}>
           Selecciona los servicios adicionales o de custodia para generar la factura correspondiente.
         </p>
@@ -301,9 +291,7 @@ export default function Extras() {
         </div>
 
         <div style={estilos.tarjeta}>
-          <Fila clave="Base imponible" valor={`${base.toFixed(2)} €`} />
-          <Fila clave={`IVA (${IVA * 100}%)`} valor={`${iva.toFixed(2)} €`} />
-          <Fila clave="Total a Pagar" valor={`${total.toFixed(2)} €`} destacado />
+          <Fila clave="Importe Total" valor={`${totalBase.toFixed(2)} €`} destacado />
 
           <label style={{ ...estilos.check, marginTop: 14 }}>
             <input
