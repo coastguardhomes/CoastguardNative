@@ -16,6 +16,7 @@ const EXTRAS = [
   { nombre: "Gestión del técnico", precio: 25 },
   { nombre: "Visita rápida", precio: 25 },
   { nombre: "Inspección posterior a tormenta", precio: 35 },
+  { nombre: "Gestión y custodia de llaves", precio: 15 },
   { nombre: "Coste del técnico", precio: null }
 ];
 
@@ -116,11 +117,11 @@ export default function Extras() {
     }
 
     if (seleccionados.length === 0) {
-      setError("Selecciona al menos un extra.");
+      setError("Selecciona al menos un servicio o extra.");
       return;
     }
 
-    const sinPrecio = lineas.find((l) => !l.precio || l.precio <= 0);
+    const sinPrecio = lineas.find((l) => l.precio === null || l.precio === undefined || Number.isNaN(l.precio) || l.precio < 0);
     if (sinPrecio) {
       setError(`Indica un precio válido para "${sinPrecio.nombre}".`);
       return;
@@ -178,12 +179,10 @@ export default function Extras() {
           { body: { facturaId: factura.id } }
         );
 
-        // ⭐ CORRECCIÓN: usar pdf_url en vez de url
         if (!errorPdf && pdfData?.pdf_url) {
           const disponible = await pdfDisponible(pdfData.pdf_url);
 
           if (disponible) {
-            // ⭐ CORRECCIÓN: guardar pdf_url correctamente
             await supabase
               .from("facturas")
               .update({ pdf_url: pdfData.pdf_url })
@@ -191,7 +190,6 @@ export default function Extras() {
 
             const cliente = clientes.find((c) => c.id === Number(clienteId));
 
-            // Enviar email (ya estaba bien)
             if (enviarEmail && cliente?.email) {
               const { error: errorEmail } = await supabase.functions.invoke(
                 "enviar-email",
@@ -235,9 +233,9 @@ export default function Extras() {
   return (
     <Menu>
       <div style={estilos.pagina}>
-        <h1 style={estilos.titulo}>Extras</h1>
+        <h1 style={estilos.titulo}>Servicios y Extras</h1>
         <p style={estilos.subtitulo}>
-          Factura servicios y conceptos sueltos a los clientes.
+          Selecciona los servicios adicionales o de custodia para generar la factura correspondiente.
         </p>
 
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
@@ -271,6 +269,7 @@ export default function Extras() {
         </div>
 
         <div style={estilos.tarjeta}>
+          <h3 style={{ color: "#4db8ff", marginBottom: 14, fontSize: 16 }}>Servicios Disponibles</h3>
           {EXTRAS.map((extra) => (
             <div key={extra.nombre} style={{ marginBottom: 18 }}>
               <label style={estilos.check}>
@@ -281,7 +280,7 @@ export default function Extras() {
                   style={estilos.checkbox}
                 />
                 {extra.nombre} —{" "}
-                {extra.precio !== null ? `${extra.precio} €` : "Según tarifa"}
+                {extra.precio !== null ? `${extra.precio} €` : "Precio personalizado"}
               </label>
 
               {extra.precio === null && seleccionados.includes(extra.nombre) && (
@@ -289,7 +288,7 @@ export default function Extras() {
                   type="number"
                   inputMode="decimal"
                   min="0"
-                  placeholder="Precio €"
+                  placeholder="Introduce el precio en €"
                   value={precios[extra.nombre] || ""}
                   onChange={(e) =>
                     setPrecios({ ...precios, [extra.nombre]: e.target.value })
@@ -302,9 +301,9 @@ export default function Extras() {
         </div>
 
         <div style={estilos.tarjeta}>
-          <Fila clave="Base" valor={`${base.toFixed(2)} €`} />
+          <Fila clave="Base imponible" valor={`${base.toFixed(2)} €`} />
           <Fila clave={`IVA (${IVA * 100}%)`} valor={`${iva.toFixed(2)} €`} />
-          <Fila clave="Total" valor={`${total.toFixed(2)} €`} destacado />
+          <Fila clave="Total a Pagar" valor={`${total.toFixed(2)} €`} destacado />
 
           <label style={{ ...estilos.check, marginTop: 14 }}>
             <input
@@ -314,7 +313,7 @@ export default function Extras() {
               style={estilos.checkbox}
             />
             <span style={{ fontSize: 14.5 }}>
-              Enviar la factura por email al cliente
+              Enviar factura por email automáticamente al cliente
             </span>
           </label>
         </div>
@@ -324,11 +323,11 @@ export default function Extras() {
           disabled={guardando}
           style={{ ...estilos.boton, opacity: guardando ? 0.6 : 1 }}
         >
-          {guardando ? "Procesando..." : "Crear factura"}
+          {guardando ? "Procesando..." : "Emitir Servicio y Facturar"}
         </button>
 
         <button onClick={() => navigate("/facturas")} style={estilos.botonSec}>
-          Ver facturas
+          Ir al listado de Facturas
         </button>
       </div>
     </Menu>
