@@ -33,6 +33,7 @@ export default function CrearContrato() {
     { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
     { id: "standard", nombre: "Standard", precio: 59, frecuencia: 30 },
     { id: "premium", nombre: "Premium", precio: 79, frecuencia: 30 },
+    { id: "custodia_llaves", nombre: "Custodia de llaves", precio: 15, frecuencia: 30 }, // <-- Añadido aquí
   ];
 
   function calcularPuntos(v) {
@@ -101,7 +102,9 @@ export default function CrearContrato() {
     const vivienda = viviendas.find((v) => String(v.id) === String(viviendaId));
 
     setForm((prev) => {
-      const precioVivienda = vivienda ? calcularPrecioVivienda(vivienda) : 0;
+      // Si la modalidad seleccionada es custodia de llaves, el precio de la vivienda no suma
+      const esCustodia = prev.modalidad === "custodia_llaves";
+      const precioVivienda = esCustodia ? 0 : (vivienda ? calcularPrecioVivienda(vivienda) : 0);
       const precioModalidad = Number(prev.precio_modalidad || 0);
       const precioTotal = Number((precioVivienda + precioModalidad).toFixed(2));
 
@@ -120,7 +123,9 @@ export default function CrearContrato() {
 
     setForm((prev) => {
       const precioModalidad = Number(mod.precio);
-      const precioVivienda = Number(prev.precio_vivienda || 0);
+      // Si es custodia de llaves, fijamos el precio de la vivienda a 0 para que no sume los metros cuadrados
+      const esCustodia = modalidadId === "custodia_llaves";
+      const precioVivienda = esCustodia ? 0 : Number(prev.precio_vivienda || 0);
       const precioTotal = Number((precioModalidad + precioVivienda).toFixed(2));
 
       return {
@@ -128,6 +133,7 @@ export default function CrearContrato() {
         modalidad: modalidadId,
         frecuencia: mod.frecuencia,
         precio_modalidad: precioModalidad,
+        precio_vivienda: precioVivienda,
         precio: precioTotal,
       };
     });
@@ -235,7 +241,7 @@ export default function CrearContrato() {
 
       const contratoId = data.id;
 
-      // 2. Crear factura del contrato (SIN ENVÍO DE EMAIL)
+      // 2. Crear factura del contrato
       const precio = Number(form.precio || 0);
       const baseFactura = precio;
       const ivaFactura = Number((precio * 0.21).toFixed(2));
@@ -250,7 +256,7 @@ export default function CrearContrato() {
             contrato_id: Number(contratoId),
 
             tipo: "contrato",
-            descripcion: "Subscripción mensual",
+            descripcion: form.modalidad === "custodia_llaves" ? "Custodia de llaves" : "Subscripción mensual",
 
             base: baseFactura,
             iva: ivaFactura,
@@ -269,18 +275,16 @@ export default function CrearContrato() {
       if (!facturaError && facturaData) {
         const facturaId = facturaData.id;
 
-        // Generar PDF de factura internamente sin enviar correo
         await supabase.functions.invoke("factura-pdf", {
           body: { facturaId, id: facturaId },
         });
       }
 
-      // 3. Generar PDF del contrato internamente sin enviar correo
       await supabase.functions.invoke("contrato-pdf", {
         body: { contratoId: contratoId, id: contratoId },
       });
 
-      setMensaje("¡Contrato creado con éxito! ✔ (No se ha enviado ningún correo)");
+      setMensaje("¡Contrato creado con éxito! ✔");
       setTimeout(() => {
         navigate("/contratos");
       }, 1500);
@@ -312,7 +316,7 @@ export default function CrearContrato() {
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
-          boxSizing: "box-sizing",
+          boxSizing: "border-box",
         }}
       >
         <h1
