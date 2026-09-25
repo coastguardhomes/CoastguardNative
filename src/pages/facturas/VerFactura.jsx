@@ -103,45 +103,6 @@ export default function VerFactura() {
   }, [id]);
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const fuePagado = queryParams.get('pagado');
-
-    if (
-      fuePagado === 'true' &&
-      factura &&
-      factura.estado?.toLowerCase() !== 'pagada'
-    ) {
-      async function confirmarPagoAutomatico() {
-        try {
-          await supabase
-            .from('facturas')
-            .update({ estado: 'pagada' })
-            .eq('id', id);
-
-          setFactura((prev) => ({
-            ...prev,
-            estado: 'pagada'
-          }));
-
-          await supabase.functions.invoke('enviar-email', {
-            body: {
-              factura_id: Number(id),
-              facturaId: Number(id),
-              id: Number(id),
-              tipo: 'factura_pagada'
-            }
-          });
-        } catch (err) {
-          console.error(
-            "Error al actualizar el pago automático:",
-            err
-          );
-        }
-      }
-
-      confirmarPagoAutomatico();
-    }
-
     let ultimoChequeo = 0;
 
     const handleVisibilityChange = () => {
@@ -166,26 +127,13 @@ export default function VerFactura() {
         handleVisibilityChange
       );
     };
-  }, [factura, id]);
+  }, [id]);
 
   const idiomaFinal =
     cliente?.idioma ||
     cliente?.language ||
     currentLang;
 
-  /*
-   * NUEVO FLUJO:
-   *
-   * 1. Creamos un Checkout real de Stripe.
-   * 2. Obtenemos la URL real de Checkout.
-   * 3. Enviamos el aviso por email pasando esa URL.
-   *
-   * El Edge Function enviar-email genera además
-   * el PDF informativo y lo adjunta al correo.
-   *
-   * Importante:
-   * aquí NO se crea una factura fiscal.
-   */
   const enviarAvisoPago = async () => {
     try {
       setProcesando(true);
@@ -208,9 +156,6 @@ export default function VerFactura() {
         );
       }
 
-      /*
-       * 1. Crear Checkout real de Stripe.
-       */
       const { data: checkoutData, error: checkoutError } =
         await supabase.functions.invoke(
           "create-checkout-session",
@@ -234,9 +179,7 @@ export default function VerFactura() {
           if (body?.error) {
             errorMsg = body.error;
           }
-        } catch (e) {
-          // Mantener mensaje original.
-        }
+        } catch (e) {}
 
         throw new Error(errorMsg);
       }
@@ -247,14 +190,6 @@ export default function VerFactura() {
         );
       }
 
-      /*
-       * 2. Enviar email con:
-       *
-       * - botón de Stripe
-       * - PDF informativo adjunto
-       *
-       * El PDF NO es una factura.
-       */
       const { error: errEmail } =
         await supabase.functions.invoke(
           'enviar-email',
@@ -263,14 +198,10 @@ export default function VerFactura() {
               factura_id: Number(factura.id),
               facturaId: Number(factura.id),
               id: Number(factura.id),
-
               tipo: 'aviso_pago',
-
               customerEmail: cliente.email,
               customerName: cliente.nombre,
-
               stripeUrl: checkoutData.url,
-
               title:
                 `Aviso de pago ${factura.numero || `#${factura.id}`}`
             }
@@ -303,43 +234,58 @@ export default function VerFactura() {
     try {
       setProcesando(true);
 
-      const { error: errDb } = await supabase
-        .from('facturas')
-        .update({
-          estado: 'pagada'
-        })
-        .eq('id', id);
+      if (!factura) {
+        throw new Error("No se ha cargado la factura.");
+      }
 
-      if (errDb) throw errDb;
-
-      setFactura((prev) => ({
-        ...prev,
-        estado: 'pagada'
-      }));
-
-      await supabase.functions.invoke(
-        'enviar-email',
-        {
-          body: {
-            factura_id: Number(id),
-            facturaId: Number(id),
-            id: Number(id),
-            tipo: 'factura_pagada',
-            customerEmail: cliente?.email,
-            amount: Number(factura.total) * 100,
-            title:
-              `Factura ${factura.numero || `#${factura.id}`}`
+      const { data, error } =
+        await supabase.functions.invoke(
+          "factura-pdf",
+          {
+            body: {
+              facturaId: Number(factura.id),
+              pagoConfirmado: true
+            }
           }
-        }
-      );
+        );
+
+      if (error) {
+        let mensaje = error.message;
+
+        try {
+          const body = await error.context?.json();
+
+          if (body?.error) {
+            mensaje = body.error;
+          }
+        } catch (e) {}
+
+        throw new Error(mensaje);
+      }
+
+      if (!data?.ok) {
+        throw new Error(
+          data?.error ||
+          "No se pudo confirmar el pago."
+        );
+      }
+
+      await cargarDatosSeguros();
 
       alert(
-        '¡Marcado como pagada con éxito!'
+        data?.facturadirecta?.numero
+          ? `Pago confirmado. Factura oficial ${data.facturadirecta.numero} creada y enviada.`
+          : "Pago confirmado y factura oficial procesada correctamente."
       );
     } catch (err) {
+      console.error(
+        "Error confirmando pago:",
+        err
+      );
+
       alert(
-        'Error: ' +
-        err.message
+        'Error al confirmar el pago: ' +
+        (err.message || '')
       );
     } finally {
       setProcesando(false);
@@ -450,7 +396,9 @@ export default function VerFactura() {
   }
 
   const esPagada =
-    factura.estado?.toLowerCase() === 'pagada';
+    factura.estado_pago?.toLowerCase() === 'pagada' ||
+    factura.estado?.toLowerCase() === 'pagada' ||
+    factura.estado?.toLowerCase() === 'finalizado';
 
   const colorEstado =
     esPagada
@@ -505,7 +453,7 @@ export default function VerFactura() {
 
         <div style={estilos.cabecera}>
           <h2 style={estilos.titulo}>
-            AVISO DE COBRO{' '}
+            {esPagada ? 'FACTURA' : 'AVISO DE COBRO'}{' '}
             {factura.numero || `#${factura.id}`}
           </h2>
         </div>
@@ -681,7 +629,7 @@ export default function VerFactura() {
                 disabled={procesando}
                 style={estilos.botonVerde}
               >
-                💳 Marcar como pagada
+                💳 Confirmar pago y emitir factura
               </button>
             </div>
           )}
