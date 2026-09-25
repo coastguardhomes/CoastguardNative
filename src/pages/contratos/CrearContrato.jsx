@@ -33,7 +33,7 @@ export default function CrearContrato() {
     { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
     { id: "standard", nombre: "Standard", precio: 59, frecuencia: 30 },
     { id: "premium", nombre: "Premium", precio: 79, frecuencia: 30 },
-    { id: "custodia_llaves", nombre: "Custodia de llaves", precio: 15, frecuencia: 30 }, // <-- Añadido aquí
+    { id: "custodia_llaves", nombre: "Custodia de llaves", precio: 15, frecuencia: 30 },
   ];
 
   function calcularPuntos(v) {
@@ -82,31 +82,50 @@ export default function CrearContrato() {
   }
 
   const viviendasFiltradas = form.cliente_id
-    ? viviendas.filter((v) => !v.cliente_id || String(v.cliente_id) === String(form.cliente_id))
+    ? viviendas.filter(
+        (v) =>
+          !v.cliente_id ||
+          String(v.cliente_id) === String(form.cliente_id)
+      )
     : viviendas;
 
   function handleClienteChange(e) {
     const clienteId = e.target.value;
-    const clienteEncontrado = clientes.find((c) => String(c.id) === String(clienteId));
+    const clienteEncontrado = clientes.find(
+      (c) => String(c.id) === String(clienteId)
+    );
 
     setForm((prev) => ({
       ...prev,
       cliente_id: clienteId,
       vivienda_id: "",
-      dni: clienteEncontrado ? (clienteEncontrado.dni || clienteEncontrado.cif || "") : "",
+      dni: clienteEncontrado
+        ? clienteEncontrado.dni || clienteEncontrado.cif || ""
+        : "",
     }));
   }
 
   function handleViviendaChange(e) {
     const viviendaId = e.target.value;
-    const vivienda = viviendas.find((v) => String(v.id) === String(viviendaId));
+    const vivienda = viviendas.find(
+      (v) => String(v.id) === String(viviendaId)
+    );
 
     setForm((prev) => {
-      // Si la modalidad seleccionada es custodia de llaves, el precio de la vivienda no suma
       const esCustodia = prev.modalidad === "custodia_llaves";
-      const precioVivienda = esCustodia ? 0 : (vivienda ? calcularPrecioVivienda(vivienda) : 0);
-      const precioModalidad = Number(prev.precio_modalidad || 0);
-      const precioTotal = Number((precioVivienda + precioModalidad).toFixed(2));
+      const precioVivienda = esCustodia
+        ? 0
+        : vivienda
+        ? calcularPrecioVivienda(vivienda)
+        : 0;
+
+      const precioModalidad = Number(
+        prev.precio_modalidad || 0
+      );
+
+      const precioTotal = Number(
+        (precioVivienda + precioModalidad).toFixed(2)
+      );
 
       return {
         ...prev,
@@ -118,15 +137,24 @@ export default function CrearContrato() {
   }
 
   function seleccionarModalidad(modalidadId) {
-    const mod = modalidades.find((m) => m.id === modalidadId);
+    const mod = modalidades.find(
+      (m) => m.id === modalidadId
+    );
+
     if (!mod) return;
 
     setForm((prev) => {
       const precioModalidad = Number(mod.precio);
-      // Si es custodia de llaves, fijamos el precio de la vivienda a 0 para que no sume los metros cuadrados
-      const esCustodia = modalidadId === "custodia_llaves";
-      const precioVivienda = esCustodia ? 0 : Number(prev.precio_vivienda || 0);
-      const precioTotal = Number((precioModalidad + precioVivienda).toFixed(2));
+      const esCustodia =
+        modalidadId === "custodia_llaves";
+
+      const precioVivienda = esCustodia
+        ? 0
+        : Number(prev.precio_vivienda || 0);
+
+      const precioTotal = Number(
+        (precioModalidad + precioVivienda).toFixed(2)
+      );
 
       return {
         ...prev,
@@ -143,10 +171,19 @@ export default function CrearContrato() {
     const nuevaFechaInicio = e.target.value;
     let nuevaFechaFin = form.fecha_fin;
 
-    if (nuevaFechaInicio && form.duracion_meses) {
+    if (
+      nuevaFechaInicio &&
+      form.duracion_meses
+    ) {
       const fecha = new Date(nuevaFechaInicio);
-      fecha.setMonth(fecha.getMonth() + Number(form.duracion_meses));
-      nuevaFechaFin = fecha.toISOString().split("T")[0];
+
+      fecha.setMonth(
+        fecha.getMonth() +
+          Number(form.duracion_meses)
+      );
+
+      nuevaFechaFin =
+        fecha.toISOString().split("T")[0];
     }
 
     setForm((prev) => ({
@@ -160,10 +197,19 @@ export default function CrearContrato() {
     const nuevaDuracion = e.target.value;
     let nuevaFechaFin = form.fecha_fin;
 
-    if (form.fecha_inicio && nuevaDuracion) {
+    if (
+      form.fecha_inicio &&
+      nuevaDuracion
+    ) {
       const fecha = new Date(form.fecha_inicio);
-      fecha.setMonth(fecha.getMonth() + Number(nuevaDuracion));
-      nuevaFechaFin = fecha.toISOString().split("T")[0];
+
+      fecha.setMonth(
+        fecha.getMonth() +
+          Number(nuevaDuracion)
+      );
+
+      nuevaFechaFin =
+        fecha.toISOString().split("T")[0];
     }
 
     setForm((prev) => ({
@@ -176,8 +222,14 @@ export default function CrearContrato() {
   async function crearContrato() {
     setMensaje("");
 
-    if (!form.cliente_id || !form.vivienda_id || !form.tecnico_id) {
-      setMensaje("Cliente, vivienda y técnico son obligatorios.");
+    if (
+      !form.cliente_id ||
+      !form.vivienda_id ||
+      !form.tecnico_id
+    ) {
+      setMensaje(
+        "Cliente, vivienda y técnico son obligatorios."
+      );
       return;
     }
 
@@ -187,51 +239,103 @@ export default function CrearContrato() {
     }
 
     if (!form.fecha_inicio) {
-      setMensaje("Selecciona la fecha de inicio.");
+      setMensaje(
+        "Selecciona la fecha de inicio."
+      );
       return;
     }
 
     const precioFinal = Number(form.precio);
+
     if (!precioFinal || precioFinal <= 0) {
-      setMensaje("El precio total del contrato no puede ser 0 o estar vacío.");
+      setMensaje(
+        "El precio total del contrato no puede ser 0 o estar vacío."
+      );
       return;
     }
 
     setProcesando(true);
-    setMensaje("Creando contrato y generando documentación interna...");
+    setMensaje(
+      "Creando contrato y generando documentación interna..."
+    );
 
     try {
-      if (form.dni && form.cliente_id) {
+      if (
+        form.dni &&
+        form.cliente_id
+      ) {
         await supabase
           .from("clientes")
-          .update({ dni: form.dni })
-          .eq("id", form.cliente_id);
+          .update({
+            dni: form.dni
+          })
+          .eq(
+            "id",
+            form.cliente_id
+          );
       }
 
-      let fechaFinFinal = form.fecha_fin;
-      if (!fechaFinFinal && form.fecha_inicio) {
-        const fechaInicioObj = new Date(form.fecha_inicio);
-        const meses = Number(form.duracion_meses) || 12;
-        fechaInicioObj.setMonth(fechaInicioObj.getMonth() + meses);
-        fechaFinFinal = fechaInicioObj.toISOString().split("T")[0];
+      let fechaFinFinal =
+        form.fecha_fin;
+
+      if (
+        !fechaFinFinal &&
+        form.fecha_inicio
+      ) {
+        const fechaInicioObj =
+          new Date(
+            form.fecha_inicio
+          );
+
+        const meses =
+          Number(
+            form.duracion_meses
+          ) || 12;
+
+        fechaInicioObj.setMonth(
+          fechaInicioObj.getMonth() +
+            meses
+        );
+
+        fechaFinFinal =
+          fechaInicioObj
+            .toISOString()
+            .split("T")[0];
       }
 
-      // 1. Insertar contrato
-      const { data, error } = await supabase
+      const {
+        data,
+        error
+      } = await supabase
         .from("contratos")
         .insert([
           {
-            cliente_id: String(form.cliente_id),
-            vivienda_id: Number(form.vivienda_id),
-            tecnico_id: String(form.tecnico_id),
-            fecha_inicio: form.fecha_inicio,
-            fecha_fin: fechaFinFinal,
-            precio: precioFinal,
-            notas: form.notas,
-            frecuencia: Number(form.frecuencia || 30),
-            modalidad: form.modalidad,
-            estado: "pendiente",
-            duracion_meses: Number(form.duracion_meses || 12),
+            cliente_id:
+              String(form.cliente_id),
+            vivienda_id:
+              Number(form.vivienda_id),
+            tecnico_id:
+              String(form.tecnico_id),
+            fecha_inicio:
+              form.fecha_inicio,
+            fecha_fin:
+              fechaFinFinal,
+            precio:
+              precioFinal,
+            notas:
+              form.notas,
+            frecuencia:
+              Number(
+                form.frecuencia || 30
+              ),
+            modalidad:
+              form.modalidad,
+            estado:
+              "pendiente",
+            duracion_meses:
+              Number(
+                form.duracion_meses || 12
+              ),
           },
         ])
         .select("*")
@@ -241,57 +345,110 @@ export default function CrearContrato() {
 
       const contratoId = data.id;
 
-      // 2. Crear factura del contrato
-      const precio = Number(form.precio || 0);
-      const baseFactura = precio;
-      const ivaFactura = Number((precio * 0.21).toFixed(2));
-      const totalFactura = Number((precio * 1.21).toFixed(2));
+      const precio =
+        Number(form.precio || 0);
 
-      const { data: facturaData, error: facturaError } = await supabase
+      const baseFactura =
+        precio;
+
+      const ivaFactura =
+        Number(
+          (
+            precio * 0.21
+          ).toFixed(2)
+        );
+
+      const totalFactura =
+        Number(
+          (
+            precio * 1.21
+          ).toFixed(2)
+        );
+
+      const {
+        error: facturaError
+      } = await supabase
         .from("facturas")
         .insert([
           {
-            cliente_id: String(form.cliente_id),
-            vivienda_id: Number(form.vivienda_id),
-            contrato_id: Number(contratoId),
+            cliente_id:
+              String(form.cliente_id),
+            vivienda_id:
+              Number(form.vivienda_id),
+            contrato_id:
+              Number(contratoId),
 
-            tipo: "contrato",
-            descripcion: form.modalidad === "custodia_llaves" ? "Custodia de llaves" : "Subscripción mensual",
+            tipo:
+              "contrato",
 
-            base: baseFactura,
-            iva: ivaFactura,
-            total: totalFactura,
+            descripcion:
+              form.modalidad ===
+              "custodia_llaves"
+                ? "Custodia de llaves"
+                : "Subscripción mensual",
 
-            estado_tecnico: "no_enviar",
-            estado: "pendiente",
-            estado_pago: "pendiente",
+            base:
+              baseFactura,
 
-            fecha: new Date().toISOString().slice(0, 10),
+            iva:
+              ivaFactura,
+
+            total:
+              totalFactura,
+
+            estado_tecnico:
+              "no_enviar",
+
+            estado:
+              "pendiente",
+
+            estado_pago:
+              "pendiente",
+
+            fecha:
+              new Date()
+                .toISOString()
+                .slice(0, 10),
           },
         ])
         .select()
         .single();
 
-      if (!facturaError && facturaData) {
-        const facturaId = facturaData.id;
-
-        await supabase.functions.invoke("factura-pdf", {
-          body: { facturaId, id: facturaId },
-        });
+      if (facturaError) {
+        throw facturaError;
       }
 
-      await supabase.functions.invoke("contrato-pdf", {
-        body: { contratoId: contratoId, id: contratoId },
-      });
+      await supabase.functions.invoke(
+        "contrato-pdf",
+        {
+          body: {
+            contratoId:
+              contratoId,
+            id:
+              contratoId,
+          },
+        }
+      );
 
-      setMensaje("¡Contrato creado con éxito! ✔");
+      setMensaje(
+        "¡Contrato creado con éxito! ✔"
+      );
+
       setTimeout(() => {
         navigate("/contratos");
       }, 1500);
 
     } catch (e) {
-      console.error("Error general creando contrato:", e);
-      setMensaje("Error creando contrato: " + e.message);
+      console.error(
+        "Error general creando contrato:",
+        e
+      );
+
+      setMensaje(
+        "Error creando contrato: " +
+        e.message
+      );
+
       setProcesando(false);
     }
   }
@@ -301,8 +458,10 @@ export default function CrearContrato() {
     width: "100%",
     marginBottom: "15px",
     borderRadius: "10px",
-    border: "1px solid rgba(255,255,255,0.2)",
-    background: "rgba(255,255,255,0.08)",
+    border:
+      "1px solid rgba(255,255,255,0.2)",
+    background:
+      "rgba(255,255,255,0.08)",
     color: "#fff",
     boxSizing: "border-box",
   };
@@ -315,7 +474,8 @@ export default function CrearContrato() {
           background: "#0a0f1a",
           minHeight: "100vh",
           color: "#fff",
-          fontFamily: "Inter, sans-serif",
+          fontFamily:
+            "Inter, sans-serif",
           boxSizing: "border-box",
         }}
       >
@@ -325,7 +485,8 @@ export default function CrearContrato() {
             marginBottom: "25px",
             fontSize: "28px",
             fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            textShadow:
+              "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
           Crear Contrato
@@ -337,14 +498,19 @@ export default function CrearContrato() {
               marginBottom: "15px",
               padding: "10px",
               borderRadius: "8px",
-              background: mensaje.includes("éxito")
-                ? "rgba(74,222,128,0.1)"
-                : "rgba(0,153,255,0.1)",
-              color: mensaje.includes("éxito") ? "#4ade80" : "#4db8ff",
+              background:
+                mensaje.includes("éxito")
+                  ? "rgba(74,222,128,0.1)"
+                  : "rgba(0,153,255,0.1)",
+              color:
+                mensaje.includes("éxito")
+                  ? "#4ade80"
+                  : "#4db8ff",
               fontWeight: "600",
-              border: mensaje.includes("éxito")
-                ? "1px solid rgba(74,222,128,0.3)"
-                : "1px solid rgba(0,153,255,0.3)",
+              border:
+                mensaje.includes("éxito")
+                  ? "1px solid rgba(74,222,128,0.3)"
+                  : "1px solid rgba(0,153,255,0.3)",
             }}
           >
             {mensaje}
@@ -353,93 +519,183 @@ export default function CrearContrato() {
 
         <div
           style={{
-            background: "rgba(255,255,255,0.05)",
+            background:
+              "rgba(255,255,255,0.05)",
             padding: "20px",
             borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            border:
+              "1px solid rgba(255,255,255,0.1)",
+            boxShadow:
+              "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "#9fb3c8"
+            }}
+          >
             Cliente:
           </label>
+
           <select
             value={form.cliente_id}
             onChange={handleClienteChange}
             style={inputStyle}
           >
-            <option value="">Selecciona cliente</option>
+            <option value="">
+              Selecciona cliente
+            </option>
+
             {clientes.map((c) => (
-              <option key={c.id} value={c.id}>
+              <option
+                key={c.id}
+                value={c.id}
+              >
                 {c.nombre}
               </option>
             ))}
           </select>
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "#9fb3c8"
+            }}
+          >
             DNI / NIE:
           </label>
+
           <input
             type="text"
             placeholder="Introduce o edita el DNI / NIE"
             value={form.dni}
-            onChange={(e) => setForm({ ...form, dni: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                dni: e.target.value
+              })
+            }
             style={inputStyle}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "#9fb3c8"
+            }}
+          >
             Vivienda:
           </label>
+
           <select
             value={form.vivienda_id}
             onChange={handleViviendaChange}
             style={inputStyle}
           >
-            <option value="">Selecciona vivienda</option>
+            <option value="">
+              Selecciona vivienda
+            </option>
+
             {viviendasFiltradas.map((v) => (
-              <option key={v.id} value={v.id}>
+              <option
+                key={v.id}
+                value={v.id}
+              >
                 {v.direccion}
               </option>
             ))}
           </select>
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "#9fb3c8"
+            }}
+          >
             Técnico:
           </label>
+
           <select
             value={form.tecnico_id}
             onChange={(e) =>
-              setForm({ ...form, tecnico_id: String(e.target.value) })
+              setForm({
+                ...form,
+                tecnico_id:
+                  String(
+                    e.target.value
+                  )
+              })
             }
             style={inputStyle}
           >
-            <option value="">Selecciona técnico</option>
+            <option value="">
+              Selecciona técnico
+            </option>
+
             {tecnicos.map((t) => (
-              <option key={t.id} value={t.id}>
+              <option
+                key={t.id}
+                value={t.id}
+              >
                 {t.nombre}
               </option>
             ))}
           </select>
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "#9fb3c8"
+            }}
+          >
             Modalidad:
           </label>
+
           <select
             value={form.modalidad}
-            onChange={(e) => seleccionarModalidad(e.target.value)}
+            onChange={(e) =>
+              seleccionarModalidad(
+                e.target.value
+              )
+            }
             style={inputStyle}
           >
-            <option value="">Selecciona modalidad</option>
+            <option value="">
+              Selecciona modalidad
+            </option>
+
             {modalidades.map((m) => (
-              <option key={m.id} value={m.id}>
+              <option
+                key={m.id}
+                value={m.id}
+              >
                 {m.nombre} — {m.precio}€
               </option>
             ))}
           </select>
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "#9fb3c8"
+            }}
+          >
             Duración (meses):
           </label>
+
           <input
             type="number"
             value={form.duracion_meses}
@@ -447,9 +703,17 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "#9fb3c8"
+            }}
+          >
             Fecha inicio:
           </label>
+
           <input
             type="date"
             value={form.fecha_inicio}
@@ -457,47 +721,98 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "#9fb3c8"
+            }}
+          >
             Fecha de finalización:
           </label>
+
           <input
             type="date"
             value={form.fecha_fin}
-            onChange={(e) => setForm({ ...form, fecha_fin: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                fecha_fin:
+                  e.target.value
+              })
+            }
             style={inputStyle}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "#9fb3c8"
+            }}
+          >
             Precio total (€/mes):
           </label>
+
           <input
             type="number"
             value={form.precio}
             readOnly
             style={{
               ...inputStyle,
-              background: "rgba(255,255,255,0.15)",
+              background:
+                "rgba(255,255,255,0.15)",
               fontWeight: "bold",
               color: "#4db8ff",
             }}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "#9fb3c8"
+            }}
+          >
             Frecuencia de visitas (días):
           </label>
+
           <input
             type="number"
             value={form.frecuencia}
-            onChange={(e) => setForm({ ...form, frecuencia: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                frecuencia:
+                  e.target.value
+              })
+            }
             style={inputStyle}
           />
 
-          <label style={{ display: "block", marginBottom: "6px", fontSize: "14px", color: "#9fb3c8" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "14px",
+              color: "#9fb3c8"
+            }}
+          >
             Notas adicionales:
           </label>
+
           <textarea
             value={form.notas}
-            onChange={(e) => setForm({ ...form, notas: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                notas:
+                  e.target.value
+              })
+            }
             style={{
               ...inputStyle,
               minHeight: "90px",
@@ -518,11 +833,15 @@ export default function CrearContrato() {
               fontWeight: "700",
               fontSize: "17px",
               cursor: "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-              opacity: procesando ? 0.6 : 1,
+              boxShadow:
+                "0 0 10px rgba(0,153,255,0.4)",
+              opacity:
+                procesando ? 0.6 : 1,
             }}
           >
-            {procesando ? "Procesando..." : "Crear Contrato"}
+            {procesando
+              ? "Procesando..."
+              : "Crear Contrato"}
           </button>
         </div>
       </div>
