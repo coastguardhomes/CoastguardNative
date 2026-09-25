@@ -13,7 +13,6 @@ export default function FinalizarInspeccion() {
   const [esError, setEsError] = useState(false);
   const [procesando, setProcesando] = useState(false);
 
-  // ⭐ SISTEMA AUTOMÁTICO DE PUNTOS
   function calcularPuntos(v) {
     let puntos = 0;
 
@@ -43,6 +42,7 @@ export default function FinalizarInspeccion() {
 
   async function cargarInspeccion() {
     setLoading(true);
+
     try {
       let { data, error } = await supabase
         .from("inspecciones")
@@ -71,20 +71,24 @@ export default function FinalizarInspeccion() {
           .select("*")
           .eq("id", id)
           .maybeSingle();
-        
+
         data = resSimple.data;
         error = resSimple.error;
       }
 
       if (error || !data) {
-        setMensaje("No se encontró la inspección con ID: " + id);
+        setMensaje(
+          "No se encontró la inspección con ID: " + id
+        );
         setEsError(true);
       } else {
         setInspeccion(data);
       }
     } catch (e) {
       console.error(e);
-      setMensaje("Error de conexión al cargar la inspección.");
+      setMensaje(
+        "Error de conexión al cargar la inspección."
+      );
       setEsError(true);
     } finally {
       setLoading(false);
@@ -93,96 +97,172 @@ export default function FinalizarInspeccion() {
 
   async function aprobarInspeccion() {
     setProcesando(true);
-    setMensaje("Finalizando inspección y procesando documentación...");
+    setMensaje(
+      "Finalizando inspección y procesando documentación..."
+    );
     setEsError(false);
 
     try {
-      const { error: updateErr } = await supabase
-        .from("inspecciones")
-        .update({
-          estado: "finalizada",
-          fecha_finalizacion: new Date().toISOString(),
-        })
-        .eq("id", id);
+      const { error: updateErr } =
+        await supabase
+          .from("inspecciones")
+          .update({
+            estado: "finalizada",
+            fecha_finalizacion:
+              new Date().toISOString(),
+          })
+          .eq("id", id);
 
       if (updateErr) throw updateErr;
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const headersAuth = token ? { Authorization: `Bearer ${token}` } : {};
+      const { data: sessionData } =
+        await supabase.auth.getSession();
 
-      // ⭐ CORRECCIÓN: Invocación tolerante a fallos para no interrumpir si la Edge Function falla
+      const token =
+        sessionData?.session?.access_token;
+
+      const headersAuth = token
+        ? {
+            Authorization:
+              `Bearer ${token}`
+          }
+        : {};
+
       try {
-        const resPdf = await supabase.functions.invoke("pdf-inspeccion", { 
-          body: { inspeccionId: id, inspeccion_id: id, id: id },
-          headers: headersAuth
-        });
+        const resPdf =
+          await supabase.functions.invoke(
+            "pdf-inspeccion",
+            {
+              body: {
+                inspeccionId: id,
+                inspeccion_id: id,
+                id: id
+              },
+              headers: headersAuth
+            }
+          );
+
         if (resPdf.error) {
-          console.warn("Aviso Edge Function pdf-inspeccion:", resPdf.error);
+          console.warn(
+            "Aviso Edge Function pdf-inspeccion:",
+            resPdf.error
+          );
         }
       } catch (pdfErr) {
-        console.warn("Excepción menor en pdf-inspeccion:", pdfErr);
+        console.warn(
+          "Excepción menor en pdf-inspeccion:",
+          pdfErr
+        );
       }
 
-      // ⭐ CALCULAR PRECIO AUTOMÁTICO DE LA VIVIENDA
-      const vivienda = inspeccion.viviendas;
-      const precioAuto = vivienda ? calcularPrecio(vivienda) : 0;
+      const vivienda =
+        inspeccion.viviendas;
 
-      // ⭐ CREAR FACTURA AUTOMÁTICA DE INSPECCIÓN
-      if (inspeccion.cliente_id) {
-        const { data: facturaData, error: facturaError } = await supabase
+      const precioAuto =
+        vivienda
+          ? calcularPrecio(vivienda)
+          : 0;
+
+      if (
+        inspeccion.cliente_id &&
+        precioAuto > 0
+      ) {
+        const {
+          error: facturaError
+        } = await supabase
           .from("facturas")
           .insert([
             {
-              cliente_id: inspeccion.cliente_id,
-              vivienda_id: inspeccion.vivienda_id,
-              inspeccion_id: id,
-              tipo: "inspeccion",
-              descripcion: `Inspección técnica — ${inspeccion.fecha || new Date().toISOString().slice(0, 10)}`,
-              base: precioAuto,
-              iva: (precioAuto * 0.21).toFixed(2),
-              total: (precioAuto * 1.21).toFixed(2),
-              estado: "pendiente",
-              fecha: new Date().toISOString(),
-            },
+              cliente_id:
+                inspeccion.cliente_id,
+
+              vivienda_id:
+                inspeccion.vivienda_id,
+
+              inspeccion_id:
+                id,
+
+              tipo:
+                "inspeccion",
+
+              descripcion:
+                `Inspección técnica — ${
+                  inspeccion.fecha ||
+                  new Date()
+                    .toISOString()
+                    .slice(0, 10)
+                }`,
+
+              base:
+                precioAuto,
+
+              iva:
+                Number(
+                  (
+                    precioAuto * 0.21
+                  ).toFixed(2)
+                ),
+
+              total:
+                Number(
+                  (
+                    precioAuto * 1.21
+                  ).toFixed(2)
+                ),
+
+              estado:
+                "pendiente",
+
+              estado_pago:
+                "pendiente",
+
+              fecha:
+                new Date()
+                  .toISOString()
+                  .slice(0, 10),
+            }
           ])
           .select()
           .single();
 
-        if (!facturaError && facturaData) {
-          const facturaId = facturaData.id;
-
-          try {
-            await supabase.functions.invoke("factura-pdf", {
-              body: { facturaId },
-            });
-          } catch (e) {
-            console.error("Error generando factura PDF:", e);
-          }
-
-          try {
-            await supabase.functions.invoke("enviar-email", {
-              body: { id: facturaId, tipo: "factura" },
-            });
-          } catch (e) {
-            console.error("Error enviando factura:", e);
-          }
+        if (facturaError) {
+          throw facturaError;
         }
       }
 
       try {
-        const resEmail = await supabase.functions.invoke("enviar-email", { 
-          body: { inspeccionId: id, inspeccion_id: id, id: id, tipo: "inspeccion_aprobada" },
-          headers: headersAuth
-        });
+        const resEmail =
+          await supabase.functions.invoke(
+            "enviar-email",
+            {
+              body: {
+                inspeccionId: id,
+                inspeccion_id: id,
+                id: id,
+                tipo:
+                  "inspeccion_aprobada"
+              },
+              headers: headersAuth
+            }
+          );
+
         if (resEmail.error) {
-          console.warn("Aviso al enviar email de aprobación:", resEmail.error);
+          console.warn(
+            "Aviso al enviar email de aprobación:",
+            resEmail.error
+          );
         }
       } catch (emailErr) {
-        console.warn("Excepción menor al enviar email de inspección:", emailErr);
+        console.warn(
+          "Excepción menor al enviar email de inspección:",
+          emailErr
+        );
       }
 
-      setMensaje("¡Inspección finalizada correctamente! ✔");
+      setMensaje(
+        "¡Inspección finalizada correctamente! ✔"
+      );
+
       setEsError(false);
 
       setTimeout(() => {
@@ -190,7 +270,11 @@ export default function FinalizarInspeccion() {
       }, 2500);
 
     } catch (e) {
-      console.error("Fallo detallado:", e);
+      console.error(
+        "Fallo detallado:",
+        e
+      );
+
       setMensaje(e.message);
       setEsError(true);
       setProcesando(false);
@@ -198,22 +282,45 @@ export default function FinalizarInspeccion() {
   }
 
   async function eliminarInspeccion() {
-    const confirmar = window.confirm("¿Seguro que deseas eliminar esta inspección?");
+    const confirmar =
+      window.confirm(
+        "¿Seguro que deseas eliminar esta inspección?"
+      );
+
     if (!confirmar) return;
 
     setProcesando(true);
-    try {
-      await supabase.from("checklist_inspeccion").delete().eq("inspeccion_id", id);
-      await supabase.from("fotos_inspeccion").delete().eq("inspeccion_id", id);
 
-      const { error } = await supabase.from("inspecciones").delete().eq("id", id);
+    try {
+      await supabase
+        .from("checklist_inspeccion")
+        .delete()
+        .eq("inspeccion_id", id);
+
+      await supabase
+        .from("fotos_inspeccion")
+        .delete()
+        .eq("inspeccion_id", id);
+
+      const { error } =
+        await supabase
+          .from("inspecciones")
+          .delete()
+          .eq("id", id);
 
       if (error) throw error;
 
-      alert("Inspección eliminada correctamente");
+      alert(
+        "Inspección eliminada correctamente"
+      );
+
       navigate("/inspecciones");
     } catch (e) {
-      alert("Error eliminando inspección: " + e.message);
+      alert(
+        "Error eliminando inspección: " +
+        e.message
+      );
+
       setProcesando(false);
     }
   }
@@ -221,51 +328,220 @@ export default function FinalizarInspeccion() {
   if (loading) {
     return (
       <Menu>
-        <div style={{ height: "100vh", background: "#0a0f1a", color: "#4db8ff", display: "flex", justifyContent: "center", alignItems: "center" }}>
+        <div
+          style={{
+            height: "100vh",
+            background: "#0a0f1a",
+            color: "#4db8ff",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center"
+          }}
+        >
           Cargando inspección...
         </div>
       </Menu>
     );
   }
 
-  const direccionReal = inspeccion?.viviendas?.direccion || inspeccion?.direccion || "Dirección no especificada";
-  const localidadReal = inspeccion?.viviendas?.ciudad || inspeccion?.viviendas?.localidad || inspeccion?.localidad || "No especificada";
+  const direccionReal =
+    inspeccion?.viviendas?.direccion ||
+    inspeccion?.direccion ||
+    "Dirección no especificada";
+
+  const localidadReal =
+    inspeccion?.viviendas?.ciudad ||
+    inspeccion?.viviendas?.localidad ||
+    inspeccion?.localidad ||
+    "No especificada";
 
   return (
     <Menu>
-      <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif" }}>
-        <h1 style={{ color: "#4db8ff", marginBottom: "25px", fontSize: "24px", textAlign: "center" }}>
+      <div
+        style={{
+          padding: "20px",
+          background: "#0a0f1a",
+          minHeight: "100vh",
+          color: "#fff",
+          fontFamily:
+            "Inter, sans-serif"
+        }}
+      >
+        <h1
+          style={{
+            color: "#4db8ff",
+            marginBottom: "25px",
+            fontSize: "24px",
+            textAlign: "center"
+          }}
+        >
           Revisión y Finalización
         </h1>
 
         {mensaje && (
-          <div style={{ marginBottom: "20px", padding: "12px", background: esError ? "rgba(255,107,107,0.15)" : "rgba(74,222,128,0.15)", border: `1px solid ${esError ? "#ff6b6b" : "#4ade80"}`, borderRadius: "10px", color: esError ? "#ff6b6b" : "#4ade80", textAlign: "center", fontSize: "14px", wordBreak: "break-word" }}>
+          <div
+            style={{
+              marginBottom: "20px",
+              padding: "12px",
+              background:
+                esError
+                  ? "rgba(255,107,107,0.15)"
+                  : "rgba(74,222,128,0.15)",
+              border:
+                `1px solid ${
+                  esError
+                    ? "#ff6b6b"
+                    : "#4ade80"
+                }`,
+              borderRadius: "10px",
+              color:
+                esError
+                  ? "#ff6b6b"
+                  : "#4ade80",
+              textAlign: "center",
+              fontSize: "14px",
+              wordBreak: "break-word"
+            }}
+          >
             {mensaje}
           </div>
         )}
 
         {inspeccion && (
           <>
-            <div style={{ background: "rgba(255,255,255,0.05)", padding: "20px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "25px" }}>
-              <p style={{ marginBottom: "10px" }}><strong style={{ color: "#4db8ff" }}>Dirección:</strong> {direccionReal}</p>
-              <p style={{ marginBottom: "10px" }}><strong style={{ color: "#4db8ff" }}>Localidad:</strong> {localidadReal}</p>
-              <p style={{ marginBottom: "10px" }}><strong style={{ color: "#4db8ff" }}>Fecha:</strong> {inspeccion.fecha ? String(inspeccion.fecha).slice(0, 10) : "-"}</p>
-              <p style={{ marginBottom: "10px" }}><strong style={{ color: "#4db8ff" }}>Estado actual:</strong> {inspeccion.estado || "pendiente"}</p>
-              <p><strong style={{ color: "#4db8ff" }}>Notas del técnico:</strong> {inspeccion.notas_tecnico || inspeccion.observaciones || "Sin observaciones"}</p>
+            <div
+              style={{
+                background:
+                  "rgba(255,255,255,0.05)",
+                padding: "20px",
+                borderRadius: "14px",
+                border:
+                  "1px solid rgba(255,255,255,0.1)",
+                marginBottom: "25px"
+              }}
+            >
+              <p
+                style={{
+                  marginBottom: "10px"
+                }}
+              >
+                <strong
+                  style={{
+                    color: "#4db8ff"
+                  }}
+                >
+                  Dirección:
+                </strong>{" "}
+                {direccionReal}
+              </p>
+
+              <p
+                style={{
+                  marginBottom: "10px"
+                }}
+              >
+                <strong
+                  style={{
+                    color: "#4db8ff"
+                  }}
+                >
+                  Localidad:
+                </strong>{" "}
+                {localidadReal}
+              </p>
+
+              <p
+                style={{
+                  marginBottom: "10px"
+                }}
+              >
+                <strong
+                  style={{
+                    color: "#4db8ff"
+                  }}
+                >
+                  Fecha:
+                </strong>{" "}
+                {inspeccion.fecha
+                  ? String(
+                      inspeccion.fecha
+                    ).slice(0, 10)
+                  : "-"}
+              </p>
+
+              <p
+                style={{
+                  marginBottom: "10px"
+                }}
+              >
+                <strong
+                  style={{
+                    color: "#4db8ff"
+                  }}
+                >
+                  Estado actual:
+                </strong>{" "}
+                {inspeccion.estado ||
+                  "pendiente"}
+              </p>
+
+              <p>
+                <strong
+                  style={{
+                    color: "#4db8ff"
+                  }}
+                >
+                  Notas del técnico:
+                </strong>{" "}
+                {inspeccion.notas_tecnico ||
+                  inspeccion.observaciones ||
+                  "Sin observaciones"}
+              </p>
             </div>
 
             <button
               onClick={aprobarInspeccion}
               disabled={procesando}
-              style={{ padding: "14px", width: "100%", background: "#4ade80", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "16px", cursor: "pointer", opacity: procesando ? 0.6 : 1 }}
+              style={{
+                padding: "14px",
+                width: "100%",
+                background: "#4ade80",
+                color: "#000",
+                borderRadius: "10px",
+                border: "none",
+                fontWeight: "700",
+                fontSize: "16px",
+                cursor: "pointer",
+                opacity:
+                  procesando
+                    ? 0.6
+                    : 1
+              }}
             >
-              {procesando ? "Procesando..." : "✔ Finalizar y Enviar al Cliente"}
+              {procesando
+                ? "Procesando..."
+                : "✔ Finalizar y Enviar al Cliente"}
             </button>
 
             <button
               onClick={eliminarInspeccion}
               disabled={procesando}
-              style={{ marginTop: "12px", padding: "14px", width: "100%", background: "#ef4444", color: "#fff", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "16px", cursor: "pointer", opacity: procesando ? 0.6 : 1 }}
+              style={{
+                marginTop: "12px",
+                padding: "14px",
+                width: "100%",
+                background: "#ef4444",
+                color: "#fff",
+                borderRadius: "10px",
+                border: "none",
+                fontWeight: "700",
+                fontSize: "16px",
+                cursor: "pointer",
+                opacity:
+                  procesando
+                    ? 0.6
+                    : 1
+              }}
             >
               Eliminar Inspección
             </button>
