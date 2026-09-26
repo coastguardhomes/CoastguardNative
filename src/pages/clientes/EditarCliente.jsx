@@ -9,6 +9,7 @@ export default function EditarCliente() {
 
   const [form, setForm] = useState({
     nombre: "",
+    dni: "",
     telefono: "",
     email: "",
     direccion: "",
@@ -19,10 +20,9 @@ export default function EditarCliente() {
 
   useEffect(() => {
     async function cargarCliente() {
-      // Reemplazado .single() por .maybeSingle() para evitar error 406
       const { data, error } = await supabase
         .from("clientes")
-        .select("nombre, telefono, email, direccion, idioma")
+        .select("nombre, dni, telefono, email, direccion, idioma")
         .eq("id", id)
         .maybeSingle();
 
@@ -33,6 +33,7 @@ export default function EditarCliente() {
 
       setForm({
         nombre: data.nombre || "",
+        dni: data.dni || "",
         telefono: data.telefono || "",
         email: data.email || "",
         direccion: data.direccion || "",
@@ -53,6 +54,7 @@ export default function EditarCliente() {
       .from("clientes")
       .update({
         nombre: form.nombre,
+        dni: form.dni,
         telefono: form.telefono,
         email: form.email,
         direccion: form.direccion,
@@ -61,6 +63,7 @@ export default function EditarCliente() {
       .eq("id", id);
 
     if (error) {
+      console.error("Error guardando cliente:", error);
       setMensaje("Error guardando cambios");
       return;
     }
@@ -77,6 +80,7 @@ export default function EditarCliente() {
     background: "#0d1b2a",
     color: "#fff",
     fontSize: "16px",
+    boxSizing: "border-box",
   };
 
   return (
@@ -116,40 +120,80 @@ export default function EditarCliente() {
         <input
           style={inputStyle}
           value={form.nombre}
-          onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, nombre: e.target.value })
+          }
+        />
+
+        <label>DNI / NIF</label>
+        <input
+          type="text"
+          style={inputStyle}
+          value={form.dni}
+          onChange={(e) =>
+            setForm({ ...form, dni: e.target.value.toUpperCase() })
+          }
+          placeholder="Ej. 12345678Z"
+          autoCapitalize="characters"
         />
 
         <label>Teléfono</label>
         <input
           style={inputStyle}
           value={form.telefono}
-          onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, telefono: e.target.value })
+          }
         />
 
         <label>Email</label>
         <input
+          type="email"
           style={inputStyle}
           value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, email: e.target.value })
+          }
         />
 
         <label>Dirección</label>
         <input
           style={inputStyle}
           value={form.direccion}
-          onChange={(e) => setForm({ ...form, direccion: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, direccion: e.target.value })
+          }
         />
 
         <label>Idioma Preferido</label>
         <select
           name="idioma"
           value={form.idioma}
-          onChange={(e) => setForm({ ...form, idioma: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, idioma: e.target.value })
+          }
           style={inputStyle}
         >
-          <option value="es" style={{ background: "#0d1b2a", color: "#fff" }}>🇪🇸 Español</option>
-          <option value="en" style={{ background: "#0d1b2a", color: "#fff" }}>🇬🇧 Inglés</option>
-          <option value="fr" style={{ background: "#0d1b2a", color: "#fff" }}>🇫🇷 Francés</option>
+          <option
+            value="es"
+            style={{ background: "#0d1b2a", color: "#fff" }}
+          >
+            🇪🇸 Español
+          </option>
+
+          <option
+            value="en"
+            style={{ background: "#0d1b2a", color: "#fff" }}
+          >
+            🇬🇧 Inglés
+          </option>
+
+          <option
+            value="fr"
+            style={{ background: "#0d1b2a", color: "#fff" }}
+          >
+            🇫🇷 Francés
+          </option>
         </select>
 
         <button
