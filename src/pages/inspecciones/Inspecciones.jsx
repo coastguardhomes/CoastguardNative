@@ -15,49 +15,82 @@ export default function Inspecciones() {
 
   async function cargarInspecciones() {
     setLoading(true);
+
     try {
-      // 1. Cargamos las inspecciones solas (sin joins)
+      // 1. Cargamos las inspecciones solas.
       const { data, error } = await supabase
         .from("inspecciones")
         .select("*")
         .order("fecha", { ascending: true });
 
       if (error) {
-        setErrorMsg("Error al obtener inspecciones: " + error.message);
+        setErrorMsg(
+          "Error al obtener inspecciones: " + error.message
+        );
         setLoading(false);
         return;
       }
 
       let listaInspecciones = data || [];
 
-      // 2. Buscamos las viviendas asociadas en una consulta independiente
+      // 2. Buscamos las viviendas asociadas en una consulta independiente.
       if (listaInspecciones.length > 0) {
-        const viviendaIds = [...new Set(listaInspecciones.map(i => i.vivienda_id).filter(Boolean))];
+        const viviendaIds = [
+          ...new Set(
+            listaInspecciones
+              .map((i) => i.vivienda_id)
+              .filter(Boolean)
+          )
+        ];
 
         let viviendasMap = {};
+
         if (viviendaIds.length > 0) {
-          const { data: dataViviendas } = await supabase
-            .from("viviendas")
-            .select("id, direccion, ciudad, localidad")
-            .in("id", viviendaIds);
+          const { data: dataViviendas, error: viviendasError } =
+            await supabase
+              .from("viviendas")
+              .select(
+                "id, direccion, ciudad, localidad, provincia, codigo_postal"
+              )
+              .in("id", viviendaIds);
+
+          if (viviendasError) {
+            console.error(
+              "Error cargando viviendas:",
+              viviendasError
+            );
+          }
 
           if (dataViviendas) {
-            viviendasMap = dataViviendas.reduce((acc, viv) => {
-              acc[viv.id] = viv;
-              return acc;
-            }, {});
+            viviendasMap = dataViviendas.reduce(
+              (acc, viv) => {
+                acc[viv.id] = viv;
+                return acc;
+              },
+              {}
+            );
           }
         }
 
-        listaInspecciones = listaInspecciones.map(item => ({
-          ...item,
-          viviendas: viviendasMap[item.vivienda_id] || null
-        }));
+        listaInspecciones = listaInspecciones.map(
+          (item) => ({
+            ...item,
+            viviendas:
+              viviendasMap[item.vivienda_id] || null
+          })
+        );
       }
 
       setInspecciones(listaInspecciones);
-    } catch {
-      setErrorMsg("Error conectando con el servidor.");
+    } catch (error) {
+      console.error(
+        "Error cargando inspecciones:",
+        error
+      );
+
+      setErrorMsg(
+        "Error conectando con el servidor."
+      );
     } finally {
       setLoading(false);
     }
@@ -65,67 +98,256 @@ export default function Inspecciones() {
 
   return (
     <Menu>
-      <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff", fontFamily: "Inter, sans-serif", paddingBottom: "80px" }}>
-        <h1 style={{ color: "#4db8ff", marginBottom: "20px", fontSize: "28px", fontWeight: "700", textAlign: "center" }}>
+      <div
+        style={{
+          padding: "20px",
+          background: "#0a0f1a",
+          minHeight: "100vh",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+          paddingBottom: "80px"
+        }}
+      >
+        <h1
+          style={{
+            color: "#4db8ff",
+            marginBottom: "20px",
+            fontSize: "28px",
+            fontWeight: "700",
+            textAlign: "center"
+          }}
+        >
           Inspecciones
         </h1>
 
-        <Link to="/inspecciones/nueva" style={{ textDecoration: "none" }}>
-          <button style={{ padding: "14px", width: "100%", background: "#4db8ff", color: "#000", borderRadius: "10px", border: "none", fontWeight: "700", fontSize: "16px", cursor: "pointer", marginBottom: "25px" }}>
+        <Link
+          to="/inspecciones/nueva"
+          style={{
+            textDecoration: "none"
+          }}
+        >
+          <button
+            style={{
+              padding: "14px",
+              width: "100%",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "16px",
+              cursor: "pointer",
+              marginBottom: "25px"
+            }}
+          >
             Nueva inspección
           </button>
         </Link>
 
         {errorMsg && (
-          <div style={{ padding: "10px", background: "rgba(255,107,107,0.2)", border: "1px solid #ff6b6b", color: "#ff6b6b", borderRadius: "8px", marginBottom: "15px", textAlign: "center" }}>
+          <div
+            style={{
+              padding: "10px",
+              background:
+                "rgba(255,107,107,0.2)",
+              border: "1px solid #ff6b6b",
+              color: "#ff6b6b",
+              borderRadius: "8px",
+              marginBottom: "15px",
+              textAlign: "center"
+            }}
+          >
             {errorMsg}
           </div>
         )}
 
         {loading ? (
-          <div style={{ textAlign: "center", color: "#4db8ff", marginTop: "30px" }}>Cargando inspecciones...</div>
+          <div
+            style={{
+              textAlign: "center",
+              color: "#4db8ff",
+              marginTop: "30px"
+            }}
+          >
+            Cargando inspecciones...
+          </div>
         ) : inspecciones.length === 0 ? (
-          <div style={{ textAlign: "center", color: "#aaa", marginTop: "30px" }}>No hay inspecciones registradas.</div>
+          <div
+            style={{
+              textAlign: "center",
+              color: "#aaa",
+              marginTop: "30px"
+            }}
+          >
+            No hay inspecciones registradas.
+          </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "15px"
+            }}
+          >
             {inspecciones.map((insp, index) => {
-              const direccionReal = insp.viviendas?.direccion || "Dirección no especificada";
-              const localidadReal = insp.viviendas?.ciudad || insp.viviendas?.localidad || "No especificada";
-              const fechaFormateada = insp.fecha ? String(insp.fecha).slice(0, 10) : "Sin fecha";
-              const numeroCorrelativo = String(index + 1).padStart(2, '0');
-              
-              const titulo = direccionReal !== "Dirección no especificada"
-                ? `Inspección - ${direccionReal}` 
-                : `Inspección Nº ${numeroCorrelativo}`;
+              const direccionReal =
+                insp.viviendas?.direccion ||
+                insp.direccion ||
+                "Dirección no especificada";
+
+              const localidadReal =
+                insp.viviendas?.localidad ||
+                insp.viviendas?.ciudad ||
+                insp.localidad ||
+                "No especificada";
+
+              const ciudadReal =
+                insp.viviendas?.ciudad ||
+                null;
+
+              const provinciaReal =
+                insp.viviendas?.provincia ||
+                null;
+
+              const codigoPostalReal =
+                insp.viviendas?.codigo_postal ||
+                null;
+
+              const fechaFormateada = insp.fecha
+                ? String(insp.fecha).slice(0, 10)
+                : "Sin fecha";
+
+              const numeroCorrelativo =
+                String(index + 1).padStart(2, "0");
+
+              const titulo =
+                direccionReal !==
+                "Dirección no especificada"
+                  ? `Inspección - ${direccionReal}`
+                  : `Inspección Nº ${numeroCorrelativo}`;
 
               return (
                 <div
                   key={insp.id}
-                  onClick={() => navigate(`/inspecciones/finalizar/${insp.id}`)}
+                  onClick={() =>
+                    navigate(
+                      `/inspecciones/ver/${insp.id}`
+                    )
+                  }
                   style={{
-                    background: "rgba(255,255,255,0.05)",
+                    background:
+                      "rgba(255,255,255,0.05)",
                     padding: "18px",
                     borderRadius: "12px",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border:
+                      "1px solid rgba(255,255,255,0.1)",
                     cursor: "pointer",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
+                    boxShadow:
+                      "0 2px 8px rgba(0,0,0,0.3)"
                   }}
                 >
-                  <h3 style={{ color: "#4db8ff", fontSize: "16px", marginBottom: "8px" }}>
+                  <h3
+                    style={{
+                      color: "#4db8ff",
+                      fontSize: "16px",
+                      marginBottom: "8px"
+                    }}
+                  >
                     {titulo}
                   </h3>
-                  <p style={{ color: "#ccc", fontSize: "14px", marginBottom: "4px" }}>
-                    <strong>Dirección:</strong> {direccionReal}
+
+                  <p
+                    style={{
+                      color: "#ccc",
+                      fontSize: "14px",
+                      marginBottom: "4px"
+                    }}
+                  >
+                    <strong>Dirección:</strong>{" "}
+                    {direccionReal}
                   </p>
-                  <p style={{ color: "#ccc", fontSize: "14px", marginBottom: "4px" }}>
-                    <strong>Localidad:</strong> {localidadReal}
+
+                  <p
+                    style={{
+                      color: "#ccc",
+                      fontSize: "14px",
+                      marginBottom: "4px"
+                    }}
+                  >
+                    <strong>Localidad:</strong>{" "}
+                    {localidadReal}
                   </p>
-                  <p style={{ color: "#ccc", fontSize: "14px", marginBottom: "4px" }}>
-                    <strong>Fecha:</strong> {fechaFormateada}
+
+                  {ciudadReal &&
+                    ciudadReal !== localidadReal && (
+                      <p
+                        style={{
+                          color: "#ccc",
+                          fontSize: "14px",
+                          marginBottom: "4px"
+                        }}
+                      >
+                        <strong>Ciudad:</strong>{" "}
+                        {ciudadReal}
+                      </p>
+                    )}
+
+                  {provinciaReal && (
+                    <p
+                      style={{
+                        color: "#ccc",
+                        fontSize: "14px",
+                        marginBottom: "4px"
+                      }}
+                    >
+                      <strong>Provincia:</strong>{" "}
+                      {provinciaReal}
+                    </p>
+                  )}
+
+                  {codigoPostalReal && (
+                    <p
+                      style={{
+                        color: "#ccc",
+                        fontSize: "14px",
+                        marginBottom: "4px"
+                      }}
+                    >
+                      <strong>Código postal:</strong>{" "}
+                      {codigoPostalReal}
+                    </p>
+                  )}
+
+                  <p
+                    style={{
+                      color: "#ccc",
+                      fontSize: "14px",
+                      marginBottom: "4px"
+                    }}
+                  >
+                    <strong>Fecha:</strong>{" "}
+                    {fechaFormateada}
                   </p>
-                  <p style={{ color: "#ccc", fontSize: "14px" }}>
+
+                  <p
+                    style={{
+                      color: "#ccc",
+                      fontSize: "14px"
+                    }}
+                  >
                     <strong>Estado:</strong>{" "}
-                    <span style={{ color: insp.estado === "completada_tecnico" ? "#4ade80" : insp.estado === "finalizada" ? "#60a5fa" : "#facc15" }}>
+                    <span
+                      style={{
+                        color:
+                          insp.estado ===
+                          "completada_tecnico"
+                            ? "#4ade80"
+                            : insp.estado ===
+                              "finalizada"
+                            ? "#60a5fa"
+                            : "#facc15"
+                      }}
+                    >
                       {insp.estado || "pendiente"}
                     </span>
                   </p>
