@@ -2,144 +2,330 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import Menu from "../../layouts/Menu";
-import { supabase } from "../../lib/supabase";
 import {
   useParams,
+  Link,
   useNavigate,
 } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
+import Menu from "../../layouts/Menu";
 
-export default function FinalizarInspeccion() {
+export default function VerInspeccion() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [inspeccion, setInspeccion] =
     useState(null);
 
+  const [vivienda, setVivienda] =
+    useState(null);
+
+  const [fotos, setFotos] =
+    useState([]);
+
   const [loading, setLoading] =
     useState(true);
 
-  const [mensaje, setMensaje] =
+  const [errorMsg, setErrorMsg] =
     useState("");
 
-  const [esError, setEsError] =
+  const [publicando, setPublicando] =
     useState(false);
 
-  const [procesando, setProcesando] =
-    useState(false);
+  function formatearFecha(fechaISO) {
+    if (!fechaISO) return "Sin fecha";
+
+    const fecha = new Date(fechaISO);
+
+    if (Number.isNaN(fecha.getTime())) {
+      return "Sin fecha";
+    }
+
+    const dia = String(
+      fecha.getDate()
+    ).padStart(2, "0");
+
+    const mes = String(
+      fecha.getMonth() + 1
+    ).padStart(2, "0");
+
+    const año = fecha.getFullYear();
+
+    return `${dia}/${mes}/${año}`;
+  }
+
+  function obtenerUrlFoto(foto) {
+    if (!foto) return "";
+
+    if (
+      typeof foto.url === "string" &&
+      foto.url.startsWith("http")
+    ) {
+      return foto.url;
+    }
+
+    const archivo =
+      foto.archivo ||
+      foto.url_storage_o_path ||
+      (typeof foto.url === "string"
+        ? foto.url
+        : "");
+
+    if (!archivo) {
+      return "";
+    }
+
+    if (archivo.startsWith("http")) {
+      return archivo;
+    }
+
+    const { data } =
+      supabase.storage
+        .from("fotos")
+        .getPublicUrl(archivo);
+
+    return data?.publicUrl || "";
+  }
+
+  function normalizarFoto(
+    foto,
+    index = 0
+  ) {
+    if (!foto) return null;
+
+    const url =
+      obtenerUrlFoto(foto);
+
+    if (!url) {
+      return null;
+    }
+
+    return {
+      ...foto,
+      id:
+        foto.id ||
+        `foto-${index}-${url}`,
+      url,
+    };
+  }
 
   useEffect(() => {
+    async function cargarInspeccion() {
+      setLoading(true);
+      setErrorMsg("");
+
+      try {
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("inspecciones")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+
+        if (error) {
+          console.error(
+            "Error buscando inspección:",
+            error
+          );
+
+          setErrorMsg(
+            "No se pudo cargar la inspección: " +
+            error.message
+          );
+
+          return;
+        }
+
+        if (!data) {
+          setErrorMsg(
+            "No se encontró la inspección."
+          );
+
+          return;
+        }
+
+        setInspeccion(data);
+
+        if (data.vivienda_id) {
+          const {
+            data: viviendaData,
+            error:
+              viviendaError,
+          } = await supabase
+            .from("viviendas")
+            .select("*")
+            .eq(
+              "id",
+              data.vivienda_id
+            )
+            .maybeSingle();
+
+          if (viviendaError) {
+            console.error(
+              "Error cargando vivienda:",
+              viviendaError
+            );
+          } else if (viviendaData) {
+            setVivienda(
+              viviendaData
+            );
+          }
+        }
+
+        const {
+          data: fotosData,
+          error: fotosError,
+        } = await supabase
+          .from("fotos_inspeccion")
+          .select("*")
+          .eq(
+            "inspeccion_id",
+            String(id)
+          )
+          .order("id", {
+            ascending: false,
+          });
+
+        if (fotosError) {
+          console.error(
+            "Error cargando fotos:",
+            fotosError
+          );
+        }
+
+        const fotosTabla =
+          (fotosData || [])
+            .map(
+              (foto, index) =>
+                normalizarFoto(
+                  foto,
+                  index
+                )
+            )
+            .filter(Boolean);
+
+        const fotosCampo = [];
+
+        if (
+          Array.isArray(
+            data.fotos
+          )
+        ) {
+          data.fotos.forEach(
+            (foto, index) => {
+              const objeto =
+                typeof foto ===
+                "string"
+                  ? {
+                      url: foto,
+                      archivo: foto,
+                    }
+                  : foto;
+
+              const fotoNormalizada =
+                normalizarFoto(
+                  objeto,
+                  index +
+                    fotosTabla.length
+                );
+
+              if (
+                fotoNormalizada
+              ) {
+                fotosCampo.push(
+                  fotoNormalizada
+                );
+              }
+            }
+          );
+        }
+
+        const todasLasFotos = [
+          ...fotosTabla,
+          ...fotosCampo,
+        ];
+
+        const fotosUnicas = [];
+        const urlsVistas =
+          new Set();
+
+        todasLasFotos.forEach(
+          (foto) => {
+            if (!foto?.url) {
+              return;
+            }
+
+            if (
+              urlsVistas.has(
+                foto.url
+              )
+            ) {
+              return;
+            }
+
+            urlsVistas.add(
+              foto.url
+            );
+
+            fotosUnicas.push(
+              foto
+            );
+          }
+        );
+
+        setFotos(
+          fotosUnicas
+        );
+
+      } catch (error) {
+        console.error(
+          "Error general:",
+          error
+        );
+
+        setErrorMsg(
+          "Error cargando la inspección."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
     if (id) {
       cargarInspeccion();
     }
   }, [id]);
 
-  async function cargarInspeccion() {
-    setLoading(true);
-
-    try {
-      let {
-        data,
-        error,
-      } = await supabase
-        .from("inspecciones")
-        .select(`
-          *,
-          viviendas (
-            id,
-            direccion,
-            ciudad,
-            localidad
-          )
-        `)
-        .eq("id", id)
-        .maybeSingle();
-
-      if (error || !data) {
-        const resSimple =
-          await supabase
-            .from("inspecciones")
-            .select("*")
-            .eq("id", id)
-            .maybeSingle();
-
-        data = resSimple.data;
-        error = resSimple.error;
-      }
-
-      if (error || !data) {
-        setMensaje(
-          "No se encontró la inspección con ID: " +
-            id
-        );
-
-        setEsError(true);
-      } else {
-        setInspeccion(data);
-      }
-    } catch (e) {
-      console.error(e);
-
-      setMensaje(
-        "Error de conexión al cargar la inspección."
-      );
-
-      setEsError(true);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function publicarParaCliente() {
-    if (!inspeccion) {
-      return;
-    }
+    if (!inspeccion) return;
 
-    /*
-     * Solo se puede publicar una inspección
-     * que haya terminado el técnico.
-     */
     if (
       inspeccion.estado !==
         "completada_tecnico" ||
       inspeccion.estado_tecnico !==
         "completada"
     ) {
-      setMensaje(
-        "Esta inspección todavía no está lista para revisión administrativa."
+      setErrorMsg(
+        "Esta inspección no está pendiente de revisión administrativa."
       );
-
-      setEsError(true);
-
       return;
     }
 
     const confirmar =
       window.confirm(
-        "¿Has revisado las fotos y observaciones y quieres publicar esta inspección para el cliente?"
+        "¿Has revisado las fotos y observaciones y quieres enviar esta inspección al cliente?"
       );
 
     if (!confirmar) {
       return;
     }
 
-    setProcesando(true);
-    setMensaje(
-      "Publicando inspección para el cliente..."
-    );
-    setEsError(false);
+    setPublicando(true);
+    setErrorMsg("");
 
     try {
-      /*
-       * ESTE ES EL ÚNICO CAMBIO DE ESTADO
-       * QUE PUBLICA LA INSPECCIÓN.
-       *
-       * NO:
-       * - email
-       * - factura
-       * - Stripe
-       * - FacturaDirecta
-       */
       const {
         data,
         error,
@@ -164,43 +350,44 @@ export default function FinalizarInspeccion() {
         .maybeSingle();
 
       if (error) {
-        throw error;
+        console.error(
+          "Error publicando inspección:",
+          error
+        );
+
+        setErrorMsg(
+          "No se pudo enviar la inspección al cliente: " +
+          error.message
+        );
+
+        return;
       }
 
-      /*
-       * Si no devuelve registro,
-       * no se ha realizado la publicación.
-       */
       if (!data) {
-        throw new Error(
-          "La inspección ya no está pendiente de revisión o no cumple el estado requerido."
+        setErrorMsg(
+          "La inspección ya no está pendiente de revisión administrativa."
         );
+
+        return;
       }
 
       setInspeccion(data);
 
-      setMensaje(
-        "Inspección publicada correctamente para el cliente ✔"
+      alert(
+        "Inspección enviada al cliente correctamente."
       );
 
-      setEsError(false);
-
-      setTimeout(() => {
-        navigate("/inspecciones");
-      }, 1500);
-    } catch (e) {
+    } catch (error) {
       console.error(
         "Error publicando inspección:",
-        e
+        error
       );
 
-      setMensaje(
-        "Error publicando la inspección: " +
-          e.message
+      setErrorMsg(
+        "Error al enviar la inspección al cliente."
       );
-
-      setEsError(true);
-      setProcesando(false);
+    } finally {
+      setPublicando(false);
     }
   }
 
@@ -210,75 +397,69 @@ export default function FinalizarInspeccion() {
         "¿Seguro que deseas eliminar esta inspección?"
       );
 
-    if (!confirmar) {
-      return;
-    }
+    if (!confirmar) return;
 
-    setProcesando(true);
-
-    try {
-      const {
-        error:
-          checklistError,
-      } = await supabase
-        .from("checklist_inspeccion")
-        .delete()
-        .eq(
-          "inspeccion_id",
-          id
-        );
-
-      if (checklistError) {
-        console.error(
-          "Error eliminando checklist:",
-          checklistError
-        );
-      }
-
-      const {
-        error:
-          fotosError,
-      } = await supabase
-        .from("fotos_inspeccion")
-        .delete()
-        .eq(
-          "inspeccion_id",
-          id
-        );
-
-      if (fotosError) {
-        console.error(
-          "Error eliminando fotos:",
-          fotosError
-        );
-      }
-
-      const {
-        error,
-      } = await supabase
-        .from("inspecciones")
-        .delete()
-        .eq("id", id);
-
-      if (error) {
-        throw error;
-      }
-
-      alert(
-        "Inspección eliminada correctamente"
+    const {
+      error:
+        checklistError,
+    } = await supabase
+      .from("checklist_inspeccion")
+      .delete()
+      .eq(
+        "inspeccion_id",
+        id
       );
 
-      navigate("/inspecciones");
-    } catch (e) {
-      console.error(e);
+    if (checklistError) {
+      console.error(
+        "Error eliminando checklist:",
+        checklistError
+      );
+    }
+
+    const {
+      error: fotosError,
+    } = await supabase
+      .from("fotos_inspeccion")
+      .delete()
+      .eq(
+        "inspeccion_id",
+        id
+      );
+
+    if (fotosError) {
+      console.error(
+        "Error eliminando fotos:",
+        fotosError
+      );
+    }
+
+    const {
+      error,
+    } = await supabase
+      .from("inspecciones")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error(
+        "Error eliminando inspección:",
+        error
+      );
 
       alert(
         "Error eliminando inspección: " +
-          e.message
+          error.message
       );
 
-      setProcesando(false);
+      return;
     }
+
+    alert(
+      "Inspección eliminada correctamente"
+    );
+
+    navigate("/inspecciones");
   }
 
   if (loading) {
@@ -288,38 +469,94 @@ export default function FinalizarInspeccion() {
           style={{
             height: "100vh",
             background: "#0a0f1a",
-            color: "#4db8ff",
+            color: "#fff",
             display: "flex",
-            justifyContent:
-              "center",
-            alignItems:
-              "center",
+            justifyContent: "center",
+            alignItems: "center",
+            fontSize: "18px",
           }}
         >
-          Cargando inspección...
+          Cargando inspección…
         </div>
       </Menu>
     );
   }
 
-  const direccionReal =
-    inspeccion?.viviendas
-      ?.direccion ||
-    inspeccion?.direccion ||
+  if (!inspeccion) {
+    return (
+      <Menu>
+        <div
+          style={{
+            background: "#0a0f1a",
+            minHeight: "100vh",
+            color: "#fff",
+            padding: "20px",
+          }}
+        >
+          <h2>
+            {errorMsg ||
+              `No se encontró la inspección con ID: ${id}`}
+          </h2>
+
+          <Link
+            to="/inspecciones"
+            style={{
+              color: "#4db8ff",
+            }}
+          >
+            Volver
+          </Link>
+        </div>
+      </Menu>
+    );
+  }
+
+  const direccion =
+    vivienda?.direccion ||
+    inspeccion.direccion ||
     "Dirección no especificada";
 
-  const localidadReal =
-    inspeccion?.viviendas
-      ?.localidad ||
-    inspeccion?.localidad ||
-    inspeccion?.viviendas
-      ?.ciudad ||
+  const localidad =
+    vivienda?.localidad ||
+    inspeccion.localidad ||
+    vivienda?.ciudad ||
     "No especificada";
 
-  const puedePublicar =
-    inspeccion?.estado ===
+  const ciudad =
+    vivienda?.ciudad ||
+    inspeccion.ciudad ||
+    null;
+
+  const provincia =
+    vivienda?.provincia ||
+    inspeccion.provincia ||
+    null;
+
+  const codigoPostal =
+    vivienda?.codigo_postal ||
+    vivienda?.cp ||
+    inspeccion.codigo_postal ||
+    inspeccion.cp ||
+    null;
+
+  const observaciones =
+    inspeccion.observaciones ||
+    inspeccion.notas_tecnico ||
+    inspeccion.notas ||
+    "Sin observaciones";
+
+  const estadoTecnico =
+    inspeccion.estado_tecnico ||
+    "Pendiente";
+
+  const estadoAdmin =
+    inspeccion.estado_admin ||
+    "Pendiente";
+
+  const pendienteRevision =
+    inspeccion.estado ===
       "completada_tecnico" &&
-    inspeccion?.estado_tecnico ===
+    inspeccion.estado_tecnico ===
       "completada";
 
   return (
@@ -330,6 +567,7 @@ export default function FinalizarInspeccion() {
           background: "#0a0f1a",
           minHeight: "100vh",
           color: "#fff",
+          paddingBottom: "80px",
           fontFamily:
             "Inter, sans-serif",
         }}
@@ -337,269 +575,341 @@ export default function FinalizarInspeccion() {
         <h1
           style={{
             color: "#4db8ff",
-            marginBottom: "25px",
-            fontSize: "24px",
-            textAlign:
-              "center",
+            marginBottom: "15px",
           }}
         >
-          Revisión de inspección
+          Inspección #{inspeccion.id}
         </h1>
 
-        {mensaje && (
+        {errorMsg && (
           <div
             style={{
-              marginBottom: "20px",
               padding: "12px",
-              background:
-                esError
-                  ? "rgba(255,107,107,0.15)"
-                  : "rgba(74,222,128,0.15)",
-              border:
-                `1px solid ${
-                  esError
-                    ? "#ff6b6b"
-                    : "#4ade80"
-                }`,
+              marginBottom: "15px",
               borderRadius: "10px",
-              color:
-                esError
-                  ? "#ff6b6b"
-                  : "#4ade80",
-              textAlign:
-                "center",
-              fontSize: "14px",
+              background:
+                "rgba(239,68,68,0.12)",
+              border:
+                "1px solid rgba(239,68,68,0.4)",
+              color: "#f87171",
             }}
           >
-            {mensaje}
+            {errorMsg}
           </div>
         )}
 
-        {inspeccion && (
-          <>
-            <div
-              style={{
-                background:
-                  "rgba(255,255,255,0.05)",
-                padding: "20px",
-                borderRadius:
-                  "14px",
-                border:
-                  "1px solid rgba(255,255,255,0.1)",
-                marginBottom:
-                  "25px",
-              }}
-            >
+        <div
+          style={{
+            background:
+              "rgba(255,255,255,0.05)",
+            border:
+              "1px solid rgba(77,184,255,0.25)",
+            borderRadius: "12px",
+            padding: "16px",
+            marginBottom: "18px",
+          }}
+        >
+          <h3
+            style={{
+              color: "#4db8ff",
+              marginTop: 0,
+              marginBottom: "15px",
+            }}
+          >
+            Datos de la vivienda
+          </h3>
+
+          <p>
+            <strong>
+              Dirección:
+            </strong>{" "}
+            {direccion}
+          </p>
+
+          <p>
+            <strong>
+              Localidad:
+            </strong>{" "}
+            {localidad}
+          </p>
+
+          {ciudad &&
+            ciudad !== localidad && (
               <p>
-                <strong
-                  style={{
-                    color:
-                      "#4db8ff",
-                  }}
-                >
-                  Dirección:
+                <strong>
+                  Ciudad:
                 </strong>{" "}
-                {direccionReal}
+                {ciudad}
               </p>
-
-              <p>
-                <strong
-                  style={{
-                    color:
-                      "#4db8ff",
-                  }}
-                >
-                  Localidad:
-                </strong>{" "}
-                {localidadReal}
-              </p>
-
-              <p>
-                <strong
-                  style={{
-                    color:
-                      "#4db8ff",
-                  }}
-                >
-                  Fecha:
-                </strong>{" "}
-                {inspeccion.fecha
-                  ? String(
-                      inspeccion.fecha
-                    ).slice(0, 10)
-                  : "-"}
-              </p>
-
-              <p>
-                <strong
-                  style={{
-                    color:
-                      "#4db8ff",
-                  }}
-                >
-                  Estado:
-                </strong>{" "}
-                {inspeccion.estado ||
-                  "pendiente"}
-              </p>
-
-              <p>
-                <strong
-                  style={{
-                    color:
-                      "#4db8ff",
-                  }}
-                >
-                  Estado técnico:
-                </strong>{" "}
-                {inspeccion.estado_tecnico ||
-                  "pendiente"}
-              </p>
-
-              <p>
-                <strong
-                  style={{
-                    color:
-                      "#4db8ff",
-                  }}
-                >
-                  Estado administración:
-                </strong>{" "}
-                {inspeccion.estado_admin ||
-                  "pendiente"}
-              </p>
-
-              <div
-                style={{
-                  marginTop:
-                    "20px",
-                  padding:
-                    "15px",
-                  background:
-                    "rgba(255,255,255,0.05)",
-                  borderRadius:
-                    "10px",
-                }}
-              >
-                <strong
-                  style={{
-                    color:
-                      "#ffd700",
-                  }}
-                >
-                  Observaciones del técnico
-                </strong>
-
-                <p
-                  style={{
-                    whiteSpace:
-                      "pre-wrap",
-                    marginTop:
-                      "10px",
-                  }}
-                >
-                  {inspeccion.observaciones ||
-                    "Sin observaciones"}
-                </p>
-              </div>
-            </div>
-
-            {puedePublicar ? (
-              <button
-                onClick={
-                  publicarParaCliente
-                }
-                disabled={
-                  procesando
-                }
-                style={{
-                  padding:
-                    "15px",
-                  width:
-                    "100%",
-                  background:
-                    "#4ade80",
-                  color:
-                    "#052e16",
-                  borderRadius:
-                    "10px",
-                  border:
-                    "none",
-                  fontWeight:
-                    "800",
-                  fontSize:
-                    "17px",
-                  cursor:
-                    "pointer",
-                  opacity:
-                    procesando
-                      ? 0.6
-                      : 1,
-                }}
-              >
-                {procesando
-                  ? "Publicando..."
-                  : "✔ Revisar y publicar para el cliente"}
-              </button>
-            ) : (
-              <div
-                style={{
-                  padding:
-                    "15px",
-                  background:
-                    "rgba(255,255,255,0.05)",
-                  borderRadius:
-                    "10px",
-                  textAlign:
-                    "center",
-                  color:
-                    "#aaa",
-                }}
-              >
-                Esta inspección no está
-                pendiente de revisión
-                administrativa.
-              </div>
             )}
 
-            <button
-              onClick={
-                eliminarInspeccion
-              }
-              disabled={
-                procesando
-              }
-              style={{
-                marginTop:
-                  "12px",
-                padding:
-                  "14px",
-                width:
-                  "100%",
-                background:
-                  "#ef4444",
-                color:
-                  "#fff",
-                borderRadius:
-                  "10px",
-                border:
-                  "none",
-                fontWeight:
-                  "700",
-                fontSize:
-                  "16px",
-                cursor:
-                  "pointer",
-                opacity:
-                  procesando
-                    ? 0.6
-                    : 1,
-              }}
-            >
-              Eliminar Inspección
-            </button>
-          </>
+          {provincia && (
+            <p>
+              <strong>
+                Provincia:
+              </strong>{" "}
+              {provincia}
+            </p>
+          )}
+
+          {codigoPostal && (
+            <p>
+              <strong>
+                Código postal:
+              </strong>{" "}
+              {codigoPostal}
+            </p>
+          )}
+        </div>
+
+        <p>
+          <strong>
+            Fecha:
+          </strong>{" "}
+          {formatearFecha(
+            inspeccion.fecha
+          )}
+        </p>
+
+        <p>
+          <strong>
+            Estado:
+          </strong>{" "}
+          {inspeccion.estado ||
+            "Pendiente"}
+        </p>
+
+        <p>
+          <strong>
+            Estado técnico:
+          </strong>{" "}
+          {estadoTecnico}
+        </p>
+
+        <p>
+          <strong>
+            Estado administración:
+          </strong>{" "}
+          {estadoAdmin}
+        </p>
+
+        <h3
+          style={{
+            marginTop: "20px",
+            color: "#ffd700",
+          }}
+        >
+          Observaciones del técnico
+        </h3>
+
+        <div
+          style={{
+            background:
+              "rgba(255,255,255,0.05)",
+            borderRadius: "10px",
+            padding: "14px",
+            whiteSpace: "pre-wrap",
+            opacity: 0.9,
+            marginBottom: "20px",
+          }}
+        >
+          {observaciones}
+        </div>
+
+        <h3
+          style={{
+            marginTop: "20px",
+            color: "#ffd700",
+          }}
+        >
+          Fotos del técnico ({fotos.length})
+        </h3>
+
+        {fotos.length === 0 ? (
+          <div
+            style={{
+              padding: "16px",
+              borderRadius: "10px",
+              background:
+                "rgba(255,255,255,0.05)",
+              color: "#aaa",
+              marginBottom: "20px",
+            }}
+          >
+            No hay fotos registradas
+            para esta inspección.
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fill, minmax(150px, 1fr))",
+              gap: "12px",
+              marginBottom: "20px",
+            }}
+          >
+            {fotos.map(
+              (foto, index) => (
+                <a
+                  key={
+                    foto.id ||
+                    `foto-${index}`
+                  }
+                  href={foto.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    textDecoration:
+                      "none",
+                  }}
+                >
+                  <img
+                    src={foto.url}
+                    alt={
+                      foto.descripcion ||
+                      "Foto de inspección"
+                    }
+                    style={{
+                      width: "100%",
+                      height: "150px",
+                      objectFit:
+                        "cover",
+                      borderRadius:
+                        "10px",
+                      border:
+                        foto.principal
+                          ? "3px solid #4ade80"
+                          : "1px solid rgba(77,184,255,0.5)",
+                      display:
+                        "block",
+                      background:
+                        "#111827",
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.style.opacity =
+                        "0.35";
+                    }}
+                  />
+                </a>
+              )
+            )}
+          </div>
         )}
+
+        <div
+          style={{
+            display: "flex",
+            gap: "15px",
+            flexWrap: "wrap",
+            marginTop: "20px",
+          }}
+        >
+          <Link
+            to={`/inspecciones/checklist/${id}`}
+            style={{
+              color: "#4db8ff",
+              fontWeight: "bold",
+              textDecoration:
+                "none",
+            }}
+          >
+            📋 Ir al Checklist
+          </Link>
+
+          <Link
+            to={`/inspecciones/fotos/${id}`}
+            style={{
+              color: "#4db8ff",
+              fontWeight: "bold",
+              textDecoration:
+                "none",
+            }}
+          >
+            🖼️ Ver Galería de Fotos
+          </Link>
+
+          <Link
+            to={`/inspecciones/pdf/${id}`}
+            style={{
+              color: "#4db8ff",
+              fontWeight: "bold",
+              textDecoration:
+                "none",
+            }}
+          >
+            📄 Ver PDF
+          </Link>
+        </div>
+
+        {pendienteRevision && (
+          <button
+            onClick={publicarParaCliente}
+            disabled={publicando}
+            style={{
+              marginTop: "25px",
+              padding: "15px",
+              width: "100%",
+              background: publicando
+                ? "#64748b"
+                : "#4ade80",
+              color: "#052e16",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: "800",
+              fontSize: "17px",
+              cursor: publicando
+                ? "not-allowed"
+                : "pointer",
+            }}
+          >
+            {publicando
+              ? "Enviando al cliente..."
+              : "✔ Revisar y enviar al cliente"}
+          </button>
+        )}
+
+        <button
+          onClick={eliminarInspeccion}
+          style={{
+            marginTop: "30px",
+            padding: "14px",
+            width: "100%",
+            background: "#e74c3c",
+            color: "#fff",
+            borderRadius: "10px",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "17px",
+            cursor: "pointer",
+          }}
+        >
+          Eliminar inspección
+        </button>
+
+        <button
+          onClick={() =>
+            navigate(
+              "/inspecciones"
+            )
+          }
+          style={{
+            marginTop: "12px",
+            padding: "14px",
+            width: "100%",
+            background:
+              "transparent",
+            color: "#4db8ff",
+            borderRadius: "10px",
+            border:
+              "1px solid #4db8ff",
+            fontWeight: "700",
+            fontSize: "15px",
+            cursor: "pointer",
+          }}
+        >
+          ← Volver al listado
+        </button>
       </div>
     </Menu>
   );
