@@ -37,11 +37,18 @@ export default function TecnicoDashboard() {
       setDebugLog("Conectando a Supabase...");
 
       // 1. INSPECCIONES
-      // No mostramos inspecciones que ya hayan sido finalizadas
-      // por el técnico, ni las que ya están procesadas por administración.
+      // Las inspecciones normales desaparecen del panel
+      // cuando el técnico las devuelve a administración.
+      //
+      // El flujo real de la app guarda:
+      // estado = "completada_tecnico"
+      //
+      // Mantenemos también los estados antiguos para no romper
+      // inspecciones creadas con versiones anteriores.
       const { data: inspData, error: inspError } = await supabase
         .from('inspecciones')
         .select('*')
+        .not('estado', 'eq', 'completada_tecnico')
         .not('estado', 'eq', 'finalizada')
         .not('estado', 'eq', 'aprobada')
         .not('estado', 'eq', 'completada_admin')
@@ -177,7 +184,6 @@ export default function TecnicoDashboard() {
           boxSizing: 'border-box'
         }}
       >
-
         <div
           style={{
             display: 'flex',
