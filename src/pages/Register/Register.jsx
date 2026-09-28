@@ -37,7 +37,8 @@ export default function Register() {
     }
 
     if (!msg || msg === "{}") {
-      msg = "Error de conexión con el servidor o credenciales inválidas";
+      msg =
+        "Error de conexión con el servidor o credenciales inválidas";
     }
 
     setErrorMsg(customPrefix ? `${customPrefix}: ${msg}` : msg);
@@ -125,19 +126,67 @@ export default function Register() {
     }
 
     /*
-     * IMPORTANTE:
+     * Guardamos también los datos legales del cliente.
      *
-     * Ya no hacemos INSERT/UPDATE directo sobre public.clientes aquí.
+     * NOTA:
+     * El trigger de Supabase también puede crear/vincular
+     * automáticamente el registro de clientes.
      *
-     * La vinculación/creación del cliente se realiza mediante el trigger
-     * de Supabase:
-     *
-     *   auto_vincular_cliente_robusto()
-     *
-     * Esto evita que el registro dependa de tener una sesión autenticada
-     * inmediatamente después de signUp(), algo que puede no ocurrir
-     * cuando está activada la confirmación por correo.
+     * Este bloque mantiene el comportamiento anterior de la app
+     * hasta que terminemos de corregir y verificar el trigger.
      */
+
+    const { data: clienteExistente, error: clienteBusquedaError } =
+      await supabase
+        .from("clientes")
+        .select("id")
+        .eq("email", user.email)
+        .maybeSingle();
+
+    if (clienteBusquedaError) {
+      console.error(
+        "Error buscando cliente existente:",
+        clienteBusquedaError
+      );
+    }
+
+    const datosLegalesCliente = {
+      email: user.email,
+      idioma: idioma,
+      acepta_privacidad: true,
+      privacidad_aceptada_at: fechaAceptacion,
+      ip_registro: userIp,
+      version_privacidad: versionTerminos,
+    };
+
+    if (!clienteExistente) {
+      const { error: crearClienteError } = await supabase
+        .from("clientes")
+        .insert({
+          id: user.id,
+          user_id: user.id,
+          ...datosLegalesCliente,
+        });
+
+      if (crearClienteError) {
+        console.error(
+          "Error creando cliente:",
+          crearClienteError
+        );
+      }
+    } else {
+      const { error: actualizarClienteError } = await supabase
+        .from("clientes")
+        .update(datosLegalesCliente)
+        .eq("id", clienteExistente.id);
+
+      if (actualizarClienteError) {
+        console.error(
+          "Error actualizando cliente:",
+          actualizarClienteError
+        );
+      }
+    }
 
     changeLanguage(idioma);
     localStorage.setItem("app_idioma", idioma);
