@@ -11,8 +11,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  
-  // Estados para controlar los dos modales por separado
+
   const [modalPrivacidad, setModalPrivacidad] = useState(false);
   const [modalContrato, setModalContrato] = useState(false);
 
@@ -21,6 +20,7 @@ export default function Register() {
 
   const handleError = (err, customPrefix = "") => {
     let msg = "";
+
     if (!err) {
       msg = "Error desconocido";
     } else if (typeof err === "string") {
@@ -35,9 +35,11 @@ export default function Register() {
         }
       } catch (e) {}
     }
+
     if (!msg || msg === "{}") {
       msg = "Error de conexión con el servidor o credenciales inválidas";
     }
+
     setErrorMsg(customPrefix ? `${customPrefix}: ${msg}` : msg);
   };
 
@@ -56,13 +58,16 @@ export default function Register() {
     }
 
     if (!aceptaTerminos) {
-      setErrorMsg("Debes aceptar la Política de Privacidad y el Contrato Marco de Servicios");
+      setErrorMsg(
+        "Debes aceptar la Política de Privacidad y el Contrato Marco de Servicios"
+      );
       return;
     }
 
     setLoading(true);
 
     let userIp = "IP_NO_DISPONIBLE";
+
     try {
       const ipRes = await fetch("https://api64.ipify.org?format=json");
       const ipData = await ipRes.json();
@@ -84,6 +89,7 @@ export default function Register() {
           terminos_aceptados_at: fechaAceptacion,
           ip_registro: userIp,
           version_terminos: versionTerminos,
+          idioma,
         },
       },
     });
@@ -95,56 +101,51 @@ export default function Register() {
     }
 
     const user = data?.user;
+
     if (!user) {
-      setErrorMsg("Error inesperado creando usuario (sin datos de usuario)");
+      setErrorMsg(
+        "Error inesperado creando usuario (sin datos de usuario)"
+      );
       setLoading(false);
       return;
     }
 
+    /*
+     * El perfil se mantiene como antes.
+     */
     const { error: perfilError } = await supabase
       .from("profiles")
-      .insert({ id: user.id, rol: "cliente" });
+      .insert({
+        id: user.id,
+        rol: "cliente",
+      });
 
     if (perfilError) {
       console.error("Error creando perfil:", perfilError);
     }
 
-    const { data: clienteExistente } = await supabase
-      .from("clientes")
-      .select("id")
-      .eq("email", user.email)
-      .maybeSingle();
-
-    const datosLegalesCliente = {
-      email: user.email,
-      idioma: idioma,
-      acepta_terminos: true,
-      terminos_aceptados_at: fechaAceptacion,
-      ip_registro: userIp,
-      version_terminos: versionTerminos,
-    };
-
-    if (!clienteExistente) {
-      const { error: crearClienteError } = await supabase
-        .from("clientes")
-        .insert(datosLegalesCliente);
-
-      if (crearClienteError) {
-        handleError(crearClienteError, "Error DB (Crear)");
-        setLoading(false);
-        return;
-      }
-    } else {
-      await supabase
-        .from("clientes")
-        .update(datosLegalesCliente)
-        .eq("email", user.email);
-    }
+    /*
+     * IMPORTANTE:
+     *
+     * Ya no hacemos INSERT/UPDATE directo sobre public.clientes aquí.
+     *
+     * La vinculación/creación del cliente se realiza mediante el trigger
+     * de Supabase:
+     *
+     *   auto_vincular_cliente_robusto()
+     *
+     * Esto evita que el registro dependa de tener una sesión autenticada
+     * inmediatamente después de signUp(), algo que puede no ocurrir
+     * cuando está activada la confirmación por correo.
+     */
 
     changeLanguage(idioma);
     localStorage.setItem("app_idioma", idioma);
 
-    setMensaje("Cuenta creada correctamente. Se ha enviado un enlace de confirmación a tu correo.");
+    setMensaje(
+      "Cuenta creada correctamente. Se ha enviado un enlace de confirmación a tu correo."
+    );
+
     setLoading(false);
 
     setTimeout(() => {
@@ -268,6 +269,7 @@ export default function Register() {
           >
             Idioma Preferido / Preferred Language
           </label>
+
           <select
             value={idioma}
             onChange={(e) => setIdioma(e.target.value)}
@@ -282,29 +284,72 @@ export default function Register() {
               boxSizing: "border-box",
             }}
           >
-            <option value="es" style={{ background: "#0a0f1a", color: "#fff" }}>🇪🇸 Español</option>
-            <option value="en" style={{ background: "#0a0f1a", color: "#fff" }}>🇬🇧 English</option>
-            <option value="fr" style={{ background: "#0a0f1a", color: "#fff" }}>🇫🇷 Français</option>
+            <option
+              value="es"
+              style={{ background: "#0a0f1a", color: "#fff" }}
+            >
+              🇪🇸 Español
+            </option>
+
+            <option
+              value="en"
+              style={{ background: "#0a0f1a", color: "#fff" }}
+            >
+              🇬🇧 English
+            </option>
+
+            <option
+              value="fr"
+              style={{ background: "#0a0f1a", color: "#fff" }}
+            >
+              🇫🇷 Français
+            </option>
           </select>
         </div>
 
-        {/* CHECKBOX LEGAL (POLÍTICA DE PRIVACIDAD + CONTRATO MARCO) */}
-        <div style={{ marginBottom: "20px", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left" }}>
+        <div
+          style={{
+            marginBottom: "20px",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "10px",
+            textAlign: "left",
+          }}
+        >
           <input
             type="checkbox"
             id="terminos"
             checked={aceptaTerminos}
             onChange={(e) => setAceptaTerminos(e.target.checked)}
-            style={{ marginTop: "4px", cursor: "pointer", width: "18px", height: "18px", flexShrink: 0 }}
+            style={{
+              marginTop: "4px",
+              cursor: "pointer",
+              width: "18px",
+              height: "18px",
+              flexShrink: 0,
+            }}
           />
-          <label htmlFor="terminos" style={{ fontSize: "12px", lineHeight: "1.4", color: "#9fb3c8", cursor: "pointer" }}>
+
+          <label
+            htmlFor="terminos"
+            style={{
+              fontSize: "12px",
+              lineHeight: "1.4",
+              color: "#9fb3c8",
+              cursor: "pointer",
+            }}
+          >
             He leído y acepto la{" "}
             <span
               onClick={(e) => {
                 e.preventDefault();
                 setModalPrivacidad(true);
               }}
-              style={{ color: "#4db8ff", textDecoration: "underline", cursor: "pointer" }}
+              style={{
+                color: "#4db8ff",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
             >
               Política de Privacidad
             </span>{" "}
@@ -314,7 +359,11 @@ export default function Register() {
                 e.preventDefault();
                 setModalContrato(true);
               }}
-              style={{ color: "#4db8ff", textDecoration: "underline", cursor: "pointer" }}
+              style={{
+                color: "#4db8ff",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
             >
               Contrato Marco de Servicios
             </span>
@@ -322,20 +371,22 @@ export default function Register() {
           </label>
         </div>
 
-        {/* BOTÓN BLOQUEADO HASTA MARCAR LA CASILLA */}
         <button
           onClick={handleRegister}
           disabled={loading || !aceptaTerminos}
           style={{
             width: "100%",
             padding: "12px",
-            background: (!aceptaTerminos || loading) ? "#2a324b" : "#0077cc",
+            background:
+              !aceptaTerminos || loading ? "#2a324b" : "#0077cc",
             color: "#fff",
             border: "none",
             borderRadius: "8px",
             fontSize: "16px",
-            cursor: (!aceptaTerminos || loading) ? "not-allowed" : "pointer",
-            opacity: (!aceptaTerminos || loading) ? "0.4" : "1",
+            cursor:
+              !aceptaTerminos || loading ? "not-allowed" : "pointer",
+            opacity:
+              !aceptaTerminos || loading ? "0.4" : "1",
             transition: "background 0.2s, opacity 0.2s",
           }}
         >
@@ -361,7 +412,6 @@ export default function Register() {
         </button>
       </div>
 
-      {/* MODAL 1: POLÍTICA DE PRIVACIDAD */}
       {modalPrivacidad && (
         <div
           style={{
@@ -393,14 +443,53 @@ export default function Register() {
               textAlign: "left",
             }}
           >
-            <h3 style={{ color: "#4db8ff", marginTop: 0, marginBottom: "15px" }}>Política de Privacidad</h3>
-            <div style={{ fontSize: "13px", lineHeight: "1.6", color: "#ccc", marginBottom: "20px" }}>
-              <p><strong>1. Responsable del tratamiento:</strong> Roxana Collazo Alonso (NIE: Z1968154A).</p>
-              <p><strong>2. Datos que recopilamos:</strong> Datos de identificación, correo electrónico, datos del inmueble y de facturación necesarios para la prestación del servicio.</p>
-              <p><strong>3. Finalidad:</strong> Gestión administrativa, facturación y atención de avisos o emergencias en la plataforma web y móvil.</p>
-              <p><strong>4. Legitimación:</strong> Ejecución de contrato y consentimiento explícito del usuario mediante el registro.</p>
-              <p><strong>5. Derechos:</strong> Puedes ejercer tus derechos escribiendo un correo a coastguardhomes@gmail.com para solicitar el acceso, rectificación o supresión de tus datos.</p>
+            <h3
+              style={{
+                color: "#4db8ff",
+                marginTop: 0,
+                marginBottom: "15px",
+              }}
+            >
+              Política de Privacidad
+            </h3>
+
+            <div
+              style={{
+                fontSize: "13px",
+                lineHeight: "1.6",
+                color: "#ccc",
+                marginBottom: "20px",
+              }}
+            >
+              <p>
+                <strong>1. Responsable del tratamiento:</strong> Roxana
+                Collazo Alonso (NIE: Z1968154A).
+              </p>
+
+              <p>
+                <strong>2. Datos que recopilamos:</strong> Datos de
+                identificación, correo electrónico, datos del inmueble y de
+                facturación necesarios para la prestación del servicio.
+              </p>
+
+              <p>
+                <strong>3. Finalidad:</strong> Gestión administrativa,
+                facturación y atención de avisos o emergencias en la
+                plataforma web y móvil.
+              </p>
+
+              <p>
+                <strong>4. Legitimación:</strong> Ejecución de contrato y
+                consentimiento explícito del usuario mediante el registro.
+              </p>
+
+              <p>
+                <strong>5. Derechos:</strong> Puedes ejercer tus derechos
+                escribiendo un correo a coastguardhomes@gmail.com para
+                solicitar el acceso, rectificación o supresión de tus datos.
+              </p>
             </div>
+
             <button
               onClick={() => setModalPrivacidad(false)}
               style={{
@@ -420,7 +509,6 @@ export default function Register() {
         </div>
       )}
 
-      {/* MODAL 2: CONTRATO MARCO DE SERVICIOS */}
       {modalContrato && (
         <div
           style={{
@@ -452,13 +540,62 @@ export default function Register() {
               textAlign: "left",
             }}
           >
-            <h3 style={{ color: "#4db8ff", marginTop: 0, marginBottom: "15px" }}>Contrato Marco de Servicios</h3>
-            <div style={{ fontSize: "13px", lineHeight: "1.6", color: "#ccc", marginBottom: "20px" }}>
-              <p><strong>1. Objeto:</strong> Regulación de la prestación de servicios de gestión, avisos y mantenimiento a través de la aplicación.</p>
-              <p><strong>2. Condiciones de contratación y pagos:</strong> Los servicios contratados mediante la plataforma implican las condiciones de cobro y pagos por adelantado o según tarifa acordada.</p>
-              <p><strong>3. Exención de responsabilidad por fallos en el servicio:</strong> El Prestador realiza los máximos esfuerzos para mantener la aplicación web operativa las 24 horas del día. No obstante, no se garantiza el acceso continuado, ni la correcta visualización, descarga o utilidad de los elementos e información contenidos en la plataforma, que puedan verse impedidos, dificultados o interrumpidos por factores o circunstancias ajenas a su control (caídas del servidor, fallos en las redes de telecomunicaciones, actualizaciones de mantenimiento o errores de software). El Prestador no se hará responsable de los perjuicios, pérdidas o reclamaciones derivados de interferencias, interrupciones, fallos, omisiones o averías telefónicas o del sistema informático.</p>
-              <p><strong>4. Validez:</strong> La aceptación de este contrato se realiza de forma telemática durante el proceso de registro del usuario.</p>
+            <h3
+              style={{
+                color: "#4db8ff",
+                marginTop: 0,
+                marginBottom: "15px",
+              }}
+            >
+              Contrato Marco de Servicios
+            </h3>
+
+            <div
+              style={{
+                fontSize: "13px",
+                lineHeight: "1.6",
+                color: "#ccc",
+                marginBottom: "20px",
+              }}
+            >
+              <p>
+                <strong>1. Objeto:</strong> Regulación de la prestación de
+                servicios de gestión, avisos y mantenimiento a través de la
+                aplicación.
+              </p>
+
+              <p>
+                <strong>2. Condiciones de contratación y pagos:</strong> Los
+                servicios contratados mediante la plataforma implican las
+                condiciones de cobro y pagos por adelantado o según tarifa
+                acordada.
+              </p>
+
+              <p>
+                <strong>
+                  3. Exención de responsabilidad por fallos en el servicio:
+                </strong>{" "}
+                El Prestador realiza los máximos esfuerzos para mantener la
+                aplicación web operativa las 24 horas del día. No obstante,
+                no se garantiza el acceso continuado, ni la correcta
+                visualización, descarga o utilidad de los elementos e
+                información contenidos en la plataforma, que puedan verse
+                impedidos, dificultados o interrumpidos por factores o
+                circunstancias ajenas a su control (caídas del servidor,
+                fallos en las redes de telecomunicaciones, actualizaciones
+                de mantenimiento o errores de software). El Prestador no se
+                hará responsable de los perjuicios, pérdidas o reclamaciones
+                derivados de interferencias, interrupciones, fallos,
+                omisiones o averías telefónicas o del sistema informático.
+              </p>
+
+              <p>
+                <strong>4. Validez:</strong> La aceptación de este contrato
+                se realiza de forma telemática durante el proceso de registro
+                del usuario.
+              </p>
             </div>
+
             <button
               onClick={() => setModalContrato(false)}
               style={{
