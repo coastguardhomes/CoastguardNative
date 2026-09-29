@@ -69,35 +69,32 @@ export default function ClienteContratoVer() {
     }
   };
 
+  // IMPORTANTE:
+  // El cliente NO debe marcar nunca el contrato como pagado al volver de Stripe.
+  // El único responsable de poner pagado=true es el webhook de Stripe.
   const verificarYActualizarPago = async () => {
-    const contratoPagoId = localStorage.getItem("contrato_pago_id");
-    const queryParams = new URLSearchParams(window.location.search);
-    const esRetornoExitoso = queryParams.get('pagado') === 'true';
-
-    if (contratoPagoId || esRetornoExitoso) {
-      const targetId = contratoPagoId || id;
-      try {
-        await supabase.rpc("activar_contrato_por_pago", {
-          p_contract_id: Number(targetId)
-        });
-
-        // Aseguramos que el estado sea 'firmado' para que el admin lo detecte verde
-        await supabase
-          .from("contratos")
-          .update({ pagado: true, estado: "firmado" })
-          .eq("id", Number(targetId));
-
-      } catch (err) {
-        console.error("Excepción al actualizar contrato tras pago:", err);
-      } finally {
-        localStorage.removeItem("contrato_pago_id");
-        if (esRetornoExitoso) {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-        await cargarContrato();
-      }
-    } else {
+    try {
       await cargarContrato();
+    } catch (err) {
+      console.error("Excepción al comprobar el estado del contrato:", err);
+    } finally {
+      // Limpiamos únicamente el marcador local utilizado al iniciar Stripe.
+      // No se utiliza como prueba de pago.
+      localStorage.removeItem("contrato_pago_id");
+
+      const queryParams = new URLSearchParams(window.location.search);
+      const esRetornoStripe =
+        queryParams.get("pagado") === "true" ||
+        queryParams.get("result") === "success" ||
+        queryParams.get("result") === "cancelled";
+
+      if (esRetornoStripe) {
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
+      }
     }
   };
 
@@ -140,13 +137,28 @@ export default function ClienteContratoVer() {
     (contrato?.firma_url && contrato.firma_url.trim() !== "")
   );
 
-  const esFirmado = tieneFirma || est === "firmado" || est === "enviado_al_admin" || est === "activo";
-  const yaEnviadoAdmin = est === "enviado_al_admin" || est === "activo" || est === "firmado";
-  const yaPagado = contrato?.pagado === true || est === "activo" || est === "pagado";
+  const esFirmado =
+    tieneFirma ||
+    est === "firmado" ||
+    est === "enviado_al_admin" ||
+    est === "activo";
+
+  const yaEnviadoAdmin =
+    est === "enviado_al_admin" ||
+    est === "activo" ||
+    est === "firmado";
+
+  const yaPagado =
+    contrato?.pagado === true ||
+    est === "activo" ||
+    est === "pagado";
 
   const enviarAlAdmin = async () => {
     if (!esFirmado) {
-      alert(t("alertaDebesFirmar") || "Debes firmar el contrato antes de enviarlo al administrador.");
+      alert(
+        t("alertaDebesFirmar") ||
+          "Debes firmar el contrato antes de enviarlo al administrador."
+      );
       return;
     }
 
@@ -168,7 +180,10 @@ export default function ClienteContratoVer() {
           console.log("PDF notificado.");
         }
 
-        alert(t("alertaContratoEnviado") || "¡Contrato firmado enviado al administrador!");
+        alert(
+          t("alertaContratoEnviado") ||
+            "¡Contrato firmado enviado al administrador!"
+        );
         await cargarContrato();
       }
     } catch (err) {
@@ -193,15 +208,18 @@ export default function ClienteContratoVer() {
       const customerEmail = cliente?.email || contrato?.cliente_email || "";
       const clientId = contrato?.cliente_id || cliente?.id || null;
 
-      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-        body: {
-          amount: amountInCents,
-          customerEmail: customerEmail,
-          clientId: clientId,
-          contractId: Number(id),
-          originUrl: window.location.origin
+      const { data, error } = await supabase.functions.invoke(
+        "create-checkout-session",
+        {
+          body: {
+            amount: amountInCents,
+            customerEmail: customerEmail,
+            clientId: clientId,
+            contractId: Number(id),
+            originUrl: window.location.origin
+          }
         }
-      });
+      );
 
       if (error) {
         let errorMsg = error.message;
@@ -219,7 +237,9 @@ export default function ClienteContratoVer() {
           window.location.href = data.url;
         }
       } else {
-        throw new Error("No se ha recibido la URL de redirección de Stripe.");
+        throw new Error(
+          "No se ha recibido la URL de redirección de Stripe."
+        );
       }
     } catch (err) {
       console.error("Error al iniciar pago con Stripe:", err);
@@ -232,7 +252,10 @@ export default function ClienteContratoVer() {
 
   const manejarAbrirPDF = (url) => {
     if (!url) {
-      alert(t("alertaNoPdfAdmin") || "El PDF del contrato aún no está disponible.");
+      alert(
+        t("alertaNoPdfAdmin") ||
+          "El PDF del contrato aún no está disponible."
+      );
       return;
     }
     window.open(url, "_blank");
@@ -241,8 +264,20 @@ export default function ClienteContratoVer() {
   if (cargando) {
     return (
       <Menu>
-        <div style={{ minHeight: "100vh", background: FONDO_PRINCIPAL, color: COLOR_DORADO, display: "flex", justifyContent: "center", alignItems: "center", fontFamily: "Inter, sans-serif" }}>
-          <h3 style={TEXTO_DORADO}>{t("clienteContratoCargando")}</h3>
+        <div
+          style={{
+            minHeight: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: COLOR_DORADO,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontFamily: "Inter, sans-serif"
+          }}
+        >
+          <h3 style={TEXTO_DORADO}>
+            {t("clienteContratoCargando")}
+          </h3>
         </div>
       </Menu>
     );
@@ -250,59 +285,192 @@ export default function ClienteContratoVer() {
 
   return (
     <Menu>
-      <div style={{ minHeight: "100vh", background: FONDO_PRINCIPAL, padding: "20px", color: "#fff", fontFamily: "Inter, sans-serif", paddingBottom: "80px" }}>
-        <h2 style={{ textAlign: "center", ...TEXTO_DORADO, marginBottom: "25px", fontSize: "28px", fontWeight: "700" }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: FONDO_PRINCIPAL,
+          padding: "20px",
+          color: "#fff",
+          fontFamily: "Inter, sans-serif",
+          paddingBottom: "80px"
+        }}
+      >
+        <h2
+          style={{
+            textAlign: "center",
+            ...TEXTO_DORADO,
+            marginBottom: "25px",
+            fontSize: "28px",
+            fontWeight: "700"
+          }}
+        >
           {t("clienteContratoTitulo")}
         </h2>
 
         {/* Datos del Cliente */}
-        <div style={{ background: FONDO_TARJETA, padding: "20px", borderRadius: "14px", border: BORDE_DORADO, boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)", marginBottom: "20px" }}>
-          <h3 style={{ ...TEXTO_DORADO, marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
+        <div
+          style={{
+            background: FONDO_TARJETA,
+            padding: "20px",
+            borderRadius: "14px",
+            border: BORDE_DORADO,
+            boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)",
+            marginBottom: "20px"
+          }}
+        >
+          <h3
+            style={{
+              ...TEXTO_DORADO,
+              marginBottom: "10px",
+              fontSize: "20px",
+              marginTop: 0
+            }}
+          >
             {t("clienteContratoDatosCliente")}
           </h3>
-          <p style={{ margin: "6px 0" }}><strong>{t("nombre")}:</strong> {cliente?.nombre || contrato?.cliente_nombre || "—"}</p>
-          <p style={{ margin: "6px 0" }}><strong>{t("direccion")}:</strong> {cliente?.direccion || "—"}</p>
-          <p style={{ margin: "6px 0" }}><strong>{t("telefono")}:</strong> {cliente?.telefono || "—"}</p>
+
+          <p style={{ margin: "6px 0" }}>
+            <strong>{t("nombre")}:</strong>{" "}
+            {cliente?.nombre || contrato?.cliente_nombre || "—"}
+          </p>
+
+          <p style={{ margin: "6px 0" }}>
+            <strong>{t("direccion")}:</strong>{" "}
+            {cliente?.direccion || "—"}
+          </p>
+
+          <p style={{ margin: "6px 0" }}>
+            <strong>{t("telefono")}:</strong>{" "}
+            {cliente?.telefono || "—"}
+          </p>
         </div>
 
         {/* Detalles del Contrato */}
-        <div style={{ background: FONDO_TARJETA, padding: "25px 20px", borderRadius: "14px", border: BORDE_DORADO, boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)" }}>
-          <h3 style={{ ...TEXTO_DORADO, marginBottom: "10px", fontSize: "20px", marginTop: 0 }}>
+        <div
+          style={{
+            background: FONDO_TARJETA,
+            padding: "25px 20px",
+            borderRadius: "14px",
+            border: BORDE_DORADO,
+            boxShadow: "0 0 15px rgba(255, 215, 0, 0.15)"
+          }}
+        >
+          <h3
+            style={{
+              ...TEXTO_DORADO,
+              marginBottom: "10px",
+              fontSize: "20px",
+              marginTop: 0
+            }}
+          >
             {t("clienteContratoDetalles")}
           </h3>
 
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("tipoServicio")}:</strong> {contrato.frecuencia || 30} {t("dias")}
+            <strong>{t("tipoServicio")}:</strong>{" "}
+            {contrato.frecuencia || 30} {t("dias")}
           </p>
+
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("precioMensual")}:</strong> {contrato.precio != null ? `${contrato.precio} €` : "—"}
+            <strong>{t("precioMensual")}:</strong>{" "}
+            {contrato.precio != null ? `${contrato.precio} €` : "—"}
           </p>
+
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("fechaInicio")}:</strong> {contrato.fecha_inicio || "—"}
+            <strong>{t("fechaInicio")}:</strong>{" "}
+            {contrato.fecha_inicio || "—"}
           </p>
+
           <p style={{ margin: "6px 0 16px 0" }}>
             <strong>{t("estado")}:</strong>{" "}
-            <span style={{ color: esFirmado ? "#4dff88" : "#ffb84d", fontWeight: "bold" }}>
-              {yaPagado ? `✅ Activo / Pagado` : esFirmado ? `✅ ${t("firmado") || "Firmado"}` : `⏳ ${t("pendienteFirma") || "Pendiente de firma"}`}
+            <span
+              style={{
+                color: esFirmado ? "#4dff88" : "#ffb84d",
+                fontWeight: "bold"
+              }}
+            >
+              {yaPagado
+                ? `✅ Activo / Pagado`
+                : esFirmado
+                ? `✅ ${t("firmado") || "Firmado"}`
+                : `⏳ ${
+                    t("pendienteFirma") || "Pendiente de firma"
+                  }`}
             </span>
           </p>
 
-          <button onClick={() => manejarAbrirPDF(contrato?.pdf_url)} style={{ ...botonEstilo, background: "rgba(10, 15, 26, 0.8)", border: BORDE_DORADO, color: COLOR_DORADO }}>
-            📄 {esFirmado ? (t("verContratoFirmadoPdf") || "Ver contrato firmado (PDF)") : (t("verContratoAntesFirmar") || "Ver contrato antes de firmar")}
+          <button
+            onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
+            style={{
+              ...botonEstilo,
+              background: "rgba(10, 15, 26, 0.8)",
+              border: BORDE_DORADO,
+              color: COLOR_DORADO
+            }}
+          >
+            📄{" "}
+            {esFirmado
+              ? t("verContratoFirmadoPdf") ||
+                "Ver contrato firmado (PDF)"
+              : t("verContratoAntesFirmar") ||
+                "Ver contrato antes de firmar"}
           </button>
 
-          <button onClick={() => navigate(`/cliente/firma/${id}`)} style={botonEstilo}>
-            ✍️ {esFirmado ? "Cambiar / Volver a Firmar" : (t("firmaDelCliente") || "Firma del Cliente")}
+          <button
+            onClick={() => navigate(`/cliente/firma/${id}`)}
+            style={botonEstilo}
+          >
+            ✍️{" "}
+            {esFirmado
+              ? "Cambiar / Volver a Firmar"
+              : t("firmaDelCliente") || "Firma del Cliente"}
           </button>
 
-          {!yaPagado && contrato.precio != null && Number(contrato.precio) > 0 && (
-            <button onClick={manejarPagoStripe} disabled={pagandoStripe} style={{ ...botonEstilo, background: "linear-gradient(135deg, #635bff 0%, #4338ca 100%)", border: "1px solid rgba(99, 91, 255, 0.5)" }}>
-              {pagandoStripe ? "Conectando con Stripe..." : `💳 Suscribirse y Pagar (${contrato.precio} €/mes)`}
-            </button>
-          )}
+          {!yaPagado &&
+            contrato.precio != null &&
+            Number(contrato.precio) > 0 && (
+              <button
+                onClick={manejarPagoStripe}
+                disabled={pagandoStripe}
+                style={{
+                  ...botonEstilo,
+                  background:
+                    "linear-gradient(135deg, #635bff 0%, #4338ca 100%)",
+                  border: "1px solid rgba(99, 91, 255, 0.5)"
+                }}
+              >
+                {pagandoStripe
+                  ? "Conectando con Stripe..."
+                  : `💳 Suscribirse y Pagar (${contrato.precio} €/mes)`}
+              </button>
+            )}
 
-          <button onClick={enviarAlAdmin} disabled={enviando || yaEnviadoAdmin} style={{ ...botonEstilo, background: yaEnviadoAdmin ? "rgba(255,255,255,0.1)" : esFirmado ? "linear-gradient(135deg, #4ade80 0%, #166534 100%)" : "rgba(255,255,255,0.08)", color: yaEnviadoAdmin ? "#34d399" : esFirmado ? "#ffffff" : "#888", cursor: (esFirmado && !yaEnviadoAdmin) ? "pointer" : "not-allowed" }}>
-            {enviando ? "Enviando..." : yaEnviadoAdmin ? "✅ Enviado al Administrador" : "✉️ Enviar al Administrador"}
+          <button
+            onClick={enviarAlAdmin}
+            disabled={enviando || yaEnviadoAdmin}
+            style={{
+              ...botonEstilo,
+              background: yaEnviadoAdmin
+                ? "rgba(255,255,255,0.1)"
+                : esFirmado
+                ? "linear-gradient(135deg, #4ade80 0%, #166534 100%)"
+                : "rgba(255,255,255,0.08)",
+              color: yaEnviadoAdmin
+                ? "#34d399"
+                : esFirmado
+                ? "#ffffff"
+                : "#888",
+              cursor:
+                esFirmado && !yaEnviadoAdmin
+                  ? "pointer"
+                  : "not-allowed"
+            }}
+          >
+            {enviando
+              ? "Enviando..."
+              : yaEnviadoAdmin
+              ? "✅ Enviado al Administrador"
+              : "✉️ Enviar al Administrador"}
           </button>
         </div>
       </div>
