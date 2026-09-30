@@ -95,18 +95,16 @@ export default function TecnicoDashboard() {
       setInspeccionesDiarias(inspeccionesLista);
 
       // 2. EXTRAS / FACTURAS
-      // Se mantiene exactamente el comportamiento actual:
-      // los extras desaparecen cuando estado_tecnico = completado.
+      // Solo mostramos al técnico extras que ya están pagados.
+      // Las facturas de contrato NO son trabajos extra y se excluyen.
       const { data: extrasData, error: extrasError } = await supabase
         .from('facturas')
         .select('*')
         .in('estado', [
           'pagada',
-          'pagado',
-          'activa',
-          'en_proceso',
-          'pendiente'
+          'pagado'
         ])
+        .is('contrato_id', null)
         .or('estado_tecnico.is.null,estado_tecnico.neq.completado')
         .order('id', { ascending: false });
 
