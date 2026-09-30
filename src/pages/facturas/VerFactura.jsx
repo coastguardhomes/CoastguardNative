@@ -56,6 +56,127 @@ export default function VerFactura() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [procesando, setProcesando] = useState(false);
+  const [inspeccionExtra, setInspeccionExtra] = useState(null);
+  const [fotosExtra, setFotosExtra] = useState([]);
+  const [procesandoExtra, setProcesandoExtra] = useState(false);
+
+  const parsearFotosExtra = (fotosRaw) => {
+    if (!fotosRaw) return [];
+
+    if (Array.isArray(fotosRaw)) {
+      return fotosRaw;
+    }
+
+    if (typeof fotosRaw === 'string') {
+      try {
+        const parsed = JSON.parse(fotosRaw);
+
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+
+        return parsed ? [parsed] : [];
+      } catch {
+        return fotosRaw.trim() ? [fotosRaw] : [];
+      }
+    }
+
+    if (typeof fotosRaw === 'object') {
+      return [fotosRaw];
+    }
+
+    return [];
+  };
+
+  const obtenerUrlFotoExtra = (foto) => {
+    if (!foto) return '';
+
+    const rawUrl =
+      typeof foto === 'string'
+        ? foto
+        : (
+            foto.url_foto ||
+            foto.url ||
+            foto.path ||
+            foto.foto_url ||
+            ''
+          );
+
+    if (!rawUrl) return '';
+
+    if (
+      rawUrl.startsWith('http://') ||
+      rawUrl.startsWith('https://') ||
+      rawUrl.startsWith('data:')
+    ) {
+      return rawUrl;
+    }
+
+    const { data } = supabase.storage
+      .from('extras')
+      .getPublicUrl(rawUrl);
+
+    return data?.publicUrl || rawUrl;
+  };
+
+  const cargarInspeccionExtra = async (facturaData) => {
+    try {
+      setInspeccionExtra(null);
+      setFotosExtra([]);
+
+      const { data: inspeccionData } = await supabase
+        .from('inspecciones')
+        .select('*')
+        .eq('factura_id', facturaData.id)
+        .eq('tipo', 'extra')
+        .maybeSingle();
+
+      const { data: extraPublicado } = await supabase
+        .from('extras')
+        .select('*')
+        .eq('factura_id', facturaData.id)
+        .maybeSingle();
+
+      if (!inspeccionData && !extraPublicado) {
+        return;
+      }
+
+      let fotos = parsearFotosExtra(
+        extraPublicado?.fotos ||
+        facturaData.fotos ||
+        inspeccionData?.fotos
+      );
+
+      if (
+        fotos.length === 0 &&
+        inspeccionData?.id
+      ) {
+        const { data: fotosInspeccion } = await supabase
+          .from('inspecciones_fotos')
+          .select('*')
+          .eq('inspeccion_id', inspeccionData.id);
+
+        if (
+          fotosInspeccion &&
+          fotosInspeccion.length > 0
+        ) {
+          fotos = fotosInspeccion;
+        }
+      }
+
+      setFotosExtra(fotos);
+
+      setInspeccionExtra({
+        inspeccion: inspeccionData,
+        publicado: extraPublicado
+      });
+    } catch (err) {
+      console.error(
+        'Error cargando inspección extra:',
+        err
+      );
+    }
+  };
 
   const cargarDatosSeguros = async () => {
     try {
@@ -78,6 +199,8 @@ export default function VerFactura() {
       }
 
       setFactura(facturaData);
+
+      await cargarInspeccionExtra(facturaData);
 
       if (facturaData.cliente_id) {
         const { data: clienteData } = await supabase
@@ -289,6 +412,144 @@ export default function VerFactura() {
       );
     } finally {
       setProcesando(false);
+    }
+  };
+
+  const enviarInspeccionExtraAlCliente = async () => {
+    try {
+      setProcesandoExtra(true);
+
+      if (!factura) {
+        throw new Error('No se ha cargado la factura.');
+      }
+
+      if (!factura.cliente_id) {
+        throw new Error('No se ha encontrado el cliente de la factura.');
+      }
+
+      if (!inspeccionExtra?.inspeccion && !inspeccionExtra?.publicado) {
+        throw new Error('No se ha encontrado la inspección extra.');
+      }
+
+      const inspeccion = inspeccionExtra?.inspeccion;
+      const extraExistente = inspeccionExtra?.publicado;
+
+      const fotos = fotosExtra
+        .map((foto) => {
+          if (typeof foto === 'string') return foto;
+
+          return (
+            foto.url_foto ||
+            foto.url ||
+            foto.path ||
+            foto.foto_url ||
+            ''
+          );
+        })
+        .filter(Boolean);
+
+      const payload = {
+        inspeccion_id:
+          inspeccion?.id ||
+          extraExistente?.inspeccion_id ||
+          null,
+        contrato_id:
+          factura.contrato_id ||
+          extraExistente?.contrato_id ||
+          null,
+        descripcion:
+          inspeccion?.descripcion ||
+          factura.descripcion ||
+          'Inspección extra',
+        precio: Number(
+          extraExistente?.precio ||
+          factura.total ||
+          0
+        ),
+        estado: 'completado',
+        creado_en:
+          extraExistente?.creado_en ||
+          inspeccion?.fecha ||
+          new Date().toISOString(),
+        materiales:
+          inspeccion?.materiales ||
+          factura.materiales ||
+          null,
+        tiempo_empleado:
+          inspeccion?.tiempo_empleado ||
+          factura.tiempo_empleado ||
+          null,
+        fotos,
+        cliente_id: factura.cliente_id,
+        direccion:
+          extraExistente?.direccion ||
+          null,
+        factura_id: Number(factura.id),
+        vivienda_id:
+          factura.vivienda_id ||
+          extraExistente?.vivienda_id ||
+          null,
+        tecnico_id:
+          inspeccion?.tecnico_id ||
+          extraExistente?.tecnico_id ||
+          null,
+        estado_tecnico: 'completado',
+        visto: false,
+        alerta:
+          factura.alerta ||
+          extraExistente?.alerta ||
+          false,
+        alerta_vista: false,
+        pdf_url:
+          extraExistente?.pdf_url ||
+          null,
+        cliente_email:
+          cliente?.email ||
+          extraExistente?.cliente_email ||
+          null
+      };
+
+      let resultado;
+
+      if (extraExistente?.id) {
+        resultado = await supabase
+          .from('extras')
+          .update(payload)
+          .eq('id', extraExistente.id)
+          .select()
+          .single();
+      } else {
+        resultado = await supabase
+          .from('extras')
+          .insert(payload)
+          .select()
+          .single();
+      }
+
+      if (resultado.error) {
+        throw resultado.error;
+      }
+
+      setInspeccionExtra((actual) => ({
+        ...(actual || {}),
+        publicado: resultado.data
+      }));
+
+      alert(
+        'Inspección extra revisada y enviada al área de inspecciones del cliente correctamente.'
+      );
+    } catch (err) {
+      console.error(
+        'Error enviando inspección extra al cliente:',
+        err
+      );
+
+      alert(
+        'Error al enviar la inspección extra: ' +
+        (err.message || '')
+      );
+    } finally {
+      setProcesandoExtra(false);
     }
   };
 
@@ -634,6 +895,154 @@ export default function VerFactura() {
             </div>
           )}
         </div>
+
+        {inspeccionExtra && (
+          <div style={estilos.tarjeta}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '10px'
+              }}
+            >
+              <h3
+                style={{
+                  ...TEXTO_DORADO_BRILLO,
+                  fontSize: '12px',
+                  margin: 0,
+                  textTransform: 'uppercase'
+                }}
+              >
+                Inspección Extra
+              </h3>
+
+              <span
+                style={{
+                  fontSize: '10px',
+                  color:
+                    inspeccionExtra.publicado
+                      ? '#34d399'
+                      : '#f59e0b',
+                  fontWeight: '900',
+                  textTransform: 'uppercase'
+                }}
+              >
+                {inspeccionExtra.publicado
+                  ? 'ENVIADA AL CLIENTE'
+                  : 'PENDIENTE DE REVISIÓN'}
+              </span>
+            </div>
+
+            <p
+              style={{
+                fontSize: '13px',
+                color: '#fff',
+                margin: '4px 0'
+              }}
+            >
+              <strong>Descripción:</strong>{' '}
+              {inspeccionExtra.inspeccion?.descripcion ||
+                factura.descripcion ||
+                'Sin descripción'}
+            </p>
+
+            {(inspeccionExtra.inspeccion?.materiales ||
+              factura.materiales) && (
+              <p
+                style={{
+                  fontSize: '13px',
+                  color: '#cbd5e1',
+                  margin: '4px 0'
+                }}
+              >
+                <strong>Materiales:</strong>{' '}
+                {inspeccionExtra.inspeccion?.materiales ||
+                  factura.materiales}
+              </p>
+            )}
+
+            {(inspeccionExtra.inspeccion?.tiempo_empleado ||
+              factura.tiempo_empleado) && (
+              <p
+                style={{
+                  fontSize: '13px',
+                  color: '#cbd5e1',
+                  margin: '4px 0'
+                }}
+              >
+                <strong>Tiempo empleado:</strong>{' '}
+                {inspeccionExtra.inspeccion?.tiempo_empleado ||
+                  factura.tiempo_empleado}
+              </p>
+            )}
+
+            {fotosExtra.length > 0 ? (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns:
+                    'repeat(3, minmax(0, 1fr))',
+                  gap: '8px',
+                  marginTop: '12px'
+                }}
+              >
+                {fotosExtra.map((foto, index) => {
+                  const url =
+                    obtenerUrlFotoExtra(foto);
+
+                  if (!url) return null;
+
+                  return (
+                    <a
+                      key={index}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <img
+                        src={url}
+                        alt={'Foto de inspección extra ' + (index + 1)}
+                        style={{
+                          width: '100%',
+                          height: '90px',
+                          objectFit: 'cover',
+                          borderRadius: '10px',
+                          border: BORDE_DORADO_FINO
+                        }}
+                      />
+                    </a>
+                  );
+                })}
+              </div>
+            ) : (
+              <p
+                style={{
+                  fontSize: '12px',
+                  color: '#94a3b8',
+                  marginTop: '10px'
+                }}
+              >
+                No hay fotografías asociadas a esta inspección.
+              </p>
+            )}
+
+            {!inspeccionExtra.publicado && (
+              <button
+                onClick={enviarInspeccionExtraAlCliente}
+                disabled={procesandoExtra}
+                style={{
+                  ...estilos.botonVerde,
+                  marginTop: '14px'
+                }}
+              >
+                {procesandoExtra
+                  ? 'Enviando...'
+                  : '📤 Revisar y enviar al cliente'}
+              </button>
+            )}
+          </div>
+        )}
 
         {itemsDetalle.length > 0 && (
           <div style={estilos.tarjeta}>
