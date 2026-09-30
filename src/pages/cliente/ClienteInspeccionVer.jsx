@@ -146,19 +146,75 @@ export default function ClienteInspeccionVer() {
 
       // INSPECCIÓN EXTRA
       if (!insp) {
-        const {
-          data: dataExtra
-        } = await supabase
-          .from("extras")
-          .select("*")
-          .eq("id", id)
-          .eq(
-            "cliente_id",
-            clienteId
-          )
-          .maybeSingle();
+        let { data: dataExtra } =
+          await supabase
+            .from("extras")
+            .select("*")
+            .eq("id", id)
+            .eq(
+              "cliente_id",
+              clienteId
+            )
+            .maybeSingle();
+
+        // En algunos casos la pantalla recibe el ID de la factura
+        // y el extra está relacionado mediante factura_id.
+        if (!dataExtra) {
+          const {
+            data: extraPorFactura
+          } = await supabase
+            .from("extras")
+            .select("*")
+            .eq("factura_id", id)
+            .eq(
+              "cliente_id",
+              clienteId
+            )
+            .maybeSingle();
+
+          if (extraPorFactura) {
+            dataExtra = extraPorFactura;
+          }
+        }
+
+        // Si las fotos fueron guardadas en la factura, también
+        // las usamos como respaldo para que sigan siendo visibles.
+        let datosFactura = null;
 
         if (dataExtra) {
+          const extraId = dataExtra.id;
+          const facturaId =
+            dataExtra.factura_id || id;
+
+          fotosEncontradas =
+            parsearFotos(
+              dataExtra.fotos
+            );
+
+          // Si el extra no tiene fotos directamente,
+          // buscamos las fotos guardadas en su factura.
+          if (
+            fotosEncontradas.length ===
+            0 &&
+            facturaId
+          ) {
+            const {
+              data: facturaData
+            } = await supabase
+              .from("facturas")
+              .select("*")
+              .eq("id", facturaId)
+              .maybeSingle();
+
+            datosFactura =
+              facturaData;
+
+            fotosEncontradas =
+              parsearFotos(
+                facturaData?.fotos
+              );
+          }
+
           insp = {
             id: dataExtra.id,
             fecha:
@@ -168,25 +224,26 @@ export default function ClienteInspeccionVer() {
               "COMPLETADO",
             direccion:
               dataExtra.direccion ||
+              datosFactura?.direccion ||
               "Servicio Extra",
             notas_tecnico:
               dataExtra.descripcion ||
+              datosFactura?.descripcion ||
               "Sin descripción",
             materiales:
-              dataExtra.materiales,
+              dataExtra.materiales ||
+              datosFactura?.materiales,
             tiempo_empleado:
-              dataExtra.tiempo_empleado,
+              dataExtra.tiempo_empleado ||
+              datosFactura?.tiempo_empleado,
             pdf_url:
-              dataExtra.pdf_url
+              dataExtra.pdf_url ||
+              datosFactura?.pdf_url
           };
 
           setEsExtra(true);
 
-          fotosEncontradas =
-            parsearFotos(
-              dataExtra.fotos
-            );
-
+          // Segundo respaldo: tabla de fotos.
           if (
             fotosEncontradas.length ===
             0
@@ -197,7 +254,7 @@ export default function ClienteInspeccionVer() {
               .from("fotos")
               .select("*")
               .or(
-                `extra_id.eq.${id},factura_id.eq.${id},inspeccion_id.eq.${id}`
+                `extra_id.eq.${extraId},factura_id.eq.${facturaId},inspeccion_id.eq.${extraId}`
               );
 
             if (
@@ -209,6 +266,7 @@ export default function ClienteInspeccionVer() {
             }
           }
 
+          // Tercer respaldo: inspecciones_fotos.
           if (
             fotosEncontradas.length ===
             0
@@ -219,7 +277,7 @@ export default function ClienteInspeccionVer() {
               .from("inspecciones_fotos")
               .select("*")
               .or(
-                `inspeccion_id.eq.${id},extra_id.eq.${id}`
+                `inspeccion_id.eq.${extraId},extra_id.eq.${extraId}`
               );
 
             if (
@@ -236,14 +294,68 @@ export default function ClienteInspeccionVer() {
             .update({
               alerta_vista: true
             })
-            .eq("id", id);
+            .eq("id", extraId);
 
-          await supabase
+          if (facturaId) {
+            await supabase
+              .from("facturas")
+              .update({
+                alerta_vista: true
+              })
+              .eq("id", facturaId);
+          }
+        } else {
+          // Último respaldo: la ruta puede apuntar directamente
+          // a una factura que contiene las fotos del extra.
+          const {
+            data: facturaData
+          } = await supabase
             .from("facturas")
-            .update({
-              alerta_vista: true
-            })
-            .eq("id", id);
+            .select("*")
+            .eq("id", id)
+            .eq(
+              "cliente_id",
+              clienteId
+            )
+            .maybeSingle();
+
+          if (facturaData) {
+            const fotosFactura =
+              parsearFotos(
+                facturaData.fotos
+              );
+
+            if (
+              fotosFactura.length > 0
+            ) {
+              insp = {
+                id: facturaData.id,
+                fecha:
+                  facturaData.updated_at ||
+                  facturaData.created_at,
+                estado:
+                  facturaData.estado ||
+                  "COMPLETADO",
+                direccion:
+                  facturaData.direccion ||
+                  "Servicio Extra",
+                notas_tecnico:
+                  facturaData.descripcion ||
+                  facturaData.concepto ||
+                  "Sin descripción",
+                materiales:
+                  facturaData.materiales,
+                tiempo_empleado:
+                  facturaData.tiempo_empleado,
+                pdf_url:
+                  facturaData.pdf_url
+              };
+
+              setEsExtra(true);
+              fotosEncontradas =
+                fotosFactura;
+            }
+          }
         }
       } else {
         // INSPECCIÓN NORMAL YA PUBLICADA
