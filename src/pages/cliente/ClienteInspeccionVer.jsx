@@ -267,25 +267,31 @@ export default function ClienteInspeccionVer() {
           }
 
           // Tercer respaldo: inspecciones_fotos.
+          // Los extras pueden estar relacionados con una
+          // inspección real mediante facturas.inspeccion_id.
+          // Las fotos de esa tabla se almacenan en el bucket "fotos",
+          // igual que las fotos de inspecciones normales.
           if (
             fotosEncontradas.length ===
-            0
+            0 &&
+            datosFactura?.inspeccion_id
           ) {
             const {
-              data: fotosExtra
+              data: fotosInspeccionRelacionada
             } = await supabase
               .from("inspecciones_fotos")
               .select("*")
-              .or(
-                `inspeccion_id.eq.${extraId},extra_id.eq.${extraId}`
+              .eq(
+                "inspeccion_id",
+                datosFactura.inspeccion_id
               );
 
             if (
-              fotosExtra &&
-              fotosExtra.length > 0
+              fotosInspeccionRelacionada &&
+              fotosInspeccionRelacionada.length > 0
             ) {
               fotosEncontradas =
-                fotosExtra;
+                fotosInspeccionRelacionada;
             }
           }
 
@@ -535,6 +541,8 @@ export default function ClienteInspeccionVer() {
             foto.url ||
             foto.path ||
             foto.foto_url ||
+            foto.archivo ||
+            foto.url_storage_o_path ||
             ""
           );
 
@@ -556,7 +564,7 @@ export default function ClienteInspeccionVer() {
 
     const bucket =
       esExtra
-        ? "extras"
+        ? "fotos"
         : "inspecciones";
 
     const { data } =
@@ -624,7 +632,8 @@ export default function ClienteInspeccionVer() {
             ...TEXTO_DORADO_BRILLO,
             textDecoration:
               "none",
-            fontWeight: "700",
+            fontWeight:
+              "700",
             display:
               "inline-block",
             marginBottom:
