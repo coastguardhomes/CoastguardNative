@@ -8,13 +8,17 @@ import { useLanguage } from "../../context/LanguageContext";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
-const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
-const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
-const BORDE_DORADO_INTENSO = "1px solid rgba(224, 176, 52, 0.8)";
-const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.2)";
+const FONDO_TARJETA =
+  "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO =
+  "1px solid rgba(224, 176, 52, 0.4)";
+const BORDE_DORADO_INTENSO =
+  "1px solid rgba(224, 176, 52, 0.8)";
+const SOMBRA_LUXURY =
+  "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.2)";
 const TEXTO_DORADO_BRILLO = {
   color: COLOR_DORADO,
-  textShadow: "0 0 15px rgba(224, 176, 52, 0.7)"
+  textShadow: "0 0 15px rgba(224, 176, 52, 0.7)",
 };
 const DEGRADADO_AZUL_BOTON =
   "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)";
@@ -25,26 +29,13 @@ export default function ClienteInspeccionVer() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [inspeccion, setInspeccion] =
-    useState(null);
-
-  const [vivienda, setVivienda] =
-    useState(null);
-
-  const [fotos, setFotos] =
-    useState([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [errorMsg, setErrorMsg] =
-    useState("");
-
-  const [fotoModal, setFotoModal] =
-    useState(null);
-
-  const [esExtra, setEsExtra] =
-    useState(false);
+  const [inspeccion, setInspeccion] = useState(null);
+  const [vivienda, setVivienda] = useState(null);
+  const [fotos, setFotos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [fotoModal, setFotoModal] = useState(null);
+  const [esExtra, setEsExtra] = useState(false);
 
   useEffect(() => {
     if (id && user) {
@@ -61,8 +52,7 @@ export default function ClienteInspeccionVer() {
 
     if (typeof fotosRaw === "string") {
       try {
-        const parsed =
-          JSON.parse(fotosRaw);
+        const parsed = JSON.parse(fotosRaw);
 
         if (Array.isArray(parsed)) {
           return parsed;
@@ -76,7 +66,6 @@ export default function ClienteInspeccionVer() {
         }
 
         return [parsed];
-
       } catch {
         return fotosRaw.trim()
           ? [fotosRaw]
@@ -84,9 +73,7 @@ export default function ClienteInspeccionVer() {
       }
     }
 
-    if (
-      typeof fotosRaw === "object"
-    ) {
+    if (typeof fotosRaw === "object") {
       return [fotosRaw];
     }
 
@@ -98,130 +85,152 @@ export default function ClienteInspeccionVer() {
     setErrorMsg("");
 
     try {
-      const {
-        data: clienteData
-      } = await supabase
+      const { data: clienteData } = await supabase
         .from("clientes")
         .select("id")
-        .eq(
-          "usuario_id",
-          user.id
-        )
+        .eq("usuario_id", user.id)
         .maybeSingle();
 
       if (!clienteData) {
         setErrorMsg(
-          t(
-            "perfilClienteNoEncontrado"
-          )
+          t("perfilClienteNoEncontrado")
         );
 
         setLoading(false);
         return;
       }
 
-      const clienteId =
-        clienteData.id;
+      const clienteId = clienteData.id;
 
-      // IMPORTANTE:
-      // Una inspección normal solo puede
-      // ser vista por el cliente cuando
-      // administración la ha publicado.
-      let { data: insp } =
-        await supabase
-          .from("inspecciones")
-          .select("*")
-          .eq("id", id)
-          .eq(
-            "cliente_id",
-            clienteId
-          )
-          .eq(
-            "estado",
-            "finalizada"
-          )
-          .maybeSingle();
+      /*
+       * ============================================================
+       * INSPECCIÓN NORMAL
+       * ============================================================
+       *
+       * Solo se permite cuando está finalizada y pertenece al cliente.
+       */
+      let { data: insp } = await supabase
+        .from("inspecciones")
+        .select("*")
+        .eq("id", id)
+        .eq("cliente_id", clienteId)
+        .eq("estado", "finalizada")
+        .maybeSingle();
 
       let fotosEncontradas = [];
+      let esExtraActual = false;
 
-      // INSPECCIÓN EXTRA
+      /*
+       * ============================================================
+       * INSPECCIÓN EXTRA
+       * ============================================================
+       *
+       * IMPORTANTE:
+       * El técnico puede completar el extra, pero el cliente NO debe
+       * verlo todavía.
+       *
+       * Solo se muestra cuando enviar-extra-cliente ha terminado y
+       * ha puesto extras.estado = "enviado_cliente".
+       */
       if (!insp) {
-        let { data: dataExtra } =
-          await supabase
-            .from("extras")
-            .select("*")
-            .eq("id", id)
-            .eq(
-              "cliente_id",
-              clienteId
-            )
-            .maybeSingle();
+        let { data: dataExtra } = await supabase
+          .from("extras")
+          .select("*")
+          .eq("id", id)
+          .eq("cliente_id", clienteId)
+          .maybeSingle();
 
-        // En algunos casos la pantalla recibe el ID de la factura
-        // y el extra está relacionado mediante factura_id.
+        /*
+         * En algunos casos la pantalla puede recibir el ID de factura.
+         * Buscamos el extra relacionado con esa factura.
+         */
         if (!dataExtra) {
-          const {
-            data: extraPorFactura
-          } = await supabase
-            .from("extras")
-            .select("*")
-            .eq("factura_id", id)
-            .eq(
-              "cliente_id",
-              clienteId
-            )
-            .maybeSingle();
+          const { data: extraPorFactura } =
+            await supabase
+              .from("extras")
+              .select("*")
+              .eq("factura_id", id)
+              .eq("cliente_id", clienteId)
+              .order("created_at", {
+                ascending: false,
+              })
+              .limit(1)
+              .maybeSingle();
 
           if (extraPorFactura) {
             dataExtra = extraPorFactura;
           }
         }
 
-        // Si las fotos fueron guardadas en la factura, también
-        // las usamos como respaldo para que sigan siendo visibles.
-        let datosFactura = null;
+        /*
+         * SEGURIDAD:
+         * Un extra pendiente, completado por técnico o aprobado por
+         * administración todavía NO se muestra al cliente.
+         *
+         * El único estado que lo publica es enviado_cliente.
+         */
+        if (
+          dataExtra &&
+          dataExtra.estado !== "enviado_cliente"
+        ) {
+          setErrorMsg(
+            t(
+              "informeNoEncontradoPermisos"
+            )
+          );
+
+          setLoading(false);
+          return;
+        }
 
         if (dataExtra) {
+          esExtraActual = true;
+
           const extraId = dataExtra.id;
           const facturaId =
-            dataExtra.factura_id || id;
+            dataExtra.factura_id || null;
 
-          fotosEncontradas =
-            parsearFotos(
-              dataExtra.fotos
-            );
+          let datosFactura = null;
 
-          // Si el extra no tiene fotos directamente,
-          // buscamos las fotos guardadas en su factura.
+          /*
+           * Fotos propias del extra.
+           */
+          fotosEncontradas = parsearFotos(
+            dataExtra.fotos
+          );
+
+          /*
+           * Si el extra no tiene fotos, buscamos las fotos de su factura
+           * como respaldo.
+           */
           if (
-            fotosEncontradas.length ===
-            0 &&
+            fotosEncontradas.length === 0 &&
             facturaId
           ) {
-            const {
-              data: facturaData
-            } = await supabase
-              .from("facturas")
-              .select("*")
-              .eq("id", facturaId)
-              .maybeSingle();
+            const { data: facturaData } =
+              await supabase
+                .from("facturas")
+                .select("*")
+                .eq("id", facturaId)
+                .eq("cliente_id", clienteId)
+                .maybeSingle();
 
-            datosFactura =
-              facturaData;
+            datosFactura = facturaData;
 
-            fotosEncontradas =
-              parsearFotos(
-                facturaData?.fotos
-              );
+            fotosEncontradas = parsearFotos(
+              facturaData?.fotos
+            );
           }
 
+          /*
+           * Construimos el objeto que utiliza la pantalla.
+           */
           insp = {
             id: dataExtra.id,
             fecha:
               dataExtra.updated_at ||
               dataExtra.created_at,
-            estado:
-              "COMPLETADO",
+            estado: "ENVIADO AL CLIENTE",
             direccion:
               dataExtra.direccion ||
               datosFactura?.direccion ||
@@ -238,24 +247,22 @@ export default function ClienteInspeccionVer() {
               datosFactura?.tiempo_empleado,
             pdf_url:
               dataExtra.pdf_url ||
-              datosFactura?.pdf_url
+              datosFactura?.pdf_url,
           };
 
-          setEsExtra(true);
-
-          // Segundo respaldo: tabla de fotos.
+          /*
+           * Segundo respaldo: tabla fotos.
+           */
           if (
-            fotosEncontradas.length ===
-            0
+            fotosEncontradas.length === 0
           ) {
-            const {
-              data: fotosTabla
-            } = await supabase
-              .from("fotos")
-              .select("*")
-              .or(
-                `extra_id.eq.${extraId},factura_id.eq.${facturaId},inspeccion_id.eq.${extraId}`
-              );
+            const { data: fotosTabla } =
+              await supabase
+                .from("fotos")
+                .select("*")
+                .or(
+                  `extra_id.eq.${extraId},factura_id.eq.${facturaId || "00000000-0000-0000-0000-000000000000"},inspeccion_id.eq.${extraId}`
+                );
 
             if (
               fotosTabla &&
@@ -266,18 +273,16 @@ export default function ClienteInspeccionVer() {
             }
           }
 
-          // Tercer respaldo: inspecciones_fotos.
-          // Los extras pueden estar relacionados con una
-          // inspección real mediante facturas.inspeccion_id.
-          // Las fotos de esa tabla se almacenan en el bucket "fotos",
-          // igual que las fotos de inspecciones normales.
+          /*
+           * Tercer respaldo: fotos de la inspección relacionada con
+           * la factura, si existe.
+           */
           if (
-            fotosEncontradas.length ===
-            0 &&
+            fotosEncontradas.length === 0 &&
             datosFactura?.inspeccion_id
           ) {
             const {
-              data: fotosInspeccionRelacionada
+              data: fotosInspeccionRelacionada,
             } = await supabase
               .from("inspecciones_fotos")
               .select("*")
@@ -295,76 +300,54 @@ export default function ClienteInspeccionVer() {
             }
           }
 
-          await supabase
-            .from("extras")
-            .update({
-              alerta_vista: true
-            })
-            .eq("id", extraId);
+          /*
+           * Solo AHORA marcamos la alerta como vista, porque el extra
+           * ya está realmente publicado al cliente.
+           */
+          if (dataExtra.alerta) {
+            await supabase
+              .from("extras")
+              .update({
+                alerta_vista: true,
+              })
+              .eq("id", extraId);
+          }
 
           if (facturaId) {
             await supabase
               .from("facturas")
               .update({
-                alerta_vista: true
+                alerta_vista: true,
               })
               .eq("id", facturaId);
           }
         } else {
-          // Último respaldo: la ruta puede apuntar directamente
-          // a una factura que contiene las fotos del extra.
-          const {
-            data: facturaData
-          } = await supabase
-            .from("facturas")
-            .select("*")
-            .eq("id", id)
-            .eq(
-              "cliente_id",
-              clienteId
+          /*
+           * IMPORTANTE:
+           * Antes este bloque permitía mostrar directamente una factura
+           * con fotos aunque no existiera un extra enviado al cliente.
+           *
+           * Eso podía saltarse el proceso:
+           * técnico -> administración -> cliente.
+           *
+           * Por eso NO mostramos una factura directamente como extra.
+           * Si no existe un extra enviado_cliente, no se publica nada.
+           */
+          setErrorMsg(
+            t(
+              "informeNoEncontradoPermisos"
             )
-            .maybeSingle();
+          );
 
-          if (facturaData) {
-            const fotosFactura =
-              parsearFotos(
-                facturaData.fotos
-              );
-
-            if (
-              fotosFactura.length > 0
-            ) {
-              insp = {
-                id: facturaData.id,
-                fecha:
-                  facturaData.updated_at ||
-                  facturaData.created_at,
-                estado:
-                  facturaData.estado ||
-                  "COMPLETADO",
-                direccion:
-                  facturaData.direccion ||
-                  "Servicio Extra",
-                notas_tecnico:
-                  facturaData.descripcion ||
-                  facturaData.concepto ||
-                  "Sin descripción",
-                materiales:
-                  facturaData.materiales,
-                tiempo_empleado:
-                  facturaData.tiempo_empleado,
-                pdf_url:
-                  facturaData.pdf_url
-              };
-
-              setEsExtra(true);
-              fotosEncontradas =
-                fotosFactura;
-            }
-          }
+          setLoading(false);
+          return;
         }
       } else {
-        // INSPECCIÓN NORMAL YA PUBLICADA
+        /*
+         * ============================================================
+         * INSPECCIÓN NORMAL YA PUBLICADA
+         * ============================================================
+         */
         if (insp.fotos) {
           fotosEncontradas =
             parsearFotos(
@@ -373,8 +356,7 @@ export default function ClienteInspeccionVer() {
         }
 
         if (
-          fotosEncontradas.length ===
-          0
+          fotosEncontradas.length === 0
         ) {
           try {
             const fotosCargadas =
@@ -395,11 +377,10 @@ export default function ClienteInspeccionVer() {
         }
 
         if (
-          fotosEncontradas.length ===
-          0
+          fotosEncontradas.length === 0
         ) {
           const {
-            data: fotosData
+            data: fotosData,
           } = await supabase
             .from("fotos")
             .select("*")
@@ -424,7 +405,7 @@ export default function ClienteInspeccionVer() {
           await supabase
             .from("inspecciones")
             .update({
-              alerta_vista: true
+              alerta_vista: true,
             })
             .eq("id", id);
         }
@@ -441,15 +422,24 @@ export default function ClienteInspeccionVer() {
         return;
       }
 
+      /*
+       * Usamos el valor local, no el estado React anterior.
+       * Así evitamos el bug de setEsExtra() asíncrono.
+       */
+      setEsExtra(esExtraActual);
+
       setInspeccion(insp);
       setFotos(fotosEncontradas);
 
+      /*
+       * La vivienda solo se busca para inspecciones normales.
+       */
       if (
-        !esExtra &&
+        !esExtraActual &&
         insp.vivienda_id
       ) {
         const {
-          data: viv
+          data: viv,
         } = await supabase
           .from("viviendas")
           .select(
@@ -463,7 +453,6 @@ export default function ClienteInspeccionVer() {
 
         setVivienda(viv);
       }
-
     } catch (err) {
       console.error(
         "Error al cargar detalles:",
@@ -475,7 +464,6 @@ export default function ClienteInspeccionVer() {
           "errorConexionCargarInformacion"
         )
       );
-
     } finally {
       setLoading(false);
     }
@@ -517,7 +505,6 @@ export default function ClienteInspeccionVer() {
       navigate(
         "/cliente/inspecciones"
       );
-
     } catch (err) {
       console.error(
         "Error al borrar:",
@@ -562,9 +549,13 @@ export default function ClienteInspeccionVer() {
       return rawUrl;
     }
 
+    /*
+     * Las fotos de extras se guardan en el bucket "extras".
+     * Las inspecciones normales siguen usando "inspecciones".
+     */
     const bucket =
       esExtra
-        ? "fotos"
+        ? "extras"
         : "inspecciones";
 
     const { data } =
