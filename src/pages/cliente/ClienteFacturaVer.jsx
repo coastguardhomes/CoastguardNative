@@ -26,13 +26,82 @@ export default function ClienteFacturaVer() {
   const { id } = useParams();
 
   const [factura, setFactura] = useState(null);
+  const [fotosFactura, setFotosFactura] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
+
+  const parsearFotos = (fotosRaw) => {
+    if (!fotosRaw) return [];
+
+    if (Array.isArray(fotosRaw)) {
+      return fotosRaw;
+    }
+
+    if (typeof fotosRaw === "string") {
+      try {
+        const parsed = JSON.parse(fotosRaw);
+
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+
+        if (parsed && typeof parsed === "object") {
+          return [parsed];
+        }
+
+        return parsed ? [parsed] : [];
+      } catch {
+        return fotosRaw.trim()
+          ? [fotosRaw]
+          : [];
+      }
+    }
+
+    if (typeof fotosRaw === "object") {
+      return [fotosRaw];
+    }
+
+    return [];
+  };
+
+  const obtenerUrlFoto = (foto) => {
+    if (!foto) return "";
+
+    const rawUrl =
+      typeof foto === "string"
+        ? foto
+        : (
+            foto.url_foto ||
+            foto.url ||
+            foto.path ||
+            foto.foto_url ||
+            foto.archivo ||
+            foto.url_storage_o_path ||
+            ""
+          );
+
+    if (!rawUrl) return "";
+
+    if (
+      rawUrl.startsWith("http://") ||
+      rawUrl.startsWith("https://") ||
+      rawUrl.startsWith("data:")
+    ) {
+      return rawUrl;
+    }
+
+    const { data } = supabase.storage
+      .from("extras")
+      .getPublicUrl(rawUrl);
+
+    return data?.publicUrl || rawUrl;
+  };
 
   useEffect(() => {
     async function cargar() {
       setLoading(true);
       setMensaje("");
+      setFotosFactura([]);
 
       const { data, error } = await supabase
         .from("facturas")
@@ -50,6 +119,9 @@ export default function ClienteFacturaVer() {
       }
 
       setFactura(data);
+      setFotosFactura(
+        parsearFotos(data.fotos)
+      );
       setLoading(false);
     }
 
@@ -272,6 +344,72 @@ export default function ClienteFacturaVer() {
             {Number(factura.total || 0).toFixed(2)} €
           </p>
         </div>
+
+        {fotosFactura.length > 0 && (
+          <div
+            style={{
+              background: FONDO_TARJETA,
+              border: BORDE_DORADO_FINO,
+              borderRadius: "16px",
+              padding: "18px",
+              marginBottom: "20px",
+              boxShadow: SOMBRA_LUXURY
+            }}
+          >
+            <h3
+              style={{
+                ...TEXTO_DORADO_BRILLO,
+                fontSize: "13px",
+                margin: "0 0 12px 0",
+                textTransform: "uppercase"
+              }}
+            >
+              📷 Fotografías de la factura
+            </h3>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fill, minmax(100px, 1fr))",
+                gap: "10px"
+              }}
+            >
+              {fotosFactura.map((foto, index) => {
+                const url =
+                  obtenerUrlFoto(foto);
+
+                if (!url) return null;
+
+                return (
+                  <a
+                    key={index}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "block",
+                      borderRadius: "10px",
+                      overflow: "hidden",
+                      border: BORDE_DORADO_FINO
+                    }}
+                  >
+                    <img
+                      src={url}
+                      alt={`Fotografía ${index + 1}`}
+                      style={{
+                        width: "100%",
+                        height: "100px",
+                        objectFit: "cover",
+                        display: "block"
+                      }}
+                    />
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {factura.pdf_url ? (
           <a
