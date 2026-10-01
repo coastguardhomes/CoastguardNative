@@ -124,39 +124,78 @@ export default function VerFactura() {
       setInspeccionExtra(null);
       setFotosExtra([]);
 
-      const { data: inspeccionData } = await supabase
-        .from('inspecciones')
-        .select('*')
-        .eq('factura_id', facturaData.id)
-        .eq('tipo', 'extra')
-        .maybeSingle();
-
-      const { data: extraPublicado } = await supabase
+      /*
+       * IMPORTANTE:
+       * inspecciones NO tiene factura_id.
+       * La relación correcta para este flujo está en extras.factura_id.
+       */
+      const { data: extraPublicado, error: extraError } = await supabase
         .from('extras')
         .select('*')
         .eq('factura_id', facturaData.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (!inspeccionData && !extraPublicado) {
+      if (extraError) {
+        throw extraError;
+      }
+
+      if (!extraPublicado) {
         return;
       }
 
-      let fotos = parsearFotosExtra(
-        extraPublicado?.fotos ||
-        facturaData.fotos ||
-        inspeccionData?.fotos
-      );
+      let inspeccionData = null;
 
+      /*
+       * Si el extra tiene inspeccion_id, cargamos la inspección
+       * relacionada únicamente por su id.
+       */
+      if (extraPublicado.inspeccion_id) {
+        const { data: inspeccionRelacionada, error: inspeccionError } =
+          await supabase
+            .from('inspecciones')
+            .select('*')
+            .eq('id', extraPublicado.inspeccion_id)
+            .maybeSingle();
+
+        if (inspeccionError) {
+          console.error(
+            'Error cargando inspección relacionada:',
+            inspeccionError
+          );
+        } else {
+          inspeccionData = inspeccionRelacionada;
+        }
+      }
+
+      /*
+       * Las fotografías del extra proceden del registro extras.
+       * No usamos facturaData.fotos aquí porque esas pueden ser
+       * fotografías de la factura y no de la inspección extra.
+       */
+      let fotos = parsearFotosExtra(extraPublicado.fotos);
+
+      /*
+       * Compatibilidad con extras antiguos que pudieran tener
+       * las fotografías guardadas en inspecciones_fotos.
+       */
       if (
         fotos.length === 0 &&
         inspeccionData?.id
       ) {
-        const { data: fotosInspeccion } = await supabase
-          .from('inspecciones_fotos')
-          .select('*')
-          .eq('inspeccion_id', inspeccionData.id);
+        const { data: fotosInspeccion, error: fotosError } =
+          await supabase
+            .from('inspecciones_fotos')
+            .select('*')
+            .eq('inspeccion_id', inspeccionData.id);
 
-        if (
+        if (fotosError) {
+          console.error(
+            'Error cargando fotografías de inspección:',
+            fotosError
+          );
+        } else if (
           fotosInspeccion &&
           fotosInspeccion.length > 0
         ) {
@@ -423,120 +462,134 @@ export default function VerFactura() {
         throw new Error('No se ha cargado la factura.');
       }
 
-      if (!factura.cliente_id) {
-        throw new Error('No se ha encontrado el cliente de la factura.');
-      }
-
-      if (!inspeccionExtra?.inspeccion && !inspeccionExtra?.publicado) {
+      if (!inspeccionExtra?.publicado?.id) {
         throw new Error('No se ha encontrado la inspección extra.');
       }
 
-      const inspeccion = inspeccionExtra?.inspeccion;
-      const extraExistente = inspeccionExtra?.publicado;
+      const extraExistente = inspeccionExtra.publicado;
 
-      const fotos = fotosExtra
-        .map((foto) => {
-          if (typeof foto === 'string') return foto;
+      /*
+       * No permitimos enviar directamente un extra que todavía
+       * no haya sido completado por el técnico.
+       */
+      const estadosTecnicoCompletado = [
+        'completado',
+        'completada',
+        'finalizado',
+        'finalizada'
+      ];
 
-          return (
-            foto.url_foto ||
-            foto.url ||
-            foto.path ||
-            foto.foto_url ||
-            ''
-          );
-        })
-        .filter(Boolean);
+      const estadoTecnico =
+        String(
+          extraExistente.estado_tecnico || ''
+        ).toLowerCase();
 
-      const payload = {
-        inspeccion_id:
-          inspeccion?.id ||
-          extraExistente?.inspeccion_id ||
-          null,
-        contrato_id:
-          factura.contrato_id ||
-          extraExistente?.contrato_id ||
-          null,
-        descripcion:
-          inspeccion?.descripcion ||
-          factura.descripcion ||
-          'Inspección extra',
-        precio: Number(
-          extraExistente?.precio ||
-          factura.total ||
-          0
-        ),
-        estado: 'completado',
-        creado_en:
-          extraExistente?.creado_en ||
-          inspeccion?.fecha ||
-          new Date().toISOString(),
-        materiales:
-          inspeccion?.materiales ||
-          factura.materiales ||
-          null,
-        tiempo_empleado:
-          inspeccion?.tiempo_empleado ||
-          factura.tiempo_empleado ||
-          null,
-        fotos,
-        cliente_id: factura.cliente_id,
-        direccion:
-          extraExistente?.direccion ||
-          null,
-        factura_id: Number(factura.id),
-        vivienda_id:
-          factura.vivienda_id ||
-          extraExistente?.vivienda_id ||
-          null,
-        tecnico_id:
-          inspeccion?.tecnico_id ||
-          extraExistente?.tecnico_id ||
-          null,
-        estado_tecnico: 'completado',
-        visto: false,
-        alerta:
-          factura.alerta ||
-          extraExistente?.alerta ||
-          false,
-        alerta_vista: false,
-        pdf_url:
-          extraExistente?.pdf_url ||
-          null,
-        cliente_email:
-          cliente?.email ||
-          extraExistente?.cliente_email ||
-          null
-      };
+      if (!estadosTecnicoCompletado.includes(estadoTecnico)) {
+        throw new Error(
+          'La inspección extra todavía no ha sido completada por el técnico.'
+        );
+      }
 
-      let resultado;
+      /*
+       * Si ya fue enviado al cliente no volvemos a enviarlo.
+       */
+      if (
+        String(extraExistente.estado || '').toLowerCase() ===
+        'enviado_cliente'
+      ) {
+        alert(
+          'Esta inspección extra ya fue enviada al cliente.'
+        );
 
-      if (extraExistente?.id) {
-        resultado = await supabase
+        await cargarDatosSeguros();
+        return;
+      }
+
+      /*
+       * Primero aprobamos el extra como administrador.
+       * La función enviar-extra-cliente comprobará esta aprobación
+       * antes de mandar el email.
+       */
+      const { data: extraAprobado, error: aprobarError } =
+        await supabase
           .from('extras')
-          .update(payload)
+          .update({
+            estado_admin: 'aprobada',
+            fecha_aprobacion: new Date().toISOString()
+          })
           .eq('id', extraExistente.id)
           .select()
           .single();
-      } else {
-        resultado = await supabase
-          .from('extras')
-          .insert(payload)
-          .select()
-          .single();
-      }
 
-      if (resultado.error) {
-        throw resultado.error;
+      if (aprobarError) {
+        throw aprobarError;
       }
 
       setInspeccionExtra((actual) => ({
         ...(actual || {}),
-        publicado: resultado.data
+        publicado: extraAprobado
       }));
 
+      /*
+       * Ahora sí se ejecuta el envío real al cliente.
+       * Esta función es la única responsable de mandar el email.
+       */
+      const { data: envioData, error: envioError } =
+        await supabase.functions.invoke(
+          'enviar-extra-cliente',
+          {
+            body: {
+              extraId: extraExistente.id
+            }
+          }
+        );
+
+      if (envioError) {
+        /*
+         * Si el envío falla, dejamos el extra pendiente
+         * para que el administrador pueda volver a revisarlo.
+         */
+        await supabase
+          .from('extras')
+          .update({
+            estado_admin: 'pendiente',
+            fecha_aprobacion: null
+          })
+          .eq('id', extraExistente.id);
+
+        let mensaje = envioError.message;
+
+        try {
+          const body = await envioError.context?.json();
+
+          if (body?.error) {
+            mensaje = body.error;
+          }
+        } catch (e) {}
+
+        throw new Error(mensaje);
+      }
+
+      if (
+        envioData?.error
+      ) {
+        await supabase
+          .from('extras')
+          .update({
+            estado_admin: 'pendiente',
+            fecha_aprobacion: null
+          })
+          .eq('id', extraExistente.id);
+
+        throw new Error(envioData.error);
+      }
+
+      await cargarDatosSeguros();
+
       alert(
-        'Inspección extra revisada y enviada al área de inspecciones del cliente correctamente.'
+        envioData?.already_sent
+          ? 'La inspección extra ya había sido enviada al cliente.'
+          : 'Inspección extra aprobada y enviada al cliente correctamente.'
       );
     } catch (err) {
       console.error(
@@ -681,6 +734,37 @@ export default function VerFactura() {
       factura.descripcion,
       idiomaFinal
     );
+
+  const extraActual =
+    inspeccionExtra?.publicado || null;
+
+  const estadoExtra =
+    String(
+      extraActual?.estado || ''
+    ).toLowerCase();
+
+  const estadoAdminExtra =
+    String(
+      extraActual?.estado_admin || ''
+    ).toLowerCase();
+
+  const estadoTecnicoExtra =
+    String(
+      extraActual?.estado_tecnico || ''
+    ).toLowerCase();
+
+  const tecnicoHaCompletadoExtra = [
+    'completado',
+    'completada',
+    'finalizado',
+    'finalizada'
+  ].includes(estadoTecnicoExtra);
+
+  const extraYaEnviado =
+    estadoExtra === 'enviado_cliente';
+
+  const extraAprobado =
+    estadoAdminExtra === 'aprobada';
 
   return (
     <div style={estilos.pagina}>
@@ -921,16 +1005,22 @@ export default function VerFactura() {
                 style={{
                   fontSize: '10px',
                   color:
-                    inspeccionExtra.publicado
+                    extraYaEnviado
                       ? '#34d399'
-                      : '#f59e0b',
+                      : tecnicoHaCompletadoExtra
+                        ? '#f59e0b'
+                        : '#94a3b8',
                   fontWeight: '900',
                   textTransform: 'uppercase'
                 }}
               >
-                {inspeccionExtra.publicado
+                {extraYaEnviado
                   ? 'ENVIADA AL CLIENTE'
-                  : 'PENDIENTE DE REVISIÓN'}
+                  : extraAprobado
+                    ? 'APROBADA'
+                    : tecnicoHaCompletadoExtra
+                      ? 'PENDIENTE DE APROBACIÓN'
+                      : 'PENDIENTE DEL TÉCNICO'}
               </span>
             </div>
 
@@ -942,13 +1032,13 @@ export default function VerFactura() {
               }}
             >
               <strong>Descripción:</strong>{' '}
-              {inspeccionExtra.inspeccion?.descripcion ||
-                factura.descripcion ||
+              {extraActual?.descripcion ||
+                inspeccionExtra.inspeccion?.descripcion ||
                 'Sin descripción'}
             </p>
 
-            {(inspeccionExtra.inspeccion?.materiales ||
-              factura.materiales) && (
+            {(extraActual?.materiales ||
+              inspeccionExtra.inspeccion?.materiales) && (
               <p
                 style={{
                   fontSize: '13px',
@@ -957,13 +1047,13 @@ export default function VerFactura() {
                 }}
               >
                 <strong>Materiales:</strong>{' '}
-                {inspeccionExtra.inspeccion?.materiales ||
-                  factura.materiales}
+                {extraActual?.materiales ||
+                  inspeccionExtra.inspeccion?.materiales}
               </p>
             )}
 
-            {(inspeccionExtra.inspeccion?.tiempo_empleado ||
-              factura.tiempo_empleado) && (
+            {(extraActual?.tiempo_empleado ||
+              inspeccionExtra.inspeccion?.tiempo_empleado) && (
               <p
                 style={{
                   fontSize: '13px',
@@ -972,8 +1062,8 @@ export default function VerFactura() {
                 }}
               >
                 <strong>Tiempo empleado:</strong>{' '}
-                {inspeccionExtra.inspeccion?.tiempo_empleado ||
-                  factura.tiempo_empleado}
+                {extraActual?.tiempo_empleado ||
+                  inspeccionExtra.inspeccion?.tiempo_empleado}
               </p>
             )}
 
@@ -1027,20 +1117,69 @@ export default function VerFactura() {
               </p>
             )}
 
-            {!inspeccionExtra.publicado && (
-              <button
-                onClick={enviarInspeccionExtraAlCliente}
-                disabled={procesandoExtra}
+            {extraYaEnviado && (
+              <div
                 style={{
-                  ...estilos.botonVerde,
-                  marginTop: '14px'
+                  marginTop: '14px',
+                  padding: '10px',
+                  borderRadius: '10px',
+                  background: 'rgba(52, 211, 153, 0.08)',
+                  border: '1px solid rgba(52, 211, 153, 0.35)'
                 }}
               >
-                {procesandoExtra
-                  ? 'Enviando...'
-                  : '📤 Revisar y enviar al cliente'}
-              </button>
+                <p
+                  style={{
+                    margin: 0,
+                    color: '#34d399',
+                    fontSize: '12px',
+                    fontWeight: '800',
+                    textAlign: 'center'
+                  }}
+                >
+                  ✓ Esta inspección extra ya ha sido enviada al cliente.
+                </p>
+              </div>
             )}
+
+            {!extraYaEnviado &&
+              tecnicoHaCompletadoExtra && (
+                <button
+                  onClick={enviarInspeccionExtraAlCliente}
+                  disabled={procesandoExtra}
+                  style={{
+                    ...estilos.botonVerde,
+                    marginTop: '14px'
+                  }}
+                >
+                  {procesandoExtra
+                    ? 'Enviando...'
+                    : '📤 Aprobar y enviar al cliente'}
+                </button>
+              )}
+
+            {!extraYaEnviado &&
+              !tecnicoHaCompletadoExtra && (
+                <div
+                  style={{
+                    marginTop: '14px',
+                    padding: '10px',
+                    borderRadius: '10px',
+                    background: 'rgba(148, 163, 184, 0.08)',
+                    border: '1px solid rgba(148, 163, 184, 0.25)'
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: 0,
+                      color: '#94a3b8',
+                      fontSize: '12px',
+                      textAlign: 'center'
+                    }}
+                  >
+                    La inspección todavía no ha sido completada por el técnico.
+                  </p>
+                </div>
+              )}
           </div>
         )}
 
