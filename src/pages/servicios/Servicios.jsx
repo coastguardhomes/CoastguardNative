@@ -17,29 +17,6 @@ const SERVICIOS_DISPONIBLES = [
 const IVA = 0.21;
 const redondear = (n) => Math.round(n * 100) / 100;
 
-function calcularPuntos(v) {
-  let puntos = 0;
-
-  if (v.metros_cuadrados > 80 && v.metros_cuadrados <= 120) puntos += 5;
-  else if (v.metros_cuadrados > 120 && v.metros_cuadrados <= 180) puntos += 10;
-  else if (v.metros_cuadrados > 180) puntos += 15;
-
-  if (v.habitaciones > 1) puntos += (v.habitaciones - 1) * 2;
-  if (v.banos > 1) puntos += (v.banos - 1) * 3;
-
-  if (v.tiene_piscina) puntos += 10;
-  if (v.tiene_jardin) puntos += 8;
-  if (v.tiene_garaje) puntos += 4;
-  if (v.tiene_sotano) puntos += 6;
-
-  return puntos;
-}
-
-function calcularPrecio(v) {
-  const puntos = calcularPuntos(v);
-  return Number((puntos * 1.5).toFixed(2));
-}
-
 async function pdfDisponible(url) {
   try {
     const res = await fetch(url, { method: "HEAD" });
@@ -74,11 +51,11 @@ export default function Servicios() {
         .select("id, nombre, direccion, email")
         .order("nombre");
 
-      if (!error) {
-        setClientes(data || []);
-      } else {
+      if (error) {
         console.error("Error cargando clientes:", error);
         setError("No se pudieron cargar los clientes.");
+      } else {
+        setClientes(data || []);
       }
 
       setCargando(false);
@@ -100,14 +77,7 @@ export default function Servicios() {
         .select(`
           id,
           direccion,
-          tecnico_id,
-          metros_cuadrados,
-          habitaciones,
-          banos,
-          tiene_piscina,
-          tiene_jardin,
-          tiene_garaje,
-          tiene_sotano
+          tecnico_id
         `)
         .eq("cliente_id", clienteId)
         .eq("activa", true)
@@ -117,7 +87,9 @@ export default function Servicios() {
         console.error("Error cargando viviendas:", error);
         setViviendas([]);
         setViviendaId("");
-        setError("No se pudieron cargar las viviendas del cliente.");
+        setError(
+          "No se pudieron cargar las viviendas del cliente."
+        );
         return;
       }
 
@@ -136,7 +108,18 @@ export default function Servicios() {
     );
   };
 
-  let lineas = seleccionados.map((nombre) => {
+  /*
+   * IMPORTANTE:
+   *
+   * Aquí solamente se incluyen los servicios que el administrador
+   * haya seleccionado.
+   *
+   * La vivienda NO añade ninguna tarifa.
+   * No se utilizan metros cuadrados, habitaciones, piscina,
+   * jardín, garaje, sótano ni ningún otro dato de la vivienda
+   * para calcular el precio del extra.
+   */
+  const lineas = seleccionados.map((nombre) => {
     const serv = SERVICIOS_DISPONIBLES.find(
       (e) => e.nombre === nombre
     );
@@ -150,23 +133,15 @@ export default function Servicios() {
     };
   });
 
-  if (viviendaId) {
-    const vivienda = viviendas.find(
-      (v) => v.id == viviendaId
-    );
-
-    if (vivienda) {
-      const precioAuto = calcularPrecio(vivienda);
-
-      lineas.push({
-        nombre: "Tarifa vivienda (precio automático)",
-        precio: precioAuto
-      });
-    }
-  }
-
+  /*
+   * La base, IVA y total corresponden EXCLUSIVAMENTE
+   * a los extras seleccionados.
+   */
   const base = redondear(
-    lineas.reduce((acc, l) => acc + l.precio, 0)
+    lineas.reduce(
+      (acc, linea) => acc + linea.precio,
+      0
+    )
   );
 
   const iva = redondear(base * IVA);
@@ -177,7 +152,9 @@ export default function Servicios() {
       .from("facturas")
       .select("numero")
       .like("numero", "CG-%")
-      .order("numero", { ascending: false })
+      .order("numero", {
+        ascending: false
+      })
       .limit(1);
 
     if (errorNum) {
@@ -187,7 +164,10 @@ export default function Servicios() {
     const ultimo = data?.[0]?.numero;
 
     const n = ultimo
-      ? parseInt(String(ultimo).replace(/\D/g, ""), 10)
+      ? parseInt(
+          String(ultimo).replace(/\D/g, ""),
+          10
+        )
       : 0;
 
     return `CG-${String(
@@ -204,15 +184,24 @@ export default function Servicios() {
       return;
     }
 
-    if (seleccionados.length === 0 && !viviendaId) {
+    if (!viviendaId) {
       setError(
-        "Selecciona al menos un servicio o una vivienda."
+        "Selecciona la vivienda asociada al extra."
+      );
+      return;
+    }
+
+    if (seleccionados.length === 0) {
+      setError(
+        "Selecciona al menos un servicio extra."
       );
       return;
     }
 
     const sinPrecio = lineas.find(
-      (l) => !l.precio || l.precio <= 0
+      (linea) =>
+        !linea.precio ||
+        linea.precio <= 0
     );
 
     if (sinPrecio) {
@@ -222,24 +211,24 @@ export default function Servicios() {
       return;
     }
 
-    const viviendaSeleccionada = viviendas.find(
-      (v) => v.id == viviendaId
-    );
+    const viviendaSeleccionada =
+      viviendas.find(
+        (v) => v.id == viviendaId
+      );
 
-    /*
-     * Para un trabajo extra que tiene que realizar un técnico,
-     * necesitamos una vivienda y un técnico asignado.
-     *
-     * No creamos un extra sin técnico porque después el técnico
-     * no podría verlo por RLS ni abrirlo correctamente.
-     */
     if (!viviendaSeleccionada) {
       setError(
-        "Selecciona la vivienda asociada al servicio para poder asignarlo al técnico."
+        "No se encontró la vivienda seleccionada."
       );
       return;
     }
 
+    /*
+     * La vivienda debe tener técnico porque el extra
+     * tiene que llegar al técnico asignado.
+     *
+     * Esto NO afecta al precio.
+     */
     if (!viviendaSeleccionada.tecnico_id) {
       setError(
         "La vivienda seleccionada no tiene ningún técnico asignado. Asigna primero el técnico a la vivienda."
@@ -250,119 +239,137 @@ export default function Servicios() {
     setGuardando(true);
 
     try {
-      const numero = await siguienteNumero();
+      const numero =
+        await siguienteNumero();
 
-      const descripcionServicios = lineas
-        .map((l) => l.nombre)
-        .join(", ");
+      const descripcionServicios =
+        lineas
+          .map((linea) => linea.nombre)
+          .join(", ");
 
       const direccionTexto =
-        viviendaSeleccionada.direccion || null;
+        viviendaSeleccionada.direccion ||
+        null;
+
+      const cliente =
+        clientes.find(
+          (c) => c.id == clienteId
+        );
 
       /*
        * FACTURA
        *
-       * Se mantienen exactamente los cálculos existentes:
-       * base, IVA y total.
+       * El importe procede ÚNICAMENTE de los
+       * servicios extras seleccionados.
        *
-       * Solo añadimos vivienda_id para conservar la relación
-       * con la vivienda del trabajo.
+       * vivienda_id solamente relaciona la factura
+       * con la vivienda. NO interviene en el cálculo.
        */
-      const { data: factura, error: errorFactura } =
-        await supabase
-          .from("facturas")
-          .insert({
-            numero,
-            cliente_id: clienteId,
-            vivienda_id: viviendaSeleccionada.id,
-            fecha: new Date().toISOString().slice(0, 10),
-            base,
-            iva,
-            total,
-            descripcion: descripcionServicios,
-            estado: "pendiente"
-          })
-          .select()
-          .single();
+      const {
+        data: factura,
+        error: errorFactura
+      } = await supabase
+        .from("facturas")
+        .insert({
+          numero,
+          cliente_id: clienteId,
+          vivienda_id:
+            viviendaSeleccionada.id,
+          fecha: new Date()
+            .toISOString()
+            .slice(0, 10),
+          base,
+          iva,
+          total,
+          descripcion:
+            descripcionServicios,
+          estado: "pendiente"
+        })
+        .select()
+        .single();
 
       if (errorFactura) {
-        throw new Error(errorFactura.message);
+        throw new Error(
+          errorFactura.message
+        );
       }
 
       /*
        * LÍNEAS DE FACTURA
        *
-       * Se mantiene la estructura y los importes actuales.
+       * Solo contienen los servicios extras.
        */
-      const { error: errorLineas } =
-        await supabase
-          .from("facturas_lineas")
-          .insert(
-            lineas.map((l) => ({
-              factura_id: factura.id,
-              concepto: l.nombre,
-              cantidad: 1,
-              precio: l.precio,
-              subtotal: l.precio
-            }))
-          );
+      const {
+        error: errorLineas
+      } = await supabase
+        .from("facturas_lineas")
+        .insert(
+          lineas.map((linea) => ({
+            factura_id: factura.id,
+            concepto: linea.nombre,
+            cantidad: 1,
+            precio: linea.precio,
+            subtotal: linea.precio
+          }))
+        );
 
       if (errorLineas) {
-        throw new Error(errorLineas.message);
+        throw new Error(
+          errorLineas.message
+        );
       }
 
       /*
        * EXTRA
        *
-       * ESTA ES LA CORRECCIÓN PRINCIPAL.
+       * La vivienda solamente se utiliza para:
        *
-       * Antes se creaba el extra sin:
-       * - factura_id
-       * - vivienda_id
-       * - tecnico_id
+       * - relacionar el extra con la vivienda;
+       * - conocer la dirección;
+       * - conocer el técnico asignado.
        *
-       * Por eso TecnicoInspeccionExtra no encontraba
-       * el extra asociado a la factura.
+       * NO se utiliza ningún dato de superficie,
+       * habitaciones, piscina, jardín, etc.
        */
-      const cliente = clientes.find(
-        (c) => c.id == clienteId
-      );
+      const {
+        data: extraCreado,
+        error: errorExtra
+      } = await supabase
+        .from("extras")
+        .insert({
+          cliente_id: clienteId,
+          cliente_email:
+            cliente?.email || null,
 
-      const { data: extraCreado, error: errorExtra } =
-        await supabase
-          .from("extras")
-          .insert({
-            cliente_id: clienteId,
-            cliente_email: cliente?.email || null,
+          factura_id: factura.id,
+          vivienda_id:
+            viviendaSeleccionada.id,
+          tecnico_id:
+            viviendaSeleccionada.tecnico_id,
 
-            factura_id: factura.id,
-            vivienda_id: viviendaSeleccionada.id,
-            tecnico_id: viviendaSeleccionada.tecnico_id,
+          direccion: direccionTexto,
+          descripcion:
+            descripcionServicios,
 
-            direccion: direccionTexto,
-            descripcion: descripcionServicios,
-            precio: total,
+          /*
+           * El precio del extra es exactamente
+           * el total de los servicios seleccionados.
+           */
+          precio: total,
 
-            estado: "pendiente",
-            estado_tecnico: null,
-            estado_admin: "pendiente",
+          estado: "pendiente",
+          estado_tecnico: null,
+          estado_admin: "pendiente",
 
-            creado_en: new Date().toISOString()
-          })
-          .select()
-          .single();
+          creado_en:
+            new Date().toISOString()
+        })
+        .select()
+        .single();
 
       if (errorExtra) {
-        /*
-         * No dejamos una factura creada silenciosamente
-         * sin su extra correspondiente.
-         *
-         * No modificamos ni eliminamos la factura aquí porque
-         * el flujo de facturación existente no debe tocarse.
-         * Simplemente informamos del fallo real.
-         */
         console.error(
-          "Error creando extra asociado:",
+          "Error creando extra:",
           errorExtra
         );
 
@@ -372,14 +379,14 @@ export default function Servicios() {
       }
 
       console.log(
-        "Extra creado y asignado correctamente:",
+        "Extra creado correctamente:",
         extraCreado
       );
 
       let avisoPdf = "";
 
       /*
-       * GENERACIÓN DEL PDF
+       * PDF
        *
        * Se mantiene el flujo existente.
        */
@@ -395,14 +402,21 @@ export default function Servicios() {
         }
       );
 
-      if (errorPdf && !factura?.pdf_url) {
-        avisoPdf = " Error generando PDF.";
+      if (
+        errorPdf &&
+        !factura?.pdf_url
+      ) {
+        avisoPdf =
+          " Error generando PDF.";
       }
 
       if (
-        (!errorPdf || factura?.pdf_url) &&
+        (!errorPdf ||
+          factura?.pdf_url) &&
         pdfData?.url &&
-        (await pdfDisponible(pdfData.url))
+        (await pdfDisponible(
+          pdfData.url
+        ))
       ) {
         await supabase
           .from("facturas")
@@ -411,18 +425,24 @@ export default function Servicios() {
           })
           .eq("id", factura.id);
 
-        if (enviarEmail && cliente?.email) {
+        if (
+          enviarEmail &&
+          cliente?.email
+        ) {
           const {
             error: errorEmail
-          } = await supabase.functions.invoke(
-            "enviar-email",
-            {
-              body: {
-                email: cliente.email,
-                pdfUrl: pdfData.url
+          } =
+            await supabase.functions.invoke(
+              "enviar-email",
+              {
+                body: {
+                  email:
+                    cliente.email,
+                  pdfUrl:
+                    pdfData.url
+                }
               }
-            }
-          );
+            );
 
           avisoPdf = errorEmail
             ? " Error al enviar email."
@@ -435,7 +455,7 @@ export default function Servicios() {
       setViviendaId("");
 
       setMensaje(
-        `Factura ${factura.numero} creada con éxito (${total} €). Pendiente de pago. El trabajo ha quedado asignado al técnico.${avisoPdf}`
+        `Factura ${factura.numero} creada con éxito (${total} €). Pendiente de pago. El extra ha quedado asignado al técnico.${avisoPdf}`
       );
 
       setGuardando(false);
@@ -453,6 +473,11 @@ export default function Servicios() {
     }
   };
 
+  const viviendaSeleccionada =
+    viviendas.find(
+      (v) => v.id == viviendaId
+    );
+
   return (
     <Menu>
       <div style={estilos.pagina}>
@@ -461,8 +486,8 @@ export default function Servicios() {
         </h1>
 
         <p style={estilos.subtitulo}>
-          Selecciona un cliente, los servicios adicionales o
-          la vivienda y genera la factura correspondiente.
+          Selecciona un cliente, una vivienda y los
+          servicios adicionales que quieras facturar.
         </p>
 
         {mensaje && (
@@ -490,7 +515,9 @@ export default function Servicios() {
             style={estilos.select}
             value={clienteId}
             onChange={(e) => {
-              setClienteId(e.target.value);
+              setClienteId(
+                e.target.value
+              );
               setMensaje("");
               setError("");
             }}
@@ -502,14 +529,14 @@ export default function Servicios() {
                 : "Selecciona un cliente"}
             </option>
 
-            {clientes.map((c) => (
+            {clientes.map((cliente) => (
               <option
-                key={c.id}
-                value={c.id}
+                key={cliente.id}
+                value={cliente.id}
               >
-                {c.nombre}
-                {c.direccion
-                  ? ` - ${c.direccion}`
+                {cliente.nombre}
+                {cliente.direccion
+                  ? ` - ${cliente.direccion}`
                   : ""}
               </option>
             ))}
@@ -519,18 +546,32 @@ export default function Servicios() {
         {clienteId && (
           <div style={estilos.tarjeta}>
             <h2 style={estilos.seccionTitulo}>
-              Vivienda (Tarifa Automática)
+              Vivienda asociada
             </h2>
 
+            <p
+              style={{
+                ...estilos.subtitulo,
+                marginBottom: 12
+              }}
+            >
+              La vivienda solo identifica dónde se
+              realizará el extra y qué técnico tiene
+              asignado. Sus características no generan
+              ningún cobro.
+            </p>
+
             <label style={estilos.etiqueta}>
-              Vivienda asociada
+              Vivienda
             </label>
 
             <select
               style={estilos.select}
               value={viviendaId}
               onChange={(e) => {
-                setViviendaId(e.target.value);
+                setViviendaId(
+                  e.target.value
+                );
                 setMensaje("");
                 setError("");
               }}
@@ -539,58 +580,43 @@ export default function Servicios() {
                 Selecciona una vivienda
               </option>
 
-              {viviendas.map((v) => (
+              {viviendas.map((vivienda) => (
                 <option
-                  key={v.id}
-                  value={v.id}
+                  key={vivienda.id}
+                  value={vivienda.id}
                 >
-                  {v.direccion}
-                  {v.metros_cuadrados
-                    ? ` (${v.metros_cuadrados} m²)`
-                    : ""}
-                  {!v.tecnico_id
+                  {vivienda.direccion}
+                  {!vivienda.tecnico_id
                     ? " — ⚠️ Sin técnico asignado"
                     : ""}
                 </option>
               ))}
             </select>
 
-            {viviendaId && (
+            {viviendaSeleccionada && (
               <div
                 style={{
                   marginTop: 10,
                   padding: 10,
                   borderRadius: 8,
                   background:
-                    viviendaSeleccionadaSinTecnico(
-                      viviendas,
-                      viviendaId
-                    )
-                      ? "rgba(239,68,68,0.1)"
-                      : "rgba(74,222,128,0.1)",
+                    viviendaSeleccionada.tecnico_id
+                      ? "rgba(74,222,128,0.1)"
+                      : "rgba(239,68,68,0.1)",
                   border:
-                    viviendaSeleccionadaSinTecnico(
-                      viviendas,
-                      viviendaId
-                    )
-                      ? "1px solid rgba(239,68,68,0.3)"
-                      : "1px solid rgba(74,222,128,0.3)",
+                    viviendaSeleccionada.tecnico_id
+                      ? "1px solid rgba(74,222,128,0.3)"
+                      : "1px solid rgba(239,68,68,0.3)",
                   color:
-                    viviendaSeleccionadaSinTecnico(
-                      viviendas,
-                      viviendaId
-                    )
-                      ? "#ef4444"
-                      : "#4ade80",
+                    viviendaSeleccionada.tecnico_id
+                      ? "#4ade80"
+                      : "#ef4444",
                   fontSize: 13
                 }}
               >
-                {viviendaSeleccionadaSinTecnico(
-                  viviendas,
-                  viviendaId
-                )
-                  ? "⚠️ Esta vivienda no tiene técnico asignado."
-                  : "✓ La vivienda tiene técnico asignado. El extra quedará vinculado a él."}
+                {viviendaSeleccionada.tecnico_id
+                  ? "✓ Vivienda con técnico asignado. El extra se enviará a ese técnico."
+                  : "⚠️ Esta vivienda no tiene técnico asignado."}
               </div>
             )}
           </div>
@@ -601,58 +627,74 @@ export default function Servicios() {
             Servicios Disponibles
           </h2>
 
-          {SERVICIOS_DISPONIBLES.map((s) => {
-            const activo =
-              seleccionados.includes(s.nombre);
+          {SERVICIOS_DISPONIBLES.map(
+            (servicio) => {
+              const activo =
+                seleccionados.includes(
+                  servicio.nombre
+                );
 
-            return (
-              <div
-                key={s.nombre}
-                style={{ marginBottom: 12 }}
-              >
-                <label style={estilos.check}>
-                  <input
-                    type="checkbox"
-                    style={estilos.checkbox}
-                    checked={activo}
-                    onChange={() =>
-                      toggleServicio(s.nombre)
-                    }
-                  />
-
-                  {s.nombre}{" "}
-                  {s.precio
-                    ? `(${s.precio} €)`
-                    : ""}
-                </label>
-
-                {activo &&
-                  s.precio === null && (
+              return (
+                <div
+                  key={servicio.nombre}
+                  style={{
+                    marginBottom: 12
+                  }}
+                >
+                  <label
+                    style={estilos.check}
+                  >
                     <input
-                      type="number"
-                      placeholder="Introduce el precio"
-                      min="0"
-                      step="0.01"
-                      style={estilos.input}
-                      value={
-                        precios[s.nombre] || ""
+                      type="checkbox"
+                      style={
+                        estilos.checkbox
                       }
-                      onChange={(e) =>
-                        setPrecios({
-                          ...precios,
-                          [s.nombre]:
-                            e.target.value
-                        })
+                      checked={activo}
+                      onChange={() =>
+                        toggleServicio(
+                          servicio.nombre
+                        )
                       }
                     />
-                  )}
-              </div>
-            );
-          })}
+
+                    {servicio.nombre}{" "}
+                    {servicio.precio
+                      ? `(${servicio.precio} €)`
+                      : ""}
+                  </label>
+
+                  {activo &&
+                    servicio.precio ===
+                      null && (
+                      <input
+                        type="number"
+                        placeholder="Introduce el precio"
+                        min="0"
+                        step="0.01"
+                        style={
+                          estilos.input
+                        }
+                        value={
+                          precios[
+                            servicio.nombre
+                          ] || ""
+                        }
+                        onChange={(e) =>
+                          setPrecios({
+                            ...precios,
+                            [servicio.nombre]:
+                              e.target.value
+                          })
+                        }
+                      />
+                    )}
+                </div>
+              );
+            }
+          )}
         </div>
 
-        {(seleccionados.length > 0 ||
-          viviendaId) && (
+        {seleccionados.length > 0 && (
           <div style={estilos.tarjeta}>
             <h2 style={estilos.seccionTitulo}>
               Resumen del Importe
@@ -660,7 +702,7 @@ export default function Servicios() {
 
             <div style={estilos.fila}>
               <span>
-                Base imponible:
+                Servicios extras:
               </span>
 
               <span>
@@ -707,7 +749,9 @@ export default function Servicios() {
               <label style={estilos.check}>
                 <input
                   type="checkbox"
-                  style={estilos.checkbox}
+                  style={
+                    estilos.checkbox
+                  }
                   checked={enviarEmail}
                   onChange={(e) =>
                     setEnviarEmail(
@@ -724,11 +768,15 @@ export default function Servicios() {
         )}
 
         <button
-          onClick={crearServicioyFactura}
+          onClick={
+            crearServicioyFactura
+          }
           disabled={guardando}
           style={{
             ...estilos.boton,
-            opacity: guardando ? 0.6 : 1
+            opacity: guardando
+              ? 0.6
+              : 1
           }}
         >
           {guardando
@@ -746,20 +794,6 @@ export default function Servicios() {
         </button>
       </div>
     </Menu>
-  );
-}
-
-function viviendaSeleccionadaSinTecnico(
-  viviendas,
-  viviendaId
-) {
-  const vivienda = viviendas.find(
-    (v) => v.id == viviendaId
-  );
-
-  return (
-    !!vivienda &&
-    !vivienda.tecnico_id
   );
 }
 
@@ -871,7 +905,8 @@ const estilos = {
 
   fila: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     alignItems: "center",
     padding: "8px 0",
     fontSize: 15,
