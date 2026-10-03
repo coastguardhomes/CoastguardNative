@@ -49,10 +49,6 @@ export default function TecnicoInspeccionExtra() {
        * ============================================================
        * COMPROBACIÓN DE SESIÓN DEL TÉCNICO
        * ============================================================
-       *
-       * No modifica nada en Supabase.
-       * Solo comprobamos qué usuario autenticado está utilizando
-       * realmente esta pantalla.
        */
       const {
         data: { user },
@@ -87,10 +83,7 @@ export default function TecnicoInspeccionExtra() {
        * PASO 1
        * ============================================================
        *
-       * El dashboard puede enviar directamente el ID del EXTRA.
-       *
-       * Como extras.id es UUID y facturas.id es bigint,
-       * intentamos primero extras.id.
+       * Intentamos primero encontrar el ID recibido como ID de extra.
        */
       const {
         data: extraPorId,
@@ -132,10 +125,12 @@ export default function TecnicoInspeccionExtra() {
        * PASO 2
        * ============================================================
        *
-       * Si no encontramos el extra directamente, tratamos el ID
-       * recibido como ID de factura.
+       * El dashboard actual envía el ID de FACTURA.
        *
-       * Esto mantiene compatibilidad con el dashboard actual.
+       * Por ejemplo:
+       * /tecnico/extra/343
+       *
+       * Por eso buscamos la factura y después sus extras.
        */
       if (!extraEncontrado) {
         const {
@@ -155,30 +150,34 @@ export default function TecnicoInspeccionExtra() {
           facturaEncontrada = factura;
 
           /*
-           * La factura ya tiene que tener su extra asociado.
+           * ========================================================
+           * CAMBIO MÍNIMO
+           * ========================================================
            *
-           * IMPORTANTE:
-           * NO hacemos INSERT aquí.
+           * Buscamos TODOS los extras asociados a la factura.
+           *
+           * NO hacemos INSERT.
+           * NO creamos ningún extra nuevo.
+           * NO modificamos precio, IVA, total, Stripe ni
+           * FacturaDirecta.
            */
           const {
-            data: extraPorFactura,
-            error: extraPorFacturaError
+            data: extrasPorFactura,
+            error: extrasPorFacturaError
           } = await supabase
             .from("extras")
             .select("*")
             .eq("factura_id", factura.id)
             .order("creado_en", {
               ascending: false
-            })
-            .limit(1)
-            .maybeSingle();
+            });
 
-          if (extraPorFacturaError) {
-            throw extraPorFacturaError;
+          if (extrasPorFacturaError) {
+            throw extrasPorFacturaError;
           }
 
-          if (extraPorFactura) {
-            extraEncontrado = extraPorFactura;
+          if (extrasPorFactura?.length > 0) {
+            extraEncontrado = extrasPorFactura[0];
           }
         }
       }
@@ -187,9 +186,6 @@ export default function TecnicoInspeccionExtra() {
        * ============================================================
        * PASO 3
        * ============================================================
-       *
-       * Si después de los dos métodos no hay extra, mostramos el
-       * error real. Nunca creamos uno nuevo desde esta pantalla.
        */
       if (!extraEncontrado) {
         throw new Error(
@@ -372,16 +368,6 @@ export default function TecnicoInspeccionExtra() {
        * ============================================================
        * ACTUALIZAMOS ÚNICAMENTE EL EXTRA EXISTENTE
        * ============================================================
-       *
-       * No se crea ningún registro nuevo.
-       *
-       * No tocamos:
-       * - precio
-       * - IVA
-       * - total
-       * - factura
-       * - Stripe
-       * - FacturaDirecta
        */
       const extraPayload = {
         descripcion:
