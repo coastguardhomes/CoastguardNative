@@ -23,10 +23,7 @@ export default function TecnicoInspeccionExtra() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Este objeto SIEMPRE será el registro de extras que vamos a editar.
   const [extraData, setExtraData] = useState(null);
-
-  // Guardamos también la factura cuando la ruta llega con el ID de factura.
   const [facturaData, setFacturaData] = useState(null);
 
   const [descripcion, setDescripcion] = useState("");
@@ -47,6 +44,40 @@ export default function TecnicoInspeccionExtra() {
       setLoading(true);
       setError("");
       setMensaje("");
+
+      /*
+       * ============================================================
+       * COMPROBACIÓN DE SESIÓN DEL TÉCNICO
+       * ============================================================
+       *
+       * No modifica nada en Supabase.
+       * Solo comprobamos qué usuario autenticado está utilizando
+       * realmente esta pantalla.
+       */
+      const {
+        data: { user },
+        error: userError
+      } = await supabase.auth.getUser();
+
+      console.log(
+        "USUARIO SESIÓN TÉCNICO:",
+        user?.id
+      );
+
+      console.log(
+        "ERROR SESIÓN TÉCNICO:",
+        userError
+      );
+
+      if (userError) {
+        throw userError;
+      }
+
+      if (!user) {
+        throw new Error(
+          "No hay una sesión autenticada de técnico."
+        );
+      }
 
       let extraEncontrado = null;
       let facturaEncontrada = null;
@@ -71,12 +102,6 @@ export default function TecnicoInspeccionExtra() {
         .maybeSingle();
 
       if (extraPorIdError) {
-        /*
-         * Si el valor recibido no es un UUID válido para extras.id,
-         * Supabase puede devolver un error de tipo.
-         *
-         * En ese caso seguimos intentando como ID de factura.
-         */
         console.warn(
           "No se pudo buscar el extra directamente por ID:",
           extraPorIdError
@@ -86,10 +111,6 @@ export default function TecnicoInspeccionExtra() {
       if (extraPorId) {
         extraEncontrado = extraPorId;
 
-        /*
-         * Si conocemos la factura asociada, la cargamos solamente
-         * como información complementaria.
-         */
         if (extraPorId.factura_id) {
           const {
             data: facturaPorExtra,
@@ -199,9 +220,6 @@ export default function TecnicoInspeccionExtra() {
         Boolean(extraEncontrado.alerta)
       );
 
-      /*
-       * Las fotos pueden venir como array o como JSON/string.
-       */
       if (Array.isArray(extraEncontrado.fotos)) {
         setFotos(extraEncontrado.fotos);
       } else if (
@@ -407,13 +425,6 @@ export default function TecnicoInspeccionExtra() {
         throw extraUpdateError;
       }
 
-      /*
-       * Si RLS impide actualizar el registro, Supabase puede no
-       * devolver error pero tampoco devolver la fila.
-       *
-       * Lo detectamos explícitamente para no decir al usuario
-       * que se ha guardado algo que realmente no se guardó.
-       */
       if (!extraActualizado) {
         throw new Error(
           "El extra existe, pero no se ha podido actualizar con la sesión actual del técnico. Comprueba que el técnico esté correctamente asignado a este extra."
@@ -421,8 +432,7 @@ export default function TecnicoInspeccionExtra() {
       }
 
       /*
-       * Mantenemos también los datos técnicos de la factura,
-       * como hacía el flujo anterior.
+       * Mantenemos también los datos técnicos de la factura.
        *
        * NO modificamos ningún dato económico.
        */
