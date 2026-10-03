@@ -75,132 +75,102 @@ export default function TecnicoInspeccionExtra() {
         );
       }
 
-      let extraEncontrado = null;
-      let facturaEncontrada = null;
-
       /*
        * ============================================================
-       * PASO 1
+       * EL DASHBOARD ENVÍA EL ID DE LA FACTURA
        * ============================================================
        *
-       * Intentamos primero encontrar el ID recibido como ID de extra.
+       * Ejemplo:
+       *
+       * /tecnico/extra/343
+       *
+       * El 343 corresponde a:
+       *
+       * facturas.id = 343
+       *
+       * y NO a:
+       *
+       * extras.id
+       *
+       * porque extras.id es UUID.
        */
+
       const {
-        data: extraPorId,
-        error: extraPorIdError
+        data: factura,
+        error: facturaError
       } = await supabase
-        .from("extras")
+        .from("facturas")
         .select("*")
         .eq("id", id)
         .maybeSingle();
 
-      if (extraPorIdError) {
-        console.warn(
-          "No se pudo buscar el extra directamente por ID:",
-          extraPorIdError
-        );
+      if (facturaError) {
+        throw facturaError;
       }
 
-      if (extraPorId) {
-        extraEncontrado = extraPorId;
-
-        if (extraPorId.factura_id) {
-          const {
-            data: facturaPorExtra,
-            error: facturaPorExtraError
-          } = await supabase
-            .from("facturas")
-            .select("*")
-            .eq("id", extraPorId.factura_id)
-            .maybeSingle();
-
-          if (!facturaPorExtraError && facturaPorExtra) {
-            facturaEncontrada = facturaPorExtra;
-          }
-        }
-      }
-
-      /*
-       * ============================================================
-       * PASO 2
-       * ============================================================
-       *
-       * El dashboard actual envía el ID de FACTURA.
-       *
-       * Por ejemplo:
-       * /tecnico/extra/343
-       *
-       * Por eso buscamos la factura y después sus extras.
-       */
-      if (!extraEncontrado) {
-        const {
-          data: factura,
-          error: facturaError
-        } = await supabase
-          .from("facturas")
-          .select("*")
-          .eq("id", id)
-          .maybeSingle();
-
-        if (facturaError) {
-          throw facturaError;
-        }
-
-        if (factura) {
-          facturaEncontrada = factura;
-
-          /*
-           * ========================================================
-           * CAMBIO MÍNIMO
-           * ========================================================
-           *
-           * Buscamos TODOS los extras asociados a la factura.
-           *
-           * NO hacemos INSERT.
-           * NO creamos ningún extra nuevo.
-           * NO modificamos precio, IVA, total, Stripe ni
-           * FacturaDirecta.
-           */
-          const {
-            data: extrasPorFactura,
-            error: extrasPorFacturaError
-          } = await supabase
-            .from("extras")
-            .select("*")
-            .eq("factura_id", factura.id)
-            .order("creado_en", {
-              ascending: false
-            });
-
-          if (extrasPorFacturaError) {
-            throw extrasPorFacturaError;
-          }
-
-          if (extrasPorFactura?.length > 0) {
-            extraEncontrado = extrasPorFactura[0];
-          }
-        }
-      }
-
-      /*
-       * ============================================================
-       * PASO 3
-       * ============================================================
-       */
-      if (!extraEncontrado) {
+      if (!factura) {
         throw new Error(
-          "No se encontró el extra asociado a este trabajo. No se ha creado ningún extra nuevo para evitar duplicados."
+          "No se encontró la factura asociada a este trabajo."
         );
       }
+
+      /*
+       * ============================================================
+       * BUSCAR EL EXTRA POR factura_id
+       * ============================================================
+       *
+       * NO hacemos:
+       *
+       * .eq("id", id)
+       *
+       * porque extras.id es UUID y id es el número de factura.
+       *
+       * Buscamos directamente:
+       *
+       * extras.factura_id = factura.id
+       *
+       * NO hacemos INSERT.
+       * NO creamos ningún extra nuevo.
+       * NO modificamos precio, IVA, total, Stripe ni
+       * FacturaDirecta.
+       */
+
+      const {
+        data: extrasPorFactura,
+        error: extrasPorFacturaError
+      } = await supabase
+        .from("extras")
+        .select("*")
+        .eq("factura_id", factura.id)
+        .order("creado_en", {
+          ascending: false
+        });
+
+      if (extrasPorFacturaError) {
+        throw extrasPorFacturaError;
+      }
+
+      if (!extrasPorFactura || extrasPorFactura.length === 0) {
+        throw new Error(
+          "No se encontró el extra asociado a esta factura. No se ha creado ningún extra nuevo para evitar duplicados."
+        );
+      }
+
+      /*
+       * Si hubiera más de un extra asociado a la factura,
+       * mantenemos el comportamiento actual y utilizamos
+       * el más reciente según creado_en.
+       */
+      const extraEncontrado = extrasPorFactura[0];
 
       setExtraData(extraEncontrado);
-      setFacturaData(facturaEncontrada);
+      setFacturaData(factura);
 
       setDescripcion(
         extraEncontrado.descripcion ||
           extraEncontrado.concepto ||
-          facturaEncontrada?.descripcion ||
-          facturaEncontrada?.concepto ||
+          factura.descripcion ||
+          factura.concepto ||
           ""
       );
 
@@ -998,3 +968,7 @@ export default function TecnicoInspeccionExtra() {
     </div>
   );
 }
+
+Cambio realizado: solo la carga inicial. Ahora "343" se utiliza para buscar "facturas.id", y después "extras.factura_id = 343". He eliminado la consulta problemática "extras.id = 343".
+
+No hay ningún "INSERT" en este archivo y no se modifica ningún dato económico.
