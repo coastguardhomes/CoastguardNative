@@ -1,545 +1,526 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import React, {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useParams,
+  useNavigate,
+} from "react-router-dom";
+
+import Menu from "../../layouts/Menu";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 
 const COLOR_DORADO = "#e0b034";
-const FONDO_PRINCIPAL = "#030509";
-const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
-const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
-const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
-const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
 
-export default function TecnicoInspeccionExtra() {
+const FONDO_PRINCIPAL = "#030509";
+
+const FONDO_TARJETA =
+  "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+
+const BORDE_DORADO_FINO =
+  "1px solid rgba(224, 176, 52, 0.4)";
+
+const BORDE_DORADO_INTENSO =
+  "1px solid rgba(224, 176, 52, 0.8)";
+
+const SOMBRA_LUXURY =
+  "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.2)";
+
+const TEXTO_DORADO_BRILLO = {
+  color: COLOR_DORADO,
+  textShadow:
+    "0 0 12px rgba(224, 176, 52, 0.6)",
+};
+
+const DEGRADADO_AZUL_BOTON =
+  "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)";
+
+export default function ClienteFacturaVer() {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  const { user } = useAuth();
+  const { t } = useLanguage();
+
+  const [factura, setFactura] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [extraData, setExtraData] = useState(null);
-  const [origenTabla, setOrigenTabla] = useState('facturas');
-  
-  const [descripcion, setDescripcion] = useState('');
-  const [materiales, setMateriales] = useState('');
-  const [tiempo, setTiempo] = useState('');
-  const [alerta, setAlerta] = useState(false);
-  const [fotos, setFotos] = useState([]);
-  const [mensaje, setMensaje] = useState('');
-  const [error, setError] = useState('');
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    cargarDetalleExtra();
-  }, [id]);
-
-  const cargarDetalleExtra = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      let { data } = await supabase
-        .from('facturas')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (data) {
-        setOrigenTabla('facturas');
-      } else {
-        const { data: extraRes } = await supabase
-          .from('extras')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
-        
-        if (extraRes) {
-          data = extraRes;
-          setOrigenTabla('extras');
-        }
+    async function cargarFactura() {
+      if (!user || !id) {
+        return;
       }
 
-      if (data) {
-        setExtraData(data);
-        setDescripcion(data.descripcion || data.concepto || '');
-        setMateriales(data.materiales || '');
-        setTiempo(data.tiempo_empleado || '');
-        setAlerta(Boolean(data.alerta));
+      try {
+        setLoading(true);
+        setErrorMsg("");
 
-        if (Array.isArray(data.fotos)) {
-          setFotos(data.fotos);
-        } else if (typeof data.fotos === 'string') {
-          try {
-            const parsed = JSON.parse(data.fotos);
-            if (Array.isArray(parsed)) setFotos(parsed);
-          } catch {
-            if (data.fotos.trim()) setFotos([data.fotos]);
-          }
-        }
-      } else {
-        setError('No se encontró el trabajo extra.');
-      }
-    } catch (err) {
-      console.error('Error al cargar extra:', err);
-      setError('Error al cargar los datos del trabajo.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const manejarSubidaFotos = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    try {
-      setSaving(true);
-      setError('');
-      setMensaje('');
-      const nuevasUrls = [...fotos];
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-        const fileName = `${Date.now()}_${Math.floor(Math.random() * 1000)}_${cleanFileName}`;
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('extras')
-          .upload(fileName, file, { cacheControl: '3600', upsert: true });
-
-        if (uploadError) {
-          console.error("Error al subir imagen a Supabase Storage:", uploadError);
-          throw new Error(uploadError.message || "Error en storage");
-        }
-
-        const { data: publicUrlData } = supabase.storage
-          .from('extras')
-          .getPublicUrl(uploadData?.path || fileName);
-
-        if (publicUrlData?.publicUrl) {
-          nuevasUrls.push(publicUrlData.publicUrl);
-        }
-      }
-
-      setFotos(nuevasUrls);
-      setMensaje('¡Fotos subidas con éxito!');
-    } catch (err) {
-      console.error('Error detallado al subir fotos:', err);
-      setError(`No se pudieron subir las fotos (${err.message || 'Error de red o permisos'}).`);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!extraData || !extraData.id) {
-      alert("Error: Los datos aún no se han cargado correctamente.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setError('');
-
-      const updatePayload = {
-        descripcion: descripcion,
-        materiales: materiales || null,
-        tiempo_empleado: tiempo || null,
-        fotos: fotos,
-        estado_tecnico: 'completado',
-        alerta: alerta,
-      };
-
-      if (alerta) {
-        updatePayload.alerta_vista = false;
-      }
-
-      /*
-       * IMPORTANTE:
-       * El técnico solo completa el trabajo.
-       * El extra queda pendiente de revisión del administrador.
-       *
-       * Cuando esta pantalla se abre desde una factura, el trabajo
-       * técnico estaba guardándose únicamente en "facturas". Eso hacía
-       * que administración no encontrara el registro correspondiente
-       * en "extras".
-       *
-       * Ahora mantenemos la actualización de la factura para no romper
-       * el funcionamiento existente y, además, creamos/actualizamos
-       * el registro correcto en "extras".
-       */
-
-      if (origenTabla === 'facturas') {
-        const { data: extraExistente, error: extraLookupError } = await supabase
-          .from('extras')
-          .select('id, estado')
-          .eq('factura_id', extraData.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
+        /*
+         * Localizamos primero al cliente autenticado.
+         *
+         * IMPORTANTE:
+         * Nunca confiamos solamente en el ID recibido por URL.
+         */
+        let { data: cliente } = await supabase
+          .from("clientes")
+          .select("id")
+          .eq("usuario_id", user.id)
           .maybeSingle();
 
-        if (extraLookupError) {
-          throw extraLookupError;
+        if (!cliente) {
+          const { data: clienteByUserId } =
+            await supabase
+              .from("clientes")
+              .select("id")
+              .eq("user_id", user.id)
+              .maybeSingle();
+
+          cliente = clienteByUserId;
         }
 
-        const extraPayload = {
-          factura_id: extraData.id,
-          descripcion: descripcion || extraData.descripcion || extraData.concepto || 'Trabajo extra',
-          precio: Number(extraData.precio ?? extraData.total ?? extraData.monto ?? 0),
-          materiales: materiales || null,
-          tiempo_empleado: tiempo || null,
-          fotos: fotos,
-          estado_tecnico: 'completado',
-          estado_admin: 'pendiente',
-          alerta: alerta,
-        };
-
-        if (extraData.cliente_id) {
-          extraPayload.cliente_id = extraData.cliente_id;
-        }
-
-        if (extraData.inspeccion_id) {
-          extraPayload.inspeccion_id = extraData.inspeccion_id;
-        }
-
-        if (extraData.vivienda_id) {
-          extraPayload.vivienda_id = extraData.vivienda_id;
-        }
-
-        if (extraData.tecnico_id) {
-          extraPayload.tecnico_id = extraData.tecnico_id;
-        }
-
-        if (extraData.cliente_email) {
-          extraPayload.cliente_email = extraData.cliente_email;
-        }
-
-        if (alerta) {
-          extraPayload.alerta_vista = false;
-        }
-
-        if (extraExistente?.id) {
-          const { error: extraUpdateError } = await supabase
-            .from('extras')
-            .update(extraPayload)
-            .eq('id', extraExistente.id);
-
-          if (extraUpdateError) {
-            throw extraUpdateError;
-          }
-        } else {
-          const { error: extraInsertError } = await supabase
-            .from('extras')
-            .insert(extraPayload);
-
-          if (extraInsertError) {
-            throw extraInsertError;
-          }
+        if (!cliente?.id) {
+          setErrorMsg(
+            "No se encontró el perfil del cliente."
+          );
+          return;
         }
 
         /*
-         * Conservamos la actualización de la factura porque otras
-         * partes de la aplicación ya utilizan estos campos.
+         * Solo podemos cargar una factura que pertenezca
+         * al cliente autenticado.
          */
-        const { error: facturaUpdateError } = await supabase
-          .from('facturas')
-          .update(updatePayload)
-          .eq('id', extraData.id);
+        const { data, error } = await supabase
+          .from("facturas")
+          .select("*")
+          .eq("id", id)
+          .eq("cliente_id", cliente.id)
+          .maybeSingle();
 
-        if (facturaUpdateError) {
-          throw facturaUpdateError;
+        if (error) {
+          throw error;
         }
 
-      } else {
+        if (!data) {
+          setErrorMsg(
+            "No se encontró esta factura o no tienes permiso para verla."
+          );
+          return;
+        }
+
+        setFactura(data);
+
         /*
-         * Si ya estamos trabajando directamente sobre "extras",
-         * guardamos ahí mismo y dejamos explícitamente pendiente
-         * la revisión administrativa.
+         * Si la factura tiene un aviso pendiente,
+         * abrirla lo marca como visto.
+         *
+         * NO se modifica:
+         * - estado
+         * - estado_pago
+         * - total
+         * - número
+         * - PDF
          */
-        const extraPayload = {
-          ...updatePayload,
-          estado_admin: 'pendiente',
-        };
-
-        const { error: extraUpdateError } = await supabase
-          .from('extras')
-          .update(extraPayload)
-          .eq('id', extraData.id);
-
-        if (extraUpdateError) {
-          throw extraUpdateError;
+        if (
+          data.alerta &&
+          !data.alerta_vista
+        ) {
+          await supabase
+            .from("facturas")
+            .update({
+              alerta_vista: true,
+            })
+            .eq("id", data.id)
+            .eq(
+              "cliente_id",
+              cliente.id
+            );
         }
+      } catch (err) {
+        console.error(
+          "Error cargando factura:",
+          err
+        );
+
+        setErrorMsg(
+          "No se pudo cargar la factura."
+        );
+      } finally {
+        setLoading(false);
       }
-
-      /*
-       * NO se llama a enviar-extra-cliente aquí.
-       * El administrador debe revisar primero las fotos,
-       * observaciones, materiales y tiempo y pulsar el botón
-       * de envío desde su pantalla.
-       */
-      alert('Inspección enviada correctamente al administrador.');
-      navigate('/tecnico');
-
-    } catch (err) {
-      console.error('Error al guardar:', err);
-      setError('Error al enviar la inspección: ' + err.message);
-    } finally {
-      setSaving(false);
     }
-  };
+
+    cargarFactura();
+  }, [id, user]);
 
   if (loading) {
     return (
-      <div style={{ backgroundColor: FONDO_PRINCIPAL, minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Inter, sans-serif' }}>
-        <h3 style={TEXTO_DORADO_BRILLO}>Cargando datos del trabajo...</h3>
-      </div>
+      <Menu>
+        <div
+          style={{
+            minHeight: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: COLOR_DORADO,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "20px",
+          }}
+        >
+          <h3
+            style={
+              TEXTO_DORADO_BRILLO
+            }
+          >
+            {t("cargandoInformacion") ||
+              "Cargando factura..."}
+          </h3>
+        </div>
+      </Menu>
     );
   }
 
   return (
-    <div style={{
-      backgroundColor: FONDO_PRINCIPAL,
-      minHeight: '100vh',
-      padding: '16px',
-      display: 'flex',
-      justifyContent: 'center',
-      fontFamily: 'Inter, sans-serif',
-      boxSizing: 'border-box'
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '480px',
-        background: FONDO_TARJETA,
-        border: BORDE_DORADO_FINO,
-        borderRadius: '16px',
-        padding: '20px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '16px',
-        boxShadow: SOMBRA_LUXURY,
-        boxSizing: 'border-box'
-      }}>
-        
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderBottom: BORDE_DORADO_FINO,
-          paddingBottom: '14px'
-        }}>
-          <button 
-            type="button"
-            onClick={() => navigate('/tecnico')} 
+    <Menu>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: FONDO_PRINCIPAL,
+          color: "#fff",
+          padding: "20px",
+          paddingBottom: "100px",
+          boxSizing: "border-box",
+          fontFamily:
+            "Inter, sans-serif",
+        }}
+      >
+        <button
+          onClick={() =>
+            navigate("/cliente/facturas")
+          }
+          style={{
+            background: "transparent",
+            border: "none",
+            color: COLOR_DORADO,
+            cursor: "pointer",
+            fontWeight: "800",
+            fontSize: "14px",
+            padding: "5px 0",
+            marginBottom: "20px",
+          }}
+        >
+          ←{" "}
+          {t("volver") ||
+            "Volver a facturas"}
+        </button>
+
+        {errorMsg ? (
+          <div
             style={{
-              background: 'transparent',
-              border: BORDE_DORADO_FINO,
-              color: COLOR_DORADO,
-              padding: '6px 12px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: '700'
+              background:
+                "rgba(255,107,107,0.12)",
+              border:
+                "1px solid rgba(255,107,107,0.5)",
+              borderRadius: "16px",
+              padding: "20px",
+              color: "#ff6b6b",
+              textAlign: "center",
             }}
           >
-            ← Volver
-          </button>
-          <h2 style={{ ...TEXTO_DORADO_BRILLO, fontSize: '18px', fontWeight: '900', margin: 0, textTransform: 'uppercase' }}>
-            Inspección de Extra
-          </h2>
-        </div>
-
-        {mensaje && (
-          <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', padding: '12px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', color: '#34d399', textAlign: 'center' }}>
-            {mensaje}
+            {errorMsg}
           </div>
-        )}
-
-        {error && (
-          <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', padding: '12px', borderRadius: '10px', fontSize: '12px', fontWeight: '700', color: '#ef4444', textAlign: 'center' }}>
-            {error}
-          </div>
-        )}
-
-        {extraData && (
-          <div style={{ backgroundColor: 'rgba(11, 19, 32, 0.9)', padding: '14px', borderRadius: '12px', border: BORDE_DORADO_FINO }}>
-            <p style={{ fontSize: '12px', margin: '4px 0', color: '#ccc' }}>
-              <strong style={{ color: COLOR_DORADO }}>Ref:</strong> {extraData.numero || extraData.codigo || `#${extraData.id}`}
-            </p>
-            <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: '#ccc' }}>
-              <strong style={{ color: COLOR_DORADO }}>Concepto inicial:</strong> {extraData.descripcion || extraData.concepto || 'Sin descripción previa'}
-            </p>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <label style={{
-            flex: 1,
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
-            color: '#fff',
-            padding: '12px',
-            borderRadius: '12px',
-            fontWeight: '900',
-            fontSize: '12px',
-            cursor: 'pointer',
-            border: BORDE_DORADO_FINO,
-            boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)',
-            textTransform: 'uppercase'
-          }}>
-            📸 Hacer Foto
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={manejarSubidaFotos}
-              disabled={saving}
-              style={{ display: 'none' }}
-            />
-          </label>
-
-          <label style={{
-            flex: 1,
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)',
-            color: '#fff',
-            padding: '12px',
-            borderRadius: '12px',
-            fontWeight: '900',
-            fontSize: '12px',
-            cursor: 'pointer',
-            border: BORDE_DORADO_FINO,
-            boxShadow: '0 4px 15px rgba(56, 189, 248, 0.3)',
-            textTransform: 'uppercase'
-          }}>
-            🖼️ Galería
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={manejarSubidaFotos}
-              disabled={saving}
-              style={{ display: 'none' }}
-            />
-          </label>
-        </div>
-
-        {fotos.length > 0 && (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {fotos.map((url, index) => (
-              <img 
-                key={index} 
-                src={url} 
-                alt={`Evidencia ${index}`} 
-                style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: BORDE_DORADO_FINO }} 
-              />
-            ))}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          
-          <div style={{ background: 'rgba(11, 19, 32, 0.9)', padding: '12px 14px', borderRadius: '12px', border: BORDE_DORADO_FINO, display: 'flex', alignItems: 'center' }}>
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', width: '100%' }}>
-              <input
-                type="checkbox"
-                checked={alerta}
-                onChange={(e) => setAlerta(e.target.checked)}
-                style={{ width: '20px', height: '20px', marginRight: '12px', cursor: 'pointer', accentColor: '#ef4444' }}
-              />
-              <span style={{ fontSize: '13px', color: '#ef4444', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                ⚠️ Marcar como ALERTA / Urgencia importante
-              </span>
-            </label>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>
-              Descripción del trabajo realizado:
-            </label>
-            <textarea
+        ) : factura ? (
+          <>
+            <div
               style={{
-                backgroundColor: 'rgba(11, 19, 32, 0.8)',
-                border: BORDE_DORADO_FINO,
-                borderRadius: '12px',
-                padding: '12px',
-                color: '#fff',
-                fontSize: '13px',
-                resize: 'vertical',
-                outline: 'none',
-                boxSizing: 'border-box'
+                background:
+                  FONDO_TARJETA,
+                border:
+                  BORDE_DORADO_INTENSO,
+                borderRadius: "20px",
+                padding: "20px",
+                boxShadow:
+                  SOMBRA_LUXURY,
+                marginBottom: "18px",
               }}
-              rows="4"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Detalla qué se ha reparado o revisado..."
-              required
-            />
-          </div>
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent:
+                    "space-between",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      color: "#94a3b8",
+                      textTransform:
+                        "uppercase",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Documento
+                  </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>
-              Materiales usados:
-            </label>
-            <input
-              type="text"
+                  <h1
+                    style={{
+                      ...TEXTO_DORADO_BRILLO,
+                      fontSize: "23px",
+                      margin: 0,
+                      fontWeight: "900",
+                    }}
+                  >
+                    Factura{" "}
+                    {factura.numero ||
+                      `#${factura.id}`}
+                  </h1>
+                </div>
+
+                <span
+                  style={{
+                    padding: "7px 11px",
+                    borderRadius: "10px",
+                    background:
+                      factura.estado_pago?.toLowerCase() ===
+                        "pagada" ||
+                      factura.estado?.toLowerCase() ===
+                        "pagada"
+                        ? "rgba(16,185,129,0.15)"
+                        : "rgba(245,158,11,0.15)",
+                    border:
+                      factura.estado_pago?.toLowerCase() ===
+                        "pagada" ||
+                      factura.estado?.toLowerCase() ===
+                        "pagada"
+                        ? "1px solid rgba(16,185,129,0.5)"
+                        : "1px solid rgba(245,158,11,0.5)",
+                    color:
+                      factura.estado_pago?.toLowerCase() ===
+                        "pagada" ||
+                      factura.estado?.toLowerCase() ===
+                        "pagada"
+                        ? "#34d399"
+                        : "#fbbf24",
+                    fontSize: "10px",
+                    fontWeight: "900",
+                    textTransform:
+                      "uppercase",
+                  }}
+                >
+                  {factura.estado_pago ||
+                    factura.estado ||
+                    "PENDIENTE"}
+                </span>
+              </div>
+            </div>
+
+            <div
               style={{
-                backgroundColor: 'rgba(11, 19, 32, 0.8)',
-                border: BORDE_DORADO_FINO,
-                borderRadius: '12px',
-                padding: '12px',
-                color: '#fff',
-                fontSize: '13px',
-                outline: 'none',
-                boxSizing: 'border-box'
+                background:
+                  FONDO_TARJETA,
+                border:
+                  BORDE_DORADO_FINO,
+                borderRadius: "18px",
+                padding: "18px",
+                marginBottom: "18px",
+                boxShadow:
+                  SOMBRA_LUXURY,
               }}
-              value={materiales}
-              onChange={(e) => setMateriales(e.target.value)}
-              placeholder="Ej: Tubo de PVC, silicona, tornillos..."
-            />
-          </div>
+            >
+              <h2
+                style={{
+                  color: COLOR_DORADO,
+                  fontSize: "12px",
+                  textTransform:
+                    "uppercase",
+                  margin:
+                    "0 0 14px 0",
+                }}
+              >
+                Datos de la factura
+              </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '12px', color: COLOR_DORADO, fontWeight: '700', textTransform: 'uppercase' }}>
-              Tiempo empleado:
-            </label>
-            <input
-              type="text"
-              style={{
-                backgroundColor: 'rgba(11, 19, 32, 0.8)',
-                border: BORDE_DORADO_FINO,
-                borderRadius: '12px',
-                padding: '12px',
-                color: '#fff',
-                fontSize: '13px',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-              value={tiempo}
-              onChange={(e) => setTiempo(e.target.value)}
-              placeholder="Ej: 2 horas"
-            />
-          </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <Fila
+                  etiqueta="Número"
+                  valor={
+                    factura.numero ||
+                    `#${factura.id}`
+                  }
+                />
 
-          <button 
-            type="submit" 
-            disabled={saving || !extraData}
-            style={{
-              background: (saving || !extraData) ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
-              color: (saving || !extraData) ? '#64748b' : '#fff',
-              border: (saving || !extraData) ? BORDE_DORADO_FINO : '1px solid rgba(16, 185, 129, 0.6)',
-              padding: '14px',
-              borderRadius: '16px',
-              fontSize: '14px',
-              fontWeight: '900',
-              cursor: (saving || !extraData) ? 'not-allowed' : 'pointer',
-              marginTop: '10px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              boxShadow: (saving || !extraData) ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.3)',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            {saving ? 'Enviando...' : '✅ Enviar Inspección al Administrador'}
-          </button>
-        </form>
+                <Fila
+                  etiqueta="Fecha"
+                  valor={
+                    String(
+                      factura.fecha ||
+                        factura.created_at ||
+                        ""
+                    ).slice(0, 10) ||
+                    "—"
+                  }
+                />
+
+                <Fila
+                  etiqueta="Descripción"
+                  valor={
+                    factura.descripcion ||
+                    factura.concepto ||
+                    "—"
+                  }
+                />
+
+                <Fila
+                  etiqueta="Estado"
+                  valor={
+                    factura.estado_pago ||
+                    factura.estado ||
+                    "—"
+                  }
+                />
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent:
+                      "space-between",
+                    alignItems: "center",
+                    gap: "15px",
+                    paddingTop: "12px",
+                    marginTop: "4px",
+                    borderTop:
+                      "1px solid rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "#94a3b8",
+                      fontSize: "13px",
+                    }}
+                  >
+                    Total
+                  </span>
+
+                  <strong
+                    style={{
+                      color: COLOR_DORADO,
+                      fontSize: "24px",
+                      fontWeight: "900",
+                    }}
+                  >
+                    {factura.total != null
+                      ? `${Number(
+                          factura.total
+                        ).toFixed(2)} €`
+                      : "—"}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {factura.pdf_url ? (
+              <a
+                href={factura.pdf_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "block",
+                  width: "100%",
+                  boxSizing:
+                    "border-box",
+                  padding: "16px",
+                  borderRadius: "16px",
+                  background:
+                    DEGRADADO_AZUL_BOTON,
+                  border:
+                    BORDE_DORADO_INTENSO,
+                  color: "#fff",
+                  textDecoration: "none",
+                  textAlign: "center",
+                  fontSize: "14px",
+                  fontWeight: "900",
+                  boxShadow:
+                    "0 6px 20px rgba(56,189,248,0.3)",
+                  marginBottom: "12px",
+                }}
+              >
+                📄 Descargar factura PDF
+              </a>
+            ) : (
+              <div
+                style={{
+                  padding: "15px",
+                  borderRadius: "14px",
+                  background:
+                    "rgba(245,158,11,0.1)",
+                  border:
+                    "1px solid rgba(245,158,11,0.4)",
+                  color: "#fbbf24",
+                  textAlign: "center",
+                  fontSize: "13px",
+                }}
+              >
+                El PDF de esta factura todavía no está disponible.
+              </div>
+            )}
+          </>
+        ) : null}
       </div>
+    </Menu>
+  );
+}
+
+function Fila({
+  etiqueta,
+  valor,
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent:
+          "space-between",
+        alignItems: "flex-start",
+        gap: "15px",
+        paddingBottom: "10px",
+        borderBottom:
+          "1px solid rgba(255,255,255,0.06)",
+      }}
+    >
+      <span
+        style={{
+          color: "#94a3b8",
+          fontSize: "12px",
+        }}
+      >
+        {etiqueta}
+      </span>
+
+      <span
+        style={{
+          color: "#fff",
+          fontSize: "13px",
+          fontWeight: "700",
+          textAlign: "right",
+          maxWidth: "65%",
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {valor}
+      </span>
     </div>
   );
 }
