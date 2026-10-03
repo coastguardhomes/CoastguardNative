@@ -146,6 +146,9 @@ export default function TecnicoInspeccionExtra() {
             .from("extras")
             .select("*")
             .eq("factura_id", factura.id)
+            .order("creado_en", {
+              ascending: false
+            })
             .limit(1)
             .maybeSingle();
 
@@ -810,4 +813,192 @@ export default function TecnicoInspeccionExtra() {
 
               <span
                 style={{
-                  fontSize: "13
+                  fontSize: "13px",
+                  color: "#ef4444",
+                  fontWeight: "800",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.3px"
+                }}
+              >
+                ⚠️ Marcar como ALERTA / Urgencia importante
+              </span>
+            </label>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
+            }}
+          >
+            <label
+              style={{
+                fontSize: "12px",
+                color: COLOR_DORADO,
+                fontWeight: "700",
+                textTransform: "uppercase"
+              }}
+            >
+              Descripción del trabajo realizado:
+            </label>
+
+            <textarea
+              style={{
+                backgroundColor:
+                  "rgba(11, 19, 32, 0.8)",
+                border: BORDE_DORADO_FINO,
+                borderRadius: "12px",
+                padding: "12px",
+                color: "#fff",
+                fontSize: "13px",
+                resize: "vertical",
+                outline: "none",
+                boxSizing: "border-box"
+              }}
+              rows="4"
+              value={descripcion}
+              onChange={(e) =>
+                setDescripcion(
+                  e.target.value
+                )
+              }
+              placeholder="Detalla qué se ha reparado o revisado..."
+              required
+            />
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
+            }}
+          >
+            <label
+              style={{
+                fontSize: "12px",
+                color: COLOR_DORADO,
+                fontWeight: "700",
+                textTransform: "uppercase"
+              }}
+            >
+              Materiales usados:
+            </label>
+
+            <input
+              type="text"
+              style={{
+                backgroundColor:
+                  "rgba(11, 19, 32, 0.8)",
+                border: BORDE_DORADO_FINO,
+                borderRadius: "12px",
+                padding: "12px",
+                color: "#fff",
+                fontSize: "13px",
+                outline: "none",
+                boxSizing: "border-box"
+              }}
+              value={materiales}
+              onChange={(e) =>
+                setMateriales(
+                  e.target.value
+                )
+              }
+              placeholder="Ej: Tubo de PVC, silicona, tornillos..."
+            />
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
+            }}
+          >
+            <label
+              style={{
+                fontSize: "12px",
+                color: COLOR_DORADO,
+                fontWeight: "700",
+                textTransform: "uppercase"
+              }}
+            >
+              Tiempo empleado:
+            </label>
+
+            <input
+              type="text"
+              style={{
+                backgroundColor:
+                  "rgba(11, 19, 32, 0.8)",
+                border: BORDE_DORADO_FINO,
+                borderRadius: "12px",
+                padding: "12px",
+                color: "#fff",
+                fontSize: "13px",
+                outline: "none",
+                boxSizing: "border-box"
+              }}
+              value={tiempo}
+              onChange={(e) =>
+                setTiempo(
+                  e.target.value
+                )
+              }
+              placeholder="Ej: 2 horas"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={
+              saving || !extraData
+            }
+            style={{
+              background:
+                saving || !extraData
+                  ? "rgba(255,255,255,0.08)"
+                  : "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+
+              color:
+                saving || !extraData
+                  ? "#64748b"
+                  : "#fff",
+
+              border:
+                saving || !extraData
+                  ? BORDE_DORADO_FINO
+                  : "1px solid rgba(16, 185, 129, 0.6)",
+
+              padding: "14px",
+              borderRadius: "16px",
+              fontSize: "14px",
+              fontWeight: "900",
+
+              cursor:
+                saving || !extraData
+                  ? "not-allowed"
+                  : "pointer",
+
+              marginTop: "10px",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+
+              boxShadow:
+                saving || !extraData
+                  ? "none"
+                  : "0 4px 15px rgba(16, 185, 129, 0.3)",
+
+              transition: "all 0.2s ease"
+            }}
+          >
+            {saving
+              ? "Enviando..."
+              : "✅ Enviar Inspección al Administrador"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
