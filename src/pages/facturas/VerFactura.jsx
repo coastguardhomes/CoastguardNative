@@ -60,6 +60,9 @@ export default function VerFactura() {
   const [fotosExtra, setFotosExtra] = useState([]);
   const [procesandoExtra, setProcesandoExtra] = useState(false);
 
+  // NUEVO: controla únicamente el envío del PDF legal al cliente.
+  const [procesandoPdf, setProcesandoPdf] = useState(false);
+
   const parsearFotosExtra = (fotosRaw) => {
     if (!fotosRaw) return [];
 
@@ -451,6 +454,96 @@ export default function VerFactura() {
       );
     } finally {
       setProcesando(false);
+    }
+  };
+
+  /*
+   * NUEVO:
+   * Envía exclusivamente el PDF de la factura legal ya generada
+   * al cliente.
+   *
+   * No crea Stripe.
+   * No confirma pagos.
+   * No modifica FacturaDirecta.
+   * No modifica ni envía la inspección extra.
+   */
+  const enviarFacturaAlCliente = async () => {
+    try {
+      setProcesandoPdf(true);
+
+      if (!factura) {
+        throw new Error("No se ha cargado la factura.");
+      }
+
+      const estadoPago =
+        String(factura.estado_pago || '').toLowerCase();
+
+      const estado =
+        String(factura.estado || '').toLowerCase();
+
+      const facturaEstaPagada =
+        estadoPago === 'pagada' ||
+        estado === 'pagada' ||
+        estado === 'finalizado';
+
+      if (!facturaEstaPagada) {
+        throw new Error(
+          "La factura todavía no está marcada como pagada."
+        );
+      }
+
+      if (!cliente?.email) {
+        throw new Error(
+          "El cliente no tiene un correo electrónico registrado."
+        );
+      }
+
+      const { data, error } =
+        await supabase.functions.invoke(
+          'enviar-factura',
+          {
+            body: {
+              facturaId: Number(factura.id)
+            }
+          }
+        );
+
+      if (error) {
+        let mensaje = error.message;
+
+        try {
+          const body = await error.context?.json();
+
+          if (body?.error) {
+            mensaje = body.error;
+          }
+        } catch (e) {}
+
+        throw new Error(mensaje);
+      }
+
+      if (!data?.ok) {
+        throw new Error(
+          data?.error ||
+          "No se pudo enviar el PDF de la factura."
+        );
+      }
+
+      alert(
+        'Factura PDF enviada al cliente correctamente.'
+      );
+    } catch (err) {
+      console.error(
+        "Error enviando PDF de factura:",
+        err
+      );
+
+      alert(
+        'Error al enviar la factura: ' +
+        (err.message || '')
+      );
+    } finally {
+      setProcesandoPdf(false);
     }
   };
 
@@ -977,6 +1070,22 @@ export default function VerFactura() {
                 💳 Confirmar pago y emitir factura
               </button>
             </div>
+          )}
+
+          {/* NUEVO: aparece únicamente después de que la factura está pagada. */}
+          {esPagada && (
+            <button
+              onClick={enviarFacturaAlCliente}
+              disabled={procesandoPdf}
+              style={{
+                ...estilos.botonVerde,
+                marginTop: '15px'
+              }}
+            >
+              {procesandoPdf
+                ? 'Enviando PDF...'
+                : '📄 Enviar factura PDF al cliente'}
+            </button>
           )}
         </div>
 
