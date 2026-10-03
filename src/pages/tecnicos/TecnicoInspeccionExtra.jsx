@@ -45,25 +45,13 @@ export default function TecnicoInspeccionExtra() {
       setError("");
       setMensaje("");
 
-      /*
-       * ============================================================
-       * COMPROBACIÓN DE SESIÓN DEL TÉCNICO
-       * ============================================================
-       */
       const {
         data: { user },
         error: userError
       } = await supabase.auth.getUser();
 
-      console.log(
-        "USUARIO SESIÓN TÉCNICO:",
-        user?.id
-      );
-
-      console.log(
-        "ERROR SESIÓN TÉCNICO:",
-        userError
-      );
+      console.log("USUARIO SESIÓN TÉCNICO:", user?.id);
+      console.log("ERROR SESIÓN TÉCNICO:", userError);
 
       if (userError) {
         throw userError;
@@ -76,23 +64,13 @@ export default function TecnicoInspeccionExtra() {
       }
 
       /*
-       * ============================================================
-       * EL DASHBOARD ENVÍA EL ID DE LA FACTURA
-       * ============================================================
-       *
-       * Ejemplo:
+       * El dashboard envía el ID de la factura:
        *
        * /tecnico/extra/343
        *
-       * El 343 corresponde a:
-       *
-       * facturas.id = 343
-       *
-       * y NO a:
-       *
-       * extras.id
-       *
-       * porque extras.id es UUID.
+       * 343 corresponde a facturas.id.
+       * extras.id es UUID, por lo que NO se consulta
+       * extras.id usando este parámetro.
        */
 
       const {
@@ -115,24 +93,8 @@ export default function TecnicoInspeccionExtra() {
       }
 
       /*
-       * ============================================================
-       * BUSCAR EL EXTRA POR factura_id
-       * ============================================================
-       *
-       * NO hacemos:
-       *
-       * .eq("id", id)
-       *
-       * porque extras.id es UUID y id es el número de factura.
-       *
-       * Buscamos directamente:
-       *
-       * extras.factura_id = factura.id
-       *
-       * NO hacemos INSERT.
-       * NO creamos ningún extra nuevo.
-       * NO modificamos precio, IVA, total, Stripe ni
-       * FacturaDirecta.
+       * Buscamos el extra existente mediante factura_id.
+       * No se crea ningún extra nuevo.
        */
 
       const {
@@ -156,11 +118,6 @@ export default function TecnicoInspeccionExtra() {
         );
       }
 
-      /*
-       * Si hubiera más de un extra asociado a la factura,
-       * mantenemos el comportamiento actual y utilizamos
-       * el más reciente según creado_en.
-       */
       const extraEncontrado = extrasPorFactura[0];
 
       setExtraData(extraEncontrado);
@@ -334,11 +291,6 @@ export default function TecnicoInspeccionExtra() {
       setError("");
       setMensaje("");
 
-      /*
-       * ============================================================
-       * ACTUALIZAMOS ÚNICAMENTE EL EXTRA EXISTENTE
-       * ============================================================
-       */
       const extraPayload = {
         descripcion:
           descripcion ||
@@ -387,11 +339,6 @@ export default function TecnicoInspeccionExtra() {
         );
       }
 
-      /*
-       * Mantenemos también los datos técnicos de la factura.
-       *
-       * NO modificamos ningún dato económico.
-       */
       if (facturaData?.id) {
         const facturaPayload = {
           descripcion:
@@ -968,7 +915,3 @@ export default function TecnicoInspeccionExtra() {
     </div>
   );
 }
-
-Cambio realizado: solo la carga inicial. Ahora "343" se utiliza para buscar "facturas.id", y después "extras.factura_id = 343". He eliminado la consulta problemática "extras.id = 343".
-
-No hay ningún "INSERT" en este archivo y no se modifica ningún dato económico.
