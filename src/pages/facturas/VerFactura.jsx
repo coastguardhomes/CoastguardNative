@@ -60,9 +60,6 @@ export default function VerFactura() {
   const [fotosExtra, setFotosExtra] = useState([]);
   const [procesandoExtra, setProcesandoExtra] = useState(false);
 
-  // NUEVO: controla únicamente el envío del PDF legal al cliente.
-  const [procesandoPdf, setProcesandoPdf] = useState(false);
-
   const parsearFotosExtra = (fotosRaw) => {
     if (!fotosRaw) return [];
 
@@ -102,6 +99,7 @@ export default function VerFactura() {
             foto.url ||
             foto.path ||
             foto.foto_url ||
+            foto.archivo ||
             ''
           );
 
@@ -127,11 +125,6 @@ export default function VerFactura() {
       setInspeccionExtra(null);
       setFotosExtra([]);
 
-      /*
-       * IMPORTANTE:
-       * inspecciones NO tiene factura_id.
-       * La relación correcta para este flujo está en extras.factura_id.
-       */
       const { data: extraPublicado, error: extraError } = await supabase
         .from('extras')
         .select('*')
@@ -150,10 +143,6 @@ export default function VerFactura() {
 
       let inspeccionData = null;
 
-      /*
-       * Si el extra tiene inspeccion_id, cargamos la inspección
-       * relacionada únicamente por su id.
-       */
       if (extraPublicado.inspeccion_id) {
         const { data: inspeccionRelacionada, error: inspeccionError } =
           await supabase
@@ -172,17 +161,15 @@ export default function VerFactura() {
         }
       }
 
-      /*
-       * Las fotografías del extra proceden del registro extras.
-       * No usamos facturaData.fotos aquí porque esas pueden ser
-       * fotografías de la factura y no de la inspección extra.
-       */
       let fotos = parsearFotosExtra(extraPublicado.fotos);
 
-      /*
-       * Compatibilidad con extras antiguos que pudieran tener
-       * las fotografías guardadas en inspecciones_fotos.
-       */
+      if (
+        fotos.length === 0 &&
+        inspeccionData?.id
+      ) {
+        fotos = parsearFotosExtra(inspeccionData.fotos);
+      }
+
       if (
         fotos.length === 0 &&
         inspeccionData?.id
@@ -458,96 +445,17 @@ export default function VerFactura() {
   };
 
   /*
-   * NUEVO:
-   * Envía exclusivamente el PDF de la factura legal ya generada
-   * al cliente.
+   * ÚNICO ENVÍO FINAL:
+   * 1. Comprueba que el técnico terminó.
+   * 2. Aprueba el extra como administrador.
+   * 3. Publica los datos del extra para el portal del cliente.
+   * 4. Envía el PDF legal ya generado por FacturaDirecta.
    *
-   * No crea Stripe.
-   * No confirma pagos.
-   * No modifica FacturaDirecta.
-   * No modifica ni envía la inspección extra.
+   * No crea otro pago ni genera otra factura.
    */
-  const enviarFacturaAlCliente = async () => {
-    try {
-      setProcesandoPdf(true);
+  const aprobarYEnviarAlCliente = async () => {
+    let extraAprobadoId = null;
 
-      if (!factura) {
-        throw new Error("No se ha cargado la factura.");
-      }
-
-      const estadoPago =
-        String(factura.estado_pago || '').toLowerCase();
-
-      const estado =
-        String(factura.estado || '').toLowerCase();
-
-      const facturaEstaPagada =
-        estadoPago === 'pagada' ||
-        estado === 'pagada' ||
-        estado === 'finalizado';
-
-      if (!facturaEstaPagada) {
-        throw new Error(
-          "La factura todavía no está marcada como pagada."
-        );
-      }
-
-      if (!cliente?.email) {
-        throw new Error(
-          "El cliente no tiene un correo electrónico registrado."
-        );
-      }
-
-      const { data, error } =
-        await supabase.functions.invoke(
-          'enviar-factura',
-          {
-            body: {
-              facturaId: Number(factura.id)
-            }
-          }
-        );
-
-      if (error) {
-        let mensaje = error.message;
-
-        try {
-          const body = await error.context?.json();
-
-          if (body?.error) {
-            mensaje = body.error;
-          }
-        } catch (e) {}
-
-        throw new Error(mensaje);
-      }
-
-      if (!data?.ok) {
-        throw new Error(
-          data?.error ||
-          "No se pudo enviar el PDF de la factura."
-        );
-      }
-
-      alert(
-        'Factura PDF enviada al cliente correctamente.'
-      );
-    } catch (err) {
-      console.error(
-        "Error enviando PDF de factura:",
-        err
-      );
-
-      alert(
-        'Error al enviar la factura: ' +
-        (err.message || '')
-      );
-    } finally {
-      setProcesandoPdf(false);
-    }
-  };
-
-  const enviarInspeccionExtraAlCliente = async () => {
     try {
       setProcesandoExtra(true);
 
@@ -559,12 +467,37 @@ export default function VerFactura() {
         throw new Error('No se ha encontrado la inspección extra.');
       }
 
+      if (!cliente?.email) {
+        throw new Error('El cliente no tiene un email registrado.');
+      }
+
+      const estadoPago = String(
+        factura.estado_pago || ''
+      ).toLowerCase();
+
+      const estadoFactura = String(
+        factura.estado || ''
+      ).toLowerCase();
+
+      const facturaPagada =
+        estadoPago === 'pagada' ||
+        estadoFactura === 'pagada' ||
+        estadoFactura === 'finalizado';
+
+      if (!facturaPagada) {
+        throw new Error(
+          'La factura todavía no está pagada. No se puede enviar el PDF legal.'
+        );
+      }
+
+      if (!factura.pdf_url) {
+        throw new Error(
+          'FacturaDirecta todavía no ha dejado disponible el PDF legal de esta factura.'
+        );
+      }
+
       const extraExistente = inspeccionExtra.publicado;
 
-      /*
-       * No permitimos enviar directamente un extra que todavía
-       * no haya sido completado por el técnico.
-       */
       const estadosTecnicoCompletado = [
         'completado',
         'completada',
@@ -572,10 +505,9 @@ export default function VerFactura() {
         'finalizada'
       ];
 
-      const estadoTecnico =
-        String(
-          extraExistente.estado_tecnico || ''
-        ).toLowerCase();
+      const estadoTecnico = String(
+        extraExistente.estado_tecnico || ''
+      ).toLowerCase();
 
       if (!estadosTecnicoCompletado.includes(estadoTecnico)) {
         throw new Error(
@@ -583,32 +515,70 @@ export default function VerFactura() {
         );
       }
 
-      /*
-       * Si ya fue enviado al cliente no volvemos a enviarlo.
-       */
       if (
         String(extraExistente.estado || '').toLowerCase() ===
         'enviado_cliente'
       ) {
         alert(
-          'Esta inspección extra ya fue enviada al cliente.'
+          'Esta inspección extra ya está publicada para el cliente.'
         );
 
         await cargarDatosSeguros();
         return;
       }
 
+      const inspeccionTecnico = inspeccionExtra.inspeccion;
+
+      const observacionesTecnico =
+        inspeccionTecnico?.observaciones ||
+        inspeccionTecnico?.notas_tecnico ||
+        inspeccionTecnico?.notas ||
+        '';
+
+      const descripcionOriginal =
+        extraExistente.descripcion || '';
+
+      const descripcionCliente =
+        observacionesTecnico &&
+        !descripcionOriginal.includes(observacionesTecnico)
+          ? `${descripcionOriginal}\n\nObservaciones del técnico:\n${observacionesTecnico}`
+          : descripcionOriginal;
+
+      const materiales =
+        extraExistente.materiales ||
+        inspeccionTecnico?.materiales_usados ||
+        '';
+
+      const tiempoEmpleado =
+        extraExistente.tiempo_empleado ||
+        inspeccionTecnico?.tiempo_empleado ||
+        '';
+
+      let fotos = parsearFotosExtra(extraExistente.fotos);
+
+      if (fotos.length === 0) {
+        fotos = parsearFotosExtra(inspeccionTecnico?.fotos);
+      }
+
+      if (fotos.length === 0) {
+        fotos = fotosExtra;
+      }
+
       /*
-       * Primero aprobamos el extra como administrador.
-       * La función enviar-extra-cliente comprobará esta aprobación
-       * antes de mandar el email.
+       * Guardamos en extras los datos que consulta el portal cliente.
+       * El estado todavía no se cambia a enviado_cliente aquí.
        */
       const { data: extraAprobado, error: aprobarError } =
         await supabase
           .from('extras')
           .update({
             estado_admin: 'aprobada',
-            fecha_aprobacion: new Date().toISOString()
+            fecha_aprobacion: new Date().toISOString(),
+            descripcion: descripcionCliente,
+            materiales,
+            tiempo_empleado: tiempoEmpleado,
+            fotos,
+            pdf_url: factura.pdf_url
           })
           .eq('id', extraExistente.id)
           .select()
@@ -618,16 +588,18 @@ export default function VerFactura() {
         throw aprobarError;
       }
 
+      extraAprobadoId = extraAprobado.id;
+
       setInspeccionExtra((actual) => ({
         ...(actual || {}),
         publicado: extraAprobado
       }));
 
       /*
-       * Ahora sí se ejecuta el envío real al cliente.
-       * Esta función es la única responsable de mandar el email.
+       * Publica el extra y envía el email con los datos de inspección.
+       * La Edge Function cambia extras.estado a enviado_cliente.
        */
-      const { data: envioData, error: envioError } =
+      const { data: envioExtra, error: errorExtra } =
         await supabase.functions.invoke(
           'enviar-extra-cliente',
           {
@@ -637,62 +609,100 @@ export default function VerFactura() {
           }
         );
 
-      if (envioError) {
-        /*
-         * Si el envío falla, dejamos el extra pendiente
-         * para que el administrador pueda volver a revisarlo.
-         */
-        await supabase
-          .from('extras')
-          .update({
-            estado_admin: 'pendiente',
-            fecha_aprobacion: null
-          })
-          .eq('id', extraExistente.id);
-
-        let mensaje = envioError.message;
+      if (errorExtra) {
+        let mensaje = errorExtra.message;
 
         try {
-          const body = await envioError.context?.json();
-
-          if (body?.error) {
-            mensaje = body.error;
-          }
+          const body = await errorExtra.context?.json();
+          if (body?.error) mensaje = body.error;
         } catch (e) {}
 
         throw new Error(mensaje);
       }
 
-      if (
-        envioData?.error
-      ) {
-        await supabase
-          .from('extras')
-          .update({
-            estado_admin: 'pendiente',
-            fecha_aprobacion: null
-          })
-          .eq('id', extraExistente.id);
+      if (!envioExtra?.ok) {
+        throw new Error(
+          envioExtra?.error ||
+          'No se pudo publicar la inspección extra para el cliente.'
+        );
+      }
 
-        throw new Error(envioData.error);
+      /*
+       * Envía el PDF legal como adjunto.
+       * No genera ni modifica la factura de FacturaDirecta.
+       */
+      const { data: envioFactura, error: errorFactura } =
+        await supabase.functions.invoke(
+          'enviar-factura',
+          {
+            body: {
+              facturaId: Number(factura.id)
+            }
+          }
+        );
+
+      if (errorFactura) {
+        let mensaje = errorFactura.message;
+
+        try {
+          const body = await errorFactura.context?.json();
+          if (body?.error) mensaje = body.error;
+        } catch (e) {}
+
+        throw new Error(
+          'La inspección se publicó, pero no se pudo enviar el PDF legal: ' + mensaje
+        );
+      }
+
+      if (!envioFactura?.ok) {
+        throw new Error(
+          'La inspección se publicó, pero no se pudo confirmar el envío del PDF legal.'
+        );
       }
 
       await cargarDatosSeguros();
 
       alert(
-        envioData?.already_sent
-          ? 'La inspección extra ya había sido enviada al cliente.'
-          : 'Inspección extra aprobada y enviada al cliente correctamente.'
+        'Inspección extra publicada y factura legal PDF enviada al cliente correctamente.'
       );
     } catch (err) {
       console.error(
-        'Error enviando inspección extra al cliente:',
+        'Error aprobando y enviando el extra:',
         err
       );
 
+      /*
+       * Si el envío del extra no llegó a completarse,
+       * devolvemos la aprobación a pendiente para permitir revisión.
+       * No deshacemos un extra que ya haya sido publicado.
+       */
+      if (extraAprobadoId) {
+        const { data: estadoActual } = await supabase
+          .from('extras')
+          .select('estado')
+          .eq('id', extraAprobadoId)
+          .maybeSingle();
+
+        if (
+          estadoActual &&
+          String(estadoActual.estado || '').toLowerCase() !==
+          'enviado_cliente'
+        ) {
+          await supabase
+            .from('extras')
+            .update({
+              estado_admin: 'pendiente',
+              fecha_aprobacion: null
+            })
+            .eq('id', extraAprobadoId);
+        }
+      }
+
+      await cargarDatosSeguros();
+
       alert(
-        'Error al enviar la inspección extra: ' +
-        (err.message || '')
+        'No se ha podido completar todo el envío: ' +
+        (err.message || 'Error desconocido.')
       );
     } finally {
       setProcesandoExtra(false);
@@ -1071,22 +1081,6 @@ export default function VerFactura() {
               </button>
             </div>
           )}
-
-          {/* NUEVO: aparece únicamente después de que la factura está pagada. */}
-          {esPagada && (
-            <button
-              onClick={enviarFacturaAlCliente}
-              disabled={procesandoPdf}
-              style={{
-                ...estilos.botonVerde,
-                marginTop: '15px'
-              }}
-            >
-              {procesandoPdf
-                ? 'Enviando PDF...'
-                : '📄 Enviar factura PDF al cliente'}
-            </button>
-          )}
         </div>
 
         {inspeccionExtra && (
@@ -1147,7 +1141,7 @@ export default function VerFactura() {
             </p>
 
             {(extraActual?.materiales ||
-              inspeccionExtra.inspeccion?.materiales) && (
+              inspeccionExtra.inspeccion?.materiales_usados) && (
               <p
                 style={{
                   fontSize: '13px',
@@ -1157,7 +1151,7 @@ export default function VerFactura() {
               >
                 <strong>Materiales:</strong>{' '}
                 {extraActual?.materiales ||
-                  inspeccionExtra.inspeccion?.materiales}
+                  inspeccionExtra.inspeccion?.materiales_usados}
               </p>
             )}
 
@@ -1253,16 +1247,24 @@ export default function VerFactura() {
             {!extraYaEnviado &&
               tecnicoHaCompletadoExtra && (
                 <button
-                  onClick={enviarInspeccionExtraAlCliente}
-                  disabled={procesandoExtra}
+                  onClick={aprobarYEnviarAlCliente}
+                  disabled={procesandoExtra || !esPagada}
                   style={{
                     ...estilos.botonVerde,
-                    marginTop: '14px'
+                    marginTop: '14px',
+                    opacity:
+                      procesandoExtra || !esPagada
+                        ? 0.65
+                        : 1,
+                    cursor:
+                      procesandoExtra || !esPagada
+                        ? 'not-allowed'
+                        : 'pointer'
                   }}
                 >
                   {procesandoExtra
-                    ? 'Enviando...'
-                    : '📤 Aprobar y enviar al cliente'}
+                    ? 'Enviando factura e inspección...'
+                    : '📤 APROBAR Y ENVIAR AL CLIENTE'}
                 </button>
               )}
 
