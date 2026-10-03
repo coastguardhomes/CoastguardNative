@@ -1,41 +1,80 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useParams,
+  Link,
+  useNavigate,
+} from "react-router-dom";
+
 import Menu from "../../layouts/Menu";
+
 import { supabase } from "../../lib/supabase";
-import { useParams, Link, useNavigate } from "react-router-dom";
+
 import { useAuth } from "../../context/AuthContext";
-import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
+
+import {
+  cargarFotosInspeccion,
+} from "../../lib/cargarFotosInspeccion";
+
 import { useLanguage } from "../../context/LanguageContext";
 
 const COLOR_DORADO = "#e0b034";
+
 const FONDO_PRINCIPAL = "#030509";
+
 const FONDO_TARJETA =
   "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+
 const BORDE_DORADO_FINO =
   "1px solid rgba(224, 176, 52, 0.4)";
+
 const BORDE_DORADO_INTENSO =
   "1px solid rgba(224, 176, 52, 0.8)";
+
 const SOMBRA_LUXURY =
   "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.2)";
+
 const TEXTO_DORADO_BRILLO = {
   color: COLOR_DORADO,
-  textShadow: "0 0 15px rgba(224, 176, 52, 0.7)",
+  textShadow:
+    "0 0 15px rgba(224, 176, 52, 0.7)",
 };
+
 const DEGRADADO_AZUL_BOTON =
   "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)";
 
 export default function ClienteInspeccionVer() {
   const { t } = useLanguage();
+
   const { id } = useParams();
+
   const navigate = useNavigate();
+
   const { user } = useAuth();
 
-  const [inspeccion, setInspeccion] = useState(null);
-  const [vivienda, setVivienda] = useState(null);
-  const [fotos, setFotos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [fotoModal, setFotoModal] = useState(null);
-  const [esExtra, setEsExtra] = useState(false);
+  const [inspeccion, setInspeccion] =
+    useState(null);
+
+  const [vivienda, setVivienda] =
+    useState(null);
+
+  const [fotos, setFotos] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [errorMsg, setErrorMsg] =
+    useState("");
+
+  const [fotoModal, setFotoModal] =
+    useState(null);
+
+  const [esExtra, setEsExtra] =
+    useState(false);
 
   useEffect(() => {
     if (id && user) {
@@ -43,7 +82,7 @@ export default function ClienteInspeccionVer() {
     }
   }, [id, user]);
 
-  const parsearFotos = (fotosRaw) => {
+  function parsearFotos(fotosRaw) {
     if (!fotosRaw) return [];
 
     if (Array.isArray(fotosRaw)) {
@@ -52,20 +91,23 @@ export default function ClienteInspeccionVer() {
 
     if (typeof fotosRaw === "string") {
       try {
-        const parsed = JSON.parse(fotosRaw);
+        const parsed =
+          JSON.parse(fotosRaw);
 
         if (Array.isArray(parsed)) {
           return parsed;
         }
 
         if (
-          typeof parsed === "object" &&
-          parsed !== null
+          parsed &&
+          typeof parsed === "object"
         ) {
           return [parsed];
         }
 
-        return [parsed];
+        return parsed
+          ? [parsed]
+          : [];
       } catch {
         return fotosRaw.trim()
           ? [fotosRaw]
@@ -73,281 +115,217 @@ export default function ClienteInspeccionVer() {
       }
     }
 
-    if (typeof fotosRaw === "object") {
+    if (
+      typeof fotosRaw === "object"
+    ) {
       return [fotosRaw];
     }
 
     return [];
-  };
+  }
 
   async function cargarDetalles() {
     setLoading(true);
     setErrorMsg("");
 
     try {
-      const { data: clienteData } = await supabase
-        .from("clientes")
-        .select("id")
-        .eq("usuario_id", user.id)
-        .maybeSingle();
+      let { data: cliente } =
+        await supabase
+          .from("clientes")
+          .select("id")
+          .eq("usuario_id", user.id)
+          .maybeSingle();
 
-      if (!clienteData) {
+      if (!cliente) {
+        const { data: clienteById } =
+          await supabase
+            .from("clientes")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+        cliente = clienteById;
+      }
+
+      if (!cliente?.id) {
         setErrorMsg(
-          t("perfilClienteNoEncontrado")
+          t("perfilClienteNoEncontrado") ||
+            "No se encontró el perfil del cliente."
         );
-
-        setLoading(false);
         return;
       }
 
-      const clienteId = clienteData.id;
+      const clienteId = cliente.id;
 
       /*
-       * ============================================================
-       * INSPECCIÓN NORMAL
-       * ============================================================
+       * =====================================================
+       * 1. INSPECCIÓN NORMAL
+       * =====================================================
        *
-       * Solo se permite cuando está finalizada y pertenece al cliente.
+       * El cliente solo puede ver inspecciones
+       * publicadas/finalizadas y pertenecientes a él.
        */
-      let { data: insp } = await supabase
-        .from("inspecciones")
-        .select("*")
-        .eq("id", id)
-        .eq("cliente_id", clienteId)
-        .eq("estado", "finalizada")
-        .maybeSingle();
-
-      let fotosEncontradas = [];
-      let esExtraActual = false;
-
-      /*
-       * ============================================================
-       * INSPECCIÓN EXTRA
-       * ============================================================
-       *
-       * IMPORTANTE:
-       * El técnico puede completar el extra, pero el cliente NO debe
-       * verlo todavía.
-       *
-       * Solo se muestra cuando enviar-extra-cliente ha terminado y
-       * ha puesto extras.estado = "enviado_cliente".
-       */
-      if (!insp) {
-        let { data: dataExtra } = await supabase
-          .from("extras")
+      let { data: insp } =
+        await supabase
+          .from("inspecciones")
           .select("*")
           .eq("id", id)
           .eq("cliente_id", clienteId)
+          .eq("estado", "finalizada")
           .maybeSingle();
 
-        /*
-         * En algunos casos la pantalla puede recibir el ID de factura.
-         * Buscamos el extra relacionado con esa factura.
-         */
-        if (!dataExtra) {
-          const { data: extraPorFactura } =
-            await supabase
-              .from("extras")
-              .select("*")
-              .eq("factura_id", id)
-              .eq("cliente_id", clienteId)
-              .order("created_at", {
-                ascending: false,
-              })
-              .limit(1)
-              .maybeSingle();
+      let esExtraActual = false;
 
-          if (extraPorFactura) {
-            dataExtra = extraPorFactura;
-          }
-        }
+      let fotosEncontradas = [];
 
-        /*
-         * SEGURIDAD:
-         * Un extra pendiente, completado por técnico o aprobado por
-         * administración todavía NO se muestra al cliente.
-         *
-         * El único estado que lo publica es enviado_cliente.
-         */
-        if (
-          dataExtra &&
-          dataExtra.estado !== "enviado_cliente"
-        ) {
-          setErrorMsg(
-            t(
-              "informeNoEncontradoPermisos"
+      /*
+       * =====================================================
+       * 2. EXTRA
+       * =====================================================
+       */
+      if (!insp) {
+        const { data: extra } =
+          await supabase
+            .from("extras")
+            .select("*")
+            .eq("id", id)
+            .eq("cliente_id", clienteId)
+            .eq(
+              "estado",
+              "enviado_cliente"
             )
-          );
+            .maybeSingle();
 
-          setLoading(false);
-          return;
-        }
-
-        if (dataExtra) {
+        if (extra) {
           esExtraActual = true;
 
-          const extraId = dataExtra.id;
-          const facturaId =
-            dataExtra.factura_id || null;
+          fotosEncontradas =
+            parsearFotos(extra.fotos);
 
-          let datosFactura = null;
+          let factura = null;
 
-          /*
-           * Fotos propias del extra.
-           */
-          fotosEncontradas = parsearFotos(
-            dataExtra.fotos
-          );
+          if (extra.factura_id) {
+            const {
+              data: facturaData,
+            } = await supabase
+              .from("facturas")
+              .select("*")
+              .eq(
+                "id",
+                extra.factura_id
+              )
+              .eq(
+                "cliente_id",
+                clienteId
+              )
+              .maybeSingle();
 
-          /*
-           * Si el extra no tiene fotos, buscamos las fotos de su factura
-           * como respaldo.
-           */
-          if (
-            fotosEncontradas.length === 0 &&
-            facturaId
-          ) {
-            const { data: facturaData } =
-              await supabase
-                .from("facturas")
-                .select("*")
-                .eq("id", facturaId)
-                .eq("cliente_id", clienteId)
-                .maybeSingle();
-
-            datosFactura = facturaData;
-
-            fotosEncontradas = parsearFotos(
-              facturaData?.fotos
-            );
+            factura = facturaData;
           }
 
-          /*
-           * Construimos el objeto que utiliza la pantalla.
-           */
+          if (
+            fotosEncontradas.length ===
+              0 &&
+            factura?.fotos
+          ) {
+            fotosEncontradas =
+              parsearFotos(
+                factura.fotos
+              );
+          }
+
           insp = {
-            id: dataExtra.id,
+            id: extra.id,
+
             fecha:
-              dataExtra.updated_at ||
-              dataExtra.created_at,
-            estado: "ENVIADO AL CLIENTE",
+              extra.updated_at ||
+              extra.created_at,
+
+            estado:
+              "ENVIADO AL CLIENTE",
+
             direccion:
-              dataExtra.direccion ||
-              datosFactura?.direccion ||
+              extra.direccion ||
+              factura?.direccion ||
               "Servicio Extra",
+
             notas_tecnico:
-              dataExtra.descripcion ||
-              datosFactura?.descripcion ||
+              extra.descripcion ||
+              extra.observaciones ||
+              factura?.descripcion ||
               "Sin descripción",
+
             materiales:
-              dataExtra.materiales ||
-              datosFactura?.materiales,
+              extra.materiales ||
+              factura?.materiales,
+
             tiempo_empleado:
-              dataExtra.tiempo_empleado ||
-              datosFactura?.tiempo_empleado,
+              extra.tiempo_empleado ||
+              factura?.tiempo_empleado,
+
             pdf_url:
-              dataExtra.pdf_url ||
-              datosFactura?.pdf_url,
+              extra.pdf_url ||
+              factura?.pdf_url,
+
+            extra_id: extra.id,
+
+            factura_id:
+              extra.factura_id || null,
           };
 
           /*
-           * Segundo respaldo: tabla fotos.
+           * Si el extra tenía un aviso,
+           * abrirlo lo marca como visto.
+           *
+           * NO se borra el extra.
            */
           if (
-            fotosEncontradas.length === 0
+            extra.alerta &&
+            !extra.alerta_vista
           ) {
-            const { data: fotosTabla } =
-              await supabase
-                .from("fotos")
-                .select("*")
-                .or(
-                  `extra_id.eq.${extraId},factura_id.eq.${facturaId || "00000000-0000-0000-0000-000000000000"},inspeccion_id.eq.${extraId}`
-                );
-
-            if (
-              fotosTabla &&
-              fotosTabla.length > 0
-            ) {
-              fotosEncontradas =
-                fotosTabla;
-            }
-          }
-
-          /*
-           * Tercer respaldo: fotos de la inspección relacionada con
-           * la factura, si existe.
-           */
-          if (
-            fotosEncontradas.length === 0 &&
-            datosFactura?.inspeccion_id
-          ) {
-            const {
-              data: fotosInspeccionRelacionada,
-            } = await supabase
-              .from("inspecciones_fotos")
-              .select("*")
-              .eq(
-                "inspeccion_id",
-                datosFactura.inspeccion_id
-              );
-
-            if (
-              fotosInspeccionRelacionada &&
-              fotosInspeccionRelacionada.length > 0
-            ) {
-              fotosEncontradas =
-                fotosInspeccionRelacionada;
-            }
-          }
-
-          /*
-           * Solo AHORA marcamos la alerta como vista, porque el extra
-           * ya está realmente publicado al cliente.
-           */
-          if (dataExtra.alerta) {
             await supabase
               .from("extras")
               .update({
                 alerta_vista: true,
               })
-              .eq("id", extraId);
+              .eq("id", extra.id)
+              .eq(
+                "cliente_id",
+                clienteId
+              );
           }
 
-          if (facturaId) {
+          /*
+           * Si tiene factura relacionada,
+           * también quitamos el aviso de factura.
+           */
+          if (extra.factura_id) {
             await supabase
               .from("facturas")
               .update({
                 alerta_vista: true,
               })
-              .eq("id", facturaId);
+              .eq(
+                "id",
+                extra.factura_id
+              )
+              .eq(
+                "cliente_id",
+                clienteId
+              );
           }
-        } else {
-          /*
-           * IMPORTANTE:
-           * Antes este bloque permitía mostrar directamente una factura
-           * con fotos aunque no existiera un extra enviado al cliente.
-           *
-           * Eso podía saltarse el proceso:
-           * técnico -> administración -> cliente.
-           *
-           * Por eso NO mostramos una factura directamente como extra.
-           * Si no existe un extra enviado_cliente, no se publica nada.
-           */
-          setErrorMsg(
-            t(
-              "informeNoEncontradoPermisos"
-            )
-          );
-
-          setLoading(false);
-          return;
         }
-      } else {
-        /*
-         * ============================================================
-         * INSPECCIÓN NORMAL YA PUBLICADA
-         * ============================================================
-         */
+      }
+
+      /*
+       * =====================================================
+       * 3. FOTOS DE INSPECCIÓN NORMAL
+       * =====================================================
+       */
+      if (
+        insp &&
+        !esExtraActual
+      ) {
         if (insp.fotos) {
           fotosEncontradas =
             parsearFotos(
@@ -356,7 +334,8 @@ export default function ClienteInspeccionVer() {
         }
 
         if (
-          fotosEncontradas.length === 0
+          fotosEncontradas.length ===
+          0
         ) {
           try {
             const fotosCargadas =
@@ -365,19 +344,19 @@ export default function ClienteInspeccionVer() {
               );
 
             if (
-              fotosCargadas &&
-              fotosCargadas.length > 0
+              fotosCargadas?.length
             ) {
               fotosEncontradas =
                 fotosCargadas;
             }
           } catch {
-            // Ignorar fallback
+            // fallback
           }
         }
 
         if (
-          fotosEncontradas.length === 0
+          fotosEncontradas.length ===
+          0
         ) {
           const {
             data: fotosData,
@@ -389,15 +368,18 @@ export default function ClienteInspeccionVer() {
               String(id)
             );
 
-          if (
-            fotosData &&
-            fotosData.length > 0
-          ) {
+          if (fotosData?.length) {
             fotosEncontradas =
               fotosData;
           }
         }
 
+        /*
+         * Abrir la inspección marca
+         * solamente el aviso como visto.
+         *
+         * La inspección permanece intacta.
+         */
         if (
           insp.alerta &&
           !insp.alerta_vista
@@ -407,7 +389,11 @@ export default function ClienteInspeccionVer() {
             .update({
               alerta_vista: true,
             })
-            .eq("id", id);
+            .eq("id", id)
+            .eq(
+              "cliente_id",
+              clienteId
+            );
         }
       }
 
@@ -415,41 +401,40 @@ export default function ClienteInspeccionVer() {
         setErrorMsg(
           t(
             "informeNoEncontradoPermisos"
-          )
+          ) ||
+            "No se encontró el informe o no tienes permiso para verlo."
         );
 
-        setLoading(false);
         return;
       }
 
-      /*
-       * Usamos el valor local, no el estado React anterior.
-       * Así evitamos el bug de setEsExtra() asíncrono.
-       */
       setEsExtra(esExtraActual);
 
       setInspeccion(insp);
-      setFotos(fotosEncontradas);
+
+      setFotos(
+        fotosEncontradas || []
+      );
 
       /*
-       * La vivienda solo se busca para inspecciones normales.
+       * La vivienda solo se carga para
+       * inspecciones normales.
        */
       if (
         !esExtraActual &&
         insp.vivienda_id
       ) {
-        const {
-          data: viv,
-        } = await supabase
-          .from("viviendas")
-          .select(
-            "direccion, ciudad"
-          )
-          .eq(
-            "id",
-            insp.vivienda_id
-          )
-          .maybeSingle();
+        const { data: viv } =
+          await supabase
+            .from("viviendas")
+            .select(
+              "direccion, ciudad"
+            )
+            .eq(
+              "id",
+              insp.vivienda_id
+            )
+            .maybeSingle();
 
         setVivienda(viv);
       }
@@ -462,44 +447,101 @@ export default function ClienteInspeccionVer() {
       setErrorMsg(
         t(
           "errorConexionCargarInformacion"
-        )
+        ) ||
+          "Error al cargar la información."
       );
     } finally {
       setLoading(false);
     }
   }
 
+  /*
+   * =====================================================
+   * BORRAR AVISO
+   * =====================================================
+   *
+   * MUY IMPORTANTE:
+   *
+   * Esta función NO utiliza DELETE.
+   *
+   * Nunca elimina:
+   * - inspecciones
+   * - extras
+   * - fotos
+   * - PDF
+   * - factura
+   * - historial
+   *
+   * Solo marca el aviso como visto.
+   */
   async function borrarInforme() {
     if (
       !window.confirm(
-        t(
-          "confirmarBorrarInforme"
-        )
+        "¿Quieres quitar este aviso? El informe no se borrará."
       )
     ) {
       return;
     }
 
     try {
-      const tablaDestino =
-        esExtra
-          ? "extras"
-          : "inspecciones";
+      if (esExtra) {
+        /*
+         * Extra:
+         * se mantiene enviado_cliente,
+         * solamente desaparece el aviso.
+         */
+        const { error } =
+          await supabase
+            .from("extras")
+            .update({
+              visto: true,
+              alerta_vista: true,
+            })
+            .eq(
+              "id",
+              id
+            );
 
-      const { error } =
-        await supabase
-          .from(tablaDestino)
-          .delete()
-          .eq("id", id);
+        if (error) {
+          throw error;
+        }
 
-      if (error) {
-        throw error;
+        if (
+          inspeccion?.factura_id
+        ) {
+          await supabase
+            .from("facturas")
+            .update({
+              alerta_vista: true,
+            })
+            .eq(
+              "id",
+              inspeccion.factura_id
+            );
+        }
+      } else {
+        /*
+         * Inspección normal:
+         * SOLO marcamos el aviso como visto.
+         */
+        const { error } =
+          await supabase
+            .from("inspecciones")
+            .update({
+              alerta_vista: true,
+            })
+            .eq(
+              "id",
+              id
+            );
+
+        if (error) {
+          throw error;
+        }
       }
 
       alert(
-        t(
-          "informeEliminadoExito"
-        )
+        "Aviso eliminado. El informe sigue guardado."
       );
 
       navigate(
@@ -507,31 +549,32 @@ export default function ClienteInspeccionVer() {
       );
     } catch (err) {
       console.error(
-        "Error al borrar:",
+        "Error al quitar aviso:",
         err
       );
 
       alert(
-        t("errorEliminarInforme")
+        t("errorEliminarInforme") ||
+          "No se pudo quitar el aviso."
       );
     }
   }
 
-  function obtenerUrlPublica(foto) {
+  function obtenerUrlPublica(
+    foto
+  ) {
     if (!foto) return "";
 
     const rawUrl =
       typeof foto === "string"
         ? foto
-        : (
-            foto.url_foto ||
-            foto.url ||
-            foto.path ||
-            foto.foto_url ||
-            foto.archivo ||
-            foto.url_storage_o_path ||
-            ""
-          );
+        : foto.url_foto ||
+          foto.url ||
+          foto.path ||
+          foto.foto_url ||
+          foto.archivo ||
+          foto.url_storage_o_path ||
+          "";
 
     if (!rawUrl) return "";
 
@@ -549,10 +592,6 @@ export default function ClienteInspeccionVer() {
       return rawUrl;
     }
 
-    /*
-     * Las fotos de extras se guardan en el bucket "extras".
-     * Las inspecciones normales siguen usando "inspecciones".
-     */
     const bucket =
       esExtra
         ? "extras"
@@ -595,7 +634,8 @@ export default function ClienteInspeccionVer() {
           >
             {t(
               "cargandoInformacion"
-            )}
+            ) ||
+              "Cargando información..."}
           </h3>
         </div>
       </Menu>
@@ -613,8 +653,7 @@ export default function ClienteInspeccionVer() {
           color: "#fff",
           fontFamily:
             "Inter, sans-serif",
-          paddingBottom:
-            "80px",
+          paddingBottom: "80px",
         }}
       >
         <Link
@@ -623,17 +662,18 @@ export default function ClienteInspeccionVer() {
             ...TEXTO_DORADO_BRILLO,
             textDecoration:
               "none",
-            fontWeight:
-              "700",
+            fontWeight: "700",
             display:
               "inline-block",
             marginBottom:
               "20px",
           }}
         >
+          ←{" "}
           {t(
             "volverMisInformes"
-          )}
+          ) ||
+            "Volver a mis informes"}
         </Link>
 
         {errorMsg && (
@@ -644,14 +684,10 @@ export default function ClienteInspeccionVer() {
                 "rgba(255,107,107,0.2)",
               border:
                 "1px solid #ff6b6b",
-              color:
-                "#ff6b6b",
-              borderRadius:
-                "12px",
-              textAlign:
-                "center",
-              marginBottom:
-                "20px",
+              color: "#ff6b6b",
+              borderRadius: "12px",
+              textAlign: "center",
+              marginBottom: "20px",
             }}
           >
             {errorMsg}
@@ -664,20 +700,17 @@ export default function ClienteInspeccionVer() {
               style={{
                 background:
                   FONDO_TARJETA,
-                padding:
-                  "18px",
-                borderRadius:
-                  "16px",
+                padding: "18px",
+                borderRadius: "16px",
                 border:
                   BORDE_DORADO_INTENSO,
-                marginBottom:
-                  "20px",
-                display:
-                  "flex",
+                marginBottom: "20px",
+                display: "flex",
                 justifyContent:
                   "space-between",
                 alignItems:
                   "center",
+                gap: "12px",
                 boxShadow:
                   SOMBRA_LUXURY,
               }}
@@ -686,51 +719,44 @@ export default function ClienteInspeccionVer() {
                 <h2
                   style={{
                     ...TEXTO_DORADO_BRILLO,
-                    fontSize:
-                      "18px",
+                    fontSize: "18px",
                     margin: 0,
-                    fontWeight:
-                      "900",
+                    fontWeight: "900",
                   }}
                 >
-                  {t(
-                    "informeLabel"
-                  )}{" "}
+                  {esExtra
+                    ? "Servicio extra"
+                    : t(
+                        "informeLabel"
+                      ) ||
+                      "Informe"}{" "}
                   #
                   {String(
                     inspeccion.id
-                  ).slice(
-                    0,
-                    8
-                  )}
+                  ).slice(0, 8)}
                 </h2>
 
                 <span
                   style={{
-                    fontSize:
-                      "12px",
-                    color:
-                      "#94a3b8",
-                    fontWeight:
-                      "600",
+                    fontSize: "12px",
+                    color: "#94a3b8",
+                    fontWeight: "600",
                   }}
                 >
-                  {t("fecha")}:{" "}
+                  {t("fecha") ||
+                    "Fecha"}
+                  :{" "}
                   {inspeccion.fecha
                     ? String(
                         inspeccion.fecha
-                      ).slice(
-                        0,
-                        10
-                      )
+                      ).slice(0, 10)
                     : "-"}
                 </span>
               </div>
 
               <span
                 style={{
-                  padding:
-                    "6px 12px",
+                  padding: "6px 12px",
                   border:
                     BORDE_DORADO_FINO,
                   background:
@@ -739,10 +765,8 @@ export default function ClienteInspeccionVer() {
                     COLOR_DORADO,
                   borderRadius:
                     "20px",
-                  fontSize:
-                    "11px",
-                  fontWeight:
-                    "900",
+                  fontSize: "11px",
+                  fontWeight: "900",
                   textTransform:
                     "uppercase",
                 }}
@@ -757,22 +781,18 @@ export default function ClienteInspeccionVer() {
               style={{
                 background:
                   FONDO_TARJETA,
-                padding:
-                  "18px",
-                borderRadius:
-                  "16px",
+                padding: "18px",
+                borderRadius: "16px",
                 border:
                   BORDE_DORADO_FINO,
-                marginBottom:
-                  "20px",
+                marginBottom: "20px",
               }}
             >
               <h4
                 style={{
                   color:
                     COLOR_DORADO,
-                  fontSize:
-                    "12px",
+                  fontSize: "12px",
                   textTransform:
                     "uppercase",
                   marginBottom:
@@ -783,48 +803,55 @@ export default function ClienteInspeccionVer() {
               >
                 {t(
                   "ubicacionVivienda"
-                )}
+                ) ||
+                  "Ubicación"}
               </h4>
 
               <p
                 style={{
                   margin: 0,
-                  fontSize:
-                    "15px",
-                  fontWeight:
-                    "700",
-                  color:
-                    "#fff",
+                  fontSize: "15px",
+                  fontWeight: "700",
+                  color: "#fff",
                 }}
               >
                 {vivienda?.direccion ||
                   inspeccion.direccion ||
-                  t(
-                    "direccionNoEspecificada"
-                  )}
+                  "Dirección no especificada"}
               </p>
+
+              {vivienda?.ciudad && (
+                <p
+                  style={{
+                    margin:
+                      "5px 0 0",
+                    color:
+                      "#94a3b8",
+                    fontSize:
+                      "13px",
+                  }}
+                >
+                  {vivienda.ciudad}
+                </p>
+              )}
             </div>
 
             <div
               style={{
                 background:
                   FONDO_TARJETA,
-                padding:
-                  "18px",
-                borderRadius:
-                  "16px",
+                padding: "18px",
+                borderRadius: "16px",
                 border:
                   BORDE_DORADO_FINO,
-                marginBottom:
-                  "20px",
+                marginBottom: "20px",
               }}
             >
               <h4
                 style={{
                   color:
                     COLOR_DORADO,
-                  fontSize:
-                    "12px",
+                  fontSize: "12px",
                   textTransform:
                     "uppercase",
                   marginBottom:
@@ -835,36 +862,32 @@ export default function ClienteInspeccionVer() {
               >
                 {t(
                   "descripcionTrabajoObservaciones"
-                )}
+                ) ||
+                  "Descripción / Observaciones"}
               </h4>
 
               <p
                 style={{
                   margin: 0,
-                  fontSize:
-                    "14px",
+                  fontSize: "14px",
                   color:
                     "#e2e8f0",
                   whiteSpace:
                     "pre-wrap",
-                  lineHeight:
-                    "1.5",
+                  lineHeight: "1.5",
                 }}
               >
                 {inspeccion.notas_tecnico ||
                   inspeccion.observaciones ||
-                  t(
-                    "sinObservacionesRegistradas"
-                  )}
+                  "Sin observaciones registradas."}
               </p>
 
               {inspeccion.materiales && (
                 <p
                   style={{
                     margin:
-                      "12px 0 0 0",
-                    fontSize:
-                      "13px",
+                      "12px 0 0",
+                    fontSize: "13px",
                     color:
                       "#cbd5e1",
                   }}
@@ -877,7 +900,8 @@ export default function ClienteInspeccionVer() {
                   >
                     {t(
                       "materialesUsados"
-                    )}
+                    ) ||
+                      "Materiales:"}
                   </strong>{" "}
                   {
                     inspeccion.materiales
@@ -889,9 +913,8 @@ export default function ClienteInspeccionVer() {
                 <p
                   style={{
                     margin:
-                      "6px 0 0 0",
-                    fontSize:
-                      "13px",
+                      "6px 0 0",
+                    fontSize: "13px",
                     color:
                       "#cbd5e1",
                   }}
@@ -904,7 +927,8 @@ export default function ClienteInspeccionVer() {
                   >
                     {t(
                       "tiempoEmpleadoLabel"
-                    )}
+                    ) ||
+                      "Tiempo empleado:"}
                   </strong>{" "}
                   {
                     inspeccion.tiempo_empleado
@@ -917,22 +941,18 @@ export default function ClienteInspeccionVer() {
               style={{
                 background:
                   FONDO_TARJETA,
-                padding:
-                  "18px",
-                borderRadius:
-                  "16px",
+                padding: "18px",
+                borderRadius: "16px",
                 border:
                   BORDE_DORADO_FINO,
-                marginBottom:
-                  "20px",
+                marginBottom: "20px",
               }}
             >
               <h4
                 style={{
                   color:
                     COLOR_DORADO,
-                  fontSize:
-                    "12px",
+                  fontSize: "12px",
                   textTransform:
                     "uppercase",
                   marginBottom:
@@ -943,7 +963,8 @@ export default function ClienteInspeccionVer() {
               >
                 {t(
                   "fotografiasAdjuntas"
-                )}
+                ) ||
+                  "Fotografías"}
               </h4>
 
               {fotos.length ===
@@ -959,13 +980,13 @@ export default function ClienteInspeccionVer() {
                 >
                   {t(
                     "noHayFotografiasInforme"
-                  )}
+                  ) ||
+                    "No hay fotografías."}
                 </p>
               ) : (
                 <div
                   style={{
-                    display:
-                      "grid",
+                    display: "grid",
                     gridTemplateColumns:
                       "repeat(auto-fill, minmax(100px, 1fr))",
                     gap: "10px",
@@ -1002,12 +1023,9 @@ export default function ClienteInspeccionVer() {
                           }}
                         >
                           <img
-                            src={
-                              imgUrl
-                            }
+                            src={imgUrl}
                             alt={`Foto ${
-                              idx +
-                              1
+                              idx + 1
                             }`}
                             style={{
                               width:
@@ -1034,7 +1052,7 @@ export default function ClienteInspeccionVer() {
                   inspeccion.pdf_url
                 }
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 style={{
                   display:
                     "block",
@@ -1046,8 +1064,7 @@ export default function ClienteInspeccionVer() {
                     DEGRADADO_AZUL_BOTON,
                   border:
                     BORDE_DORADO_INTENSO,
-                  color:
-                    "#ffffff",
+                  color: "#ffffff",
                   borderRadius:
                     "16px",
                   fontWeight:
@@ -1058,42 +1075,43 @@ export default function ClienteInspeccionVer() {
                     "16px",
                 }}
               >
-                {t(
-                  "verInformePdf"
-                )}
+                {esExtra
+                  ? "📄 Ver factura / PDF"
+                  : t(
+                      "verInformePdf"
+                    ) ||
+                    "Ver informe PDF"}
               </a>
             )}
 
+            {/*
+             * ESTE BOTÓN YA NO BORRA EL INFORME.
+             * Solo quita el aviso.
+             */}
             <button
               onClick={
                 borrarInforme
               }
               style={{
-                width:
-                  "100%",
-                padding:
-                  "14px",
+                width: "100%",
+                padding: "14px",
                 background:
                   "rgba(255, 71, 87, 0.15)",
-                color:
-                  "#ff4757",
+                color: "#ff4757",
                 border:
                   "1px solid rgba(255, 71, 87, 0.4)",
-                borderRadius:
-                  "16px",
-                fontWeight:
-                  "900",
-                fontSize:
-                  "14px",
-                cursor:
-                  "pointer",
-                marginBottom:
-                  "12px",
+                borderRadius: "16px",
+                fontWeight: "900",
+                fontSize: "14px",
+                cursor: "pointer",
+                marginBottom: "12px",
               }}
             >
+              🗑️{" "}
               {t(
                 "borrarEsteInforme"
-              )}
+              ) ||
+                "Quitar aviso"}
             </button>
           </>
         )}
@@ -1101,88 +1119,74 @@ export default function ClienteInspeccionVer() {
         {fotoModal && (
           <div
             onClick={() =>
-              setFotoModal(
-                null
-              )
+              setFotoModal(null)
             }
             style={{
-              position:
-                "fixed",
+              position: "fixed",
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
               backgroundColor:
                 "rgba(3, 5, 9, 0.92)",
-              zIndex:
-                9999,
-              display:
-                "flex",
+              zIndex: 9999,
+              display: "flex",
               flexDirection:
                 "column",
               justifyContent:
                 "center",
-              alignItems:
-                "center",
-              padding:
-                "20px",
+              alignItems: "center",
+              padding: "20px",
             }}
           >
             <div
+              onClick={(e) =>
+                e.stopPropagation()
+              }
               style={{
-                position:
-                  "relative",
-                maxWidth:
-                  "100%",
-                maxHeight:
-                  "90vh",
-                textAlign:
-                  "center",
+                position: "relative",
+                maxWidth: "100%",
+                maxHeight: "90vh",
+                textAlign: "center",
               }}
             >
               <button
                 onClick={() =>
-                  setFotoModal(
-                    null
-                  )
+                  setFotoModal(null)
                 }
                 style={{
                   position:
                     "absolute",
-                  top:
-                    "-45px",
-                  right:
-                    "0px",
+                  top: "-45px",
+                  right: "0px",
                   background:
                     DEGRADADO_AZUL_BOTON,
                   border:
                     BORDE_DORADO_FINO,
-                  color:
-                    "#fff",
+                  color: "#fff",
                   padding:
                     "6px 14px",
                   borderRadius:
                     "20px",
-                  cursor:
-                    "pointer",
+                  cursor: "pointer",
                 }}
               >
                 ✕{" "}
-                {t("cerrar")}
+                {t("cerrar") ||
+                  "Cerrar"}
               </button>
 
               <img
-                src={
-                  fotoModal
+                src={fotoModal}
+                alt={
+                  t(
+                    "fotoAmpliada"
+                  ) ||
+                  "Foto ampliada"
                 }
-                alt={t(
-                  "fotoAmpliada"
-                )}
                 style={{
-                  maxWidth:
-                    "100%",
-                  maxHeight:
-                    "80vh",
+                  maxWidth: "100%",
+                  maxHeight: "80vh",
                   borderRadius:
                     "14px",
                   objectFit:
