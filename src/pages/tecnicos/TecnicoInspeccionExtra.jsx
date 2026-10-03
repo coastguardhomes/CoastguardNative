@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
-const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
-const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const FONDO_TARJETA =
+  "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO =
+  "1px solid rgba(224, 176, 52, 0.4)";
 const SOMBRA_LUXURY =
   "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 
@@ -20,14 +22,19 @@ export default function TecnicoInspeccionExtra() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Este objeto SIEMPRE será el registro de extras que vamos a editar.
   const [extraData, setExtraData] = useState(null);
-  const [origenTabla, setOrigenTabla] = useState("facturas");
+
+  // Guardamos también la factura cuando la ruta llega con el ID de factura.
+  const [facturaData, setFacturaData] = useState(null);
 
   const [descripcion, setDescripcion] = useState("");
   const [materiales, setMateriales] = useState("");
   const [tiempo, setTiempo] = useState("");
   const [alerta, setAlerta] = useState(false);
   const [fotos, setFotos] = useState([]);
+
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
@@ -39,87 +46,198 @@ export default function TecnicoInspeccionExtra() {
     try {
       setLoading(true);
       setError("");
+      setMensaje("");
 
-      let { data, error: facturaError } = await supabase
-        .from("facturas")
+      let extraEncontrado = null;
+      let facturaEncontrada = null;
+
+      /*
+       * ============================================================
+       * PASO 1
+       * ============================================================
+       *
+       * El dashboard puede enviar directamente el ID del EXTRA.
+       *
+       * Como extras.id es UUID y facturas.id es bigint,
+       * intentamos primero extras.id.
+       */
+      const {
+        data: extraPorId,
+        error: extraPorIdError
+      } = await supabase
+        .from("extras")
         .select("*")
         .eq("id", id)
         .maybeSingle();
 
-      if (facturaError) {
-        throw facturaError;
+      if (extraPorIdError) {
+        /*
+         * Si el valor recibido no es un UUID válido para extras.id,
+         * Supabase puede devolver un error de tipo.
+         *
+         * En ese caso seguimos intentando como ID de factura.
+         */
+        console.warn(
+          "No se pudo buscar el extra directamente por ID:",
+          extraPorIdError
+        );
       }
 
-      if (data) {
-        setOrigenTabla("facturas");
-      } else {
+      if (extraPorId) {
+        extraEncontrado = extraPorId;
+
+        /*
+         * Si conocemos la factura asociada, la cargamos solamente
+         * como información complementaria.
+         */
+        if (extraPorId.factura_id) {
+          const {
+            data: facturaPorExtra,
+            error: facturaPorExtraError
+          } = await supabase
+            .from("facturas")
+            .select("*")
+            .eq("id", extraPorId.factura_id)
+            .maybeSingle();
+
+          if (!facturaPorExtraError && facturaPorExtra) {
+            facturaEncontrada = facturaPorExtra;
+          }
+        }
+      }
+
+      /*
+       * ============================================================
+       * PASO 2
+       * ============================================================
+       *
+       * Si no encontramos el extra directamente, tratamos el ID
+       * recibido como ID de factura.
+       *
+       * Esto mantiene compatibilidad con el dashboard actual.
+       */
+      if (!extraEncontrado) {
         const {
-          data: extraRes,
-          error: extraError
+          data: factura,
+          error: facturaError
         } = await supabase
-          .from("extras")
+          .from("facturas")
           .select("*")
           .eq("id", id)
           .maybeSingle();
 
-        if (extraError) {
-          throw extraError;
+        if (facturaError) {
+          throw facturaError;
         }
 
-        if (extraRes) {
-          data = extraRes;
-          setOrigenTabla("extras");
+        if (factura) {
+          facturaEncontrada = factura;
+
+          /*
+           * La factura ya tiene que tener su extra asociado.
+           *
+           * IMPORTANTE:
+           * NO hacemos INSERT aquí.
+           */
+          const {
+            data: extraPorFactura,
+            error: extraPorFacturaError
+          } = await supabase
+            .from("extras")
+            .select("*")
+            .eq("factura_id", factura.id)
+            .order("creado_en", {
+              ascending: false
+            })
+            .limit(1)
+            .maybeSingle();
+
+          if (extraPorFacturaError) {
+            throw extraPorFacturaError;
+          }
+
+          if (extraPorFactura) {
+            extraEncontrado = extraPorFactura;
+          }
         }
       }
 
-      if (!data) {
-        setError("No se encontró el trabajo extra.");
-        return;
+      /*
+       * ============================================================
+       * PASO 3
+       * ============================================================
+       *
+       * Si después de los dos métodos no hay extra, mostramos el
+       * error real. Nunca creamos uno nuevo desde esta pantalla.
+       */
+      if (!extraEncontrado) {
+        throw new Error(
+          "No se encontró el extra asociado a este trabajo. No se ha creado ningún extra nuevo para evitar duplicados."
+        );
       }
 
-      setExtraData(data);
+      setExtraData(extraEncontrado);
+      setFacturaData(facturaEncontrada);
 
       setDescripcion(
-        data.descripcion ||
-          data.concepto ||
+        extraEncontrado.descripcion ||
+          extraEncontrado.concepto ||
+          facturaEncontrada?.descripcion ||
+          facturaEncontrada?.concepto ||
           ""
       );
 
       setMateriales(
-        data.materiales || ""
+        extraEncontrado.materiales || ""
       );
 
       setTiempo(
-        data.tiempo_empleado || ""
+        extraEncontrado.tiempo_empleado || ""
       );
 
       setAlerta(
-        Boolean(data.alerta)
+        Boolean(extraEncontrado.alerta)
       );
 
-      if (Array.isArray(data.fotos)) {
-        setFotos(data.fotos);
-      } else if (typeof data.fotos === "string") {
+      /*
+       * Las fotos pueden venir como array o como JSON/string.
+       */
+      if (Array.isArray(extraEncontrado.fotos)) {
+        setFotos(extraEncontrado.fotos);
+      } else if (
+        typeof extraEncontrado.fotos === "string"
+      ) {
         try {
-          const parsed = JSON.parse(data.fotos);
+          const parsed = JSON.parse(
+            extraEncontrado.fotos
+          );
 
           if (Array.isArray(parsed)) {
             setFotos(parsed);
+          } else if (
+            extraEncontrado.fotos.trim()
+          ) {
+            setFotos([
+              extraEncontrado.fotos
+            ]);
           }
         } catch {
-          if (data.fotos.trim()) {
-            setFotos([data.fotos]);
+          if (extraEncontrado.fotos.trim()) {
+            setFotos([
+              extraEncontrado.fotos
+            ]);
           }
         }
       }
     } catch (err) {
       console.error(
-        "Error al cargar extra:",
+        "Error al cargar el trabajo extra:",
         err
       );
 
       setError(
-        "Error al cargar los datos del trabajo."
+        err?.message ||
+          "Error al cargar los datos del trabajo extra."
       );
     } finally {
       setLoading(false);
@@ -169,13 +287,13 @@ export default function TecnicoInspeccionExtra() {
 
         if (uploadError) {
           console.error(
-            "Error al subir imagen a Supabase Storage:",
+            "Error al subir imagen:",
             uploadError
           );
 
           throw new Error(
             uploadError.message ||
-              "Error en storage"
+              "Error al subir la imagen."
           );
         }
 
@@ -196,6 +314,7 @@ export default function TecnicoInspeccionExtra() {
       }
 
       setFotos(nuevasUrls);
+
       setMensaje(
         "¡Fotos subidas con éxito!"
       );
@@ -207,7 +326,7 @@ export default function TecnicoInspeccionExtra() {
 
       setError(
         `No se pudieron subir las fotos (${
-          err.message ||
+          err?.message ||
           "Error de red o permisos"
         }).`
       );
@@ -219,9 +338,9 @@ export default function TecnicoInspeccionExtra() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!extraData || !extraData.id) {
-      alert(
-        "Error: Los datos aún no se han cargado correctamente."
+    if (!extraData?.id) {
+      setError(
+        "No hay un extra válido para actualizar."
       );
       return;
     }
@@ -231,75 +350,89 @@ export default function TecnicoInspeccionExtra() {
       setError("");
       setMensaje("");
 
-      const updatePayload = {
-        descripcion: descripcion,
-        materiales: materiales || null,
-        tiempo_empleado: tiempo || null,
+      /*
+       * ============================================================
+       * ACTUALIZAMOS ÚNICAMENTE EL EXTRA EXISTENTE
+       * ============================================================
+       *
+       * No se crea ningún registro nuevo.
+       *
+       * No tocamos:
+       * - precio
+       * - IVA
+       * - total
+       * - factura
+       * - Stripe
+       * - FacturaDirecta
+       */
+      const extraPayload = {
+        descripcion:
+          descripcion ||
+          extraData.descripcion ||
+          "Trabajo extra",
+
+        materiales:
+          materiales || null,
+
+        tiempo_empleado:
+          tiempo || null,
+
         fotos: fotos,
-        estado_tecnico: "completado",
-        alerta: alerta
+
+        estado_tecnico:
+          "completado",
+
+        estado_admin:
+          "pendiente",
+
+        alerta:
+          alerta
       };
 
       if (alerta) {
-        updatePayload.alerta_vista = false;
+        extraPayload.alerta_vista = false;
+      }
+
+      const {
+        data: extraActualizado,
+        error: extraUpdateError
+      } = await supabase
+        .from("extras")
+        .update(extraPayload)
+        .eq("id", extraData.id)
+        .select("*")
+        .maybeSingle();
+
+      if (extraUpdateError) {
+        throw extraUpdateError;
       }
 
       /*
-       * CASO 1:
-       * La pantalla se abrió desde una factura.
+       * Si RLS impide actualizar el registro, Supabase puede no
+       * devolver error pero tampoco devolver la fila.
        *
-       * La factura YA tiene que tener su extra creado.
-       *
-       * NO insertamos ningún extra nuevo.
-       * Buscamos el existente por factura_id y actualizamos
-       * exactamente ese registro.
+       * Lo detectamos explícitamente para no decir al usuario
+       * que se ha guardado algo que realmente no se guardó.
        */
-      if (origenTabla === "facturas") {
-        const {
-          data: extraExistente,
-          error: extraLookupError
-        } = await supabase
-          .from("extras")
-          .select("*")
-          .eq(
-            "factura_id",
-            extraData.id
-          )
-          .order(
-            "creado_en",
-            {
-              ascending: false
-            }
-          )
-          .limit(1)
-          .maybeSingle();
+      if (!extraActualizado) {
+        throw new Error(
+          "El extra existe, pero no se ha podido actualizar con la sesión actual del técnico. Comprueba que el técnico esté correctamente asignado a este extra."
+        );
+      }
 
-        if (extraLookupError) {
-          throw extraLookupError;
-        }
-
-        /*
-         * Si no existe, NO creamos uno aquí.
-         *
-         * Esto evita duplicados y deja claro que el problema
-         * está en la creación/asignación inicial del extra.
-         */
-        if (!extraExistente?.id) {
-          throw new Error(
-            "No se encontró el extra asociado a esta factura. No se ha creado ningún extra nuevo para evitar duplicados."
-          );
-        }
-
-        /*
-         * Actualizamos el mismo extra.
-         */
-        const extraPayload = {
+      /*
+       * Mantenemos también los datos técnicos de la factura,
+       * como hacía el flujo anterior.
+       *
+       * NO modificamos ningún dato económico.
+       */
+      if (facturaData?.id) {
+        const facturaPayload = {
           descripcion:
             descripcion ||
-            extraExistente.descripcion ||
-            extraData.descripcion ||
-            extraData.concepto ||
-            "Trabajo extra",
+            facturaData.descripcion ||
+            facturaData.concepto ||
+            null,
 
           materiales:
             materiales || null,
@@ -313,109 +446,40 @@ export default function TecnicoInspeccionExtra() {
           estado_tecnico:
             "completado",
 
-          estado_admin:
-            "pendiente",
-
           alerta:
             alerta
         };
 
         if (alerta) {
-          extraPayload.alerta_vista = false;
+          facturaPayload.alerta_vista = false;
         }
 
-        const {
-          error: extraUpdateError
-        } = await supabase
-          .from("extras")
-          .update(extraPayload)
-          .eq(
-            "id",
-            extraExistente.id
-          );
-
-        if (extraUpdateError) {
-          throw extraUpdateError;
-        }
-
-        /*
-         * Mantenemos la actualización de la factura que ya
-         * existía en el flujo del técnico.
-         *
-         * NO modificamos:
-         * - precio
-         * - base
-         * - IVA
-         * - total
-         * - numero de factura
-         * - PDF
-         * - FacturaDirecta
-         * - Stripe
-         */
         const {
           error: facturaUpdateError
         } = await supabase
           .from("facturas")
-          .update(updatePayload)
-          .eq(
-            "id",
-            extraData.id
-          );
+          .update(facturaPayload)
+          .eq("id", facturaData.id);
 
         if (facturaUpdateError) {
           throw facturaUpdateError;
         }
-
-      } else {
-        /*
-         * CASO 2:
-         * La pantalla se abrió directamente desde un registro
-         * existente de extras.
-         *
-         * También actualizamos el mismo registro.
-         * Nunca insertamos otro.
-         */
-        const extraPayload = {
-          ...updatePayload,
-          estado_admin: "pendiente"
-        };
-
-        const {
-          error: extraUpdateError
-        } = await supabase
-          .from("extras")
-          .update(extraPayload)
-          .eq(
-            "id",
-            extraData.id
-          );
-
-        if (extraUpdateError) {
-          throw extraUpdateError;
-        }
       }
 
-      /*
-       * El técnico termina su trabajo y lo entrega al
-       * administrador.
-       *
-       * NO se envía directamente al cliente desde aquí.
-       */
       alert(
         "Inspección enviada correctamente al administrador."
       );
 
       navigate("/tecnico");
-
     } catch (err) {
       console.error(
-        "Error al guardar:",
+        "Error al enviar la inspección:",
         err
       );
 
       setError(
         "Error al enviar la inspección: " +
-        (err.message || "")
+          (err?.message || "")
       );
     } finally {
       setSaving(false);
@@ -569,30 +633,40 @@ export default function TecnicoInspeccionExtra() {
                   color: COLOR_DORADO
                 }}
               >
-                Ref:
-              </strong>{" "}
-              {extraData.numero ||
-                extraData.codigo ||
-                `#${extraData.id}`}
-            </p>
-
-            <p
-              style={{
-                fontSize: "12px",
-                margin: "4px 0 0 0",
-                color: "#ccc"
-              }}
-            >
-              <strong
-                style={{
-                  color: COLOR_DORADO
-                }}
-              >
-                Concepto inicial:
+                Extra:
               </strong>{" "}
               {extraData.descripcion ||
                 extraData.concepto ||
-                "Sin descripción previa"}
+                "Trabajo extra"}
+            </p>
+
+            {facturaData?.id && (
+              <p
+                style={{
+                  fontSize: "12px",
+                  margin: "4px 0",
+                  color: "#ccc"
+                }}
+              >
+                <strong
+                  style={{
+                    color: COLOR_DORADO
+                  }}
+                >
+                  Factura:
+                </strong>{" "}
+                #{facturaData.id}
+              </p>
+            )}
+
+            <p
+              style={{
+                fontSize: "11px",
+                margin: "6px 0 0",
+                color: "#777"
+              }}
+            >
+              ID extra: {extraData.id}
             </p>
           </div>
         )}
@@ -680,7 +754,7 @@ export default function TecnicoInspeccionExtra() {
               <img
                 key={index}
                 src={url}
-                alt={`Evidencia ${index}`}
+                alt={`Evidencia ${index + 1}`}
                 style={{
                   width: "60px",
                   height: "60px",
