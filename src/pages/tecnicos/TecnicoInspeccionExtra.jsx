@@ -6,7 +6,9 @@ const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
 const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
 const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
-const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const SOMBRA_LUXURY =
+  "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+
 const TEXTO_DORADO_BRILLO = {
   color: COLOR_DORADO,
   textShadow: "0 0 12px rgba(224, 176, 52, 0.6)"
@@ -19,15 +21,15 @@ export default function TecnicoInspeccionExtra() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [extraData, setExtraData] = useState(null);
-  const [origenTabla, setOrigenTabla] = useState('facturas');
+  const [origenTabla, setOrigenTabla] = useState("facturas");
 
-  const [descripcion, setDescripcion] = useState('');
-  const [materiales, setMateriales] = useState('');
-  const [tiempo, setTiempo] = useState('');
+  const [descripcion, setDescripcion] = useState("");
+  const [materiales, setMateriales] = useState("");
+  const [tiempo, setTiempo] = useState("");
   const [alerta, setAlerta] = useState(false);
   const [fotos, setFotos] = useState([]);
-  const [mensaje, setMensaje] = useState('');
-  const [error, setError] = useState('');
+  const [mensaje, setMensaje] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     cargarDetalleExtra();
@@ -36,21 +38,28 @@ export default function TecnicoInspeccionExtra() {
   const cargarDetalleExtra = async () => {
     try {
       setLoading(true);
-      setError('');
+      setError("");
 
-      let { data } = await supabase
-        .from('facturas')
-        .select('*')
-        .eq('id', id)
+      let { data, error: facturaError } = await supabase
+        .from("facturas")
+        .select("*")
+        .eq("id", id)
         .maybeSingle();
 
+      if (facturaError) {
+        throw facturaError;
+      }
+
       if (data) {
-        setOrigenTabla('facturas');
+        setOrigenTabla("facturas");
       } else {
-        const { data: extraRes, error: extraError } = await supabase
-          .from('extras')
-          .select('*')
-          .eq('id', id)
+        const {
+          data: extraRes,
+          error: extraError
+        } = await supabase
+          .from("extras")
+          .select("*")
+          .eq("id", id)
           .maybeSingle();
 
         if (extraError) {
@@ -59,38 +68,59 @@ export default function TecnicoInspeccionExtra() {
 
         if (extraRes) {
           data = extraRes;
-          setOrigenTabla('extras');
+          setOrigenTabla("extras");
         }
       }
 
-      if (data) {
-        setExtraData(data);
-        setDescripcion(data.descripcion || data.concepto || '');
-        setMateriales(data.materiales || '');
-        setTiempo(data.tiempo_empleado || '');
-        setAlerta(Boolean(data.alerta));
+      if (!data) {
+        setError("No se encontró el trabajo extra.");
+        return;
+      }
 
-        if (Array.isArray(data.fotos)) {
-          setFotos(data.fotos);
-        } else if (typeof data.fotos === 'string') {
-          try {
-            const parsed = JSON.parse(data.fotos);
+      setExtraData(data);
 
-            if (Array.isArray(parsed)) {
-              setFotos(parsed);
-            }
-          } catch {
-            if (data.fotos.trim()) {
-              setFotos([data.fotos]);
-            }
+      setDescripcion(
+        data.descripcion ||
+          data.concepto ||
+          ""
+      );
+
+      setMateriales(
+        data.materiales || ""
+      );
+
+      setTiempo(
+        data.tiempo_empleado || ""
+      );
+
+      setAlerta(
+        Boolean(data.alerta)
+      );
+
+      if (Array.isArray(data.fotos)) {
+        setFotos(data.fotos);
+      } else if (typeof data.fotos === "string") {
+        try {
+          const parsed = JSON.parse(data.fotos);
+
+          if (Array.isArray(parsed)) {
+            setFotos(parsed);
+          }
+        } catch {
+          if (data.fotos.trim()) {
+            setFotos([data.fotos]);
           }
         }
-      } else {
-        setError('No se encontró el trabajo extra.');
       }
     } catch (err) {
-      console.error('Error al cargar extra:', err);
-      setError('Error al cargar los datos del trabajo.');
+      console.error(
+        "Error al cargar extra:",
+        err
+      );
+
+      setError(
+        "Error al cargar los datos del trabajo."
+      );
     } finally {
       setLoading(false);
     }
@@ -99,12 +129,14 @@ export default function TecnicoInspeccionExtra() {
   const manejarSubidaFotos = async (e) => {
     const files = e.target.files;
 
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0) {
+      return;
+    }
 
     try {
       setSaving(true);
-      setError('');
-      setMensaje('');
+      setError("");
+      setMensaje("");
 
       const nuevasUrls = [...fotos];
 
@@ -113,23 +145,27 @@ export default function TecnicoInspeccionExtra() {
 
         const cleanFileName = file.name.replace(
           /[^a-zA-Z0-9.]/g,
-          '_'
+          "_"
         );
 
         const fileName =
-          `${Date.now()}_${Math.floor(Math.random() * 1000)}_${cleanFileName}`;
+          `${Date.now()}_${Math.floor(
+            Math.random() * 1000
+          )}_${cleanFileName}`;
 
-        const { data: uploadData, error: uploadError } =
-          await supabase.storage
-            .from('extras')
-            .upload(
-              fileName,
-              file,
-              {
-                cacheControl: '3600',
-                upsert: true
-              }
-            );
+        const {
+          data: uploadData,
+          error: uploadError
+        } = await supabase.storage
+          .from("extras")
+          .upload(
+            fileName,
+            file,
+            {
+              cacheControl: "3600",
+              upsert: true
+            }
+          );
 
         if (uploadError) {
           console.error(
@@ -138,16 +174,19 @@ export default function TecnicoInspeccionExtra() {
           );
 
           throw new Error(
-            uploadError.message || "Error en storage"
+            uploadError.message ||
+              "Error en storage"
           );
         }
 
-        const { data: publicUrlData } =
-          supabase.storage
-            .from('extras')
-            .getPublicUrl(
-              uploadData?.path || fileName
-            );
+        const {
+          data: publicUrlData
+        } = supabase.storage
+          .from("extras")
+          .getPublicUrl(
+            uploadData?.path ||
+              fileName
+          );
 
         if (publicUrlData?.publicUrl) {
           nuevasUrls.push(
@@ -157,15 +196,20 @@ export default function TecnicoInspeccionExtra() {
       }
 
       setFotos(nuevasUrls);
-      setMensaje('¡Fotos subidas con éxito!');
+      setMensaje(
+        "¡Fotos subidas con éxito!"
+      );
     } catch (err) {
       console.error(
-        'Error detallado al subir fotos:',
+        "Error detallado al subir fotos:",
         err
       );
 
       setError(
-        `No se pudieron subir las fotos (${err.message || 'Error de red o permisos'}).`
+        `No se pudieron subir las fotos (${
+          err.message ||
+          "Error de red o permisos"
+        }).`
       );
     } finally {
       setSaving(false);
@@ -184,15 +228,15 @@ export default function TecnicoInspeccionExtra() {
 
     try {
       setSaving(true);
-      setError('');
-      setMensaje('');
+      setError("");
+      setMensaje("");
 
       const updatePayload = {
         descripcion: descripcion,
         materiales: materiales || null,
         tiempo_empleado: tiempo || null,
         fotos: fotos,
-        estado_tecnico: 'completado',
+        estado_tecnico: "completado",
         alerta: alerta
       };
 
@@ -201,26 +245,32 @@ export default function TecnicoInspeccionExtra() {
       }
 
       /*
-       * Cuando esta pantalla se abre desde una factura:
+       * CASO 1:
+       * La pantalla se abrió desde una factura.
        *
-       * - NO creamos un nuevo extra.
-       * - Buscamos el extra que ya pertenece a esa factura.
-       * - Actualizamos ese mismo registro.
+       * La factura YA tiene que tener su extra creado.
        *
-       * De esta forma el administrador continúa trabajando
-       * sobre el mismo extra que originó el trabajo.
+       * NO insertamos ningún extra nuevo.
+       * Buscamos el existente por factura_id y actualizamos
+       * exactamente ese registro.
        */
-      if (origenTabla === 'facturas') {
+      if (origenTabla === "facturas") {
         const {
           data: extraExistente,
           error: extraLookupError
         } = await supabase
-          .from('extras')
-          .select('*')
-          .eq('factura_id', extraData.id)
-          .order('created_at', {
-            ascending: false
-          })
+          .from("extras")
+          .select("*")
+          .eq(
+            "factura_id",
+            extraData.id
+          )
+          .order(
+            "creado_en",
+            {
+              ascending: false
+            }
+          )
           .limit(1)
           .maybeSingle();
 
@@ -228,19 +278,28 @@ export default function TecnicoInspeccionExtra() {
           throw extraLookupError;
         }
 
+        /*
+         * Si no existe, NO creamos uno aquí.
+         *
+         * Esto evita duplicados y deja claro que el problema
+         * está en la creación/asignación inicial del extra.
+         */
         if (!extraExistente?.id) {
           throw new Error(
-            'No se encontró el extra asociado a esta factura. No se ha creado ningún extra nuevo para evitar duplicados.'
+            "No se encontró el extra asociado a esta factura. No se ha creado ningún extra nuevo para evitar duplicados."
           );
         }
 
+        /*
+         * Actualizamos el mismo extra.
+         */
         const extraPayload = {
           descripcion:
             descripcion ||
             extraExistente.descripcion ||
             extraData.descripcion ||
             extraData.concepto ||
-            'Trabajo extra',
+            "Trabajo extra",
 
           materiales:
             materiales || null,
@@ -252,10 +311,10 @@ export default function TecnicoInspeccionExtra() {
             fotos,
 
           estado_tecnico:
-            'completado',
+            "completado",
 
           estado_admin:
-            'pendiente',
+            "pendiente",
 
           alerta:
             alerta
@@ -268,28 +327,40 @@ export default function TecnicoInspeccionExtra() {
         const {
           error: extraUpdateError
         } = await supabase
-          .from('extras')
+          .from("extras")
           .update(extraPayload)
-          .eq('id', extraExistente.id);
+          .eq(
+            "id",
+            extraExistente.id
+          );
 
         if (extraUpdateError) {
           throw extraUpdateError;
         }
 
         /*
-         * Conservamos también la actualización existente
-         * de la factura porque otras partes de la aplicación
-         * utilizan estos campos.
+         * Mantenemos la actualización de la factura que ya
+         * existía en el flujo del técnico.
          *
-         * NO se toca precio, base, IVA, total ni ningún dato
-         * de facturación.
+         * NO modificamos:
+         * - precio
+         * - base
+         * - IVA
+         * - total
+         * - numero de factura
+         * - PDF
+         * - FacturaDirecta
+         * - Stripe
          */
         const {
           error: facturaUpdateError
         } = await supabase
-          .from('facturas')
+          .from("facturas")
           .update(updatePayload)
-          .eq('id', extraData.id);
+          .eq(
+            "id",
+            extraData.id
+          );
 
         if (facturaUpdateError) {
           throw facturaUpdateError;
@@ -297,22 +368,27 @@ export default function TecnicoInspeccionExtra() {
 
       } else {
         /*
-         * Compatibilidad si la pantalla se abre directamente
-         * desde un registro de extras.
+         * CASO 2:
+         * La pantalla se abrió directamente desde un registro
+         * existente de extras.
          *
-         * Se actualiza el mismo registro, nunca se crea otro.
+         * También actualizamos el mismo registro.
+         * Nunca insertamos otro.
          */
         const extraPayload = {
           ...updatePayload,
-          estado_admin: 'pendiente'
+          estado_admin: "pendiente"
         };
 
         const {
           error: extraUpdateError
         } = await supabase
-          .from('extras')
+          .from("extras")
           .update(extraPayload)
-          .eq('id', extraData.id);
+          .eq(
+            "id",
+            extraData.id
+          );
 
         if (extraUpdateError) {
           throw extraUpdateError;
@@ -320,27 +396,26 @@ export default function TecnicoInspeccionExtra() {
       }
 
       /*
-       * IMPORTANTE:
-       * El técnico NO envía directamente al cliente.
+       * El técnico termina su trabajo y lo entrega al
+       * administrador.
        *
-       * El administrador revisará el trabajo y posteriormente
-       * utilizará el botón existente de VerFactura.
+       * NO se envía directamente al cliente desde aquí.
        */
       alert(
-        'Inspección enviada correctamente al administrador.'
+        "Inspección enviada correctamente al administrador."
       );
 
-      navigate('/tecnico');
+      navigate("/tecnico");
 
     } catch (err) {
       console.error(
-        'Error al guardar:',
+        "Error al guardar:",
         err
       );
 
       setError(
-        'Error al enviar la inspección: ' +
-        (err.message || '')
+        "Error al enviar la inspección: " +
+        (err.message || "")
       );
     } finally {
       setSaving(false);
@@ -352,11 +427,11 @@ export default function TecnicoInspeccionExtra() {
       <div
         style={{
           backgroundColor: FONDO_PRINCIPAL,
-          minHeight: '100vh',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          fontFamily: 'Inter, sans-serif'
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          fontFamily: "Inter, sans-serif"
         }}
       >
         <h3 style={TEXTO_DORADO_BRILLO}>
@@ -370,50 +445,52 @@ export default function TecnicoInspeccionExtra() {
     <div
       style={{
         backgroundColor: FONDO_PRINCIPAL,
-        minHeight: '100vh',
-        padding: '16px',
-        display: 'flex',
-        justifyContent: 'center',
-        fontFamily: 'Inter, sans-serif',
-        boxSizing: 'border-box'
+        minHeight: "100vh",
+        padding: "16px",
+        display: "flex",
+        justifyContent: "center",
+        fontFamily: "Inter, sans-serif",
+        boxSizing: "border-box"
       }}
     >
       <div
         style={{
-          width: '100%',
-          maxWidth: '480px',
+          width: "100%",
+          maxWidth: "480px",
           background: FONDO_TARJETA,
           border: BORDE_DORADO_FINO,
-          borderRadius: '16px',
-          padding: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
+          borderRadius: "16px",
+          padding: "20px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
           boxShadow: SOMBRA_LUXURY,
-          boxSizing: 'border-box'
+          boxSizing: "border-box"
         }}
       >
         <div
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
             borderBottom: BORDE_DORADO_FINO,
-            paddingBottom: '14px'
+            paddingBottom: "14px"
           }}
         >
           <button
             type="button"
-            onClick={() => navigate('/tecnico')}
+            onClick={() =>
+              navigate("/tecnico")
+            }
             style={{
-              background: 'transparent',
+              background: "transparent",
               border: BORDE_DORADO_FINO,
               color: COLOR_DORADO,
-              padding: '6px 12px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: '700'
+              padding: "6px 12px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontSize: "11px",
+              fontWeight: "700"
             }}
           >
             ← Volver
@@ -422,10 +499,10 @@ export default function TecnicoInspeccionExtra() {
           <h2
             style={{
               ...TEXTO_DORADO_BRILLO,
-              fontSize: '18px',
-              fontWeight: '900',
+              fontSize: "18px",
+              fontWeight: "900",
               margin: 0,
-              textTransform: 'uppercase'
+              textTransform: "uppercase"
             }}
           >
             Inspección de Extra
@@ -436,15 +513,15 @@ export default function TecnicoInspeccionExtra() {
           <div
             style={{
               backgroundColor:
-                'rgba(16, 185, 129, 0.15)',
+                "rgba(16, 185, 129, 0.15)",
               border:
-                '1px solid rgba(16, 185, 129, 0.4)',
-              padding: '12px',
-              borderRadius: '10px',
-              fontSize: '12px',
-              fontWeight: '700',
-              color: '#34d399',
-              textAlign: 'center'
+                "1px solid rgba(16, 185, 129, 0.4)",
+              padding: "12px",
+              borderRadius: "10px",
+              fontSize: "12px",
+              fontWeight: "700",
+              color: "#34d399",
+              textAlign: "center"
             }}
           >
             {mensaje}
@@ -455,15 +532,15 @@ export default function TecnicoInspeccionExtra() {
           <div
             style={{
               backgroundColor:
-                'rgba(239, 68, 68, 0.15)',
+                "rgba(239, 68, 68, 0.15)",
               border:
-                '1px solid rgba(239, 68, 68, 0.4)',
-              padding: '12px',
-              borderRadius: '10px',
-              fontSize: '12px',
-              fontWeight: '700',
-              color: '#ef4444',
-              textAlign: 'center'
+                "1px solid rgba(239, 68, 68, 0.4)",
+              padding: "12px",
+              borderRadius: "10px",
+              fontSize: "12px",
+              fontWeight: "700",
+              color: "#ef4444",
+              textAlign: "center"
             }}
           >
             {error}
@@ -474,17 +551,17 @@ export default function TecnicoInspeccionExtra() {
           <div
             style={{
               backgroundColor:
-                'rgba(11, 19, 32, 0.9)',
-              padding: '14px',
-              borderRadius: '12px',
+                "rgba(11, 19, 32, 0.9)",
+              padding: "14px",
+              borderRadius: "12px",
               border: BORDE_DORADO_FINO
             }}
           >
             <p
               style={{
-                fontSize: '12px',
-                margin: '4px 0',
-                color: '#ccc'
+                fontSize: "12px",
+                margin: "4px 0",
+                color: "#ccc"
               }}
             >
               <strong
@@ -493,7 +570,7 @@ export default function TecnicoInspeccionExtra() {
                 }}
               >
                 Ref:
-              </strong>{' '}
+              </strong>{" "}
               {extraData.numero ||
                 extraData.codigo ||
                 `#${extraData.id}`}
@@ -501,9 +578,9 @@ export default function TecnicoInspeccionExtra() {
 
             <p
               style={{
-                fontSize: '12px',
-                margin: '4px 0 0 0',
-                color: '#ccc'
+                fontSize: "12px",
+                margin: "4px 0 0 0",
+                color: "#ccc"
               }}
             >
               <strong
@@ -512,36 +589,36 @@ export default function TecnicoInspeccionExtra() {
                 }}
               >
                 Concepto inicial:
-              </strong>{' '}
+              </strong>{" "}
               {extraData.descripcion ||
                 extraData.concepto ||
-                'Sin descripción previa'}
+                "Sin descripción previa"}
             </p>
           </div>
         )}
 
         <div
           style={{
-            display: 'flex',
-            gap: '10px'
+            display: "flex",
+            gap: "10px"
           }}
         >
           <label
             style={{
               flex: 1,
-              textAlign: 'center',
+              textAlign: "center",
               background:
-                'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
-              color: '#fff',
-              padding: '12px',
-              borderRadius: '12px',
-              fontWeight: '900',
-              fontSize: '12px',
-              cursor: 'pointer',
+                "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
+              color: "#fff",
+              padding: "12px",
+              borderRadius: "12px",
+              fontWeight: "900",
+              fontSize: "12px",
+              cursor: "pointer",
               border: BORDE_DORADO_FINO,
               boxShadow:
-                '0 4px 15px rgba(245, 158, 11, 0.3)',
-              textTransform: 'uppercase'
+                "0 4px 15px rgba(245, 158, 11, 0.3)",
+              textTransform: "uppercase"
             }}
           >
             📸 Hacer Foto
@@ -553,7 +630,7 @@ export default function TecnicoInspeccionExtra() {
               onChange={manejarSubidaFotos}
               disabled={saving}
               style={{
-                display: 'none'
+                display: "none"
               }}
             />
           </label>
@@ -561,19 +638,19 @@ export default function TecnicoInspeccionExtra() {
           <label
             style={{
               flex: 1,
-              textAlign: 'center',
+              textAlign: "center",
               background:
-                'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)',
-              color: '#fff',
-              padding: '12px',
-              borderRadius: '12px',
-              fontWeight: '900',
-              fontSize: '12px',
-              cursor: 'pointer',
+                "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
+              color: "#fff",
+              padding: "12px",
+              borderRadius: "12px",
+              fontWeight: "900",
+              fontSize: "12px",
+              cursor: "pointer",
               border: BORDE_DORADO_FINO,
               boxShadow:
-                '0 4px 15px rgba(56, 189, 248, 0.3)',
-              textTransform: 'uppercase'
+                "0 4px 15px rgba(56, 189, 248, 0.3)",
+              textTransform: "uppercase"
             }}
           >
             🖼️ Galería
@@ -585,7 +662,7 @@ export default function TecnicoInspeccionExtra() {
               onChange={manejarSubidaFotos}
               disabled={saving}
               style={{
-                display: 'none'
+                display: "none"
               }}
             />
           </label>
@@ -594,9 +671,9 @@ export default function TecnicoInspeccionExtra() {
         {fotos.length > 0 && (
           <div
             style={{
-              display: 'flex',
-              gap: '8px',
-              flexWrap: 'wrap'
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap"
             }}
           >
             {fotos.map((url, index) => (
@@ -605,10 +682,10 @@ export default function TecnicoInspeccionExtra() {
                 src={url}
                 alt={`Evidencia ${index}`}
                 style={{
-                  width: '60px',
-                  height: '60px',
-                  objectFit: 'cover',
-                  borderRadius: '8px',
+                  width: "60px",
+                  height: "60px",
+                  objectFit: "cover",
+                  borderRadius: "8px",
                   border: BORDE_DORADO_FINO
                 }}
               />
@@ -619,52 +696,54 @@ export default function TecnicoInspeccionExtra() {
         <form
           onSubmit={handleSubmit}
           style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px'
+            display: "flex",
+            flexDirection: "column",
+            gap: "14px"
           }}
         >
           <div
             style={{
               background:
-                'rgba(11, 19, 32, 0.9)',
-              padding: '12px 14px',
-              borderRadius: '12px',
+                "rgba(11, 19, 32, 0.9)",
+              padding: "12px 14px",
+              borderRadius: "12px",
               border: BORDE_DORADO_FINO,
-              display: 'flex',
-              alignItems: 'center'
+              display: "flex",
+              alignItems: "center"
             }}
           >
             <label
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                cursor: 'pointer',
-                width: '100%'
+                display: "flex",
+                alignItems: "center",
+                cursor: "pointer",
+                width: "100%"
               }}
             >
               <input
                 type="checkbox"
                 checked={alerta}
                 onChange={(e) =>
-                  setAlerta(e.target.checked)
+                  setAlerta(
+                    e.target.checked
+                  )
                 }
                 style={{
-                  width: '20px',
-                  height: '20px',
-                  marginRight: '12px',
-                  cursor: 'pointer',
-                  accentColor: '#ef4444'
+                  width: "20px",
+                  height: "20px",
+                  marginRight: "12px",
+                  cursor: "pointer",
+                  accentColor: "#ef4444"
                 }}
               />
 
               <span
                 style={{
-                  fontSize: '13px',
-                  color: '#ef4444',
-                  fontWeight: '800',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.3px'
+                  fontSize: "13px",
+                  color: "#ef4444",
+                  fontWeight: "800",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.3px"
                 }}
               >
                 ⚠️ Marcar como ALERTA / Urgencia importante
@@ -674,17 +753,17 @@ export default function TecnicoInspeccionExtra() {
 
           <div
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px'
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
             }}
           >
             <label
               style={{
-                fontSize: '12px',
+                fontSize: "12px",
                 color: COLOR_DORADO,
-                fontWeight: '700',
-                textTransform: 'uppercase'
+                fontWeight: "700",
+                textTransform: "uppercase"
               }}
             >
               Descripción del trabajo realizado:
@@ -693,20 +772,22 @@ export default function TecnicoInspeccionExtra() {
             <textarea
               style={{
                 backgroundColor:
-                  'rgba(11, 19, 32, 0.8)',
+                  "rgba(11, 19, 32, 0.8)",
                 border: BORDE_DORADO_FINO,
-                borderRadius: '12px',
-                padding: '12px',
-                color: '#fff',
-                fontSize: '13px',
-                resize: 'vertical',
-                outline: 'none',
-                boxSizing: 'border-box'
+                borderRadius: "12px",
+                padding: "12px",
+                color: "#fff",
+                fontSize: "13px",
+                resize: "vertical",
+                outline: "none",
+                boxSizing: "border-box"
               }}
               rows="4"
               value={descripcion}
               onChange={(e) =>
-                setDescripcion(e.target.value)
+                setDescripcion(
+                  e.target.value
+                )
               }
               placeholder="Detalla qué se ha reparado o revisado..."
               required
@@ -715,17 +796,17 @@ export default function TecnicoInspeccionExtra() {
 
           <div
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px'
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
             }}
           >
             <label
               style={{
-                fontSize: '12px',
+                fontSize: "12px",
                 color: COLOR_DORADO,
-                fontWeight: '700',
-                textTransform: 'uppercase'
+                fontWeight: "700",
+                textTransform: "uppercase"
               }}
             >
               Materiales usados:
@@ -735,18 +816,20 @@ export default function TecnicoInspeccionExtra() {
               type="text"
               style={{
                 backgroundColor:
-                  'rgba(11, 19, 32, 0.8)',
+                  "rgba(11, 19, 32, 0.8)",
                 border: BORDE_DORADO_FINO,
-                borderRadius: '12px',
-                padding: '12px',
-                color: '#fff',
-                fontSize: '13px',
-                outline: 'none',
-                boxSizing: 'border-box'
+                borderRadius: "12px",
+                padding: "12px",
+                color: "#fff",
+                fontSize: "13px",
+                outline: "none",
+                boxSizing: "border-box"
               }}
               value={materiales}
               onChange={(e) =>
-                setMateriales(e.target.value)
+                setMateriales(
+                  e.target.value
+                )
               }
               placeholder="Ej: Tubo de PVC, silicona, tornillos..."
             />
@@ -754,17 +837,17 @@ export default function TecnicoInspeccionExtra() {
 
           <div
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px'
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
             }}
           >
             <label
               style={{
-                fontSize: '12px',
+                fontSize: "12px",
                 color: COLOR_DORADO,
-                fontWeight: '700',
-                textTransform: 'uppercase'
+                fontWeight: "700",
+                textTransform: "uppercase"
               }}
             >
               Tiempo empleado:
@@ -774,18 +857,20 @@ export default function TecnicoInspeccionExtra() {
               type="text"
               style={{
                 backgroundColor:
-                  'rgba(11, 19, 32, 0.8)',
+                  "rgba(11, 19, 32, 0.8)",
                 border: BORDE_DORADO_FINO,
-                borderRadius: '12px',
-                padding: '12px',
-                color: '#fff',
-                fontSize: '13px',
-                outline: 'none',
-                boxSizing: 'border-box'
+                borderRadius: "12px",
+                padding: "12px",
+                color: "#fff",
+                fontSize: "13px",
+                outline: "none",
+                boxSizing: "border-box"
               }}
               value={tiempo}
               onChange={(e) =>
-                setTiempo(e.target.value)
+                setTiempo(
+                  e.target.value
+                )
               }
               placeholder="Ej: 2 horas"
             />
@@ -793,47 +878,50 @@ export default function TecnicoInspeccionExtra() {
 
           <button
             type="submit"
-            disabled={saving || !extraData}
+            disabled={
+              saving || !extraData
+            }
             style={{
               background:
-                (saving || !extraData)
-                  ? 'rgba(255,255,255,0.08)'
-                  : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+                saving || !extraData
+                  ? "rgba(255,255,255,0.08)"
+                  : "linear-gradient(135deg, #10b981 0%, #047857 100%)",
 
               color:
-                (saving || !extraData)
-                  ? '#64748b'
-                  : '#fff',
+                saving || !extraData
+                  ? "#64748b"
+                  : "#fff",
 
               border:
-                (saving || !extraData)
+                saving || !extraData
                   ? BORDE_DORADO_FINO
-                  : '1px solid rgba(16, 185, 129, 0.6)',
+                  : "1px solid rgba(16, 185, 129, 0.6)",
 
-              padding: '14px',
-              borderRadius: '16px',
-              fontSize: '14px',
-              fontWeight: '900',
+              padding: "14px",
+              borderRadius: "16px",
+              fontSize: "14px",
+              fontWeight: "900",
+
               cursor:
-                (saving || !extraData)
-                  ? 'not-allowed'
-                  : 'pointer',
+                saving || !extraData
+                  ? "not-allowed"
+                  : "pointer",
 
-              marginTop: '10px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
+              marginTop: "10px",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
 
               boxShadow:
-                (saving || !extraData)
-                  ? 'none'
-                  : '0 4px 15px rgba(16, 185, 129, 0.3)',
+                saving || !extraData
+                  ? "none"
+                  : "0 4px 15px rgba(16, 185, 129, 0.3)",
 
-              transition: 'all 0.2s ease'
+              transition: "all 0.2s ease"
             }}
           >
             {saving
-              ? 'Enviando...'
-              : '✅ Enviar Inspección al Administrador'}
+              ? "Enviando..."
+              : "✅ Enviar Inspección al Administrador"}
           </button>
         </form>
       </div>
