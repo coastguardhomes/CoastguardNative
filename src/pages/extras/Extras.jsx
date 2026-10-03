@@ -30,15 +30,20 @@ export default function Extras() {
   const navigate = useNavigate();
 
   const [clientes, setClientes] = useState([]);
+  const [viviendas, setViviendas] = useState([]);
+
   const [clienteId, setClienteId] = useState("");
+  const [viviendaId, setViviendaId] = useState("");
 
   const [seleccionados, setSeleccionados] = useState([]);
   const [precios, setPrecios] = useState({});
   const [enviarEmail, setEnviarEmail] = useState(true);
+
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const [cargandoViviendas, setCargandoViviendas] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -62,25 +67,106 @@ export default function Extras() {
     }
 
     cargarClientes();
+
     return () => {
       cancelado = true;
     };
   }, []);
 
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarViviendas() {
+      setViviendaId("");
+
+      if (!clienteId) {
+        setViviendas([]);
+        return;
+      }
+
+      setCargandoViviendas(true);
+      setError("");
+
+      const { data, error: errViviendas } = await supabase
+        .from("viviendas")
+        .select("id, direccion, tecnico_id")
+        .eq("cliente_id", clienteId)
+        .order("direccion");
+
+      if (cancelado) return;
+
+      if (errViviendas) {
+        console.error("Error cargando viviendas:", errViviendas);
+        setViviendas([]);
+        setError("No se pudieron cargar las viviendas del cliente.");
+      } else {
+        setViviendas(data || []);
+
+        if ((data || []).length === 1) {
+          setViviendaId(String(data[0].id));
+        }
+      }
+
+      setCargandoViviendas(false);
+    }
+
+    cargarViviendas();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [clienteId]);
+
   const toggleExtra = (nombre) => {
     setSeleccionados((prev) =>
-      prev.includes(nombre) ? prev.filter((x) => x !== nombre) : [...prev, nombre]
+      prev.includes(nombre)
+        ? prev.filter((x) => x !== nombre)
+        : [...prev, nombre]
     );
   };
 
   const lineas = seleccionados.map((nombre) => {
     const extra = EXTRAS.find((e) => e.nombre === nombre);
-    const precio = Number(extra.precio !== null ? extra.precio : (precios[nombre] || 0));
-    return { nombre, precio };
+
+    if (!extra) {
+      return {
+        nombre,
+        precio: null
+      };
+    }
+
+    if (extra.precio !== null) {
+      return {
+        nombre,
+        precio: Number(extra.precio)
+      };
+    }
+
+    const valor = precios[nombre];
+
+    if (valor === undefined || valor === null || String(valor).trim() === "") {
+      return {
+        nombre,
+        precio: null
+      };
+    }
+
+    const numero = Number(String(valor).replace(",", "."));
+
+    return {
+      nombre,
+      precio: Number.isFinite(numero) ? numero : null
+    };
   });
 
-  // Solo base imponible pura, sin calcular IVA en el frontend para evitar duplicados
-  const totalBase = redondear(lineas.reduce((acc, l) => acc + l.precio, 0));
+  // Se mantiene exactamente como base imponible de los extras seleccionados.
+  // No se añaden características de la vivienda al precio.
+  const totalBase = redondear(
+    lineas.reduce(
+      (acc, l) => acc + (l.precio === null ? 0 : l.precio),
+      0
+    )
+  );
 
   async function siguienteNumero() {
     const { data, error: errorNum } = await supabase
@@ -90,10 +176,15 @@ export default function Extras() {
       .order("numero", { ascending: false })
       .limit(1);
 
-    if (errorNum) throw new Error(errorNum.message);
+    if (errorNum) {
+      throw new Error(errorNum.message);
+    }
 
     const ultimo = data?.[0]?.numero;
-    const n = ultimo ? parseInt(String(ultimo).replace(/\D/g, ""), 10) : 0;
+    const n = ultimo
+      ? parseInt(String(ultimo).replace(/\D/g, ""), 10)
+      : 0;
+
     const siguiente = (Number.isNaN(n) ? 0 : n) + 1;
 
     return `CG-${String(siguiente).padStart(6, "0")}`;
@@ -108,14 +199,45 @@ export default function Extras() {
       return;
     }
 
+    if (!viviendaId) {
+      setError("Selecciona la vivienda a la que corresponde el servicio.");
+      return;
+    }
+
     if (seleccionados.length === 0) {
       setError("Selecciona al menos un servicio o extra.");
       return;
     }
 
-    const sinPrecio = lineas.find((l) => l.precio === null || l.precio === undefined || Number.isNaN(l.precio) || l.precio < 0);
+    const sinPrecio = lineas.find(
+      (l) =>
+        l.precio === null ||
+        l.precio === undefined ||
+        Number.isNaN(l.precio) ||
+        !Number.isFinite(l.precio) ||
+        l.precio < 0
+    );
+
     if (sinPrecio) {
       setError(`Indica un precio válido para "${sinPrecio.nombre}".`);
+      return;
+    }
+
+    const vivienda = viviendas.find(
+      (v) => String(v.id) === String(viviendaId)
+    );
+
+    if (!vivienda) {
+      setError("No se pudo localizar la vivienda seleccionada.");
+      return;
+    }
+
+    const cliente = clientes.find(
+      (c) => String(c.id) === String(clienteId)
+    );
+
+    if (!cliente) {
+      setError("No se pudo localizar el cliente seleccionado.");
       return;
     }
 
@@ -124,50 +246,120 @@ export default function Extras() {
     try {
       const numero = await siguienteNumero();
 
-      // Guardamos la base como total o dejamos que el backend/FacturaDirecta aplique el IVA correspondiente
+      /*
+       * IMPORTANTE:
+       * El bloque de creación de la factura mantiene el mismo cálculo
+       * que el flujo actual:
+       *
+       * base = totalBase
+       * iva  = 21%
+       * total = base + IVA
+       *
+       * No se utiliza la vivienda para modificar el precio.
+       */
       const { data: factura, error: errorFactura } = await supabase
         .from("facturas")
         .insert({
           numero,
-          cliente_id: Number(clienteId),
+          cliente_id: clienteId,
           fecha: new Date().toISOString().slice(0, 10),
           base: Number(totalBase),
           iva: Number(redondear(totalBase * 0.21)),
           total: Number(redondear(totalBase * 1.21)),
           descripcion: lineas.map((l) => l.nombre).join(", "),
-          estado: "pendiente"
+          estado: "pendiente",
+          vivienda_id: vivienda.id
         })
         .select()
         .single();
 
-      if (errorFactura) throw new Error(errorFactura.message);
+      if (errorFactura) {
+        throw new Error(errorFactura.message);
+      }
 
-      const { error: errorLineas } = await supabase.from("facturas_lineas").insert(
-        lineas.map((l) => ({
-          factura_id: factura.id,
-          concepto: l.nombre,
-          cantidad: 1,
-          precio: Number(l.precio),
-          subtotal: Number(l.precio)
-        }))
-      );
+      /*
+       * Se mantiene la creación de las líneas de factura.
+       */
+      const { error: errorLineas } = await supabase
+        .from("facturas_lineas")
+        .insert(
+          lineas.map((l) => ({
+            factura_id: factura.id,
+            concepto: l.nombre,
+            cantidad: 1,
+            precio: Number(l.precio),
+            subtotal: Number(l.precio)
+          }))
+        );
 
       if (errorLineas) {
         console.error("Error guardando líneas:", errorLineas);
+
         setMensaje(
           `Factura ${factura.numero} creada, pero falló el desglose: ${errorLineas.message}`
         );
+
+        setGuardando(false);
+        return;
+      }
+
+      /*
+       * NUEVO:
+       * Creamos el registro de extras asociado a la factura.
+       *
+       * No se calcula aquí ningún precio adicional:
+       * el precio del extra es exactamente la suma de los servicios
+       * seleccionados.
+       *
+       * El técnico se obtiene de la vivienda.
+       */
+      const descripcionExtra = lineas
+        .map((l) => l.nombre)
+        .join(", ");
+
+      const { error: errorExtra } = await supabase
+        .from("extras")
+        .insert({
+          factura_id: factura.id,
+          vivienda_id: vivienda.id,
+          tecnico_id: vivienda.tecnico_id || null,
+          cliente_id: cliente.id,
+          cliente_email: cliente.email || null,
+          descripcion: descripcionExtra,
+          precio: Number(totalBase),
+          estado: "pendiente",
+          estado_tecnico: null,
+          estado_admin: "pendiente",
+          direccion: vivienda.direccion || cliente.direccion || null,
+          creado_en: new Date().toISOString()
+        });
+
+      if (errorExtra) {
+        console.error("Error creando extra:", errorExtra);
+
+        /*
+         * No tocamos ni borramos la factura ya creada.
+         * Esto evita alterar el flujo de facturación que ya funciona.
+         */
+        setMensaje(
+          `Factura ${factura.numero} creada correctamente, pero no se pudo crear el extra: ${errorExtra.message}`
+        );
+
         setGuardando(false);
         return;
       }
 
       let avisoPdf = "";
 
+      /*
+       * Flujo actual del PDF y email.
+       * No se modifica.
+       */
       try {
-        const { data: pdfData, error: errorPdf } = await supabase.functions.invoke(
-          "factura-pdf",
-          { body: { facturaId: factura.id } }
-        );
+        const { data: pdfData, error: errorPdf } =
+          await supabase.functions.invoke("factura-pdf", {
+            body: { facturaId: factura.id }
+          });
 
         if (!errorPdf && pdfData?.pdf_url) {
           const disponible = await pdfDisponible(pdfData.pdf_url);
@@ -178,31 +370,40 @@ export default function Extras() {
               .update({ pdf_url: pdfData.pdf_url })
               .eq("id", factura.id);
 
-            const cliente = clientes.find((c) => c.id === Number(clienteId));
-
             if (enviarEmail && cliente?.email) {
-              const { error: errorEmail } = await supabase.functions.invoke(
-                "enviar-email",
-                { body: { facturaId: factura.id, id: factura.id, tipo: "factura" } }
-              );
+              const { error: errorEmail } =
+                await supabase.functions.invoke("enviar-email", {
+                  body: {
+                    facturaId: factura.id,
+                    id: factura.id,
+                    tipo: "factura"
+                  }
+                });
 
               if (errorEmail) {
                 console.error("Error enviando email:", errorEmail);
-                avisoPdf += " (Factura creada, pero no se pudo enviar el email).";
+                avisoPdf +=
+                  " (Factura creada, pero no se pudo enviar el email).";
               } else {
                 avisoPdf += ` Enviada a ${cliente.email}.`;
               }
             } else if (enviarEmail) {
-              avisoPdf += " (El cliente no tiene email registrado).";
+              avisoPdf +=
+                " (El cliente no tiene email registrado).";
             }
           } else {
-            avisoPdf = " Factura creada correctamente (PDF pendiente de procesamiento).";
+            avisoPdf =
+              " Factura creada correctamente (PDF pendiente de procesamiento).";
           }
         } else {
           avisoPdf = " Factura creada correctamente.";
         }
       } catch (pdfErr) {
-        console.warn("Aviso menor: La Edge Function del PDF no respondió:", pdfErr);
+        console.warn(
+          "Aviso menor: La Edge Function del PDF no respondió:",
+          pdfErr
+        );
+
         avisoPdf = " Factura creada correctamente.";
       }
 
@@ -212,6 +413,7 @@ export default function Extras() {
       setMensaje(
         `¡Factura ${factura.numero} creada correctamente!${avisoPdf}`
       );
+
       setGuardando(false);
     } catch (e) {
       console.error("Error creando factura:", e);
@@ -220,12 +422,16 @@ export default function Extras() {
     }
   };
 
+  const viviendasDelCliente = viviendas;
+
   return (
     <Menu>
       <div style={estilos.pagina}>
         <h1 style={estilos.titulo}>Emitir Servicio y Facturar</h1>
+
         <p style={estilos.subtitulo}>
-          Selecciona los servicios adicionales o de custodia para generar la factura correspondiente.
+          Selecciona los servicios adicionales o de custodia para generar la
+          factura correspondiente.
         </p>
 
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
@@ -233,6 +439,7 @@ export default function Extras() {
 
         <div style={estilos.tarjeta}>
           <label style={estilos.etiqueta}>Cliente</label>
+
           <select
             value={clienteId}
             onChange={(e) => setClienteId(e.target.value)}
@@ -240,8 +447,11 @@ export default function Extras() {
             disabled={cargando}
           >
             <option value="">
-              {cargando ? "Cargando clientes..." : "-- Selecciona un cliente --"}
+              {cargando
+                ? "Cargando clientes..."
+                : "-- Selecciona un cliente --"}
             </option>
+
             {clientes.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nombre}
@@ -259,7 +469,49 @@ export default function Extras() {
         </div>
 
         <div style={estilos.tarjeta}>
-          <h3 style={{ color: "#4db8ff", marginBottom: 14, fontSize: 16 }}>Servicios Disponibles</h3>
+          <label style={estilos.etiqueta}>Vivienda</label>
+
+          <select
+            value={viviendaId}
+            onChange={(e) => setViviendaId(e.target.value)}
+            style={estilos.select}
+            disabled={!clienteId || cargandoViviendas}
+          >
+            <option value="">
+              {!clienteId
+                ? "-- Selecciona primero un cliente --"
+                : cargandoViviendas
+                ? "Cargando viviendas..."
+                : "-- Selecciona una vivienda --"}
+            </option>
+
+            {viviendasDelCliente.map((vivienda) => (
+              <option key={vivienda.id} value={vivienda.id}>
+                {vivienda.direccion || `Vivienda #${vivienda.id}`}
+              </option>
+            ))}
+          </select>
+
+          {clienteId &&
+            !cargandoViviendas &&
+            viviendasDelCliente.length === 0 && (
+              <p style={estilos.aviso}>
+                Este cliente no tiene ninguna vivienda disponible.
+              </p>
+            )}
+        </div>
+
+        <div style={estilos.tarjeta}>
+          <h3
+            style={{
+              color: "#4db8ff",
+              marginBottom: 14,
+              fontSize: 16
+            }}
+          >
+            Servicios Disponibles
+          </h3>
+
           {EXTRAS.map((extra) => (
             <div key={extra.nombre} style={{ marginBottom: 18 }}>
               <label style={estilos.check}>
@@ -269,29 +521,41 @@ export default function Extras() {
                   onChange={() => toggleExtra(extra.nombre)}
                   style={estilos.checkbox}
                 />
+
                 {extra.nombre} —{" "}
-                {extra.precio !== null ? `${extra.precio} €` : "Precio personalizado"}
+                {extra.precio !== null
+                  ? `${extra.precio} €`
+                  : "Precio personalizado"}
               </label>
 
-              {extra.precio === null && seleccionados.includes(extra.nombre) && (
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  placeholder="Introduce el precio en €"
-                  value={precios[extra.nombre] || ""}
-                  onChange={(e) =>
-                    setPrecios({ ...precios, [extra.nombre]: e.target.value })
-                  }
-                  style={estilos.input}
-                />
-              )}
+              {extra.precio === null &&
+                seleccionados.includes(extra.nombre) && (
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    placeholder="Introduce el precio en €"
+                    value={precios[extra.nombre] ?? ""}
+                    onChange={(e) =>
+                      setPrecios({
+                        ...precios,
+                        [extra.nombre]: e.target.value
+                      })
+                    }
+                    style={estilos.input}
+                  />
+                )}
             </div>
           ))}
         </div>
 
         <div style={estilos.tarjeta}>
-          <Fila clave="Importe Total" valor={`${totalBase.toFixed(2)} €`} destacado />
+          <Fila
+            clave="Importe Total"
+            valor={`${totalBase.toFixed(2)} €`}
+            destacado
+          />
 
           <label style={{ ...estilos.check, marginTop: 14 }}>
             <input
@@ -300,6 +564,7 @@ export default function Extras() {
               onChange={(e) => setEnviarEmail(e.target.checked)}
               style={estilos.checkbox}
             />
+
             <span style={{ fontSize: 14.5 }}>
               Enviar factura por email automáticamente al cliente
             </span>
@@ -309,12 +574,18 @@ export default function Extras() {
         <button
           onClick={crearFactura}
           disabled={guardando}
-          style={{ ...estilos.boton, opacity: guardando ? 0.6 : 1 }}
+          style={{
+            ...estilos.boton,
+            opacity: guardando ? 0.6 : 1
+          }}
         >
           {guardando ? "Procesando..." : "Emitir Servicio y Facturar"}
         </button>
 
-        <button onClick={() => navigate("/facturas")} style={estilos.botonSec}>
+        <button
+          onClick={() => navigate("/facturas")}
+          style={estilos.botonSec}
+        >
           Ir al listado de Facturas
         </button>
       </div>
@@ -325,7 +596,10 @@ export default function Extras() {
 function Fila({ clave, valor, destacado }) {
   return (
     <div style={estilos.fila}>
-      <span style={{ color: "#9fb3c8", fontSize: 15 }}>{clave}</span>
+      <span style={{ color: "#9fb3c8", fontSize: 15 }}>
+        {clave}
+      </span>
+
       <span
         style={{
           fontWeight: 700,
@@ -347,6 +621,7 @@ const estilos = {
     color: "#fff",
     fontFamily: "Inter, sans-serif"
   },
+
   titulo: {
     color: "#4db8ff",
     marginBottom: 6,
@@ -354,7 +629,13 @@ const estilos = {
     fontWeight: 700,
     textShadow: "0 0 8px rgba(0,153,255,0.6)"
   },
-  subtitulo: { opacity: 0.7, fontSize: 14, marginBottom: 20 },
+
+  subtitulo: {
+    opacity: 0.7,
+    fontSize: 14,
+    marginBottom: 20
+  },
+
   tarjeta: {
     background: "rgba(255,255,255,0.05)",
     padding: 20,
@@ -363,6 +644,7 @@ const estilos = {
     boxShadow: "0 0 12px rgba(0,153,255,0.2)",
     marginBottom: 16
   },
+
   etiqueta: {
     display: "block",
     fontSize: 13,
@@ -371,6 +653,7 @@ const estilos = {
     textTransform: "uppercase",
     letterSpacing: 0.5
   },
+
   select: {
     width: "100%",
     padding: 12,
@@ -380,12 +663,14 @@ const estilos = {
     color: "#fff",
     fontSize: 15
   },
+
   check: {
     display: "flex",
     alignItems: "center",
     fontSize: 16,
     cursor: "pointer"
   },
+
   checkbox: {
     width: 22,
     height: 22,
@@ -393,6 +678,7 @@ const estilos = {
     cursor: "pointer",
     accentColor: "#4db8ff"
   },
+
   input: {
     padding: "11px 14px",
     width: "100%",
@@ -403,12 +689,14 @@ const estilos = {
     marginTop: 10,
     fontSize: 15
   },
+
   fila: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     padding: "8px 0"
   },
+
   boton: {
     width: "100%",
     padding: 14,
@@ -421,6 +709,7 @@ const estilos = {
     cursor: "pointer",
     boxShadow: "0 0 10px rgba(0,153,255,0.4)"
   },
+
   botonSec: {
     width: "100%",
     marginTop: 10,
@@ -433,6 +722,7 @@ const estilos = {
     fontSize: 15,
     cursor: "pointer"
   },
+
   ok: {
     marginBottom: 15,
     color: "#4ade80",
@@ -442,6 +732,7 @@ const estilos = {
     borderRadius: 8,
     padding: 12
   },
+
   error: {
     marginBottom: 15,
     color: "#ff6b6b",
@@ -451,9 +742,10 @@ const estilos = {
     borderRadius: 8,
     padding: 12
   },
-  aviso: { 
-    marginTop: 10, 
-    color: "#ffc861", 
-    fontSize: 13.5 
+
+  aviso: {
+    marginTop: 10,
+    color: "#ffc861",
+    fontSize: 13.5
   }
 };
