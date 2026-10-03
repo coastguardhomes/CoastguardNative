@@ -5,18 +5,42 @@ import { useLanguage } from "../../context/LanguageContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Menu from "../../layouts/Menu.jsx";
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
 import logoReal from "../../assets/logo.jpeg";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
-const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
-const FONDO_BANNER_EXTRA = "linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(11, 19, 32, 0.9) 100%)";
-const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
-const BORDE_DORADO_INTENSO = "1px solid rgba(224, 176, 52, 0.8)";
-const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.2)";
-const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 15px rgba(224, 176, 52, 0.7)" };
-const DEGRADADO_AZUL_BOTON = "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)";
+const FONDO_TARJETA =
+  "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+
+const FONDO_BANNER_EXTRA =
+  "linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(11, 19, 32, 0.9) 100%)";
+
+const BORDE_DORADO_FINO =
+  "1px solid rgba(224, 176, 52, 0.4)";
+
+const BORDE_DORADO_INTENSO =
+  "1px solid rgba(224, 176, 52, 0.8)";
+
+const SOMBRA_LUXURY =
+  "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.2)";
+
+const TEXTO_DORADO_BRILLO = {
+  color: COLOR_DORADO,
+  textShadow: "0 0 15px rgba(224, 176, 52, 0.7)",
+};
+
+const DEGRADADO_AZUL_BOTON =
+  "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)";
 
 export default function ClienteDashboard() {
   const { t } = useLanguage();
@@ -31,18 +55,21 @@ export default function ClienteDashboard() {
   const [pagoExitoso, setPagoExitoso] = useState(false);
 
   const datosGrafico = [
-    { dia: t('lun') || 'Lun', inspecciones: 4 },
-    { dia: t('mar') || 'Mar', inspecciones: 3 },
-    { dia: t('mie') || 'Mie', inspecciones: 5 },
-    { dia: t('jue') || 'Jue', inspecciones: 7 },
-    { dia: t('vie') || 'Vie', inspecciones: 9 },
-    { dia: t('sab') || 'Sab', inspecciones: 6 },
-    { dia: t('dom') || 'Dom', inspecciones: 8 },
+    { dia: t("lun") || "Lun", inspecciones: 4 },
+    { dia: t("mar") || "Mar", inspecciones: 3 },
+    { dia: t("mie") || "Mie", inspecciones: 5 },
+    { dia: t("jue") || "Jue", inspecciones: 7 },
+    { dia: t("vie") || "Vie", inspecciones: 9 },
+    { dia: t("sab") || "Sab", inspecciones: 6 },
+    { dia: t("dom") || "Dom", inspecciones: 8 },
   ];
 
   useEffect(() => {
     async function cargarDatos() {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       try {
         let { data: clienteData } = await supabase
@@ -57,76 +84,117 @@ export default function ClienteDashboard() {
             .select("*")
             .eq("id", user.id)
             .maybeSingle();
+
           clienteData = clienteById;
         }
 
-        if (clienteData) {
-          const clienteId = clienteData.id;
+        if (!clienteData) {
+          setLoading(false);
+          return;
+        }
 
-          const [resInspecciones, resAlertasInsp, resAlertasFacturas, resViviendas, resExtras] = await Promise.all([
-            supabase
-              .from("inspecciones")
-              .select("*", { count: "exact", head: true })
-              .eq("cliente_id", clienteId),
+        const clienteId = clienteData.id;
 
-            supabase
-              .from("inspecciones")
-              .select("*", { count: "exact", head: true })
-              .eq("cliente_id", clienteId)
-              .eq("alerta", true)
-              .eq("alerta_vista", false),
+        const [
+          resInspecciones,
+          resAlertasInsp,
+          resAlertasFacturas,
+          resViviendas,
+          resExtras,
+        ] = await Promise.all([
+          supabase
+            .from("inspecciones")
+            .select("*", { count: "exact", head: true })
+            .eq("cliente_id", clienteId),
 
-            supabase
-              .from("facturas")
-              .select("*", { count: "exact", head: true })
-              .eq("cliente_id", clienteId)
-              .eq("alerta", true)
-              .eq("alerta_vista", false),
+          supabase
+            .from("inspecciones")
+            .select("*", { count: "exact", head: true })
+            .eq("cliente_id", clienteId)
+            .eq("alerta", true)
+            .eq("alerta_vista", false),
 
-            supabase
-              .from("viviendas")
-              .select("*", { count: "exact", head: true })
-              .eq("cliente_id", clienteId),
+          supabase
+            .from("facturas")
+            .select("*", { count: "exact", head: true })
+            .eq("cliente_id", clienteId)
+            .eq("alerta", true)
+            .eq("alerta_vista", false),
 
-            supabase
-              .from("extras")
-              .select("*")
-              .eq("cliente_id", clienteId)
-              .neq("visto", true)
-              .order("created_at", { ascending: false })
-          ]);
+          supabase
+            .from("viviendas")
+            .select("*", { count: "exact", head: true })
+            .eq("cliente_id", clienteId),
 
-          setNumInspecciones(resInspecciones.count || 0);
-          setNumAlertas((resAlertasInsp.count || 0) + (resAlertasFacturas.count || 0));
-          setNumViviendas(resViviendas.count || 0);
-          setNuevosExtras(resExtras.data || []);
+          /*
+           * IMPORTANTE:
+           * Solo mostramos extras que administración haya
+           * publicado realmente al cliente.
+           *
+           * Nunca mostramos aquí extras pendientes,
+           * en proceso o todavía no aprobados.
+           */
+          supabase
+            .from("extras")
+            .select("*")
+            .eq("cliente_id", clienteId)
+            .eq("estado", "enviado_cliente")
+            .neq("visto", true)
+            .order("created_at", { ascending: false }),
+        ]);
 
-          // VERIFICACIÓN REAL: Comprobamos si el parámetro viene en la URL Y además validamos contra base de datos / factura
-          const queryParams = new URLSearchParams(window.location.search);
-          const facturaIdParam = queryParams.get('factura');
-          
-          if (queryParams.get('pagado') === 'true' && facturaIdParam) {
-            // Consultamos en la tabla de facturas/contratos si realmente consta como pagado
-            const { data: facturaData } = await supabase
-              .from("facturas")
-              .select("*")
-              .eq("id", facturaIdParam)
-              .maybeSingle();
+        setNumInspecciones(resInspecciones.count || 0);
 
-            // Si la factura existe y está marcada como pagada (o el webhook ya actualizó su estado)
-            if (facturaData && facturaData.estado === 'pagada') {
-              setPagoExitoso(true);
-            } else {
-              // Si Stripe redirigió pero en base de datos sigue pendiente, no mostramos el éxito falso
-              setPagoExitoso(false);
-            }
-            
-            // Limpiamos la URL para quitar el parámetro ?pagado=true y que no ensucie la navegación
-            window.history.replaceState({}, document.title, window.location.pathname);
+        setNumAlertas(
+          (resAlertasInsp.count || 0) +
+            (resAlertasFacturas.count || 0)
+        );
+
+        setNumViviendas(resViviendas.count || 0);
+
+        setNuevosExtras(resExtras.data || []);
+
+        const queryParams = new URLSearchParams(
+          window.location.search
+        );
+
+        const facturaIdParam =
+          queryParams.get("factura");
+
+        if (
+          queryParams.get("pagado") === "true" &&
+          facturaIdParam
+        ) {
+          const { data: facturaData } = await supabase
+            .from("facturas")
+            .select("*")
+            .eq("id", facturaIdParam)
+            .eq("cliente_id", clienteId)
+            .maybeSingle();
+
+          if (
+            facturaData &&
+            (
+              facturaData.estado === "pagada" ||
+              facturaData.estado_pago === "pagada"
+            )
+          ) {
+            setPagoExitoso(true);
+          } else {
+            setPagoExitoso(false);
           }
+
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
         }
       } catch (err) {
-        console.error("Error en dashboard:", err);
+        console.error(
+          "Error en dashboard:",
+          err
+        );
       } finally {
         setLoading(false);
       }
@@ -135,30 +203,114 @@ export default function ClienteDashboard() {
     cargarDatos();
   }, [user]);
 
-  const manejarVerFactura = async (extraId) => {
+  /*
+   * Abrir el aviso NO elimina el extra.
+   * Simplemente lo marca como visto.
+   */
+  const manejarVerFactura = async (extra) => {
     try {
-      await supabase.from("extras").update({ visto: true }).eq("id", extraId);
-      await supabase.from("facturas").update({ alerta_vista: true }).eq("id", extraId);
+      const updateExtra = {
+        visto: true,
+        alerta_vista: true,
+      };
 
-      setNuevosExtras((prev) => prev.filter((item) => item.id !== extraId));
+      await supabase
+        .from("extras")
+        .update(updateExtra)
+        .eq("id", extra.id);
+
+      /*
+       * Si el extra está relacionado con una factura,
+       * también marcamos el aviso de esa factura como visto.
+       */
+      if (extra.factura_id) {
+        await supabase
+          .from("facturas")
+          .update({
+            alerta_vista: true,
+          })
+          .eq("id", extra.factura_id);
+      }
+
+      setNuevosExtras((prev) =>
+        prev.filter(
+          (item) => item.id !== extra.id
+        )
+      );
     } catch (err) {
-      console.error("Error al actualizar el extra:", err);
+      console.error(
+        "Error al marcar el extra como visto:",
+        err
+      );
     }
-    navigate('/cliente/facturas');
+
+    /*
+     * Vamos a Facturas, no directamente a ninguna pantalla
+     * de técnico.
+     */
+    navigate("/cliente/facturas");
   };
 
-  const manejarEliminarFactura = async (e, extraId) => {
+  /*
+   * El botón 🗑️ NO BORRA el registro.
+   *
+   * Solo elimina el aviso del Dashboard.
+   * El extra, factura, fotos y datos permanecen en Supabase.
+   */
+  const manejarEliminarAvisoExtra = async (
+    e,
+    extra
+  ) => {
     e.stopPropagation();
-    if (!window.confirm("¿Estás seguro de que deseas eliminar esta factura/notificación? Esta acción la quitará de tu historial.")) return;
+
+    if (
+      !window.confirm(
+        "¿Quieres quitar este aviso del Dashboard? El informe y la factura no se borrarán."
+      )
+    ) {
+      return;
+    }
 
     try {
-      await supabase.from("extras").delete().eq("id", extraId);
-      await supabase.from("facturas").delete().eq("id", extraId);
+      const { error } = await supabase
+        .from("extras")
+        .update({
+          visto: true,
+          alerta_vista: true,
+        })
+        .eq("id", extra.id);
 
-      setNuevosExtras((prev) => prev.filter((item) => item.id !== extraId));
-      setNumAlertas((prev) => Math.max(0, prev - 1));
+      if (error) {
+        throw error;
+      }
+
+      if (extra.factura_id) {
+        const { error: facturaError } =
+          await supabase
+            .from("facturas")
+            .update({
+              alerta_vista: true,
+            })
+            .eq("id", extra.factura_id);
+
+        if (facturaError) {
+          console.error(
+            "No se pudo marcar la factura como vista:",
+            facturaError
+          );
+        }
+      }
+
+      setNuevosExtras((prev) =>
+        prev.filter(
+          (item) => item.id !== extra.id
+        )
+      );
     } catch (err) {
-      console.error("Error al eliminar la factura:", err);
+      console.error(
+        "Error al quitar aviso:",
+        err
+      );
     }
   };
 
@@ -168,19 +320,30 @@ export default function ClienteDashboard() {
     borderRadius: "16px",
     padding: "16px 12px",
     boxShadow: SOMBRA_LUXURY,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    minHeight: '105px',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    minHeight: "105px",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
   };
 
   if (loading) {
     return (
       <Menu>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: COLOR_DORADO, background: FONDO_PRINCIPAL }}>
-          <h3 style={TEXTO_DORADO_BRILLO}>{t('cargandoPanel')}</h3>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "80vh",
+            color: COLOR_DORADO,
+            background: FONDO_PRINCIPAL,
+          }}
+        >
+          <h3 style={TEXTO_DORADO_BRILLO}>
+            {t("cargandoPanel")}
+          </h3>
         </div>
       </Menu>
     );
@@ -188,77 +351,316 @@ export default function ClienteDashboard() {
 
   return (
     <Menu>
-      <div style={{ width: "100%", minHeight: "100vh", background: FONDO_PRINCIPAL, padding: "16px", fontFamily: "'Inter', sans-serif", color: "#fff", paddingBottom: "110px", boxSizing: "border-box" }}>
-        
-        {/* CABECERA */}
-        <div style={{ background: "linear-gradient(135deg, #0e1726 0%, #05080f 100%)", border: BORDE_DORADO_INTENSO, borderRadius: "20px", padding: "14px 18px", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: SOMBRA_LUXURY }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ padding: "4px", background: "rgba(224, 176, 52, 0.15)", borderRadius: "12px", border: BORDE_DORADO_FINO, boxShadow: "0 0 10px rgba(224, 176, 52, 0.3)" }}>
-              <img src={logoReal} alt="Logo" style={{ height: "40px", width: "auto", objectFit: "contain" }} />
+      <div
+        style={{
+          width: "100%",
+          minHeight: "100vh",
+          background: FONDO_PRINCIPAL,
+          padding: "16px",
+          fontFamily: "'Inter', sans-serif",
+          color: "#fff",
+          paddingBottom: "110px",
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          style={{
+            background:
+              "linear-gradient(135deg, #0e1726 0%, #05080f 100%)",
+            border: BORDE_DORADO_INTENSO,
+            borderRadius: "20px",
+            padding: "14px 18px",
+            marginBottom: "20px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            boxShadow: SOMBRA_LUXURY,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "14px",
+            }}
+          >
+            <div
+              style={{
+                padding: "4px",
+                background:
+                  "rgba(224, 176, 52, 0.15)",
+                borderRadius: "12px",
+                border: BORDE_DORADO_FINO,
+                boxShadow:
+                  "0 0 10px rgba(224, 176, 52, 0.3)",
+              }}
+            >
+              <img
+                src={logoReal}
+                alt="Logo"
+                style={{
+                  height: "40px",
+                  width: "auto",
+                  objectFit: "contain",
+                }}
+              />
             </div>
+
             <div>
-              <span style={{ fontSize: "10px", color: "#94a3b8", textTransform: "uppercase", fontWeight: "700", letterSpacing: "1px" }}>{t('panelDeControl')}</span>
-              <h1 style={{ fontSize: "15px", fontWeight: "900", margin: 0, textTransform: "uppercase", ...TEXTO_DORADO_BRILLO }}>{t('dashboardCliente')}</h1>
+              <span
+                style={{
+                  fontSize: "10px",
+                  color: "#94a3b8",
+                  textTransform: "uppercase",
+                  fontWeight: "700",
+                  letterSpacing: "1px",
+                }}
+              >
+                {t("panelDeControl")}
+              </span>
+
+              <h1
+                style={{
+                  fontSize: "15px",
+                  fontWeight: "900",
+                  margin: 0,
+                  textTransform: "uppercase",
+                  ...TEXTO_DORADO_BRILLO,
+                }}
+              >
+                {t("dashboardCliente")}
+              </h1>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(16, 185, 129, 0.15)", padding: "6px 10px", borderRadius: "20px", border: "1px solid rgba(16, 185, 129, 0.4)", boxShadow: "0 0 10px rgba(16, 185, 129, 0.2)" }}>
-            <div style={{ width: "7px", height: "7px", background: "#10b981", borderRadius: "50%", boxShadow: "0 0 6px #10b981" }}></div>
-            <span style={{ color: "#34d399", fontSize: "10px", fontWeight: "700" }}>{t('operativo')}</span>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background:
+                "rgba(16, 185, 129, 0.15)",
+              padding: "6px 10px",
+              borderRadius: "20px",
+              border:
+                "1px solid rgba(16, 185, 129, 0.4)",
+            }}
+          >
+            <div
+              style={{
+                width: "7px",
+                height: "7px",
+                background: "#10b981",
+                borderRadius: "50%",
+              }}
+            />
+
+            <span
+              style={{
+                color: "#34d399",
+                fontSize: "10px",
+                fontWeight: "700",
+              }}
+            >
+              {t("operativo")}
+            </span>
           </div>
         </div>
 
-        {/* BANNER DE PAGO EXITOSO REAL */}
         {pagoExitoso && (
-          <div style={{ background: 'rgba(52, 211, 153, 0.15)', border: '1px solid #34d399', padding: '16px', borderRadius: '16px', textAlign: 'center', marginBottom: '20px', boxShadow: '0 10px 30px rgba(52, 211, 153, 0.2)' }}>
-            <p style={{ color: '#34d399', fontSize: '14px', fontWeight: 'bold', margin: 0 }}>
+          <div
+            style={{
+              background:
+                "rgba(52, 211, 153, 0.15)",
+              border: "1px solid #34d399",
+              padding: "16px",
+              borderRadius: "16px",
+              textAlign: "center",
+              marginBottom: "20px",
+            }}
+          >
+            <p
+              style={{
+                color: "#34d399",
+                fontSize: "14px",
+                fontWeight: "bold",
+                margin: 0,
+              }}
+            >
               ¡Pago realizado con éxito a través de Stripe! 🎉
             </p>
-            <p style={{ color: '#fff', fontSize: '11px', margin: '4px 0 0 0', opacity: 0.8 }}>
+
+            <p
+              style={{
+                color: "#fff",
+                fontSize: "11px",
+                margin: "4px 0 0 0",
+                opacity: 0.8,
+              }}
+            >
               Gracias por completar el pago. El servicio ha sido procesado correctamente.
             </p>
           </div>
         )}
 
-        {/* AVISO DE EXTRAS */}
         {nuevosExtras.length > 0 && (
-          <div style={{ marginBottom: "20px", background: FONDO_BANNER_EXTRA, border: BORDE_DORADO_INTENSO, borderRadius: "20px", padding: "18px", boxShadow: "0 10px 30px rgba(224, 176, 52, 0.25)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
-              <div style={{ width: "32px", height: "32px", borderRadius: "10px", background: "rgba(224, 176, 52, 0.25)", display: "flex", alignItems: "center", justifyContent: "center", border: BORDE_DORADO_FINO }}>
-                <span>📥</span>
+          <div
+            style={{
+              marginBottom: "20px",
+              background: FONDO_BANNER_EXTRA,
+              border: BORDE_DORADO_INTENSO,
+              borderRadius: "20px",
+              padding: "18px",
+              boxShadow:
+                "0 10px 30px rgba(224, 176, 52, 0.25)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                marginBottom: "14px",
+              }}
+            >
+              <div
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "10px",
+                  background:
+                    "rgba(224, 176, 52, 0.25)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: BORDE_DORADO_FINO,
+                }}
+              >
+                📥
               </div>
+
               <div>
-                <h3 style={{ fontSize: "13px", fontWeight: "900", ...TEXTO_DORADO_BRILLO, margin: 0 }}>{t('trabajosExtrasDisponibles')}</h3>
-                <p style={{ fontSize: "11px", color: "#cbd5e1", margin: 0 }}>{t('tienes')} {nuevosExtras.length} {t('trabajosRegistrados')}</p>
+                <h3
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "900",
+                    ...TEXTO_DORADO_BRILLO,
+                    margin: 0,
+                  }}
+                >
+                  {t("trabajosExtrasDisponibles")}
+                </h3>
+
+                <p
+                  style={{
+                    fontSize: "11px",
+                    color: "#cbd5e1",
+                    margin: 0,
+                  }}
+                >
+                  {t("tienes")}{" "}
+                  {nuevosExtras.length}{" "}
+                  {t("trabajosRegistrados")}
+                </p>
               </div>
             </div>
-            
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
               {nuevosExtras.map((extra) => (
-                <div key={extra.id} style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
-                  <div onClick={() => manejarVerFactura(extra.id)} style={{ flex: 1, background: DEGRADADO_AZUL_BOTON, border: BORDE_DORADO_FINO, borderRadius: "12px", padding: "14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)" }}>
+                <div
+                  key={extra.id}
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    alignItems: "stretch",
+                  }}
+                >
+                  <div
+                    onClick={() =>
+                      manejarVerFactura(extra)
+                    }
+                    style={{
+                      flex: 1,
+                      background:
+                        DEGRADADO_AZUL_BOTON,
+                      border:
+                        BORDE_DORADO_FINO,
+                      borderRadius: "12px",
+                      padding: "14px",
+                      cursor: "pointer",
+                      display: "flex",
+                      justifyContent:
+                        "space-between",
+                      alignItems: "center",
+                    }}
+                  >
                     <div>
-                      <div style={{ fontSize: "13px", fontWeight: "800", color: "#fff" }}>{t('trabajoExtraFactura')}</div>
-                      <div style={{ fontSize: "11px", color: "#e2e8f0", marginTop: "2px" }}>{extra.descripcion || extra.observaciones || t('verDetallesFotosFacturas')}</div>
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          fontWeight: "800",
+                          color: "#fff",
+                        }}
+                      >
+                        {t(
+                          "trabajoExtraFactura"
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          color: "#e2e8f0",
+                          marginTop: "2px",
+                        }}
+                      >
+                        {extra.descripcion ||
+                          extra.observaciones ||
+                          t(
+                            "verDetallesFotosFacturas"
+                          )}
+                      </div>
                     </div>
-                    <span style={{ fontSize: "11px", fontWeight: "900", color: COLOR_DORADO, textShadow: "0 0 8px rgba(224,176,52,0.8)" }}>{t('verFactura')}</span>
+
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: "900",
+                        color: COLOR_DORADO,
+                      }}
+                    >
+                      {t("verFactura")}
+                    </span>
                   </div>
 
-                  <button 
-                    onClick={(e) => manejarEliminarFactura(e, extra.id)}
-                    style={{ 
-                      background: "rgba(239, 68, 68, 0.15)", 
-                      border: "1px solid rgba(239, 68, 68, 0.4)", 
-                      borderRadius: "12px", 
-                      padding: "0 14px", 
-                      cursor: "pointer", 
-                      display: "flex", 
-                      alignItems: "center", 
+                  <button
+                    onClick={(e) =>
+                      manejarEliminarAvisoExtra(
+                        e,
+                        extra
+                      )
+                    }
+                    style={{
+                      background:
+                        "rgba(239, 68, 68, 0.15)",
+                      border:
+                        "1px solid rgba(239, 68, 68, 0.4)",
+                      borderRadius: "12px",
+                      padding: "0 14px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
                       justifyContent: "center",
-                      boxShadow: "0 4px 10px rgba(239, 68, 68, 0.2)"
                     }}
-                    title="Eliminar factura permanentemente"
+                    title="Quitar aviso"
                   >
-                    <span style={{ fontSize: "16px" }}>🗑️</span>
+                    🗑️
                   </button>
                 </div>
               ))}
@@ -266,50 +668,225 @@ export default function ClienteDashboard() {
           </div>
         )}
 
-        {/* TARJETAS PRINCIPALES */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginBottom: "20px" }}>
-          <div style={estiloTarjetaDato} onClick={() => navigate('/cliente/inspecciones')}>
-            <span style={{ fontSize: "10px", fontWeight: "800", color: "#94a3b8", textTransform: "uppercase" }}>{t('inspecciones')}</span>
-            <span style={{ fontSize: "26px", fontWeight: "900", ...TEXTO_DORADO_BRILLO }}>{numInspecciones}</span>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(3, 1fr)",
+            gap: "10px",
+            marginBottom: "20px",
+          }}
+        >
+          <div
+            style={estiloTarjetaDato}
+            onClick={() =>
+              navigate("/cliente/inspecciones")
+            }
+          >
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: "800",
+                color: "#94a3b8",
+                textTransform: "uppercase",
+              }}
+            >
+              {t("inspecciones")}
+            </span>
+
+            <span
+              style={{
+                fontSize: "26px",
+                fontWeight: "900",
+                ...TEXTO_DORADO_BRILLO,
+              }}
+            >
+              {numInspecciones}
+            </span>
           </div>
 
-          <div style={estiloTarjetaDato} onClick={() => navigate('/cliente/alertas')}>
-            <span style={{ fontSize: "10px", fontWeight: "800", color: numAlertas > 0 ? "#ef4444" : "#94a3b8", textTransform: "uppercase" }}>{t('alertas')}</span>
-            <span style={{ fontSize: "26px", fontWeight: "900", color: numAlertas > 0 ? "#ef4444" : COLOR_DORADO, textShadow: numAlertas > 0 ? "0 0 10px rgba(239,68,68,0.6)" : "0 0 12px rgba(224,176,52,0.6)" }}>
+          <div
+            style={estiloTarjetaDato}
+            onClick={() =>
+              navigate("/cliente/alertas")
+            }
+          >
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: "800",
+                color:
+                  numAlertas > 0
+                    ? "#ef4444"
+                    : "#94a3b8",
+                textTransform: "uppercase",
+              }}
+            >
+              {t("alertas")}
+            </span>
+
+            <span
+              style={{
+                fontSize: "26px",
+                fontWeight: "900",
+                color:
+                  numAlertas > 0
+                    ? "#ef4444"
+                    : COLOR_DORADO,
+              }}
+            >
               {numAlertas}
             </span>
           </div>
 
-          <div style={estiloTarjetaDato} onClick={() => navigate('/cliente/contratos')}>
-            <span style={{ fontSize: "10px", fontWeight: "800", color: "#94a3b8", textTransform: "uppercase" }}>{t('viviendas')}</span>
-            <span style={{ fontSize: "26px", fontWeight: "900", ...TEXTO_DORADO_BRILLO }}>{numViviendas}</span>
+          <div
+            style={estiloTarjetaDato}
+            onClick={() =>
+              navigate("/cliente/contratos")
+            }
+          >
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: "800",
+                color: "#94a3b8",
+                textTransform: "uppercase",
+              }}
+            >
+              {t("viviendas")}
+            </span>
+
+            <span
+              style={{
+                fontSize: "26px",
+                fontWeight: "900",
+                ...TEXTO_DORADO_BRILLO,
+              }}
+            >
+              {numViviendas}
+            </span>
           </div>
         </div>
 
-        {/* GRÁFICO */}
-        <div style={{ background: FONDO_TARJETA, border: BORDE_DORADO_FINO, borderRadius: "20px", padding: "18px", marginBottom: "20px", boxShadow: SOMBRA_LUXURY }}>
-          <h3 style={{ fontSize: "11px", color: COLOR_DORADO, margin: "0 0 14px 0", fontWeight: "800", textShadow: "0 0 8px rgba(224,176,52,0.4)" }}>📊 {t('inspeccionesDiarias')}</h3>
-          <div style={{ width: '100%', height: 180 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={datosGrafico} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(224, 176, 52, 0.15)" />
-                <XAxis dataKey="dia" stroke="#94a3b8" tick={{ fontSize: 10 }} />
-                <YAxis stroke="#94a3b8" tick={{ fontSize: 10 }} />
-                <Tooltip contentStyle={{ background: '#070b14', border: BORDE_DORADO_FINO, borderRadius: '12px', color: COLOR_DORADO, boxShadow: '0 0 15px rgba(224,176,52,0.3)' }} />
-                <Line type="monotone" dataKey="inspecciones" stroke={COLOR_DORADO} strokeWidth={3.5} dot={{ fill: COLOR_DORADO, r: 4 }} />
+        <div
+          style={{
+            background: FONDO_TARJETA,
+            border: BORDE_DORADO_FINO,
+            borderRadius: "20px",
+            padding: "18px",
+            marginBottom: "20px",
+            boxShadow: SOMBRA_LUXURY,
+          }}
+        >
+          <h3
+            style={{
+              fontSize: "11px",
+              color: COLOR_DORADO,
+              margin: "0 0 14px 0",
+              fontWeight: "800",
+            }}
+          >
+            📊 {t("inspeccionesDiarias")}
+          </h3>
+
+          <div
+            style={{
+              width: "100%",
+              height: 180,
+            }}
+          >
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+            >
+              <LineChart
+                data={datosGrafico}
+                margin={{
+                  top: 10,
+                  right: 10,
+                  left: -25,
+                  bottom: 0,
+                }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(224, 176, 52, 0.15)"
+                />
+
+                <XAxis
+                  dataKey="dia"
+                  stroke="#94a3b8"
+                  tick={{ fontSize: 10 }}
+                />
+
+                <YAxis
+                  stroke="#94a3b8"
+                  tick={{ fontSize: 10 }}
+                />
+
+                <Tooltip
+                  contentStyle={{
+                    background: "#070b14",
+                    border:
+                      BORDE_DORADO_FINO,
+                    borderRadius: "12px",
+                    color: COLOR_DORADO,
+                  }}
+                />
+
+                <Line
+                  type="monotone"
+                  dataKey="inspecciones"
+                  stroke={COLOR_DORADO}
+                  strokeWidth={3.5}
+                  dot={{
+                    fill: COLOR_DORADO,
+                    r: 4,
+                  }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* CONFIGURACIÓN */}
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <Link to="/cliente/configuracion" style={{ width: "100%", maxWidth: "420px", background: DEGRADADO_AZUL_BOTON, border: BORDE_DORADO_INTENSO, borderRadius: "30px", padding: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", textDecoration: "none", boxShadow: "0 6px 20px rgba(56, 189, 248, 0.4), 0 0 15px rgba(224, 176, 52, 0.3)" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <Link
+            to="/cliente/configuracion"
+            style={{
+              width: "100%",
+              maxWidth: "420px",
+              background:
+                DEGRADADO_AZUL_BOTON,
+              border: BORDE_DORADO_INTENSO,
+              borderRadius: "30px",
+              padding: "14px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "10px",
+              textDecoration: "none",
+            }}
+          >
             <span>⚙️</span>
-            <span style={{ fontWeight: "900", color: "#ffffff", fontSize: "11px", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{t('configuracionSeguridadNotificaciones')}</span>
+
+            <span
+              style={{
+                fontWeight: "900",
+                color: "#ffffff",
+                fontSize: "11px",
+              }}
+            >
+              {t(
+                "configuracionSeguridadNotificaciones"
+              )}
+            </span>
           </Link>
         </div>
-
       </div>
     </Menu>
   );
