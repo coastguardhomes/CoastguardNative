@@ -145,12 +145,14 @@ export default function VerFactura() {
       let inspeccionData = null;
 
       if (extraPublicado.inspeccion_id) {
-        const { data: inspeccionRelacionada, error: inspeccionError } =
-          await supabase
-            .from('inspecciones')
-            .select('*')
-            .eq('id', extraPublicado.inspeccion_id)
-            .maybeSingle();
+        const {
+          data: inspeccionRelacionada,
+          error: inspeccionError
+        } = await supabase
+          .from('inspecciones')
+          .select('*')
+          .eq('id', extraPublicado.inspeccion_id)
+          .maybeSingle();
 
         if (inspeccionError) {
           console.error(
@@ -175,11 +177,13 @@ export default function VerFactura() {
         fotos.length === 0 &&
         inspeccionData?.id
       ) {
-        const { data: fotosInspeccion, error: fotosError } =
-          await supabase
-            .from('inspecciones_fotos')
-            .select('*')
-            .eq('inspeccion_id', inspeccionData.id);
+        const {
+          data: fotosInspeccion,
+          error: fotosError
+        } = await supabase
+          .from('inspecciones_fotos')
+          .select('*')
+          .eq('inspeccion_id', inspeccionData.id);
 
         if (fotosError) {
           console.error(
@@ -216,7 +220,10 @@ export default function VerFactura() {
         throw new Error("ID de factura no proporcionado.");
       }
 
-      const { data: facturaData, error: facturaError } = await supabase
+      const {
+        data: facturaData,
+        error: facturaError
+      } = await supabase
         .from('facturas')
         .select('*')
         .eq('id', id)
@@ -244,8 +251,15 @@ export default function VerFactura() {
         }
       }
     } catch (err) {
-      console.error('Error al cargar la factura:', err);
-      setErrorMsg(err.message || 'No se pudo cargar la información.');
+      console.error(
+        'Error al cargar la factura:',
+        err
+      );
+
+      setErrorMsg(
+        err.message ||
+        'No se pudo cargar la información.'
+      );
     } finally {
       setLoading(false);
     }
@@ -287,12 +301,22 @@ export default function VerFactura() {
     cliente?.language ||
     currentLang;
 
+  /*
+   * AVISO INICIAL DE PAGO
+   *
+   * Este flujo NO se toca.
+   *
+   * 1. Crea la sesión de Stripe mediante Edge Function.
+   * 2. Envía el aviso de pago mediante Edge Function.
+   */
   const enviarAvisoPago = async () => {
     try {
       setProcesando(true);
 
       if (!factura) {
-        throw new Error("No se ha cargado la factura.");
+        throw new Error(
+          "No se ha cargado la factura."
+        );
       }
 
       if (!cliente?.email) {
@@ -301,7 +325,9 @@ export default function VerFactura() {
         );
       }
 
-      const importe = Number(factura.total || 0);
+      const importe = Number(
+        factura.total || 0
+      );
 
       if (!importe || importe <= 0) {
         throw new Error(
@@ -309,25 +335,34 @@ export default function VerFactura() {
         );
       }
 
-      const { data: checkoutData, error: checkoutError } =
-        await supabase.functions.invoke(
-          "create-checkout-session",
-          {
-            body: {
-              amount: Math.round(importe * 100),
-              customerEmail: cliente.email,
-              clientId: factura.cliente_id || null,
-              facturaId: Number(factura.id),
-              originUrl: window.location.origin
-            }
+      const {
+        data: checkoutData,
+        error: checkoutError
+      } = await supabase.functions.invoke(
+        "create-checkout-session",
+        {
+          body: {
+            amount: Math.round(
+              importe * 100
+            ),
+            customerEmail: cliente.email,
+            clientId:
+              factura.cliente_id || null,
+            facturaId:
+              Number(factura.id),
+            originUrl:
+              window.location.origin
           }
-        );
+        }
+      );
 
       if (checkoutError) {
-        let errorMsg = checkoutError.message;
+        let errorMsg =
+          checkoutError.message;
 
         try {
-          const body = await checkoutError.context?.json();
+          const body =
+            await checkoutError.context?.json();
 
           if (body?.error) {
             errorMsg = body.error;
@@ -343,23 +378,34 @@ export default function VerFactura() {
         );
       }
 
-      const { error: errEmail } =
-        await supabase.functions.invoke(
-          'enviar-email',
-          {
-            body: {
-              factura_id: Number(factura.id),
-              facturaId: Number(factura.id),
-              id: Number(factura.id),
-              tipo: 'aviso_pago',
-              customerEmail: cliente.email,
-              customerName: cliente.nombre,
-              stripeUrl: checkoutData.url,
-              title:
-                `Aviso de pago ${factura.numero || `#${factura.id}`}`
-            }
+      const {
+        error: errEmail
+      } = await supabase.functions.invoke(
+        'enviar-email',
+        {
+          body: {
+            factura_id:
+              Number(factura.id),
+            facturaId:
+              Number(factura.id),
+            id:
+              Number(factura.id),
+            tipo:
+              'aviso_pago',
+            customerEmail:
+              cliente.email,
+            customerName:
+              cliente.nombre,
+            stripeUrl:
+              checkoutData.url,
+            title:
+              `Aviso de pago ${
+                factura.numero ||
+                `#${factura.id}`
+              }`
           }
-        );
+        }
+      );
 
       if (errEmail) {
         throw errEmail;
@@ -383,33 +429,63 @@ export default function VerFactura() {
     }
   };
 
+  /*
+   * CONFIRMAR PAGO + FACTURADIRECTA
+   *
+   * IMPORTANTE:
+   *
+   * Esto llama a la Edge Function DESPLEGADA
+   * "factura-pdf" de Supabase.
+   *
+   * NO intenta leer ni ejecutar el archivo
+   * supabase/functions/factura-pdf de GitHub.
+   *
+   * La Edge Function desplegada realiza:
+   *
+   * - FacturaDirecta
+   * - creación de factura legal
+   * - PDF
+   * - almacenamiento del PDF
+   * - email de la factura
+   * - registro del pago
+   * - estado pagada
+   */
   const marcarComoPagada = async () => {
     try {
       setProcesando(true);
 
       if (!factura) {
-        throw new Error("No se ha cargado la factura.");
+        throw new Error(
+          "No se ha cargado la factura."
+        );
       }
 
-      const { data, error } =
-        await supabase.functions.invoke(
-          "factura-pdf",
-          {
-            body: {
-              facturaId: Number(factura.id),
-              pagoConfirmado: true
-            }
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke(
+        "factura-pdf",
+        {
+          body: {
+            facturaId:
+              Number(factura.id),
+            pagoConfirmado:
+              true
           }
-        );
+        }
+      );
 
       if (error) {
-        let mensaje = error.message;
+        let mensaje =
+          error.message;
 
         try {
-          const body = await error.context?.json();
+          const body =
+            await error.context?.json();
 
           if (body?.error) {
-            mensaje = body.error;
+            mensaje =
+              body.error;
           }
         } catch (e) {}
 
@@ -446,37 +522,54 @@ export default function VerFactura() {
   };
 
   /*
-   * PUBLICACIÓN FINAL PARA EL ROL CLIENTE
+   * PUBLICAR INSPECCIÓN EXTRA AL CLIENTE
    *
-   * NO ENVÍA EMAIL.
+   * ESTE ES EL ÚNICO CAMBIO IMPORTANTE.
    *
-   * El PDF ya existente de FacturaDirecta se conserva
-   * mediante factura.pdf_url y se guarda también en extras.pdf_url.
+   * NO:
+   * - envía email
+   * - llama a enviar-email
+   * - llama a enviar-extra-cliente
+   * - llama a factura-pdf
+   * - crea otra factura
+   * - modifica descripción
+   * - modifica materiales
+   * - modifica fotos
+   * - modifica tiempo
+   * - modifica el PDF
    *
-   * La inspección extra se publica cambiando extras.estado
-   * a "enviado_cliente".
+   * SOLO:
+   *
+   * extras.estado = 'enviado_cliente'
+   *
+   * De esta forma el rol cliente podrá verla
+   * según las reglas que ya tenga el portal.
    */
   const aprobarYEnviarAlCliente = async () => {
-    let extraAprobadoId = null;
-
     try {
       setProcesandoExtra(true);
 
       if (!factura) {
-        throw new Error('No se ha cargado la factura.');
+        throw new Error(
+          'No se ha cargado la factura.'
+        );
       }
 
       if (!inspeccionExtra?.publicado?.id) {
-        throw new Error('No se ha encontrado la inspección extra.');
+        throw new Error(
+          'No se ha encontrado la inspección extra.'
+        );
       }
 
-      const estadoPago = String(
-        factura.estado_pago || ''
-      ).toLowerCase();
+      const estadoPago =
+        String(
+          factura.estado_pago || ''
+        ).toLowerCase();
 
-      const estadoFactura = String(
-        factura.estado || ''
-      ).toLowerCase();
+      const estadoFactura =
+        String(
+          factura.estado || ''
+        ).toLowerCase();
 
       const facturaPagada =
         estadoPago === 'pagada' ||
@@ -489,13 +582,8 @@ export default function VerFactura() {
         );
       }
 
-      if (!factura.pdf_url) {
-        throw new Error(
-          'FacturaDirecta todavía no ha dejado disponible el PDF legal de esta factura.'
-        );
-      }
-
-      const extraExistente = inspeccionExtra.publicado;
+      const extraExistente =
+        inspeccionExtra.publicado;
 
       const estadosTecnicoCompletado = [
         'completado',
@@ -504,18 +592,25 @@ export default function VerFactura() {
         'finalizada'
       ];
 
-      const estadoTecnico = String(
-        extraExistente.estado_tecnico || ''
-      ).toLowerCase();
+      const estadoTecnico =
+        String(
+          extraExistente.estado_tecnico || ''
+        ).toLowerCase();
 
-      if (!estadosTecnicoCompletado.includes(estadoTecnico)) {
+      if (
+        !estadosTecnicoCompletado.includes(
+          estadoTecnico
+        )
+      ) {
         throw new Error(
           'La inspección extra todavía no ha sido completada por el técnico.'
         );
       }
 
       if (
-        String(extraExistente.estado || '').toLowerCase() ===
+        String(
+          extraExistente.estado || ''
+        ).toLowerCase() ===
         'enviado_cliente'
       ) {
         alert(
@@ -526,89 +621,28 @@ export default function VerFactura() {
         return;
       }
 
-      const inspeccionTecnico = inspeccionExtra.inspeccion;
-
-      const observacionesTecnico =
-        inspeccionTecnico?.observaciones ||
-        inspeccionTecnico?.notas_tecnico ||
-        inspeccionTecnico?.notas ||
-        '';
-
-      const descripcionOriginal =
-        extraExistente.descripcion || '';
-
-      const descripcionCliente =
-        observacionesTecnico &&
-        !descripcionOriginal.includes(observacionesTecnico)
-          ? `${descripcionOriginal}\n\nObservaciones del técnico:\n${observacionesTecnico}`
-          : descripcionOriginal;
-
-      const materiales =
-        extraExistente.materiales ||
-        inspeccionTecnico?.materiales_usados ||
-        '';
-
-      const tiempoEmpleado =
-        extraExistente.tiempo_empleado ||
-        inspeccionTecnico?.tiempo_empleado ||
-        '';
-
-      let fotos = parsearFotosExtra(extraExistente.fotos);
-
-      if (fotos.length === 0) {
-        fotos = parsearFotosExtra(inspeccionTecnico?.fotos);
-      }
-
-      if (fotos.length === 0) {
-        fotos = fotosExtra;
-      }
-
       /*
-       * PRIMERA ACTUALIZACIÓN:
-       * Guardamos toda la información que verá el cliente.
+       * ÚNICA ESCRITURA DE ESTE BOTÓN:
        *
-       * Todavía no cambiamos estado a enviado_cliente
-       * hasta comprobar que la actualización ha terminado.
+       * Cambiar el estado de la inspección extra.
+       *
+       * No se toca absolutamente ningún otro
+       * campo de extras.
        */
-      const { data: extraAprobado, error: aprobarError } =
-        await supabase
-          .from('extras')
-          .update({
-            estado_admin: 'aprobada',
-            fecha_aprobacion: new Date().toISOString(),
-            descripcion: descripcionCliente,
-            materiales,
-            tiempo_empleado: tiempoEmpleado,
-            fotos,
-            pdf_url: factura.pdf_url
-          })
-          .eq('id', extraExistente.id)
-          .select()
-          .single();
-
-      if (aprobarError) {
-        throw aprobarError;
-      }
-
-      extraAprobadoId = extraAprobado.id;
-
-      /*
-       * SEGUNDA ACTUALIZACIÓN:
-       *
-       * Esta es la publicación real para el rol cliente.
-       *
-       * NO SE LLAMA A NINGUNA EDGE FUNCTION.
-       * NO SE ENVÍA EMAIL.
-       */
-      const { data: extraPublicadoCliente, error: publicarError } =
-        await supabase
-          .from('extras')
-          .update({
-            estado: 'enviado_cliente'
-          })
-          .eq('id', extraAprobado.id)
-          .select()
-          .single();
+      const {
+        data: extraPublicadoCliente,
+        error: publicarError
+      } = await supabase
+        .from('extras')
+        .update({
+          estado: 'enviado_cliente'
+        })
+        .eq(
+          'id',
+          extraExistente.id
+        )
+        .select()
+        .single();
 
       if (publicarError) {
         throw publicarError;
@@ -620,53 +654,31 @@ export default function VerFactura() {
         );
       }
 
-      setInspeccionExtra((actual) => ({
-        ...(actual || {}),
-        publicado: extraPublicadoCliente
-      }));
+      setInspeccionExtra(
+        (actual) => ({
+          ...(actual || {}),
+          publicado:
+            extraPublicadoCliente
+        })
+      );
 
       await cargarDatosSeguros();
 
       alert(
-        'Factura e inspección extra publicadas correctamente en el portal del cliente.'
+        'Inspección extra publicada correctamente en el portal del cliente.'
       );
     } catch (err) {
       console.error(
-        'Error publicando factura e inspección:',
+        'Error publicando inspección extra:',
         err
       );
-
-      /*
-       * Si la publicación no llegó a completarse,
-       * devolvemos la aprobación a pendiente.
-       */
-      if (extraAprobadoId) {
-        const { data: estadoActual } = await supabase
-          .from('extras')
-          .select('estado')
-          .eq('id', extraAprobadoId)
-          .maybeSingle();
-
-        if (
-          estadoActual &&
-          String(estadoActual.estado || '').toLowerCase() !==
-          'enviado_cliente'
-        ) {
-          await supabase
-            .from('extras')
-            .update({
-              estado_admin: 'pendiente',
-              fecha_aprobacion: null
-            })
-            .eq('id', extraAprobadoId);
-        }
-      }
 
       await cargarDatosSeguros();
 
       alert(
         'No se ha podido publicar para el cliente: ' +
-        (err.message || 'Error desconocido.')
+        (err.message ||
+          'Error desconocido.')
       );
     } finally {
       setProcesandoExtra(false);
@@ -685,10 +697,11 @@ export default function VerFactura() {
     try {
       setProcesando(true);
 
-      const { error } = await supabase
-        .from('facturas')
-        .delete()
-        .eq('id', id);
+      const { error } =
+        await supabase
+          .from('facturas')
+          .delete()
+          .eq('id', id);
 
       if (error) throw error;
 
@@ -711,37 +724,58 @@ export default function VerFactura() {
     return (
       <div
         style={{
-          backgroundColor: FONDO_PRINCIPAL,
-          minHeight: '100vh',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          fontFamily: 'Inter, sans-serif'
+          backgroundColor:
+            FONDO_PRINCIPAL,
+          minHeight:
+            '100vh',
+          display:
+            'flex',
+          justifyContent:
+            'center',
+          alignItems:
+            'center',
+          fontFamily:
+            'Inter, sans-serif'
         }}
       >
-        <h3 style={TEXTO_DORADO_BRILLO}>
+        <h3
+          style={
+            TEXTO_DORADO_BRILLO
+          }
+        >
           Cargando detalle...
         </h3>
       </div>
     );
   }
 
-  if (errorMsg || !factura) {
+  if (
+    errorMsg ||
+    !factura
+  ) {
     return (
       <div
         style={{
-          backgroundColor: FONDO_PRINCIPAL,
-          minHeight: '100vh',
-          padding: '20px',
-          color: '#fff',
-          fontFamily: 'Inter, sans-serif',
-          textAlign: 'center'
+          backgroundColor:
+            FONDO_PRINCIPAL,
+          minHeight:
+            '100vh',
+          padding:
+            '20px',
+          color:
+            '#fff',
+          fontFamily:
+            'Inter, sans-serif',
+          textAlign:
+            'center'
         }}
       >
         <h2
           style={{
-            color: '#ef4444',
-            marginTop: '40px'
+            color:
+              '#ef4444',
+            marginTop:
+              '40px'
           }}
         >
           ⚠️ Error
@@ -749,8 +783,10 @@ export default function VerFactura() {
 
         <p
           style={{
-            color: '#cbd5e1',
-            fontSize: '14px'
+            color:
+              '#cbd5e1',
+            fontSize:
+              '14px'
           }}
         >
           {errorMsg ||
@@ -758,16 +794,26 @@ export default function VerFactura() {
         </p>
 
         <button
-          onClick={() => navigate(-1)}
+          onClick={() =>
+            navigate(-1)
+          }
           style={{
-            marginTop: '20px',
-            padding: '12px 20px',
-            background: COLOR_DORADO,
-            border: 'none',
-            borderRadius: '8px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            color: '#000'
+            marginTop:
+              '20px',
+            padding:
+              '12px 20px',
+            background:
+              COLOR_DORADO,
+            border:
+              'none',
+            borderRadius:
+              '8px',
+            fontWeight:
+              'bold',
+            cursor:
+              'pointer',
+            color:
+              '#000'
           }}
         >
           Volver Atrás
@@ -777,9 +823,12 @@ export default function VerFactura() {
   }
 
   const esPagada =
-    factura.estado_pago?.toLowerCase() === 'pagada' ||
-    factura.estado?.toLowerCase() === 'pagada' ||
-    factura.estado?.toLowerCase() === 'finalizado';
+    factura.estado_pago?.toLowerCase() ===
+      'pagada' ||
+    factura.estado?.toLowerCase() ===
+      'pagada' ||
+    factura.estado?.toLowerCase() ===
+      'finalizado';
 
   const colorEstado =
     esPagada
@@ -792,7 +841,9 @@ export default function VerFactura() {
       : 'PENDIENTE';
 
   const itemsDetalle =
-    Array.isArray(factura.items)
+    Array.isArray(
+      factura.items
+    )
       ? factura.items
       : [];
 
@@ -803,80 +854,126 @@ export default function VerFactura() {
     );
 
   const extraActual =
-    inspeccionExtra?.publicado || null;
+    inspeccionExtra?.publicado ||
+    null;
 
   const estadoExtra =
     String(
-      extraActual?.estado || ''
+      extraActual?.estado ||
+      ''
     ).toLowerCase();
 
   const estadoAdminExtra =
     String(
-      extraActual?.estado_admin || ''
+      extraActual?.estado_admin ||
+      ''
     ).toLowerCase();
 
   const estadoTecnicoExtra =
     String(
-      extraActual?.estado_tecnico || ''
+      extraActual?.estado_tecnico ||
+      ''
     ).toLowerCase();
 
-  const tecnicoHaCompletadoExtra = [
-    'completado',
-    'completada',
-    'finalizado',
-    'finalizada'
-  ].includes(estadoTecnicoExtra);
+  const tecnicoHaCompletadoExtra =
+    [
+      'completado',
+      'completada',
+      'finalizado',
+      'finalizada'
+    ].includes(
+      estadoTecnicoExtra
+    );
 
   const extraYaEnviado =
-    estadoExtra === 'enviado_cliente';
+    estadoExtra ===
+    'enviado_cliente';
 
   const extraAprobado =
-    estadoAdminExtra === 'aprobada';
+    estadoAdminExtra ===
+    'aprobada';
 
   return (
-    <div style={estilos.pagina}>
-      <div style={estilos.contenedor}>
+    <div
+      style={
+        estilos.pagina
+      }
+    >
+      <div
+        style={
+          estilos.contenedor
+        }
+      >
 
         <div
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
+            display:
+              'flex',
+            justifyContent:
+              'space-between',
+            alignItems:
+              'center'
           }}
         >
           <button
-            onClick={() => navigate(-1)}
-            style={estilos.botonVolver}
+            onClick={() =>
+              navigate(-1)
+            }
+            style={
+              estilos.botonVolver
+            }
           >
             ← Volver
           </button>
 
           <span
             style={{
-              fontSize: '11px',
-              color: '#64748b',
-              textTransform: 'uppercase',
-              fontWeight: 'bold'
+              fontSize:
+                '11px',
+              color:
+                '#64748b',
+              textTransform:
+                'uppercase',
+              fontWeight:
+                'bold'
             }}
           >
             Panel de Administración
           </span>
         </div>
 
-        <div style={estilos.cabecera}>
-          <h2 style={estilos.titulo}>
-            {esPagada ? 'FACTURA' : 'AVISO DE COBRO'}{' '}
-            {factura.numero || `#${factura.id}`}
+        <div
+          style={
+            estilos.cabecera
+          }
+        >
+          <h2
+            style={
+              estilos.titulo
+            }
+          >
+            {esPagada
+              ? 'FACTURA'
+              : 'AVISO DE COBRO'}{' '}
+            {factura.numero ||
+              `#${factura.id}`}
           </h2>
         </div>
 
-        <div style={estilos.tarjeta}>
+        <div
+          style={
+            estilos.tarjeta
+          }
+        >
           <h3
             style={{
               ...TEXTO_DORADO_BRILLO,
-              fontSize: '12px',
-              margin: '0 0 8px 0',
-              textTransform: 'uppercase'
+              fontSize:
+                '12px',
+              margin:
+                '0 0 8px 0',
+              textTransform:
+                'uppercase'
             }}
           >
             Datos del Cliente
@@ -884,52 +981,86 @@ export default function VerFactura() {
 
           <p
             style={{
-              fontSize: '13px',
-              color: '#fff',
-              margin: '4px 0'
+              fontSize:
+                '13px',
+              color:
+                '#fff',
+              margin:
+                '4px 0'
             }}
           >
-            <strong>Nombre:</strong>{' '}
-            {cliente?.nombre || 'N/A'}
+            <strong>
+              Nombre:
+            </strong>{' '}
+            {cliente?.nombre ||
+              'N/A'}
           </p>
 
           <p
             style={{
-              fontSize: '13px',
-              color: '#fff',
-              margin: '4px 0'
+              fontSize:
+                '13px',
+              color:
+                '#fff',
+              margin:
+                '4px 0'
             }}
           >
-            <strong>Email:</strong>{' '}
-            {cliente?.email || 'N/A'}
+            <strong>
+              Email:
+            </strong>{' '}
+            {cliente?.email ||
+              'N/A'}
           </p>
 
           <p
             style={{
-              fontSize: '13px',
-              color: '#fff',
-              margin: '4px 0'
+              fontSize:
+                '13px',
+              color:
+                '#fff',
+              margin:
+                '4px 0'
             }}
           >
-            <strong>Teléfono:</strong>{' '}
-            {cliente?.telefono || 'N/A'}
+            <strong>
+              Teléfono:
+            </strong>{' '}
+            {cliente?.telefono ||
+              'N/A'}
           </p>
         </div>
 
-        <div style={estilos.tarjeta}>
+        <div
+          style={
+            estilos.tarjeta
+          }
+        >
           <div
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '10px'
+              display:
+                'flex',
+              justifyContent:
+                'space-between',
+              alignItems:
+                'center',
+              marginBottom:
+                '10px'
             }}
           >
-            <span style={estilos.etiqueta}>
+            <span
+              style={
+                estilos.etiqueta
+              }
+            >
               Fecha:
             </span>
 
-            <span style={estilos.valor}>
+            <span
+              style={
+                estilos.valor
+              }
+            >
               {factura.created_at
                 ? factura.created_at.split('T')[0]
                 : 'N/D'}
@@ -938,21 +1069,31 @@ export default function VerFactura() {
 
           <div
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '10px'
+              display:
+                'flex',
+              justifyContent:
+                'space-between',
+              alignItems:
+                'center',
+              marginBottom:
+                '10px'
             }}
           >
-            <span style={estilos.etiqueta}>
+            <span
+              style={
+                estilos.etiqueta
+              }
+            >
               Estado:
             </span>
 
             <span
               style={{
                 ...estilos.valorEstado,
-                color: colorEstado,
-                borderColor: colorEstado
+                color:
+                  colorEstado,
+                borderColor:
+                  colorEstado
               }}
             >
               {textoEstado}
@@ -961,45 +1102,67 @@ export default function VerFactura() {
 
           <div
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '10px'
+              display:
+                'flex',
+              justifyContent:
+                'space-between',
+              alignItems:
+                'center',
+              marginBottom:
+                '10px'
             }}
           >
-            <span style={estilos.etiqueta}>
+            <span
+              style={
+                estilos.etiqueta
+              }
+            >
               Importe Total:
             </span>
 
             <span
               style={{
-                fontSize: '16px',
-                color: COLOR_DORADO,
-                fontWeight: '900'
+                fontSize:
+                  '16px',
+                color:
+                  COLOR_DORADO,
+                fontWeight:
+                  '900'
               }}
             >
               {Number(
-                factura.total || 0
+                factura.total ||
+                  0
               ).toFixed(2)} €
             </span>
           </div>
 
           <div
             style={{
-              marginTop: '10px',
-              background: 'rgba(11, 19, 32, 0.7)',
-              padding: '12px',
-              borderRadius: '10px',
-              border: BORDE_DORADO_FINO
+              marginTop:
+                '10px',
+              background:
+                'rgba(11, 19, 32, 0.7)',
+              padding:
+                '12px',
+              borderRadius:
+                '10px',
+              border:
+                BORDE_DORADO_FINO
             }}
           >
             <p
               style={{
-                fontSize: '12px',
-                color: '#94a3b8',
-                margin: '0 0 4px 0',
-                textTransform: 'uppercase',
-                fontWeight: 'bold'
+                fontSize:
+                  '12px',
+                color:
+                  '#94a3b8',
+                margin:
+                  '0 0 4px 0',
+                textTransform:
+                  'uppercase',
+                fontWeight:
+                  'bold'
               }}
             >
               Descripción:
@@ -1007,11 +1170,16 @@ export default function VerFactura() {
 
             <p
               style={{
-                fontSize: '13px',
-                color: '#fff',
-                margin: 0,
-                whiteSpace: 'pre-wrap',
-                lineHeight: '1.4'
+                fontSize:
+                  '13px',
+                color:
+                  '#fff',
+                margin:
+                  0,
+                whiteSpace:
+                  'pre-wrap',
+                lineHeight:
+                  '1.4'
               }}
             >
               {descripcionTraducida ||
@@ -1022,24 +1190,40 @@ export default function VerFactura() {
           {!esPagada && (
             <div
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                marginTop: '15px'
+                display:
+                  'flex',
+                flexDirection:
+                  'column',
+                gap:
+                  '8px',
+                marginTop:
+                  '15px'
               }}
             >
               <button
-                onClick={enviarAvisoPago}
-                disabled={procesando}
-                style={estilos.botonAzul}
+                onClick={
+                  enviarAvisoPago
+                }
+                disabled={
+                  procesando
+                }
+                style={
+                  estilos.botonAzul
+                }
               >
                 ✉️ Enviar Aviso de Pago (Stripe)
               </button>
 
               <button
-                onClick={marcarComoPagada}
-                disabled={procesando}
-                style={estilos.botonVerde}
+                onClick={
+                  marcarComoPagada
+                }
+                disabled={
+                  procesando
+                }
+                style={
+                  estilos.botonVerde
+                }
               >
                 💳 Confirmar pago y emitir factura
               </button>
@@ -1048,21 +1232,32 @@ export default function VerFactura() {
         </div>
 
         {inspeccionExtra && (
-          <div style={estilos.tarjeta}>
+          <div
+            style={
+              estilos.tarjeta
+            }
+          >
             <div
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '10px'
+                display:
+                  'flex',
+                justifyContent:
+                  'space-between',
+                alignItems:
+                  'center',
+                marginBottom:
+                  '10px'
               }}
             >
               <h3
                 style={{
                   ...TEXTO_DORADO_BRILLO,
-                  fontSize: '12px',
-                  margin: 0,
-                  textTransform: 'uppercase'
+                  fontSize:
+                    '12px',
+                  margin:
+                    0,
+                  textTransform:
+                    'uppercase'
                 }}
               >
                 Inspección Extra
@@ -1070,15 +1265,18 @@ export default function VerFactura() {
 
               <span
                 style={{
-                  fontSize: '10px',
+                  fontSize:
+                    '10px',
                   color:
                     extraYaEnviado
                       ? '#34d399'
                       : tecnicoHaCompletadoExtra
                         ? '#f59e0b'
                         : '#94a3b8',
-                  fontWeight: '900',
-                  textTransform: 'uppercase'
+                  fontWeight:
+                    '900',
+                  textTransform:
+                    'uppercase'
                 }}
               >
                 {extraYaEnviado
@@ -1093,12 +1291,17 @@ export default function VerFactura() {
 
             <p
               style={{
-                fontSize: '13px',
-                color: '#fff',
-                margin: '4px 0'
+                fontSize:
+                  '13px',
+                color:
+                  '#fff',
+                margin:
+                  '4px 0'
               }}
             >
-              <strong>Descripción:</strong>{' '}
+              <strong>
+                Descripción:
+              </strong>{' '}
               {extraActual?.descripcion ||
                 inspeccionExtra.inspeccion?.descripcion ||
                 'Sin descripción'}
@@ -1108,12 +1311,17 @@ export default function VerFactura() {
               inspeccionExtra.inspeccion?.materiales_usados) && (
               <p
                 style={{
-                  fontSize: '13px',
-                  color: '#cbd5e1',
-                  margin: '4px 0'
+                  fontSize:
+                    '13px',
+                  color:
+                    '#cbd5e1',
+                  margin:
+                    '4px 0'
                 }}
               >
-                <strong>Materiales:</strong>{' '}
+                <strong>
+                  Materiales:
+                </strong>{' '}
                 {extraActual?.materiales ||
                   inspeccionExtra.inspeccion?.materiales_usados}
               </p>
@@ -1123,12 +1331,17 @@ export default function VerFactura() {
               inspeccionExtra.inspeccion?.tiempo_empleado) && (
               <p
                 style={{
-                  fontSize: '13px',
-                  color: '#cbd5e1',
-                  margin: '4px 0'
+                  fontSize:
+                    '13px',
+                  color:
+                    '#cbd5e1',
+                  margin:
+                    '4px 0'
                 }}
               >
-                <strong>Tiempo empleado:</strong>{' '}
+                <strong>
+                  Tiempo empleado:
+                </strong>{' '}
                 {extraActual?.tiempo_empleado ||
                   inspeccionExtra.inspeccion?.tiempo_empleado}
               </p>
@@ -1137,47 +1350,66 @@ export default function VerFactura() {
             {fotosExtra.length > 0 ? (
               <div
                 style={{
-                  display: 'grid',
+                  display:
+                    'grid',
                   gridTemplateColumns:
                     'repeat(3, minmax(0, 1fr))',
-                  gap: '8px',
-                  marginTop: '12px'
+                  gap:
+                    '8px',
+                  marginTop:
+                    '12px'
                 }}
               >
-                {fotosExtra.map((foto, index) => {
-                  const url =
-                    obtenerUrlFotoExtra(foto);
+                {fotosExtra.map(
+                  (foto, index) => {
+                    const url =
+                      obtenerUrlFotoExtra(
+                        foto
+                      );
 
-                  if (!url) return null;
+                    if (!url)
+                      return null;
 
-                  return (
-                    <a
-                      key={index}
-                      href={url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <img
-                        src={url}
-                        alt={'Foto de inspección extra ' + (index + 1)}
-                        style={{
-                          width: '100%',
-                          height: '90px',
-                          objectFit: 'cover',
-                          borderRadius: '10px',
-                          border: BORDE_DORADO_FINO
-                        }}
-                      />
-                    </a>
-                  );
-                })}
+                    return (
+                      <a
+                        key={index}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          src={url}
+                          alt={
+                            'Foto de inspección extra ' +
+                            (index + 1)
+                          }
+                          style={{
+                            width:
+                              '100%',
+                            height:
+                              '90px',
+                            objectFit:
+                              'cover',
+                            borderRadius:
+                              '10px',
+                            border:
+                              BORDE_DORADO_FINO
+                          }}
+                        />
+                      </a>
+                    );
+                  }
+                )}
               </div>
             ) : (
               <p
                 style={{
-                  fontSize: '12px',
-                  color: '#94a3b8',
-                  marginTop: '10px'
+                  fontSize:
+                    '12px',
+                  color:
+                    '#94a3b8',
+                  marginTop:
+                    '10px'
                 }}
               >
                 No hay fotografías asociadas a esta inspección.
@@ -1187,20 +1419,30 @@ export default function VerFactura() {
             {extraYaEnviado && (
               <div
                 style={{
-                  marginTop: '14px',
-                  padding: '10px',
-                  borderRadius: '10px',
-                  background: 'rgba(52, 211, 153, 0.08)',
-                  border: '1px solid rgba(52, 211, 153, 0.35)'
+                  marginTop:
+                    '14px',
+                  padding:
+                    '10px',
+                  borderRadius:
+                    '10px',
+                  background:
+                    'rgba(52, 211, 153, 0.08)',
+                  border:
+                    '1px solid rgba(52, 211, 153, 0.35)'
                 }}
               >
                 <p
                   style={{
-                    margin: 0,
-                    color: '#34d399',
-                    fontSize: '12px',
-                    fontWeight: '800',
-                    textAlign: 'center'
+                    margin:
+                      0,
+                    color:
+                      '#34d399',
+                    fontSize:
+                      '12px',
+                    fontWeight:
+                      '800',
+                    textAlign:
+                      'center'
                   }}
                 >
                   ✓ Esta inspección extra ya está publicada en el portal del cliente.
@@ -1211,17 +1453,25 @@ export default function VerFactura() {
             {!extraYaEnviado &&
               tecnicoHaCompletadoExtra && (
                 <button
-                  onClick={aprobarYEnviarAlCliente}
-                  disabled={procesandoExtra || !esPagada}
+                  onClick={
+                    aprobarYEnviarAlCliente
+                  }
+                  disabled={
+                    procesandoExtra ||
+                    !esPagada
+                  }
                   style={{
                     ...estilos.botonVerde,
-                    marginTop: '14px',
+                    marginTop:
+                      '14px',
                     opacity:
-                      procesandoExtra || !esPagada
+                      procesandoExtra ||
+                      !esPagada
                         ? 0.65
                         : 1,
                     cursor:
-                      procesandoExtra || !esPagada
+                      procesandoExtra ||
+                      !esPagada
                         ? 'not-allowed'
                         : 'pointer'
                   }}
@@ -1236,19 +1486,28 @@ export default function VerFactura() {
               !tecnicoHaCompletadoExtra && (
                 <div
                   style={{
-                    marginTop: '14px',
-                    padding: '10px',
-                    borderRadius: '10px',
-                    background: 'rgba(148, 163, 184, 0.08)',
-                    border: '1px solid rgba(148, 163, 184, 0.25)'
+                    marginTop:
+                      '14px',
+                    padding:
+                      '10px',
+                    borderRadius:
+                      '10px',
+                    background:
+                      'rgba(148, 163, 184, 0.08)',
+                    border:
+                      '1px solid rgba(148, 163, 184, 0.25)'
                   }}
                 >
                   <p
                     style={{
-                      margin: 0,
-                      color: '#94a3b8',
-                      fontSize: '12px',
-                      textAlign: 'center'
+                      margin:
+                        0,
+                      color:
+                        '#94a3b8',
+                      fontSize:
+                        '12px',
+                      textAlign:
+                        'center'
                     }}
                   >
                     La inspección todavía no ha sido completada por el técnico.
@@ -1259,13 +1518,20 @@ export default function VerFactura() {
         )}
 
         {itemsDetalle.length > 0 && (
-          <div style={estilos.tarjeta}>
+          <div
+            style={
+              estilos.tarjeta
+            }
+          >
             <h3
               style={{
                 ...TEXTO_DORADO_BRILLO,
-                fontSize: '12px',
-                margin: '0 0 10px 0',
-                textTransform: 'uppercase'
+                fontSize:
+                  '12px',
+                margin:
+                  '0 0 10px 0',
+                textTransform:
+                  'uppercase'
               }}
             >
               Desglose de Conceptos
@@ -1273,60 +1539,81 @@ export default function VerFactura() {
 
             <div
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
+                display:
+                  'flex',
+                flexDirection:
+                  'column',
+                gap:
+                  '8px'
               }}
             >
-              {itemsDetalle.map((item, index) => (
-                <div
-                  key={index}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 0',
-                    borderBottom:
-                      '1px solid rgba(255,255,255,0.05)'
-                  }}
-                >
-                  <span
+              {itemsDetalle.map(
+                (item, index) => (
+                  <div
+                    key={index}
                     style={{
-                      fontSize: '12px',
-                      color: '#e2e8f0',
-                      maxWidth: '70%'
+                      display:
+                        'flex',
+                      justifyContent:
+                        'space-between',
+                      alignItems:
+                        'center',
+                      padding:
+                        '8px 0',
+                      borderBottom:
+                        '1px solid rgba(255,255,255,0.05)'
                     }}
                   >
-                    {traducirConcepto(
-                      item.concepto ||
-                      item.descripcion,
-                      idiomaFinal
-                    )}
-                  </span>
+                    <span
+                      style={{
+                        fontSize:
+                          '12px',
+                        color:
+                          '#e2e8f0',
+                        maxWidth:
+                          '70%'
+                      }}
+                    >
+                      {traducirConcepto(
+                        item.concepto ||
+                          item.descripcion,
+                        idiomaFinal
+                      )}
+                    </span>
 
-                  <span
-                    style={{
-                      fontSize: '12px',
-                      color: COLOR_DORADO,
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    {Number(
-                      item.precio ||
-                      item.total ||
-                      0
-                    ).toFixed(2)} €
-                  </span>
-                </div>
-              ))}
+                    <span
+                      style={{
+                        fontSize:
+                          '12px',
+                        color:
+                          COLOR_DORADO,
+                        fontWeight:
+                          'bold'
+                      }}
+                    >
+                      {Number(
+                        item.precio ||
+                          item.total ||
+                          0
+                      ).toFixed(2)} €
+                    </span>
+                  </div>
+                )
+              )}
             </div>
           </div>
         )}
 
         <button
-          onClick={handleDelete}
-          disabled={procesando}
-          style={estilos.botonEliminar}
+          onClick={
+            handleDelete
+          }
+          disabled={
+            procesando
+          }
+          style={
+            estilos.botonEliminar
+          }
         >
           {procesando
             ? 'Procesando...'
@@ -1340,131 +1627,209 @@ export default function VerFactura() {
 
 const estilos = {
   pagina: {
-    backgroundColor: FONDO_PRINCIPAL,
-    minHeight: '100vh',
-    padding: '16px',
-    display: 'flex',
-    justifyContent: 'center',
-    fontFamily: 'Inter, sans-serif',
-    boxSizing: 'border-box'
+    backgroundColor:
+      FONDO_PRINCIPAL,
+    minHeight:
+      '100vh',
+    padding:
+      '16px',
+    display:
+      'flex',
+    justifyContent:
+      'center',
+    fontFamily:
+      'Inter, sans-serif',
+    boxSizing:
+      'border-box'
   },
 
   contenedor: {
-    width: '100%',
-    maxWidth: '480px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '14px',
-    boxSizing: 'border-box'
+    width:
+      '100%',
+    maxWidth:
+      '480px',
+    display:
+      'flex',
+    flexDirection:
+      'column',
+    gap:
+      '14px',
+    boxSizing:
+      'border-box'
   },
 
   botonVolver: {
-    background: 'transparent',
-    border: BORDE_DORADO_FINO,
-    color: COLOR_DORADO,
-    padding: '6px 12px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '12px',
-    fontWeight: 'bold'
+    background:
+      'transparent',
+    border:
+      BORDE_DORADO_FINO,
+    color:
+      COLOR_DORADO,
+    padding:
+      '6px 12px',
+    borderRadius:
+      '8px',
+    cursor:
+      'pointer',
+    fontSize:
+      '12px',
+    fontWeight:
+      'bold'
   },
 
   cabecera: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderBottom: BORDE_DORADO_FINO,
-    paddingBottom: '12px'
+    display:
+      'flex',
+    justifyContent:
+      'center',
+    alignItems:
+      'center',
+    borderBottom:
+      BORDE_DORADO_FINO,
+    paddingBottom:
+      '12px'
   },
 
   titulo: {
     ...TEXTO_DORADO_BRILLO,
-    fontSize: '16px',
-    fontWeight: '900',
-    margin: 0,
-    textTransform: 'uppercase',
-    textAlign: 'center'
+    fontSize:
+      '16px',
+    fontWeight:
+      '900',
+    margin:
+      0,
+    textTransform:
+      'uppercase',
+    textAlign:
+      'center'
   },
 
   tarjeta: {
-    background: FONDO_TARJETA,
-    border: BORDE_DORADO_FINO,
-    borderRadius: '16px',
-    padding: '16px',
-    boxShadow: SOMBRA_LUXURY,
-    display: 'flex',
-    flexDirection: 'column',
-    boxSizing: 'border-box'
+    background:
+      FONDO_TARJETA,
+    border:
+      BORDE_DORADO_FINO,
+    borderRadius:
+      '16px',
+    padding:
+      '16px',
+    boxShadow:
+      SOMBRA_LUXURY,
+    display:
+      'flex',
+    flexDirection:
+      'column',
+    boxSizing:
+      'border-box'
   },
 
   etiqueta: {
-    fontSize: '12px',
-    color: COLOR_DORADO,
-    fontWeight: '700',
-    textTransform: 'uppercase'
+    fontSize:
+      '12px',
+    color:
+      COLOR_DORADO,
+    fontWeight:
+      '700',
+    textTransform:
+      'uppercase'
   },
 
   valor: {
-    fontSize: '13px',
-    color: '#fff',
-    fontWeight: '600',
-    textAlign: 'right'
+    fontSize:
+      '13px',
+    color:
+      '#fff',
+    fontWeight:
+      '600',
+    textAlign:
+      'right'
   },
 
   valorEstado: {
-    fontSize: '11px',
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    border: '1px solid',
-    borderRadius: '20px',
-    padding: '2px 10px'
+    fontSize:
+      '11px',
+    fontWeight:
+      '900',
+    textTransform:
+      'uppercase',
+    border:
+      '1px solid',
+    borderRadius:
+      '20px',
+    padding:
+      '2px 10px'
   },
 
   botonAzul: {
-    width: '100%',
-    padding: '12px',
+    width:
+      '100%',
+    padding:
+      '12px',
     background:
       'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)',
-    color: '#fff',
+    color:
+      '#fff',
     border:
       '1px solid rgba(56, 189, 248, 0.5)',
-    borderRadius: '12px',
-    fontWeight: '900',
-    fontSize: '12px',
-    cursor: 'pointer',
-    textTransform: 'uppercase'
+    borderRadius:
+      '12px',
+    fontWeight:
+      '900',
+    fontSize:
+      '12px',
+    cursor:
+      'pointer',
+    textTransform:
+      'uppercase'
   },
 
   botonVerde: {
-    width: '100%',
-    padding: '12px',
+    width:
+      '100%',
+    padding:
+      '12px',
     background:
       'linear-gradient(135deg, #10b981 0%, #047857 100%)',
-    color: '#fff',
+    color:
+      '#fff',
     border:
       '1px solid rgba(16, 185, 129, 0.6)',
-    borderRadius: '12px',
-    fontWeight: '900',
-    fontSize: '12px',
-    cursor: 'pointer',
-    textTransform: 'uppercase'
+    borderRadius:
+      '12px',
+    fontWeight:
+      '900',
+    fontSize:
+      '12px',
+    cursor:
+      'pointer',
+    textTransform:
+      'uppercase'
   },
 
   botonEliminar: {
-    width: '100%',
-    padding: '14px',
+    width:
+      '100%',
+    padding:
+      '14px',
     background:
       'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)',
-    color: '#fff',
+    color:
+      '#fff',
     border:
       '1px solid rgba(239, 68, 68, 0.5)',
-    borderRadius: '14px',
-    fontWeight: '900',
-    fontSize: '12px',
-    cursor: 'pointer',
-    textTransform: 'uppercase',
+    borderRadius:
+      '14px',
+    fontWeight:
+      '900',
+    fontSize:
+      '12px',
+    cursor:
+      'pointer',
+    textTransform:
+      'uppercase',
     boxShadow:
       '0 4px 15px rgba(239, 68, 68, 0.3)',
-    marginTop: '10px'
+    marginTop:
+      '10px'
   }
 };
