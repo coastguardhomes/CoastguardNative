@@ -49,6 +49,7 @@ export default function ClienteDashboard() {
 
   const [numInspecciones, setNumInspecciones] = useState(0);
   const [numAlertas, setNumAlertas] = useState(0);
+  const [alertaInspeccionId, setAlertaInspeccionId] = useState(null);
   const [numViviendas, setNumViviendas] = useState(0);
   const [nuevosExtras, setNuevosExtras] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,10 +110,12 @@ export default function ClienteDashboard() {
 
           supabase
             .from("inspecciones")
-            .select("*", { count: "exact", head: true })
+            .select("id, created_at")
             .eq("cliente_id", clienteId)
             .eq("alerta", true)
-            .eq("alerta_vista", false),
+            .eq("alerta_vista", false)
+            .order("created_at", { ascending: false })
+            .limit(1),
 
           supabase
             .from("facturas")
@@ -145,8 +148,12 @@ export default function ClienteDashboard() {
 
         setNumInspecciones(resInspecciones.count || 0);
 
+        setAlertaInspeccionId(
+          resAlertasInsp.data?.[0]?.id || null
+        );
+
         setNumAlertas(
-          (resAlertasInsp.count || 0) +
+          (resAlertasInsp.data?.length || 0) +
             (resAlertasFacturas.count || 0)
         );
 
@@ -312,6 +319,27 @@ export default function ClienteDashboard() {
         err
       );
     }
+  };
+
+  /*
+   * La tarjeta de alertas es solo un acceso directo.
+   *
+   * Si existe una alerta de inspección pendiente,
+   * vamos directamente a esa inspección.
+   *
+   * Si no existe una alerta de inspección pero sí
+   * existe una alerta de factura, mantenemos el acceso
+   * existente a Facturas.
+   */
+  const manejarClickAlertas = () => {
+    if (alertaInspeccionId) {
+      navigate(
+        `/cliente/inspeccion/${alertaInspeccionId}`
+      );
+      return;
+    }
+
+    navigate("/cliente/facturas");
   };
 
   const estiloTarjetaDato = {
@@ -707,9 +735,7 @@ export default function ClienteDashboard() {
 
           <div
             style={estiloTarjetaDato}
-            onClick={() =>
-              navigate("/cliente/alertas")
-            }
+            onClick={manejarClickAlertas}
           >
             <span
               style={{
