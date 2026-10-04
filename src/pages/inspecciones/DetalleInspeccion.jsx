@@ -23,6 +23,7 @@ export default function DetalleInspeccion() {
   const [cargando, setCargando] = useState(true);
   const [generando, setGenerando] = useState(false);
   const [aprobando, setAprobando] = useState(false);
+  const [resolviendoAlerta, setResolviendoAlerta] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
@@ -51,13 +52,16 @@ export default function DetalleInspeccion() {
 
         setInspeccion(insp);
 
-        // ⭐ Marcar automáticamente la alerta como vista cuando el cliente la abre
-        if (insp.alerta && !insp.alerta_vista) {
-          await supabase
-            .from("inspecciones")
-            .update({ alerta_vista: true })
-            .eq("id", id);
-        }
+        /*
+         * IMPORTANTE:
+         *
+         * NO marcar automáticamente la alerta como vista.
+         *
+         * La alerta permanece activa hasta que el
+         * administrador decida resolverla.
+         *
+         * No se modifica la inspección al abrirla.
+         */
 
         // 2️⃣ Cargar vivienda
         if (insp.vivienda_id) {
@@ -71,6 +75,7 @@ export default function DetalleInspeccion() {
 
           // 3️⃣ Cargar cliente
           const clienteId = viv?.cliente_id || insp.cliente_id;
+
           if (clienteId) {
             const { data: cli } = await supabase
               .from("clientes")
@@ -89,6 +94,7 @@ export default function DetalleInspeccion() {
             .select("*")
             .eq("id", insp.tecnico_id)
             .maybeSingle();
+
           setTecnico(tec);
         }
 
@@ -99,6 +105,7 @@ export default function DetalleInspeccion() {
             .select("*")
             .eq("id", insp.contrato_id)
             .maybeSingle();
+
           setContrato(cont);
         }
 
@@ -107,11 +114,14 @@ export default function DetalleInspeccion() {
           .from("checklist_inspeccion")
           .select("*")
           .eq("inspeccion_id", id);
+
         setChecklist(chk || []);
 
         // 7️⃣ Cargar fotos
         try {
-          const fotosCargadas = await cargarFotosInspeccion(id);
+          const fotosCargadas =
+            await cargarFotosInspeccion(id);
+
           setFotos(fotosCargadas || []);
         } catch {
           setFotos([]);
@@ -129,15 +139,17 @@ export default function DetalleInspeccion() {
         } catch {
           setFirma(null);
         }
-
       } catch {
-        setError("Error al cargar los datos de la inspección.");
+        setError(
+          "Error al cargar los datos de la inspección."
+        );
       } finally {
         if (!cancelado) setCargando(false);
       }
     }
 
     cargar();
+
     return () => {
       cancelado = true;
     };
@@ -145,14 +157,25 @@ export default function DetalleInspeccion() {
 
   async function aBase64(url) {
     if (!url) return null;
+
     try {
-      const res = await fetch(url, { mode: "cors" });
+      const res = await fetch(url, {
+        mode: "cors",
+      });
+
       if (!res.ok) return null;
+
       const blob = await res.blob();
+
       return await new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = () => resolve(null);
+
+        reader.onloadend = () =>
+          resolve(reader.result);
+
+        reader.onerror = () =>
+          resolve(null);
+
         reader.readAsDataURL(blob);
       });
     } catch {
@@ -165,23 +188,91 @@ export default function DetalleInspeccion() {
     setMensaje("");
     setError("");
 
-    const { error: updateError } = await supabase
-      .from("inspecciones")
-      .update({
-        estado: "completada_admin",
-        fecha_aprobacion_admin: new Date().toISOString(),
-      })
-      .eq("id", id);
+    const { error: updateError } =
+      await supabase
+        .from("inspecciones")
+        .update({
+          estado: "completada_admin",
+          fecha_aprobacion_admin:
+            new Date().toISOString(),
+        })
+        .eq("id", id);
 
     if (updateError) {
-      setError("No se pudo aprobar la inspección: " + updateError.message);
+      setError(
+        "No se pudo aprobar la inspección: " +
+          updateError.message
+      );
+
       setAprobando(false);
       return;
     }
 
-    setInspeccion((prev) => ({ ...prev, estado: "completada_admin" }));
-    setMensaje("¡Inspección aprobada con éxito!");
+    setInspeccion((prev) => ({
+      ...prev,
+      estado: "completada_admin",
+    }));
+
+    setMensaje(
+      "¡Inspección aprobada con éxito!"
+    );
+
     setAprobando(false);
+  }
+
+  async function resolverAlerta() {
+    if (!inspeccion?.alerta) {
+      return;
+    }
+
+    const confirmar = window.confirm(
+      "¿Quieres resolver esta alerta? La inspección y cualquier extra relacionado permanecerán guardados."
+    );
+
+    if (!confirmar) {
+      return;
+    }
+
+    setResolviendoAlerta(true);
+    setMensaje("");
+    setError("");
+
+    try {
+      const { error: errorAlerta } =
+        await supabase
+          .from("inspecciones")
+          .update({
+            alerta: false,
+            alerta_vista: true,
+          })
+          .eq("id", id);
+
+      if (errorAlerta) {
+        throw errorAlerta;
+      }
+
+      setInspeccion((prev) => ({
+        ...prev,
+        alerta: false,
+        alerta_vista: true,
+      }));
+
+      setMensaje(
+        "Alerta resuelta correctamente."
+      );
+    } catch (err) {
+      console.error(
+        "Error al resolver alerta:",
+        err
+      );
+
+      setError(
+        "No se pudo resolver la alerta: " +
+          (err?.message || "Error desconocido.")
+      );
+    } finally {
+      setResolviendoAlerta(false);
+    }
   }
 
   async function generarInforme() {
@@ -190,25 +281,44 @@ export default function DetalleInspeccion() {
     setGenerando(true);
 
     try {
-      const blob = await generarPDFCliente({
-        ...inspeccion,
-        fotos,
-        firmaBase64: await aBase64(firma),
-      });
+      const blob =
+        await generarPDFCliente({
+          ...inspeccion,
+          fotos,
+          firmaBase64:
+            await aBase64(firma),
+        });
 
-      const resultado = await subirPDF(inspeccion.id, blob);
+      const resultado =
+        await subirPDF(
+          inspeccion.id,
+          blob
+        );
 
       if (!resultado.ok) {
-        setError(`${resultado.mensaje}: ${resultado.error}`);
+        setError(
+          `${resultado.mensaje}: ${resultado.error}`
+        );
+
         setGenerando(false);
         return;
       }
 
-      setInspeccion((prev) => ({ ...prev, pdf_url: resultado.url }));
-      setMensaje("Informe PDF generado correctamente.");
+      setInspeccion((prev) => ({
+        ...prev,
+        pdf_url: resultado.url,
+      }));
+
+      setMensaje(
+        "Informe PDF generado correctamente."
+      );
+
       setGenerando(false);
     } catch (e) {
-      setError(`No se pudo generar el informe: ${e.message}`);
+      setError(
+        `No se pudo generar el informe: ${e.message}`
+      );
+
       setGenerando(false);
     }
   }
@@ -216,7 +326,9 @@ export default function DetalleInspeccion() {
   if (cargando) {
     return (
       <Menu>
-        <div style={estilos.centrado}>Cargando inspección...</div>
+        <div style={estilos.centrado}>
+          Cargando inspección...
+        </div>
       </Menu>
     );
   }
@@ -225,82 +337,244 @@ export default function DetalleInspeccion() {
     return (
       <Menu>
         <div style={estilos.centrado}>
-          <p style={{ color: "#ff6b6b", marginBottom: "15px" }}>{error || "No se encontró la inspección."}</p>
-          <button onClick={() => navigate(-1)} style={estilos.botonSec}>Volver</button>
+          <p
+            style={{
+              color: "#ff6b6b",
+              marginBottom: "15px",
+            }}
+          >
+            {error ||
+              "No se encontró la inspección."}
+          </p>
+
+          <button
+            onClick={() => navigate(-1)}
+            style={estilos.botonSec}
+          >
+            Volver
+          </button>
         </div>
       </Menu>
     );
   }
 
-  const estaAprobada = inspeccion.estado === "completada_admin";
+  const estaAprobada =
+    inspeccion.estado ===
+    "completada_admin";
 
   return (
     <Menu>
       <div style={estilos.pagina}>
-        <h2 style={estilos.titulo}>Revisión de Inspección #{inspeccion.id}</h2>
+        <h2 style={estilos.titulo}>
+          Revisión de Inspección #
+          {inspeccion.id}
+        </h2>
 
         {/* 🔥 BLOQUE DE ALERTA */}
         {inspeccion.alerta && (
-          <div style={{
-            padding: "12px",
-            background: "rgba(255,0,0,0.25)",
-            border: "1px solid rgba(255,0,0,0.45)",
-            borderRadius: "10px",
-            marginBottom: "18px",
-            color: "#fff",
-            fontWeight: "700",
-            fontSize: "15px"
-          }}>
-            ⚠️ ALERTA marcada por el técnico: esta inspección contiene una incidencia importante.
+          <div
+            style={{
+              padding: "12px",
+              background:
+                "rgba(255,0,0,0.25)",
+              border:
+                "1px solid rgba(255,0,0,0.45)",
+              borderRadius: "10px",
+              marginBottom: "18px",
+              color: "#fff",
+              fontWeight: "700",
+              fontSize: "15px",
+            }}
+          >
+            ⚠️ ALERTA marcada por el técnico:
+            esta inspección contiene una
+            incidencia importante.
+
+            <button
+              onClick={resolverAlerta}
+              disabled={resolviendoAlerta}
+              style={{
+                display: "block",
+                width: "100%",
+                marginTop: "12px",
+                padding: "11px",
+                background:
+                  resolviendoAlerta
+                    ? "#555"
+                    : "#4ade80",
+                color: "#000",
+                border: "none",
+                borderRadius: "8px",
+                fontWeight: "800",
+                fontSize: "14px",
+                cursor:
+                  resolviendoAlerta
+                    ? "default"
+                    : "pointer",
+                opacity:
+                  resolviendoAlerta
+                    ? 0.7
+                    : 1,
+              }}
+            >
+              {resolviendoAlerta
+                ? "Resolviendo alerta..."
+                : "✅ Resolver alerta"}
+            </button>
           </div>
         )}
 
-        {mensaje && <p style={estilos.ok}>{mensaje}</p>}
-        {error && <p style={estilos.error}>{error}</p>}
+        {mensaje && (
+          <p style={estilos.ok}>
+            {mensaje}
+          </p>
+        )}
+
+        {error && (
+          <p style={estilos.error}>
+            {error}
+          </p>
+        )}
 
         {/* PANEL ADMIN */}
-        <div style={estilos.tarjetaAdmin}>
-          <h3 style={{ color: "#4db8ff", marginBottom: "10px", fontSize: "18px" }}>
-            Panel de Validación del Administrador
+        <div
+          style={estilos.tarjetaAdmin}
+        >
+          <h3
+            style={{
+              color: "#4db8ff",
+              marginBottom: "10px",
+              fontSize: "18px",
+            }}
+          >
+            Panel de Validación del
+            Administrador
           </h3>
-          <p style={{ fontSize: "14.5px", marginBottom: "12px" }}>
-            Estado actual: <strong style={{ color: estaAprobada ? "#4ade80" : "#ffcc00" }}>{inspeccion.estado || "Pendiente"}</strong>
+
+          <p
+            style={{
+              fontSize: "14.5px",
+              marginBottom: "12px",
+            }}
+          >
+            Estado actual:{" "}
+            <strong
+              style={{
+                color: estaAprobada
+                  ? "#4ade80"
+                  : "#ffcc00",
+              }}
+            >
+              {inspeccion.estado ||
+                "Pendiente"}
+            </strong>
           </p>
 
           {!estaAprobada ? (
             <button
-              onClick={aprobarInspeccionAdmin}
+              onClick={
+                aprobarInspeccionAdmin
+              }
               disabled={aprobando}
               style={{
                 ...estilos.boton,
                 background: "#4ade80",
                 color: "#000",
                 marginBottom: 0,
-                opacity: aprobando ? 0.6 : 1,
+                opacity: aprobando
+                  ? 0.6
+                  : 1,
               }}
             >
-              {aprobando ? "Aprobando..." : "✅ Aprobar trabajo del técnico"}
+              {aprobando
+                ? "Aprobando..."
+                : "✅ Aprobar trabajo del técnico"}
             </button>
           ) : (
-            <p style={{ color: "#4ade80", fontWeight: "700", fontSize: "14px" }}>
-              ✔ Trabajo aprobado y validado para envío al cliente.
+            <p
+              style={{
+                color: "#4ade80",
+                fontWeight: "700",
+                fontSize: "14px",
+              }}
+            >
+              ✔ Trabajo aprobado y
+              validado para envío al
+              cliente.
             </p>
           )}
         </div>
 
         {/* DATOS GENERALES */}
         <div style={estilos.tarjeta}>
-          <Dato clave="Fecha" valor={String(inspeccion.fecha || "").slice(0, 10)} />
-          <Dato clave="Cliente" valor={cliente?.nombre} />
-          <Dato clave="Teléfono" valor={cliente?.telefono} />
-          <Dato clave="Vivienda" valor={vivienda?.direccion} />
-          <Dato clave="Localidad" valor={vivienda?.ciudad} />
-          <Dato clave="Técnico" valor={tecnico?.nombre} />
-          <Dato clave="Contrato" valor={contrato?.modalidad} />
-          <Dato clave="Fotos subidas" valor={fotos.length} />
-          <Dato clave="Checklist ítems" valor={`${checklist.filter(i => i.completado).length} / ${checklist.length} OK`} />
-          <Dato clave="Firma" valor={firma ? "Capturada" : "Pendiente"} />
-          {inspeccion.observaciones && <Dato clave="Notas del técnico" valor={inspeccion.observaciones} />}
+          <Dato
+            clave="Fecha"
+            valor={String(
+              inspeccion.fecha || ""
+            ).slice(0, 10)}
+          />
+
+          <Dato
+            clave="Cliente"
+            valor={cliente?.nombre}
+          />
+
+          <Dato
+            clave="Teléfono"
+            valor={cliente?.telefono}
+          />
+
+          <Dato
+            clave="Vivienda"
+            valor={vivienda?.direccion}
+          />
+
+          <Dato
+            clave="Localidad"
+            valor={vivienda?.ciudad}
+          />
+
+          <Dato
+            clave="Técnico"
+            valor={tecnico?.nombre}
+          />
+
+          <Dato
+            clave="Contrato"
+            valor={contrato?.modalidad}
+          />
+
+          <Dato
+            clave="Fotos subidas"
+            valor={fotos.length}
+          />
+
+          <Dato
+            clave="Checklist ítems"
+            valor={`${checklist.filter(
+              (i) => i.completado
+            ).length} / ${
+              checklist.length
+            } OK`}
+          />
+
+          <Dato
+            clave="Firma"
+            valor={
+              firma
+                ? "Capturada"
+                : "Pendiente"
+            }
+          />
+
+          {inspeccion.observaciones && (
+            <Dato
+              clave="Notas del técnico"
+              valor={
+                inspeccion.observaciones
+              }
+            />
+          )}
         </div>
 
         {/* PDF */}
@@ -309,15 +583,23 @@ export default function DetalleInspeccion() {
           disabled={generando}
           style={{
             ...estilos.boton,
-            opacity: generando ? 0.6 : 1,
+            opacity: generando
+              ? 0.6
+              : 1,
           }}
         >
-          {generando ? "Generando informe..." : "Generar informe PDF"}
+          {generando
+            ? "Generando informe..."
+            : "Generar informe PDF"}
         </button>
 
         {inspeccion.pdf_url && (
           <button
-            onClick={() => navigate(`/inspecciones/pdf/${inspeccion.id}`)}
+            onClick={() =>
+              navigate(
+                `/inspecciones/pdf/${inspeccion.id}`
+              )
+            }
             style={estilos.botonSec}
           >
             Ver informe PDF guardado
@@ -327,19 +609,33 @@ export default function DetalleInspeccion() {
         {/* ACCIONES */}
         <div style={estilos.acciones}>
           <button
-            onClick={() => navigate(`/inspecciones/fotos/${inspeccion.id}`)}
+            onClick={() =>
+              navigate(
+                `/inspecciones/fotos/${inspeccion.id}`
+              )
+            }
             style={estilos.botonSec}
           >
             Ver Fotos ({fotos.length})
           </button>
+
           <button
-            onClick={() => navigate(`/inspecciones/checklist/${inspeccion.id}`)}
+            onClick={() =>
+              navigate(
+                `/inspecciones/checklist/${inspeccion.id}`
+              )
+            }
             style={estilos.botonSec}
           >
             Ver Checklist
           </button>
+
           <button
-            onClick={() => navigate(`/inspecciones/firma/${inspeccion.id}`)}
+            onClick={() =>
+              navigate(
+                `/inspecciones/firma/${inspeccion.id}`
+              )
+            }
             style={estilos.botonSec}
           >
             Ver Firma
@@ -352,10 +648,16 @@ export default function DetalleInspeccion() {
 
 function Dato({ clave, valor }) {
   if (!valor) return null;
+
   return (
     <div style={estilos.fila}>
-      <span style={estilos.clave}>{clave}</span>
-      <span style={estilos.valor}>{String(valor)}</span>
+      <span style={estilos.clave}>
+        {clave}
+      </span>
+
+      <span style={estilos.valor}>
+        {String(valor)}
+      </span>
     </div>
   );
 }
@@ -368,6 +670,7 @@ const estilos = {
     color: "#fff",
     fontFamily: "Inter, sans-serif",
   },
+
   centrado: {
     minHeight: "100vh",
     background: "#0a0f1a",
@@ -380,37 +683,58 @@ const estilos = {
     padding: 24,
     textAlign: "center",
   },
+
   titulo: {
     color: "#4db8ff",
     marginBottom: 20,
     fontSize: 28,
     fontWeight: 700,
-    textShadow: "0 0 8px rgba(0,153,255,0.6)",
+    textShadow:
+      "0 0 8px rgba(0,153,255,0.6)",
   },
+
   tarjetaAdmin: {
-    background: "rgba(77,184,255,0.08)",
+    background:
+      "rgba(77,184,255,0.08)",
     padding: 16,
     borderRadius: 14,
-    border: "1px solid rgba(77,184,255,0.3)",
+    border:
+      "1px solid rgba(77,184,255,0.3)",
     marginBottom: 18,
   },
+
   tarjeta: {
-    background: "rgba(255,255,255,0.05)",
+    background:
+      "rgba(255,255,255,0.05)",
     padding: 18,
     borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.1)",
-    boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+    border:
+      "1px solid rgba(255,255,255,0.1)",
+    boxShadow:
+      "0 0 12px rgba(0,153,255,0.2)",
     marginBottom: 18,
   },
+
   fila: {
     display: "flex",
     justifyContent: "space-between",
     gap: 14,
     padding: "7px 0",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
+    borderBottom:
+      "1px solid rgba(255,255,255,0.06)",
   },
-  clave: { color: "#9fb3c8", fontSize: 14 },
-  valor: { fontWeight: 600, fontSize: 14.5, textAlign: "right" },
+
+  clave: {
+    color: "#9fb3c8",
+    fontSize: 14,
+  },
+
+  valor: {
+    fontWeight: 600,
+    fontSize: 14.5,
+    textAlign: "right",
+  },
+
   boton: {
     padding: 14,
     width: "100%",
@@ -422,38 +746,53 @@ const estilos = {
     fontSize: 17,
     cursor: "pointer",
     marginBottom: 10,
-    boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+    boxShadow:
+      "0 0 10px rgba(0,153,255,0.4)",
   },
+
   botonSec: {
     flex: 1,
     padding: 12,
     width: "100%",
-    background: "rgba(255,255,255,0.06)",
+    background:
+      "rgba(255,255,255,0.06)",
     color: "#fff",
     borderRadius: 10,
-    border: "1px solid rgba(255,255,255,0.18)",
+    border:
+      "1px solid rgba(255,255,255,0.18)",
     fontWeight: 600,
     fontSize: 14.5,
     cursor: "pointer",
     marginBottom: 10,
   },
-  acciones: { display: "flex", gap: 10, marginTop: 6 },
+
+  acciones: {
+    display: "flex",
+    gap: 10,
+    marginTop: 6,
+  },
+
   ok: {
     marginBottom: 14,
     color: "#4ade80",
     fontWeight: 600,
-    background: "rgba(74,222,128,0.1)",
-    border: "1px solid rgba(74,222,128,0.35)",
+    background:
+      "rgba(74,222,128,0.1)",
+    border:
+      "1px solid rgba(74,222,128,0.35)",
     borderRadius: 8,
     padding: 12,
   },
+
   error: {
     padding: 12,
     marginBottom: 14,
     color: "#ff6b6b",
     fontWeight: 600,
-    background: "rgba(255,107,107,0.1)",
-    border: "1px solid rgba(255,107,107,0.35)",
+    background:
+      "rgba(255,107,107,0.1)",
+    border:
+      "1px solid rgba(255,107,107,0.35)",
     borderRadius: 8,
   },
 };
