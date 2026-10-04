@@ -375,26 +375,17 @@ export default function ClienteInspeccionVer() {
         }
 
         /*
-         * Abrir la inspección marca
-         * solamente el aviso como visto.
+         * IMPORTANTE:
          *
-         * La inspección permanece intacta.
+         * Una inspección con alerta NO se marca
+         * como vista al abrirla.
+         *
+         * La alerta permanecerá visible en el
+         * Dashboard del cliente hasta que el
+         * administrador la resuelva.
+         *
+         * No se modifica la inspección.
          */
-        if (
-          insp.alerta &&
-          !insp.alerta_vista
-        ) {
-          await supabase
-            .from("inspecciones")
-            .update({
-              alerta_vista: true,
-            })
-            .eq("id", id)
-            .eq(
-              "cliente_id",
-              clienteId
-            );
-        }
       }
 
       if (!insp) {
@@ -472,9 +463,20 @@ export default function ClienteInspeccionVer() {
    * - factura
    * - historial
    *
-   * Solo marca el aviso como visto.
+   * Para extras, solo marca el aviso como visto.
+   *
+   * Las alertas de inspecciones normales NO
+   * pueden ser resueltas por el cliente.
    */
   async function borrarInforme() {
+    /*
+     * Una inspección normal no puede ser
+     * resuelta desde el panel del cliente.
+     */
+    if (!esExtra) {
+      return;
+    }
+
     if (
       !window.confirm(
         "¿Quieres quitar este aviso? El informe no se borrará."
@@ -484,60 +486,39 @@ export default function ClienteInspeccionVer() {
     }
 
     try {
-      if (esExtra) {
-        /*
-         * Extra:
-         * se mantiene enviado_cliente,
-         * solamente desaparece el aviso.
-         */
-        const { error } =
-          await supabase
-            .from("extras")
-            .update({
-              visto: true,
-              alerta_vista: true,
-            })
-            .eq(
-              "id",
-              id
-            );
+      /*
+       * Extra:
+       * se mantiene enviado_cliente,
+       * solamente desaparece el aviso.
+       */
+      const { error } =
+        await supabase
+          .from("extras")
+          .update({
+            visto: true,
+            alerta_vista: true,
+          })
+          .eq(
+            "id",
+            id
+          );
 
-        if (error) {
-          throw error;
-        }
+      if (error) {
+        throw error;
+      }
 
-        if (
-          inspeccion?.factura_id
-        ) {
-          await supabase
-            .from("facturas")
-            .update({
-              alerta_vista: true,
-            })
-            .eq(
-              "id",
-              inspeccion.factura_id
-            );
-        }
-      } else {
-        /*
-         * Inspección normal:
-         * SOLO marcamos el aviso como visto.
-         */
-        const { error } =
-          await supabase
-            .from("inspecciones")
-            .update({
-              alerta_vista: true,
-            })
-            .eq(
-              "id",
-              id
-            );
-
-        if (error) {
-          throw error;
-        }
+      if (
+        inspeccion?.factura_id
+      ) {
+        await supabase
+          .from("facturas")
+          .update({
+            alerta_vista: true,
+          })
+          .eq(
+            "id",
+            inspeccion.factura_id
+          );
       }
 
       alert(
@@ -1085,34 +1066,38 @@ export default function ClienteInspeccionVer() {
             )}
 
             {/*
-             * ESTE BOTÓN YA NO BORRA EL INFORME.
-             * Solo quita el aviso.
+             * ESTE BOTÓN SOLO EXISTE PARA EXTRAS.
+             *
+             * Las alertas de inspecciones normales
+             * solo pueden ser resueltas por el administrador.
              */}
-            <button
-              onClick={
-                borrarInforme
-              }
-              style={{
-                width: "100%",
-                padding: "14px",
-                background:
-                  "rgba(255, 71, 87, 0.15)",
-                color: "#ff4757",
-                border:
-                  "1px solid rgba(255, 71, 87, 0.4)",
-                borderRadius: "16px",
-                fontWeight: "900",
-                fontSize: "14px",
-                cursor: "pointer",
-                marginBottom: "12px",
-              }}
-            >
-              🗑️{" "}
-              {t(
-                "borrarEsteInforme"
-              ) ||
-                "Quitar aviso"}
-            </button>
+            {esExtra && (
+              <button
+                onClick={
+                  borrarInforme
+                }
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  background:
+                    "rgba(255, 71, 87, 0.15)",
+                  color: "#ff4757",
+                  border:
+                    "1px solid rgba(255, 71, 87, 0.4)",
+                  borderRadius: "16px",
+                  fontWeight: "900",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  marginBottom: "12px",
+                }}
+              >
+                🗑️{" "}
+                {t(
+                  "borrarEsteInforme"
+                ) ||
+                  "Quitar aviso"}
+              </button>
+            )}
           </>
         )}
 
