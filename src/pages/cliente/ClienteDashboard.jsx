@@ -327,19 +327,17 @@ export default function ClienteDashboard() {
    * Si existe una alerta de inspección pendiente,
    * vamos directamente a esa inspección.
    *
-   * Si no existe una alerta de inspección pero sí
-   * existe una alerta de factura, mantenemos el acceso
-   * existente a Facturas.
+   * Si NO existe ninguna alerta de inspección,
+   * NO hacemos nada.
    */
   const manejarClickAlertas = () => {
-    if (alertaInspeccionId) {
-      navigate(
-        `/cliente/inspeccion/${alertaInspeccionId}`
-      );
+    if (!alertaInspeccionId) {
       return;
     }
 
-    navigate("/cliente/facturas");
+    navigate(
+      `/cliente/inspeccion/${alertaInspeccionId}`
+    );
   };
 
   const estiloTarjetaDato = {
@@ -779,7 +777,7 @@ export default function ClienteDashboard() {
                 textTransform: "uppercase",
               }}
             >
-              {t("viviendas")}
+              Contrato
             </span>
 
             <span
