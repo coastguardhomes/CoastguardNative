@@ -8,7 +8,12 @@ const TARJETAS = [
   { clave: "viviendas", etiqueta: "Viviendas", ruta: "/viviendas", icono: "🏠" },
   { clave: "contratos", etiqueta: "Contratos", ruta: "/contratos", icono: "📄" },
   { clave: "facturas", etiqueta: "Facturas", ruta: "/facturas", icono: "💳" },
-  { clave: "inspecciones", etiqueta: "Inspecciones", ruta: "/inspecciones", icono: "📋" },
+  {
+    clave: "inspecciones",
+    etiqueta: "Inspecciones",
+    ruta: "/inspecciones",
+    icono: "📋",
+  },
   { clave: "tecnicos", etiqueta: "Técnicos", ruta: "/tecnicos", icono: "🛠️" },
 ];
 
@@ -40,7 +45,7 @@ export default function AdminDashboard() {
         })
       );
 
-      // 2. Cargar inspecciones reales para la gráfica de la semana
+      // 2. Cargar inspecciones reales para la gráfica semanal
       const { data: inspeccionesData, error: errorInsp } = await supabase
         .from("inspecciones")
         .select("created_at, fecha");
@@ -79,9 +84,9 @@ export default function AdminDashboard() {
     };
   }, []);
 
-  // ---------------------------------------------------------
-  // AVISOS DE INSPECCIÓN PENDIENTES PARA ADMIN
-  // ---------------------------------------------------------
+  // =========================================================
+  // AVISOS DE INSPECCIÓN PENDIENTES PARA EL ADMIN
+  // =========================================================
   useEffect(() => {
     let cancelado = false;
 
@@ -107,10 +112,11 @@ export default function AdminDashboard() {
             setAvisosInspeccion([]);
             setCargandoAvisos(false);
           }
+
           return;
         }
 
-        // IDs necesarios para cargar los nombres relacionados
+        // IDs de clientes y viviendas relacionados
         const clienteIds = [
           ...new Set(
             avisos
@@ -127,7 +133,9 @@ export default function AdminDashboard() {
           ),
         ];
 
+        // -----------------------------------------------------
         // Cargar clientes
+        // -----------------------------------------------------
         let clientesMap = {};
 
         if (clienteIds.length > 0) {
@@ -146,7 +154,9 @@ export default function AdminDashboard() {
           }, {});
         }
 
+        // -----------------------------------------------------
         // Cargar viviendas
+        // -----------------------------------------------------
         let viviendasMap = {};
 
         if (viviendaIds.length > 0) {
@@ -165,6 +175,7 @@ export default function AdminDashboard() {
           }, {});
         }
 
+        // Unir avisos con sus datos relacionados
         const avisosCompletos = avisos.map((aviso) => ({
           ...aviso,
           cliente: aviso.cliente_id
@@ -184,7 +195,8 @@ export default function AdminDashboard() {
 
         if (!cancelado) {
           setErrorAvisos(
-            error?.message || "No se pudieron cargar los avisos de inspección."
+            error?.message ||
+              "No se pudieron cargar los avisos de inspección."
           );
           setAvisosInspeccion([]);
           setCargandoAvisos(false);
@@ -199,11 +211,11 @@ export default function AdminDashboard() {
     };
   }, []);
 
-  // ---------------------------------------------------------
+  // =========================================================
   // MARCAR AVISO COMO GESTIONADO
-  // ---------------------------------------------------------
+  // =========================================================
   async function marcarAvisoGestionado(aviso) {
-    if (!aviso?.id || procesandoAviso) {
+    if (!aviso?.id || procesandoAviso !== null) {
       return;
     }
 
@@ -229,7 +241,9 @@ export default function AdminDashboard() {
       }
 
       if (!user?.id) {
-        throw new Error("No se ha podido identificar al usuario administrador.");
+        throw new Error(
+          "No se ha podido identificar al usuario administrador."
+        );
       }
 
       const { error } = await supabase
@@ -246,24 +260,28 @@ export default function AdminDashboard() {
         throw error;
       }
 
-      // Quitarlo inmediatamente de la lista visible
+      // Eliminar el aviso de la lista visible
       setAvisosInspeccion((avisosActuales) =>
         avisosActuales.filter((item) => item.id !== aviso.id)
       );
     } catch (error) {
-      console.error("Error marcando aviso como gestionado:", error);
+      console.error(
+        "Error marcando aviso como gestionado:",
+        error
+      );
 
       setErrorAvisos(
-        error?.message || "No se pudo marcar el aviso como gestionado."
+        error?.message ||
+          "No se pudo marcar el aviso como gestionado."
       );
     } finally {
       setProcesandoAviso(null);
     }
   }
 
-  // ---------------------------------------------------------
+  // =========================================================
   // FORMATEAR FECHA
-  // ---------------------------------------------------------
+  // =========================================================
   function formatearFecha(fecha) {
     if (!fecha) {
       return "Sin fecha";
@@ -284,9 +302,9 @@ export default function AdminDashboard() {
     return fechaObj.toLocaleDateString("es-ES");
   }
 
-  // ---------------------------------------------------------
-  // GRÁFICA
-  // ---------------------------------------------------------
+  // =========================================================
+  // CONFIGURACIÓN DE LA GRÁFICA
+  // =========================================================
   const maxValor = Math.max(10, ...datosGrafica);
   const alturaSVG = 90;
   const anchoSVG = 300;
@@ -298,7 +316,11 @@ export default function AdminDashboard() {
       (valor / maxValor) * (alturaSVG - 15) -
       10;
 
-    return { x, y, valor };
+    return {
+      x,
+      y,
+      valor,
+    };
   });
 
   const stringPuntos = puntosCoordenadas
@@ -318,7 +340,9 @@ export default function AdminDashboard() {
           boxSizing: "border-box",
         }}
       >
-        {/* Cabecera Principal */}
+        {/* =====================================================
+            CABECERA
+        ===================================================== */}
         <div
           style={{
             background:
@@ -343,7 +367,8 @@ export default function AdminDashboard() {
                 color: "#eab308",
                 letterSpacing: "1px",
                 textTransform: "uppercase",
-                textShadow: "0 0 8px rgba(234, 179, 8, 0.5)",
+                textShadow:
+                  "0 0 8px rgba(234, 179, 8, 0.5)",
               }}
             >
               PANEL DE CONTROL
@@ -371,14 +396,17 @@ export default function AdminDashboard() {
               fontSize: "10px",
               fontWeight: "700",
               letterSpacing: "1.5px",
-              boxShadow: "0 0 8px rgba(234, 179, 8, 0.2)",
+              boxShadow:
+                "0 0 8px rgba(234, 179, 8, 0.2)",
             }}
           >
             ADMIN
           </div>
         </div>
 
-        {/* Grid de Tarjetas */}
+        {/* =====================================================
+            TARJETAS
+        ===================================================== */}
         <div
           style={{
             display: "grid",
@@ -387,97 +415,107 @@ export default function AdminDashboard() {
             marginBottom: "16px",
           }}
         >
-          {TARJETAS.map(({ clave, etiqueta, ruta, icono }) => (
-            <Link
-              key={clave}
-              to={ruta}
-              style={{ textDecoration: "none" }}
-            >
-              <div
+          {TARJETAS.map(
+            ({ clave, etiqueta, ruta, icono }) => (
+              <Link
+                key={clave}
+                to={ruta}
                 style={{
-                  background:
-                    "linear-gradient(145deg, #0b1220 0%, #060913 100%)",
-                  borderRadius: "12px",
-                  padding: "12px 14px",
-                  border: "1px solid rgba(234, 179, 8, 0.35)",
-                  boxShadow:
-                    "0 6px 16px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(234, 179, 8, 0.06)",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  minHeight: "85px",
-                  boxSizing: "border-box",
-                  position: "relative",
+                  textDecoration: "none",
                 }}
               >
                 <div
                   style={{
+                    background:
+                      "linear-gradient(145deg, #0b1220 0%, #060913 100%)",
+                    borderRadius: "12px",
+                    padding: "12px 14px",
+                    border:
+                      "1px solid rgba(234, 179, 8, 0.35)",
+                    boxShadow:
+                      "0 6px 16px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(234, 179, 8, 0.06)",
                     display: "flex",
+                    flexDirection: "column",
                     justifyContent: "space-between",
-                    alignItems: "flex-start",
+                    minHeight: "85px",
+                    boxSizing: "border-box",
+                    position: "relative",
                   }}
                 >
-                  <span
+                  <div
                     style={{
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#e2e8f0",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
                     }}
                   >
-                    {etiqueta}
-                  </span>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        color: "#e2e8f0",
+                      }}
+                    >
+                      {etiqueta}
+                    </span>
 
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      background: "rgba(15, 23, 42, 0.8)",
-                      border: "1px solid rgba(234, 179, 8, 0.3)",
-                      padding: "4px 6px",
-                      borderRadius: "8px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {icono}
-                  </span>
-                </div>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        background:
+                          "rgba(15, 23, 42, 0.8)",
+                        border:
+                          "1px solid rgba(234, 179, 8, 0.3)",
+                        padding: "4px 6px",
+                        borderRadius: "8px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {icono}
+                    </span>
+                  </div>
 
-                <div>
-                  <span
-                    style={{
-                      fontSize: "22px",
-                      fontWeight: "800",
-                      color: "#eab308",
-                      textShadow:
-                        "0 0 10px rgba(234, 179, 8, 0.6)",
-                      letterSpacing: "-0.5px",
-                    }}
-                  >
-                    {cargando ? "…" : conteos[clave] ?? "—"}
-                  </span>
+                  <div>
+                    <span
+                      style={{
+                        fontSize: "22px",
+                        fontWeight: "800",
+                        color: "#eab308",
+                        textShadow:
+                          "0 0 10px rgba(234, 179, 8, 0.6)",
+                        letterSpacing: "-0.5px",
+                      }}
+                    >
+                      {cargando
+                        ? "…"
+                        : conteos[clave] ?? "—"}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            )
+          )}
         </div>
 
-        {/* ---------------------------------------------------------
+        {/* =====================================================
             AVISOS DE INSPECCIÓN PENDIENTES
-        --------------------------------------------------------- */}
+        ===================================================== */}
         <div
           style={{
             background:
               "linear-gradient(145deg, #0b1220 0%, #060913 100%)",
             borderRadius: "14px",
             padding: "14px",
-            border: "1px solid rgba(234, 179, 8, 0.45)",
+            border:
+              "1px solid rgba(234, 179, 8, 0.45)",
             boxShadow:
               "0 8px 20px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(234, 179, 8, 0.08)",
             marginBottom: "20px",
           }}
         >
-          {/* Cabecera */}
+          {/* Cabecera del bloque */}
           <div
             style={{
               display: "flex",
@@ -541,7 +579,9 @@ export default function AdminDashboard() {
                 boxSizing: "border-box",
               }}
             >
-              {cargandoAvisos ? "…" : avisosInspeccion.length}
+              {cargandoAvisos
+                ? "…"
+                : avisosInspeccion.length}
             </span>
           </div>
 
@@ -549,7 +589,458 @@ export default function AdminDashboard() {
           {errorAvisos && (
             <div
               style={{
-                background: "rgba(127, 29, 29, 0.25)",
+                background:
+                  "rgba(127, 29, 29, 0.25)",
                 border:
                   "1px solid rgba(248, 113, 113, 0.35)",
-                borderRadius: "8
+                borderRadius: "8px",
+                padding: "9px 10px",
+                marginBottom: "10px",
+                color: "#fca5a5",
+                fontSize: "11px",
+                lineHeight: "1.4",
+              }}
+            >
+              {errorAvisos}
+            </div>
+          )}
+
+          {/* Cargando */}
+          {cargandoAvisos && (
+            <div
+              style={{
+                color: "#94a3b8",
+                fontSize: "11px",
+                padding: "8px 0",
+              }}
+            >
+              Comprobando inspecciones pendientes…
+            </div>
+          )}
+
+          {/* Sin avisos */}
+          {!cargandoAvisos &&
+            !errorAvisos &&
+            avisosInspeccion.length === 0 && (
+              <div
+                style={{
+                  padding: "10px 2px 4px",
+                  color: "#94a3b8",
+                  fontSize: "11px",
+                }}
+              >
+                No hay inspecciones pendientes de gestionar.
+              </div>
+            )}
+
+          {/* Lista */}
+          {!cargandoAvisos &&
+            avisosInspeccion.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                {avisosInspeccion.map((aviso) => {
+                  const clienteNombre =
+                    aviso.cliente?.nombre ||
+                    "Cliente no disponible";
+
+                  const viviendaNombre =
+                    aviso.vivienda?.nombre ||
+                    aviso.vivienda?.direccion ||
+                    "Vivienda no disponible";
+
+                  const direccion =
+                    aviso.vivienda?.nombre &&
+                    aviso.vivienda?.direccion
+                      ? aviso.vivienda.direccion
+                      : null;
+
+                  return (
+                    <div
+                      key={aviso.id}
+                      style={{
+                        background:
+                          "rgba(15, 23, 42, 0.75)",
+                        border:
+                          "1px solid rgba(234, 179, 8, 0.25)",
+                        borderRadius: "10px",
+                        padding: "11px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent:
+                            "space-between",
+                          alignItems: "flex-start",
+                          gap: "10px",
+                          marginBottom: "7px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            minWidth: 0,
+                          }}
+                        >
+                          <div
+                            style={{
+                              color: "#f8fafc",
+                              fontSize: "12px",
+                              fontWeight: "700",
+                              marginBottom: "3px",
+                              wordBreak:
+                                "break-word",
+                            }}
+                          >
+                            {clienteNombre}
+                          </div>
+
+                          <div
+                            style={{
+                              color: "#cbd5e1",
+                              fontSize: "11px",
+                              wordBreak:
+                                "break-word",
+                            }}
+                          >
+                            🏠 {viviendaNombre}
+                          </div>
+
+                          {direccion && (
+                            <div
+                              style={{
+                                color: "#64748b",
+                                fontSize: "10px",
+                                marginTop: "2px",
+                                wordBreak:
+                                  "break-word",
+                              }}
+                            >
+                              {direccion}
+                            </div>
+                          )}
+                        </div>
+
+                        <div
+                          style={{
+                            flexShrink: 0,
+                            textAlign: "right",
+                          }}
+                        >
+                          <div
+                            style={{
+                              color: "#94a3b8",
+                              fontSize: "9px",
+                              marginBottom: "2px",
+                            }}
+                          >
+                            FECHA PREVISTA
+                          </div>
+
+                          <div
+                            style={{
+                              color: "#eab308",
+                              fontSize: "11px",
+                              fontWeight: "800",
+                            }}
+                          >
+                            {formatearFecha(
+                              aviso.fecha_prevista
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Botones */}
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "7px",
+                          flexWrap: "wrap",
+                          marginTop: "8px",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate("/inspecciones")
+                          }
+                          style={{
+                            flex: "1 1 130px",
+                            minHeight: "34px",
+                            border:
+                              "1px solid rgba(77, 168, 255, 0.45)",
+                            borderRadius: "7px",
+                            background:
+                              "rgba(30, 64, 175, 0.18)",
+                            color: "#93c5fd",
+                            fontSize: "10px",
+                            fontWeight: "700",
+                            cursor: "pointer",
+                            padding: "7px 10px",
+                          }}
+                        >
+                          📋 Ver inspecciones
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            marcarAvisoGestionado(
+                              aviso
+                            )
+                          }
+                          disabled={
+                            procesandoAviso ===
+                            aviso.id
+                          }
+                          style={{
+                            flex: "1 1 130px",
+                            minHeight: "34px",
+                            border:
+                              "1px solid rgba(234, 179, 8, 0.45)",
+                            borderRadius: "7px",
+                            background:
+                              procesandoAviso ===
+                              aviso.id
+                                ? "rgba(100, 116, 139, 0.18)"
+                                : "rgba(234, 179, 8, 0.12)",
+                            color:
+                              procesandoAviso ===
+                              aviso.id
+                                ? "#94a3b8"
+                                : "#eab308",
+                            fontSize: "10px",
+                            fontWeight: "700",
+                            cursor:
+                              procesandoAviso ===
+                              aviso.id
+                                ? "wait"
+                                : "pointer",
+                            padding: "7px 10px",
+                          }}
+                        >
+                          {procesandoAviso ===
+                          aviso.id
+                            ? "Guardando…"
+                            : "✓ Marcar gestionado"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+        </div>
+
+        {/* =====================================================
+            GRÁFICA DE INSPECCIONES
+        ===================================================== */}
+        <div
+          style={{
+            background:
+              "linear-gradient(145deg, #0b1220 0%, #060913 100%)",
+            borderRadius: "14px",
+            padding: "14px",
+            border:
+              "1px solid rgba(234, 179, 8, 0.35)",
+            boxShadow:
+              "0 8px 20px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(234, 179, 8, 0.08)",
+            marginBottom: "20px",
+          }}
+        >
+          {/* Cabecera de la gráfica */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "10px",
+              borderBottom:
+                "1px solid rgba(234, 179, 8, 0.2)",
+              paddingBottom: "8px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "12px",
+                fontWeight: "700",
+                color: "#eab308",
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
+              }}
+            >
+              🔍 Inspecciones por Día
+            </span>
+
+            <span
+              style={{
+                fontSize: "10px",
+                color: "#94a3b8",
+              }}
+            >
+              Semanal
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              position: "relative",
+              height: "105px",
+            }}
+          >
+            {/* Eje numérico */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                fontSize: "9px",
+                color: "#64748b",
+                paddingRight: "6px",
+                textAlign: "right",
+                width: "16px",
+                height: "85px",
+              }}
+            >
+              <span>{maxValor}</span>
+              <span>{Math.round(maxValor * 0.66)}</span>
+              <span>{Math.round(maxValor * 0.33)}</span>
+              <span>0</span>
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                position: "relative",
+                height: "90px",
+              }}
+            >
+              {/* Líneas horizontales */}
+              <div
+                style={{
+                  position: "absolute",
+                  width: "100%",
+                  height: "1px",
+                  background:
+                    "rgba(234, 179, 8, 0.12)",
+                  top: "0%",
+                }}
+              />
+
+              <div
+                style={{
+                  position: "absolute",
+                  width: "100%",
+                  height: "1px",
+                  background:
+                    "rgba(234, 179, 8, 0.08)",
+                  top: "33%",
+                }}
+              />
+
+              <div
+                style={{
+                  position: "absolute",
+                  width: "100%",
+                  height: "1px",
+                  background:
+                    "rgba(234, 179, 8, 0.08)",
+                  top: "66%",
+                }}
+              />
+
+              <div
+                style={{
+                  position: "absolute",
+                  width: "100%",
+                  height: "1px",
+                  background:
+                    "rgba(234, 179, 8, 0.12)",
+                  top: "100%",
+                }}
+              />
+
+              <svg
+                style={{
+                  width: "100%",
+                  height: "95px",
+                  overflow: "visible",
+                }}
+                viewBox={`0 0 ${anchoSVG} ${alturaSVG}`}
+              >
+                <polyline
+                  fill="none"
+                  stroke="#eab308"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points={stringPuntos}
+                />
+
+                {puntosCoordenadas.map(
+                  (p, idx) => (
+                    <g key={idx}>
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r="4"
+                        fill="#eab308"
+                        stroke="#05080f"
+                        strokeWidth="1.5"
+                        style={{
+                          filter:
+                            "drop-shadow(0 0 4px #eab308)",
+                        }}
+                      />
+
+                      {p.valor > 0 && (
+                        <text
+                          x={p.x}
+                          y={p.y - 8}
+                          fill="#eab308"
+                          fontSize="8"
+                          fontWeight="bold"
+                          textAnchor="middle"
+                        >
+                          {p.valor}
+                        </text>
+                      )}
+                    </g>
+                  )
+                )}
+              </svg>
+            </div>
+          </div>
+
+          {/* Días */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "9px",
+              color: "#94a3b8",
+              borderTop:
+                "1px solid rgba(255,255,255,0.06)",
+              paddingTop: "6px",
+              paddingLeft: "22px",
+            }}
+          >
+            <span>Lun</span>
+            <span>Mar</span>
+            <span>Mié</span>
+            <span>Jue</span>
+            <span>Vie</span>
+            <span>Sáb</span>
+            <span>Dom</span>
+          </div>
+        </div>
+      </div>
+    </Menu>
+  );
+}
