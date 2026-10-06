@@ -5,9 +5,12 @@ import { useLanguage } from '../../context/LanguageContext.jsx';
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
-const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
-const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
-const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const FONDO_TARJETA =
+  "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+const BORDE_DORADO_FINO =
+  "1px solid rgba(224, 176, 52, 0.4)";
+const SOMBRA_LUXURY =
+  "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 
 const TEXTO_DORADO_BRILLO = {
   color: COLOR_DORADO,
@@ -47,7 +50,10 @@ export default function VerFactura() {
 
   try {
     const langCtx = useLanguage();
-    currentLang = langCtx?.language || langCtx?.idioma || 'es';
+    currentLang =
+      langCtx?.language ||
+      langCtx?.idioma ||
+      'es';
   } catch (e) {
     currentLang = 'es';
   }
@@ -78,7 +84,9 @@ export default function VerFactura() {
 
         return parsed ? [parsed] : [];
       } catch {
-        return fotosRaw.trim() ? [fotosRaw] : [];
+        return fotosRaw.trim()
+          ? [fotosRaw]
+          : [];
       }
     }
 
@@ -126,11 +134,16 @@ export default function VerFactura() {
       setInspeccionExtra(null);
       setFotosExtra([]);
 
-      const { data: extraPublicado, error: extraError } = await supabase
+      const {
+        data: extraPublicado,
+        error: extraError
+      } = await supabase
         .from('extras')
         .select('*')
         .eq('factura_id', facturaData.id)
-        .order('created_at', { ascending: false })
+        .order('created_at', {
+          ascending: false
+        })
         .limit(1)
         .maybeSingle();
 
@@ -151,7 +164,10 @@ export default function VerFactura() {
         } = await supabase
           .from('inspecciones')
           .select('*')
-          .eq('id', extraPublicado.inspeccion_id)
+          .eq(
+            'id',
+            extraPublicado.inspeccion_id
+          )
           .maybeSingle();
 
         if (inspeccionError) {
@@ -160,17 +176,22 @@ export default function VerFactura() {
             inspeccionError
           );
         } else {
-          inspeccionData = inspeccionRelacionada;
+          inspeccionData =
+            inspeccionRelacionada;
         }
       }
 
-      let fotos = parsearFotosExtra(extraPublicado.fotos);
+      let fotos = parsearFotosExtra(
+        extraPublicado.fotos
+      );
 
       if (
         fotos.length === 0 &&
         inspeccionData?.id
       ) {
-        fotos = parsearFotosExtra(inspeccionData.fotos);
+        fotos = parsearFotosExtra(
+          inspeccionData.fotos
+        );
       }
 
       if (
@@ -183,7 +204,10 @@ export default function VerFactura() {
         } = await supabase
           .from('inspecciones_fotos')
           .select('*')
-          .eq('inspeccion_id', inspeccionData.id);
+          .eq(
+            'inspeccion_id',
+            inspeccionData.id
+          );
 
         if (fotosError) {
           console.error(
@@ -217,7 +241,9 @@ export default function VerFactura() {
       setErrorMsg('');
 
       if (!id) {
-        throw new Error("ID de factura no proporcionado.");
+        throw new Error(
+          "ID de factura no proporcionado."
+        );
       }
 
       const {
@@ -229,21 +255,32 @@ export default function VerFactura() {
         .eq('id', id)
         .single();
 
-      if (facturaError) throw facturaError;
+      if (facturaError) {
+        throw facturaError;
+      }
 
       if (!facturaData) {
-        throw new Error("No se encontró el aviso de cobro.");
+        throw new Error(
+          "No se encontró el aviso de cobro."
+        );
       }
 
       setFactura(facturaData);
 
-      await cargarInspeccionExtra(facturaData);
+      await cargarInspeccionExtra(
+        facturaData
+      );
 
       if (facturaData.cliente_id) {
-        const { data: clienteData } = await supabase
+        const {
+          data: clienteData
+        } = await supabase
           .from('clientes')
           .select('*')
-          .eq('id', facturaData.cliente_id)
+          .eq(
+            'id',
+            facturaData.cliente_id
+          )
           .single();
 
         if (clienteData) {
@@ -273,10 +310,16 @@ export default function VerFactura() {
     let ultimoChequeo = 0;
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (
+        document.visibilityState ===
+        'visible'
+      ) {
         const ahora = Date.now();
 
-        if (ahora - ultimoChequeo > 3000) {
+        if (
+          ahora - ultimoChequeo >
+          3000
+        ) {
           ultimoChequeo = ahora;
           cargarDatosSeguros();
         }
@@ -304,10 +347,7 @@ export default function VerFactura() {
   /*
    * AVISO INICIAL DE PAGO
    *
-   * Este flujo NO se toca.
-   *
-   * 1. Crea la sesión de Stripe mediante Edge Function.
-   * 2. Envía el aviso de pago mediante Edge Function.
+   * ESTE FLUJO SE MANTIENE.
    */
   const enviarAvisoPago = async () => {
     try {
@@ -345,9 +385,11 @@ export default function VerFactura() {
             amount: Math.round(
               importe * 100
             ),
-            customerEmail: cliente.email,
+            customerEmail:
+              cliente.email,
             clientId:
-              factura.cliente_id || null,
+              factura.cliente_id ||
+              null,
             facturaId:
               Number(factura.id),
             originUrl:
@@ -365,7 +407,8 @@ export default function VerFactura() {
             await checkoutError.context?.json();
 
           if (body?.error) {
-            errorMsg = body.error;
+            errorMsg =
+              body.error;
           }
         } catch (e) {}
 
@@ -432,23 +475,7 @@ export default function VerFactura() {
   /*
    * CONFIRMAR PAGO + FACTURADIRECTA
    *
-   * IMPORTANTE:
-   *
-   * Esto llama a la Edge Function DESPLEGADA
-   * "factura-pdf" de Supabase.
-   *
-   * NO intenta leer ni ejecutar el archivo
-   * supabase/functions/factura-pdf de GitHub.
-   *
-   * La Edge Function desplegada realiza:
-   *
-   * - FacturaDirecta
-   * - creación de factura legal
-   * - PDF
-   * - almacenamiento del PDF
-   * - email de la factura
-   * - registro del pago
-   * - estado pagada
+   * ESTE FLUJO SE MANTIENE.
    */
   const marcarComoPagada = async () => {
     try {
@@ -524,26 +551,19 @@ export default function VerFactura() {
   /*
    * PUBLICAR INSPECCIÓN EXTRA AL CLIENTE
    *
-   * ESTE ES EL ÚNICO CAMBIO IMPORTANTE.
+   * IMPORTANTE:
    *
-   * NO:
-   * - envía email
-   * - llama a enviar-email
-   * - llama a enviar-extra-cliente
-   * - llama a factura-pdf
-   * - crea otra factura
-   * - modifica descripción
-   * - modifica materiales
-   * - modifica fotos
-   * - modifica tiempo
-   * - modifica el PDF
+   * NO modifica Stripe.
+   * NO modifica factura-pdf.
+   * NO crea otra factura.
+   * NO modifica descripción.
+   * NO modifica materiales.
+   * NO modifica fotos.
+   * NO modifica tiempo.
+   * NO modifica el PDF.
    *
-   * SOLO:
-   *
-   * extras.estado = 'enviado_cliente'
-   *
-   * De esta forma el rol cliente podrá verla
-   * según las reglas que ya tenga el portal.
+   * La publicación se hace mediante la
+   * Edge Function "enviar-extra-cliente".
    */
   const aprobarYEnviarAlCliente = async () => {
     try {
@@ -555,7 +575,9 @@ export default function VerFactura() {
         );
       }
 
-      if (!inspeccionExtra?.publicado?.id) {
+      if (
+        !inspeccionExtra?.publicado?.id
+      ) {
         throw new Error(
           'No se ha encontrado la inspección extra.'
         );
@@ -594,7 +616,8 @@ export default function VerFactura() {
 
       const estadoTecnico =
         String(
-          extraExistente.estado_tecnico || ''
+          extraExistente.estado_tecnico ||
+          ''
         ).toLowerCase();
 
       if (
@@ -604,6 +627,28 @@ export default function VerFactura() {
       ) {
         throw new Error(
           'La inspección extra todavía no ha sido completada por el técnico.'
+        );
+      }
+
+      /*
+       * MUY IMPORTANTE:
+       *
+       * VerFactura NO aprueba la inspección.
+       *
+       * Solo puede publicar una inspección
+       * que ya haya sido aprobada por administración.
+       */
+      const estadoAdmin =
+        String(
+          extraExistente.estado_admin ||
+          ''
+        ).toLowerCase();
+
+      if (
+        estadoAdmin !== 'aprobada'
+      ) {
+        throw new Error(
+          'La inspección extra todavía no ha sido aprobada por administración.'
         );
       }
 
@@ -622,46 +667,63 @@ export default function VerFactura() {
       }
 
       /*
-       * ÚNICA ESCRITURA DE ESTE BOTÓN:
+       * PUBLICACIÓN SEGURA
        *
-       * Cambiar el estado de la inspección extra.
+       * La Edge Function vuelve a comprobar:
+       * - técnico completado
+       * - administración aprobada
+       * - cliente asociado
        *
-       * No se toca absolutamente ningún otro
-       * campo de extras.
+       * Y actualiza:
+       * estado = enviado_cliente
+       * alerta = false
+       * alerta_vista = true
        */
       const {
-        data: extraPublicadoCliente,
-        error: publicarError
-      } = await supabase
-        .from('extras')
-        .update({
-          estado: 'enviado_cliente'
-        })
-        .eq(
-          'id',
-          extraExistente.id
-        )
-        .select()
-        .single();
+        data: envioExtra,
+        error: errorExtra
+      } = await supabase.functions.invoke(
+        'enviar-extra-cliente',
+        {
+          body: {
+            extraId:
+              extraExistente.id
+          }
+        }
+      );
 
-      if (publicarError) {
-        throw publicarError;
+      if (errorExtra) {
+        let mensaje =
+          errorExtra.message;
+
+        try {
+          const body =
+            await errorExtra.context?.json();
+
+          if (body?.error) {
+            mensaje =
+              body.error;
+          }
+        } catch (e) {}
+
+        throw new Error(mensaje);
       }
 
-      if (!extraPublicadoCliente) {
+      if (!envioExtra?.ok) {
         throw new Error(
-          'No se pudo actualizar el estado de publicación para el cliente.'
+          envioExtra?.error ||
+          'No se pudo publicar la inspección extra para el cliente.'
         );
       }
 
-      setInspeccionExtra(
-        (actual) => ({
-          ...(actual || {}),
-          publicado:
-            extraPublicadoCliente
-        })
-      );
-
+      /*
+       * La Edge Function no devuelve
+       * la fila completa de extras.
+       *
+       * Recargamos todo para conservar
+       * exactamente la estructura que
+       * ya utiliza esta pantalla.
+       */
       await cargarDatosSeguros();
 
       alert(
@@ -677,8 +739,10 @@ export default function VerFactura() {
 
       alert(
         'No se ha podido publicar para el cliente: ' +
-        (err.message ||
-          'Error desconocido.')
+        (
+          err.message ||
+          'Error desconocido.'
+        )
       );
     } finally {
       setProcesandoExtra(false);
@@ -703,7 +767,9 @@ export default function VerFactura() {
           .delete()
           .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       alert(
         "Aviso de cobro eliminado correctamente."
@@ -1132,7 +1198,7 @@ export default function VerFactura() {
             >
               {Number(
                 factura.total ||
-                  0
+                0
               ).toFixed(2)} €
             </span>
           </div>
@@ -1270,9 +1336,11 @@ export default function VerFactura() {
                   color:
                     extraYaEnviado
                       ? '#34d399'
-                      : tecnicoHaCompletadoExtra
+                      : extraAprobado
                         ? '#f59e0b'
-                        : '#94a3b8',
+                        : tecnicoHaCompletadoExtra
+                          ? '#f59e0b'
+                          : '#94a3b8',
                   fontWeight:
                     '900',
                   textTransform:
@@ -1367,8 +1435,9 @@ export default function VerFactura() {
                         foto
                       );
 
-                    if (!url)
+                    if (!url) {
                       return null;
+                    }
 
                     return (
                       <a
@@ -1458,7 +1527,8 @@ export default function VerFactura() {
                   }
                   disabled={
                     procesandoExtra ||
-                    !esPagada
+                    !esPagada ||
+                    !extraAprobado
                   }
                   style={{
                     ...estilos.botonVerde,
@@ -1466,19 +1536,21 @@ export default function VerFactura() {
                       '14px',
                     opacity:
                       procesandoExtra ||
-                      !esPagada
+                      !esPagada ||
+                      !extraAprobado
                         ? 0.65
                         : 1,
                     cursor:
                       procesandoExtra ||
-                      !esPagada
+                      !esPagada ||
+                      !extraAprobado
                         ? 'not-allowed'
                         : 'pointer'
                   }}
                 >
                   {procesandoExtra
                     ? 'Publicando...'
-                    : '📤 APROBAR Y PUBLICAR AL CLIENTE'}
+                    : '📤 PUBLICAR AL CLIENTE'}
                 </button>
               )}
 
