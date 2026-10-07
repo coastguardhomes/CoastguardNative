@@ -20,9 +20,24 @@ export default function EditarContrato() {
   const [mensaje, setMensaje] = useState("");
 
   const modalidades = [
-    { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
-    { id: "premium", nombre: "Premium", precio: 59, frecuencia: 30 },
-    { id: "plus", nombre: "Plus", precio: 79, frecuencia: 30 },
+    {
+      id: "basico",
+      nombre: "Básico",
+      precio: 39,
+      frecuencia: 30,
+    },
+    {
+      id: "premium",
+      nombre: "Premium",
+      precio: 59,
+      frecuencia: 30,
+    },
+    {
+      id: "plus",
+      nombre: "Plus",
+      precio: 79,
+      frecuencia: 30,
+    },
   ];
 
   useEffect(() => {
@@ -33,7 +48,9 @@ export default function EditarContrato() {
   async function cargarContrato() {
     const { data, error } = await supabase
       .from("contratos")
-      .select("fecha_inicio, precio, notas, frecuencia, tecnico_id, modalidad")
+      .select(
+        "fecha_inicio, precio, notas, frecuencia, tecnico_id, modalidad"
+      )
       .eq("id", id)
       .single();
 
@@ -63,22 +80,52 @@ export default function EditarContrato() {
   }
 
   function seleccionarModalidad(modalidadId) {
-    const mod = modalidades.find((m) => m.id === modalidadId);
+    const mod = modalidades.find(
+      (m) => m.id === modalidadId
+    );
 
     setForm({
       ...form,
       modalidad: modalidadId,
-      precio: mod ? mod.precio : form.precio,
-      frecuencia: mod ? mod.frecuencia : form.frecuencia,
+      precio: mod
+        ? mod.precio
+        : form.precio,
+      frecuencia: mod
+        ? mod.frecuencia
+        : form.frecuencia,
     });
   }
 
   async function guardarCambios() {
-    if (!form.fecha_inicio) return setMensaje("La fecha de inicio es obligatoria");
-    if (!form.precio) return setMensaje("El precio es obligatorio");
-    if (!form.frecuencia) return setMensaje("La frecuencia es obligatoria");
-    if (!form.modalidad) return setMensaje("Selecciona una modalidad");
-    if (!form.tecnico_id) return setMensaje("Selecciona un técnico");
+    if (!form.fecha_inicio) {
+      return setMensaje(
+        "La fecha de inicio es obligatoria"
+      );
+    }
+
+    if (!form.precio) {
+      return setMensaje(
+        "El precio es obligatorio"
+      );
+    }
+
+    if (!form.frecuencia) {
+      return setMensaje(
+        "La frecuencia es obligatoria"
+      );
+    }
+
+    if (!form.modalidad) {
+      return setMensaje(
+        "Selecciona una modalidad"
+      );
+    }
+
+    if (!form.tecnico_id) {
+      return setMensaje(
+        "Selecciona un técnico"
+      );
+    }
 
     // 1️⃣ Actualizar contrato
     const { error } = await supabase
@@ -99,60 +146,108 @@ export default function EditarContrato() {
     }
 
     // 2️⃣ Recalcular fecha_fin
-    const fechaInicio = new Date(form.fecha_inicio);
+    const fechaInicio = new Date(
+      form.fecha_inicio
+    );
+
     const fechaFin = new Date(
-      fechaInicio.getTime() + form.frecuencia * 24 * 60 * 60 * 1000
+      fechaInicio.getTime() +
+        form.frecuencia *
+          24 *
+          60 *
+          60 *
+          1000
     )
       .toISOString()
       .split("T")[0];
 
-    await supabase
-      .from("contratos")
-      .update({ fecha_fin: fechaFin })
-      .eq("id", id);
+    const { error: fechaFinError } =
+      await supabase
+        .from("contratos")
+        .update({
+          fecha_fin: fechaFin,
+        })
+        .eq("id", id);
 
-    const contratoId = id;
+    if (fechaFinError) {
+      console.error(
+        "Error actualizando fecha_fin:",
+        fechaFinError
+      );
+    }
 
-    // 3️⃣ Regenerar PDF actualizado (CORREGIDO)
-    let pdfUrl = null;
+    const contratoId = Number(id);
+
+    // 3️⃣ Regenerar PDF actualizado.
+    //
+    // La Edge Function se encarga de actualizar pdf_url.
+    // No sobrescribimos pdf_url desde aquí con una URL
+    // temporal o con un data URI.
     try {
-      const { data: pdfData, error: pdfError } = await supabase.functions.invoke(
+      const {
+        data: pdfData,
+        error: pdfError,
+      } = await supabase.functions.invoke(
         "contrato-pdf",
-        { body: { contratoId } }
+        {
+          body: {
+            contratoId,
+            contrato_id: contratoId,
+            id: contratoId,
+          },
+        }
       );
 
       if (pdfError) {
-        console.error(pdfError);
+        console.error(
+          "Error regenerando PDF:",
+          pdfError
+        );
       } else {
-        pdfUrl = pdfData.url;
+        console.log(
+          "PDF regenerado correctamente:",
+          pdfData
+        );
       }
     } catch (e) {
-      console.error("Error regenerando PDF:", e);
+      console.error(
+        "Error regenerando PDF:",
+        e
+      );
     }
 
-    await supabase
-      .from("contratos")
-      .update({ pdf_url: pdfUrl })
-      .eq("id", id);
-
-    // 4️⃣ Regenerar inspecciones automáticas (CORREGIDO)
+    // 4️⃣ Regenerar inspecciones automáticas.
     try {
       await supabase.functions.invoke(
         "crear_inspecciones_programadas",
-        { body: { contratoId } }
+        {
+          body: {
+            contratoId,
+          },
+        }
       );
     } catch (e) {
-      console.error("Error regenerando inspecciones:", e);
+      console.error(
+        "Error regenerando inspecciones:",
+        e
+      );
     }
 
-    // 5️⃣ Enviar email automático al cliente (CORREGIDO)
+    // 5️⃣ Enviar email automático al cliente.
     try {
       await supabase.functions.invoke(
         "enviar-email",
-        { body: { contratoId } }
+        {
+          body: {
+            contratoId,
+          },
+        }
       );
     } catch (e) {
-      console.error("Error enviando email:", e);
+      console.error(
+        "Error enviando email:",
+        e
+      );
     }
 
     navigate("/contratos");
@@ -163,8 +258,10 @@ export default function EditarContrato() {
     width: "100%",
     marginBottom: "15px",
     borderRadius: "10px",
-    border: "1px solid rgba(255,255,255,0.2)",
-    background: "rgba(255,255,255,0.08)",
+    border:
+      "1px solid rgba(255,255,255,0.2)",
+    background:
+      "rgba(255,255,255,0.08)",
     color: "#fff",
   };
 
@@ -185,7 +282,8 @@ export default function EditarContrato() {
             marginBottom: "25px",
             fontSize: "28px",
             fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            textShadow:
+              "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
           Editar Contrato #{id}
@@ -205,71 +303,124 @@ export default function EditarContrato() {
 
         <div
           style={{
-            background: "rgba(255,255,255,0.05)",
+            background:
+              "rgba(255,255,255,0.05)",
             padding: "20px",
             borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            border:
+              "1px solid rgba(255,255,255,0.1)",
+            boxShadow:
+              "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
           <label>Modalidad:</label>
+
           <select
             value={form.modalidad || ""}
-            onChange={(e) => seleccionarModalidad(e.target.value)}
+            onChange={(e) =>
+              seleccionarModalidad(
+                e.target.value
+              )
+            }
             style={inputStyle}
           >
-            <option value="">Selecciona modalidad</option>
+            <option value="">
+              Selecciona modalidad
+            </option>
+
             {modalidades.map((m) => (
-              <option key={m.id} value={m.id}>
+              <option
+                key={m.id}
+                value={m.id}
+              >
                 {m.nombre} — {m.precio}€
               </option>
             ))}
           </select>
 
           <label>Fecha inicio:</label>
+
           <input
             type="date"
             value={form.fecha_inicio || ""}
-            onChange={(e) => setForm({ ...form, fecha_inicio: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                fecha_inicio:
+                  e.target.value,
+              })
+            }
             style={inputStyle}
           />
 
           <label>Precio (€):</label>
+
           <input
             type="number"
             value={form.precio || ""}
-            onChange={(e) => setForm({ ...form, precio: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                precio: e.target.value,
+              })
+            }
             style={inputStyle}
           />
 
           <label>Frecuencia (días):</label>
+
           <input
             type="number"
             value={form.frecuencia || ""}
-            onChange={(e) => setForm({ ...form, frecuencia: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                frecuencia:
+                  e.target.value,
+              })
+            }
             style={inputStyle}
           />
 
           <label>Técnico:</label>
+
           <select
             value={form.tecnico_id || ""}
             onChange={(e) =>
-              setForm({ ...form, tecnico_id: String(e.target.value) })
+              setForm({
+                ...form,
+                tecnico_id:
+                  String(
+                    e.target.value
+                  ),
+              })
             }
             style={inputStyle}
           >
-            <option value="">Selecciona técnico</option>
+            <option value="">
+              Selecciona técnico
+            </option>
+
             {tecnicos.map((t) => (
-              <option key={t.id} value={t.id}>
+              <option
+                key={t.id}
+                value={t.id}
+              >
                 {t.nombre}
               </option>
             ))}
           </select>
 
           <label>Notas:</label>
+
           <textarea
             value={form.notas || ""}
-            onChange={(e) => setForm({ ...form, notas: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                notas: e.target.value,
+              })
+            }
             style={{
               ...inputStyle,
               minHeight: "90px",
@@ -289,7 +440,8 @@ export default function EditarContrato() {
               fontWeight: "700",
               fontSize: "17px",
               cursor: "pointer",
-              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+              boxShadow:
+                "0 0 10px rgba(0,153,255,0.4)",
             }}
           >
             Guardar cambios
