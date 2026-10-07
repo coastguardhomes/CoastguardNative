@@ -14,12 +14,17 @@ export default function VerPDFContrato() {
   const [pdfURL, setPdfURL] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Seguridad: comprobar acceso al contrato
+  // Seguridad: comprobar acceso al contrato mediante RLS
   useEffect(() => {
     let cancelado = false;
 
     async function comprobarContrato() {
-      if (!user) return;
+      if (!user) {
+        if (!cancelado) {
+          setLoading(false);
+        }
+        return;
+      }
 
       const { data, error } = await supabase
         .from("contratos")
@@ -33,6 +38,7 @@ export default function VerPDFContrato() {
     }
 
     comprobarContrato();
+
     return () => {
       cancelado = true;
     };
@@ -42,6 +48,11 @@ export default function VerPDFContrato() {
     try {
       setLoading(true);
 
+      if (!user) {
+        setPdfURL("");
+        return;
+      }
+
       const { data, error } = await supabase
         .from("contratos")
         .select("pdf_url")
@@ -49,35 +60,109 @@ export default function VerPDFContrato() {
         .single();
 
       if (error || !data?.pdf_url) {
-        console.error("Error o sin URL en contrato:", error);
+        console.error(
+          "Error o sin PDF en contrato:",
+          error
+        );
+
         setPdfURL("");
-        setLoading(false);
         return;
       }
 
-      const rawUrl = data.pdf_url;
-      let finalUrl = "";
+      let filePath = data.pdf_url;
 
-      // Procesar URL pública o ruta del bucket
-      if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
-        finalUrl = rawUrl;
-      } else {
-        const cleanPath = rawUrl.replace(/^contratos\//, "");
-        const { data: publicData } = supabase.storage
-          .from("contratos")
-          .getPublicUrl(cleanPath);
+      /*
+       * Los registros antiguos pueden contener:
+       *
+       * https://.../storage/v1/object/public/contratos/archivo.pdf
+       *
+       * o:
+       *
+       * contratos/archivo.pdf
+       *
+       * o directamente:
+       *
+       * archivo.pdf
+       *
+       * Convertimos todo a una ruta interna del bucket.
+       */
 
-        finalUrl = publicData?.publicUrl || "";
+      if (/^https?:\/\//i.test(filePath)) {
+        try {
+          const url = new URL(filePath);
+
+          const marker =
+            "/storage/v1/object/public/contratos/";
+
+          const index =
+            url.pathname.indexOf(marker);
+
+          if (index !== -1) {
+            filePath = decodeURIComponent(
+              url.pathname.substring(
+                index + marker.length
+              )
+            );
+          }
+        } catch (e) {
+          console.error(
+            "No se pudo interpretar la URL antigua del contrato:",
+            e
+          );
+        }
       }
 
-      // 🔥 EVITAR CACHÉ EN WEB Y APP NATIVA: Añadir parámetro de tiempo único
-      if (finalUrl) {
-        finalUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
+      filePath = filePath.replace(
+        /^contratos\//,
+        ""
+      );
+
+      filePath = filePath.replace(
+        /^\/+/,
+        ""
+      );
+
+      if (!filePath) {
+        setPdfURL("");
+        return;
       }
 
-      setPdfURL(finalUrl);
+      /*
+       * Crear URL firmada válida durante 1 hora.
+       *
+       * El acceso a Storage privado queda protegido por
+       * las políticas RLS del bucket.
+       */
+      const {
+        data: signedData,
+        error: signedError,
+      } = await supabase.storage
+        .from("contratos")
+        .createSignedUrl(
+          filePath,
+          3600
+        );
+
+      if (
+        signedError ||
+        !signedData?.signedUrl
+      ) {
+        console.error(
+          "Error creando URL firmada:",
+          signedError
+        );
+
+        setPdfURL("");
+        return;
+      }
+
+      setPdfURL(signedData.signedUrl);
     } catch (err) {
-      console.error("Error crítico cargando PDF del contrato:", err);
+      console.error(
+        "Error crítico cargando PDF del contrato:",
+        err
+      );
+
       setPdfURL("");
     } finally {
       setLoading(false);
@@ -85,8 +170,10 @@ export default function VerPDFContrato() {
   };
 
   useEffect(() => {
-    cargarPDF();
-  }, [id]);
+    if (user && id) {
+      cargarPDF();
+    }
+  }, [user, id]);
 
   if (loading) {
     return (
@@ -151,7 +238,8 @@ export default function VerPDFContrato() {
             marginBottom: "25px",
             fontSize: "28px",
             fontWeight: "700",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
+            textShadow:
+              "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
           {t("pdfTituloVista")} #{id}
@@ -177,11 +265,14 @@ export default function VerPDFContrato() {
 
         <div
           style={{
-            background: "rgba(255,255,255,0.05)",
+            background:
+              "rgba(255,255,255,0.05)",
             padding: "10px",
             borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
+            border:
+              "1px solid rgba(255,255,255,0.1)",
+            boxShadow:
+              "0 0 12px rgba(0,153,255,0.2)",
             marginBottom: "20px",
           }}
         >
@@ -199,7 +290,12 @@ export default function VerPDFContrato() {
         </div>
 
         <button
-          onClick={() => window.open(pdfURL, "_blank")}
+          onClick={() =>
+            window.open(
+              pdfURL,
+              "_blank"
+            )
+          }
           style={{
             width: "100%",
             padding: "12px",
@@ -210,7 +306,8 @@ export default function VerPDFContrato() {
             cursor: "pointer",
             fontWeight: "700",
             fontSize: "16px",
-            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+            boxShadow:
+              "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
           {t("pdfAbrirNuevaPestana")}
