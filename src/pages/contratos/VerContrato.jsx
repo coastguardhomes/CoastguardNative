@@ -8,6 +8,7 @@ export default function VerContrato() {
   const navigate = useNavigate();
 
   const [contrato, setContrato] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
   const [generando, setGenerando] = useState(false);
@@ -16,6 +17,32 @@ export default function VerContrato() {
   useEffect(() => {
     cargarContrato();
   }, [id]);
+
+  const resolverPdfUrl = async (valor) => {
+    if (!valor) return null;
+
+    // Data URI generada por la Edge Function actual.
+    if (/^data:/i.test(valor)) {
+      return valor;
+    }
+
+    // URLs completas antiguas o URLs firmadas ya generadas.
+    if (/^https?:\/\//i.test(valor)) {
+      return valor;
+    }
+
+    // Ruta de Storage: generar URL firmada temporal.
+    const { data, error } = await supabase.storage
+      .from("contratos")
+      .createSignedUrl(valor, 3600);
+
+    if (error || !data?.signedUrl) {
+      console.error("Error generando URL firmada del contrato:", error);
+      return null;
+    }
+
+    return data.signedUrl;
+  };
 
   const cargarContrato = async () => {
     try {
@@ -31,13 +58,23 @@ export default function VerContrato() {
       if (error || !data) {
         setErrorMsg("No se encontró el contrato.");
         setContrato(null);
+        setPdfUrl(null);
+        return;
+      }
+
+      setContrato(data);
+
+      if (data.pdf_url) {
+        const url = await resolverPdfUrl(data.pdf_url);
+        setPdfUrl(url);
       } else {
-        setContrato(data);
+        setPdfUrl(null);
       }
     } catch (err) {
       console.error("Error cargando contrato:", err);
       setErrorMsg("Error cargando el contrato.");
       setContrato(null);
+      setPdfUrl(null);
     } finally {
       setCargando(false);
     }
@@ -48,36 +85,59 @@ export default function VerContrato() {
       setGenerando(true);
 
       const response = await supabase.functions.invoke("contrato-pdf", {
-        body: { 
-          contrato_id: Number(id), 
-          contratoId: Number(id), 
-          id: Number(id) 
-        }
+        body: {
+          contrato_id: Number(id),
+          contratoId: Number(id),
+          id: Number(id),
+        },
       });
 
       if (response.error) {
         console.error("Error desde Edge Function:", response.error);
-        alert("Error generando PDF: " + JSON.stringify(response.error));
+        alert(
+          "Error generando PDF: " +
+            JSON.stringify(response.error)
+        );
         return;
       }
 
+      /*
+       * La Edge Function es la responsable de actualizar pdf_url.
+       * No sobrescribimos aquí pdf_url con una URL temporal o data URI.
+       */
+      await cargarContrato();
+
       const dataRes = response.data;
-      const pdfUrlRaw = dataRes?.pdf_url || dataRes?.pdfUrl || (typeof dataRes === 'string' ? JSON.parse(dataRes)?.pdf_url : null);
+
+      const pdfUrlRaw =
+        dataRes?.pdf_url ||
+        dataRes?.pdfUrl ||
+        dataRes?.url ||
+        (typeof dataRes === "string"
+          ? (() => {
+              try {
+                const parsed = JSON.parse(dataRes);
+                return (
+                  parsed?.pdf_url ||
+                  parsed?.pdfUrl ||
+                  parsed?.url ||
+                  null
+                );
+              } catch {
+                return null;
+              }
+            })()
+          : null);
 
       if (pdfUrlRaw) {
-        const pdfUrl = `${pdfUrlRaw}?t=${Date.now()}`;
+        const resolved = await resolverPdfUrl(pdfUrlRaw);
 
-        await supabase
-          .from("contratos")
-          .update({ pdf_url: pdfUrl })
-          .eq("id", Number(id));
-
-        await cargarContrato();
-        alert("¡PDF generado y actualizado con éxito! ✔");
-      } else {
-        await cargarContrato();
-        alert("Proceso completado, recargando datos...");
+        if (resolved) {
+          setPdfUrl(resolved);
+        }
       }
+
+      alert("¡PDF generado y actualizado con éxito! ✔");
     } catch (e) {
       console.error("Excepción en regenerarPDF:", e);
       alert("Error procesando la solicitud del PDF.");
@@ -98,10 +158,15 @@ export default function VerContrato() {
 
       if (error) {
         console.error("Error al actualizar estado:", error);
-        alert("Error al poner el contrato disponible para el cliente.");
+        alert(
+          "Error al poner el contrato disponible para el cliente."
+        );
       } else {
         await cargarContrato();
-        alert("¡Contrato enviado al rol cliente con éxito! Ya está disponible para su firma en su panel.");
+
+        alert(
+          "¡Contrato enviado al rol cliente con éxito! Ya está disponible para su firma en su panel."
+        );
       }
     } catch (e) {
       console.error(e);
@@ -111,24 +176,62 @@ export default function VerContrato() {
     }
   };
 
-  const abrirPDF = () => {
+  const abrirPDF = async () => {
     if (!contrato?.pdf_url) {
       alert("Este contrato aún no tiene PDF generado.");
       return;
     }
 
-    window.open(contrato.pdf_url, "_blank");
+    try {
+      const url = await resolverPdfUrl(contrato.pdf_url);
+
+      if (!url) {
+        alert("No se pudo obtener el acceso seguro al PDF.");
+        return;
+      }
+
+      window.open(url, "_blank");
+    } catch (e) {
+      console.error("Error abriendo PDF:", e);
+      alert("No se pudo abrir el PDF.");
+    }
   };
 
   const obtenerBadgeEstado = (estado) => {
     const est = String(estado || "").toLowerCase().trim();
-    if (est === "firmado" || est === "firmado_cliente" || est === "completado") {
-      return { texto: "✅ FIRMADO", color: "#34d399", bg: "rgba(52, 211, 153, 0.2)", border: "rgba(52, 211, 153, 0.5)" };
+
+    if (
+      est === "firmado" ||
+      est === "firmado_cliente" ||
+      est === "completado"
+    ) {
+      return {
+        texto: "✅ FIRMADO",
+        color: "#34d399",
+        bg: "rgba(52, 211, 153, 0.2)",
+        border: "rgba(52, 211, 153, 0.5)",
+      };
     }
-    if (est === "enviado_cliente" || est === "enviado_al_cliente" || est === "enviada") {
-      return { texto: "📩 ENVIADO AL CLIENTE", color: "#60a5fa", bg: "rgba(96, 165, 250, 0.2)", border: "rgba(96, 165, 250, 0.5)" };
+
+    if (
+      est === "enviado_cliente" ||
+      est === "enviado_al_cliente" ||
+      est === "enviada"
+    ) {
+      return {
+        texto: "📩 ENVIADO AL CLIENTE",
+        color: "#60a5fa",
+        bg: "rgba(96, 165, 250, 0.2)",
+        border: "rgba(96, 165, 250, 0.5)",
+      };
     }
-    return { texto: "⏳ PENDIENTE", color: "#e0b034", bg: "rgba(224, 176, 52, 0.2)", border: "rgba(224, 176, 52, 0.5)" };
+
+    return {
+      texto: "⏳ PENDIENTE",
+      color: "#e0b034",
+      bg: "rgba(224, 176, 52, 0.2)",
+      border: "rgba(224, 176, 52, 0.5)",
+    };
   };
 
   const firmaUrl = contrato?.firma_cliente || contrato?.firma_url;
@@ -174,7 +277,12 @@ export default function VerContrato() {
         </h2>
 
         {cargando ? (
-          <p style={{ textAlign: "center", color: "#94a3b8" }}>
+          <p
+            style={{
+              textAlign: "center",
+              color: "#94a3b8",
+            }}
+          >
             Cargando contrato...
           </p>
         ) : errorMsg ? (
@@ -187,7 +295,15 @@ export default function VerContrato() {
               border: "1px solid rgba(255,77,77,0.3)",
             }}
           >
-            <p style={{ color: "#ff4d4d", marginBottom: "10px", fontWeight: "600" }}>{errorMsg}</p>
+            <p
+              style={{
+                color: "#ff4d4d",
+                marginBottom: "10px",
+                fontWeight: "600",
+              }}
+            >
+              {errorMsg}
+            </p>
           </div>
         ) : (
           <>
@@ -202,12 +318,29 @@ export default function VerContrato() {
                 boxShadow: "0 0 12px rgba(0,153,255,0.2)",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                <h3 style={{ color: "#4db8ff", margin: 0, fontSize: "18px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "12px",
+                }}
+              >
+                <h3
+                  style={{
+                    color: "#4db8ff",
+                    margin: 0,
+                    fontSize: "18px",
+                  }}
+                >
                   🧾 Información del contrato
                 </h3>
+
                 {(() => {
-                  const badge = obtenerBadgeEstado(contrato.estado);
+                  const badge = obtenerBadgeEstado(
+                    contrato.estado
+                  );
+
                   return (
                     <span
                       style={{
@@ -227,28 +360,100 @@ export default function VerContrato() {
                 })()}
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "15px" }}>
-                <p><strong>Cliente:</strong> {contrato.clientes?.nombre || "Sin cliente"}</p>
-                <p><strong>Email:</strong> {contrato.clientes?.email || "Sin email"}</p>
-                <p><strong>Vivienda:</strong> {contrato.viviendas?.direccion || "Sin dirección"}</p>
-                <p><strong>Modalidad:</strong> {contrato.modalidad || "N/D"}</p>
-                <p><strong>Precio:</strong> {contrato.precio} €/mes</p>
-                <p><strong>Frecuencia:</strong> Cada {contrato.frecuencia} días</p>
-                <p><strong>Inicio:</strong> {String(contrato.fecha_inicio || "").slice(0, 10)}</p>
-                <p><strong>Fin:</strong> {String(contrato.fecha_fin || "").slice(0, 10)}</p>
-                
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  fontSize: "15px",
+                }}
+              >
+                <p>
+                  <strong>Cliente:</strong>{" "}
+                  {contrato.clientes?.nombre || "Sin cliente"}
+                </p>
+
+                <p>
+                  <strong>Email:</strong>{" "}
+                  {contrato.clientes?.email || "Sin email"}
+                </p>
+
+                <p>
+                  <strong>Vivienda:</strong>{" "}
+                  {contrato.viviendas?.direccion ||
+                    "Sin dirección"}
+                </p>
+
+                <p>
+                  <strong>Modalidad:</strong>{" "}
+                  {contrato.modalidad || "N/D"}
+                </p>
+
+                <p>
+                  <strong>Precio:</strong>{" "}
+                  {contrato.precio} €/mes
+                </p>
+
+                <p>
+                  <strong>Frecuencia:</strong> Cada{" "}
+                  {contrato.frecuencia} días
+                </p>
+
+                <p>
+                  <strong>Inicio:</strong>{" "}
+                  {String(
+                    contrato.fecha_inicio || ""
+                  ).slice(0, 10)}
+                </p>
+
+                <p>
+                  <strong>Fin:</strong>{" "}
+                  {String(
+                    contrato.fecha_fin || ""
+                  ).slice(0, 10)}
+                </p>
+
                 {/* PREVISUALIZACIÓN DE LA FIRMA EN EL PANEL ADMIN */}
                 {firmaUrl ? (
-                  <div style={{ marginTop: "12px", padding: "10px", background: "rgba(255,255,255,0.08)", borderRadius: "10px" }}>
-                    <p style={{ margin: "0 0 8px 0", color: "#34d399", fontWeight: "bold" }}>✍️ Firma del Cliente Registrada:</p>
-                    <img 
-                      src={firmaUrl} 
-                      alt="Firma cliente" 
-                      style={{ maxHeight: "80px", background: "#fff", padding: "4px", borderRadius: "6px" }} 
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      padding: "10px",
+                      background:
+                        "rgba(255,255,255,0.08)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: "0 0 8px 0",
+                        color: "#34d399",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      ✍️ Firma del Cliente Registrada:
+                    </p>
+
+                    <img
+                      src={firmaUrl}
+                      alt="Firma cliente"
+                      style={{
+                        maxHeight: "80px",
+                        background: "#fff",
+                        padding: "4px",
+                        borderRadius: "6px",
+                      }}
                     />
                   </div>
                 ) : (
-                  <p style={{ color: "#e0b034", marginTop: "8px" }}>⚠️ Pendiente de firma del cliente.</p>
+                  <p
+                    style={{
+                      color: "#e0b034",
+                      marginTop: "8px",
+                    }}
+                  >
+                    ⚠️ Pendiente de firma del cliente.
+                  </p>
                 )}
               </div>
             </div>
@@ -274,10 +479,13 @@ export default function VerContrato() {
                   fontWeight: "700",
                   cursor: "pointer",
                   opacity: generando ? 0.6 : 1,
-                  boxShadow: "0 0 10px rgba(34,197,94,0.3)",
+                  boxShadow:
+                    "0 0 10px rgba(34,197,94,0.3)",
                 }}
               >
-                {generando ? "⌛ Procesando PDF..." : "📄 Regenerar / Actualizar PDF con Firma"}
+                {generando
+                  ? "⌛ Procesando PDF..."
+                  : "📄 Regenerar / Actualizar PDF con Firma"}
               </button>
 
               <button
@@ -292,20 +500,25 @@ export default function VerContrato() {
                   fontWeight: "700",
                   cursor: "pointer",
                   opacity: enviando ? 0.6 : 1,
-                  boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+                  boxShadow:
+                    "0 0 10px rgba(0,153,255,0.4)",
                 }}
               >
-                {enviando ? "⌛ Actualizando..." : "📩 Enviar contrato al rol cliente"}
+                {enviando
+                  ? "⌛ Actualizando..."
+                  : "📩 Enviar contrato al rol cliente"}
               </button>
 
               <button
                 onClick={abrirPDF}
                 style={{
                   padding: "12px",
-                  background: "rgba(255,255,255,0.15)",
+                  background:
+                    "rgba(255,255,255,0.15)",
                   color: "#fff",
                   borderRadius: "10px",
-                  border: "1px solid rgba(255,255,255,0.3)",
+                  border:
+                    "1px solid rgba(255,255,255,0.3)",
                   fontWeight: "700",
                   cursor: "pointer",
                 }}
@@ -315,7 +528,7 @@ export default function VerContrato() {
             </div>
 
             {/* VISOR PDF */}
-            {contrato.pdf_url ? (
+            {pdfUrl ? (
               <div
                 style={{
                   width: "100%",
@@ -325,7 +538,7 @@ export default function VerContrato() {
                 }}
               >
                 <iframe
-                  src={contrato.pdf_url}
+                  src={pdfUrl}
                   title={`Contrato ${id}`}
                   style={{
                     width: "100%",
@@ -334,13 +547,20 @@ export default function VerContrato() {
                     border: "none",
                     borderRadius: 12,
                     background: "#ffffff",
-                    boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+                    boxShadow:
+                      "0 6px 20px rgba(0,0,0,0.35)",
                   }}
                   sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                 />
               </div>
             ) : (
-              <p style={{ textAlign: "center", color: "#ff4d4d", fontWeight: "600" }}>
+              <p
+                style={{
+                  textAlign: "center",
+                  color: "#ff4d4d",
+                  fontWeight: "600",
+                }}
+              >
                 Este contrato aún no tiene PDF generado. Usa el botón verde para generarlo.
               </p>
             )}
