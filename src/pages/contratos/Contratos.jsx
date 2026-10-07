@@ -7,7 +7,8 @@ const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
 const FONDO_TARJETA =
   "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
-const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
+const BORDE_DORADO_FINO =
+  "1px solid rgba(224, 176, 52, 0.4)";
 const SOMBRA_LUXURY =
   "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 const TEXTO_DORADO_BRILLO = {
@@ -17,6 +18,7 @@ const TEXTO_DORADO_BRILLO = {
 
 export default function Contratos() {
   const navigate = useNavigate();
+
   const [contratos, setContratos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -25,6 +27,35 @@ export default function Contratos() {
   useEffect(() => {
     cargarContratos();
   }, []);
+
+  const obtenerUrlPdf = async (valor) => {
+    if (!valor) return null;
+
+    // Data URI devuelta por la Edge Function actual.
+    if (/^data:/i.test(valor)) {
+      return valor;
+    }
+
+    // URL completa antigua o URL firmada.
+    if (/^https?:\/\//i.test(valor)) {
+      return valor;
+    }
+
+    // Ruta de Storage.
+    const { data, error } = await supabase.storage
+      .from("contratos")
+      .createSignedUrl(valor, 3600);
+
+    if (error || !data?.signedUrl) {
+      console.error(
+        "Error creando URL firmada del contrato:",
+        error
+      );
+      return null;
+    }
+
+    return data.signedUrl;
+  };
 
   const cargarContratos = async () => {
     try {
@@ -56,13 +87,23 @@ export default function Contratos() {
     try {
       setActionLoading(contrato.id);
 
-      // Si ya existe la URL directa, la abrimos
+      // Si ya existe una ruta/URL, resolverla de forma segura.
       if (contrato.pdf_url) {
-        window.open(contrato.pdf_url, "_blank");
-        return;
+        const pdfUrl = await obtenerUrlPdf(
+          contrato.pdf_url
+        );
+
+        if (pdfUrl) {
+          window.open(pdfUrl, "_blank");
+          return;
+        }
+
+        console.warn(
+          "No se pudo resolver el PDF existente. Se intentará regenerar."
+        );
       }
 
-      // Si no existe la URL, invocamos la Edge Function para generar el PDF
+      // Si no existe una URL válida, invocamos la Edge Function.
       const { data, error: errPdf } =
         await supabase.functions.invoke("contrato-pdf", {
           body: {
@@ -74,29 +115,42 @@ export default function Contratos() {
 
       if (errPdf) throw errPdf;
 
-      // Consultamos de nuevo para obtener la URL guardada
-      const { data: updatedContrato } = await supabase
-        .from("contratos")
-        .select("pdf_url")
-        .eq("id", contrato.id)
-        .single();
+      // Consultamos de nuevo para obtener el valor guardado.
+      const { data: updatedContrato } =
+        await supabase
+          .from("contratos")
+          .select("pdf_url")
+          .eq("id", contrato.id)
+          .single();
 
-      const finalPdfUrl =
+      const finalPdfValue =
         updatedContrato?.pdf_url ||
         data?.pdf_url ||
-        data?.pdfUrl;
+        data?.pdfUrl ||
+        data?.url;
 
-      if (finalPdfUrl) {
-        window.open(finalPdfUrl, "_blank");
-        await cargarContratos();
-      } else {
-        alert(
-          "El PDF se procesó correctamente. Vuelve a pulsar 'Ver PDF'."
-        );
-        await cargarContratos();
+      if (finalPdfValue) {
+        const finalPdfUrl =
+          await obtenerUrlPdf(finalPdfValue);
+
+        if (finalPdfUrl) {
+          window.open(finalPdfUrl, "_blank");
+          await cargarContratos();
+          return;
+        }
       }
+
+      alert(
+        "El PDF se procesó correctamente. Vuelve a pulsar 'Ver PDF'."
+      );
+
+      await cargarContratos();
     } catch (err) {
-      console.error("Error al visualizar PDF:", err);
+      console.error(
+        "Error al visualizar PDF:",
+        err
+      );
+
       alert(
         "No se pudo generar/visualizar el PDF: " +
           (err.message || "Error desconocido")
@@ -113,22 +167,39 @@ export default function Contratos() {
 
       const numericContratoId = Number(contrato.id);
 
-      // 1. Generar PDF del contrato y capturar su URL explícitamente
-      let contratoPdfUrl = contrato.pdf_url || null;
+      // 1. Generar PDF del contrato.
+      let contratoPdfValue =
+        contrato.pdf_url || null;
 
       try {
-        const { data: resPdf } =
-          await supabase.functions.invoke("contrato-pdf", {
-            body: {
-              contrato_id: numericContratoId,
-              contratoId: numericContratoId,
-              id: numericContratoId,
-            },
-          });
+        const { data: resPdf, error: errPdf } =
+          await supabase.functions.invoke(
+            "contrato-pdf",
+            {
+              body: {
+                contrato_id: numericContratoId,
+                contratoId: numericContratoId,
+                id: numericContratoId,
+              },
+            }
+          );
 
-        if (resPdf?.pdf_url || resPdf?.pdfUrl) {
-          contratoPdfUrl =
-            resPdf.pdf_url || resPdf.pdfUrl;
+        if (errPdf) {
+          console.warn(
+            "Aviso menor en generación PDF de contrato:",
+            errPdf
+          );
+        }
+
+        if (
+          resPdf?.pdf_url ||
+          resPdf?.pdfUrl ||
+          resPdf?.url
+        ) {
+          contratoPdfValue =
+            resPdf.pdf_url ||
+            resPdf.pdfUrl ||
+            resPdf.url;
         }
       } catch (errContratoPdf) {
         console.warn(
@@ -137,18 +208,32 @@ export default function Contratos() {
         );
       }
 
-      // 1b. Si aún no tenemos la URL del PDF, consultamos la DB
-      const { data: contratoDb } = await supabase
-        .from("contratos")
-        .select("pdf_url")
-        .eq("id", numericContratoId)
-        .maybeSingle();
+      // 1b. Consultamos la DB porque la Edge Function
+      // puede haber actualizado pdf_url.
+      const { data: contratoDb } =
+        await supabase
+          .from("contratos")
+          .select("pdf_url")
+          .eq("id", numericContratoId)
+          .maybeSingle();
 
       if (contratoDb?.pdf_url) {
-        contratoPdfUrl = contratoDb.pdf_url;
+        contratoPdfValue =
+          contratoDb.pdf_url;
       }
 
-      // 2. Actualizar estado del contrato en DB
+      // Para el correo necesitamos una URL utilizable,
+      // no solamente la ruta interna de Storage.
+      let contratoPdfUrl = null;
+
+      if (contratoPdfValue) {
+        contratoPdfUrl =
+          await obtenerUrlPdf(
+            contratoPdfValue
+          );
+      }
+
+      // 2. Actualizar estado del contrato en DB.
       const estadoActual = String(
         contrato.estado || ""
       )
@@ -159,26 +244,34 @@ export default function Contratos() {
         estadoActual !== "firmado" &&
         estadoActual !== "firmado_cliente"
       ) {
-        await supabase
-          .from("contratos")
-          .update({
-            estado: "enviado_cliente",
-          })
-          .eq("id", numericContratoId);
+        const { error: estadoError } =
+          await supabase
+            .from("contratos")
+            .update({
+              estado: "enviado_cliente",
+            })
+            .eq("id", numericContratoId);
+
+        if (estadoError) {
+          throw estadoError;
+        }
       }
 
-      // 3. Enviar Email pasando la URL directa del PDF
+      // 3. Enviar Email.
       const { error: errEmail } =
-        await supabase.functions.invoke("enviar-email", {
-          body: {
-            contrato_id: numericContratoId,
-            contratoId: numericContratoId,
-            id: numericContratoId,
-            pdf_url: contratoPdfUrl,
-            contrato_pdf_url: contratoPdfUrl,
-            tipo: "contrato",
-          },
-        });
+        await supabase.functions.invoke(
+          "enviar-email",
+          {
+            body: {
+              contrato_id: numericContratoId,
+              contratoId: numericContratoId,
+              id: numericContratoId,
+              pdf_url: contratoPdfUrl,
+              contrato_pdf_url: contratoPdfUrl,
+              tipo: "contrato",
+            },
+          }
+        );
 
       if (errEmail) {
         alert(
@@ -206,7 +299,6 @@ export default function Contratos() {
     }
   };
 
-  // NUEVO:
   // Cancela la suscripción recurrente de Stripe.
   // NO elimina el contrato ni las facturas históricas.
   const cancelarSuscripcion = async (contrato) => {
@@ -302,9 +394,7 @@ export default function Contratos() {
       .toLowerCase()
       .trim();
 
-    if (
-      est === "cancelado"
-    ) {
+    if (est === "cancelado") {
       return {
         texto: "🛑 CANCELADO",
         color: "#ef4444",
@@ -538,7 +628,6 @@ export default function Contratos() {
                   </button>
                 </div>
 
-                {/* BOTÓN NUEVO */}
                 {!estaCancelado && (
                   <button
                     type="button"
