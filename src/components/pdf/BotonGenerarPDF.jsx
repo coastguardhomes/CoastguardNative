@@ -4,7 +4,7 @@ import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
 import { generarPDFCliente } from "../../pdf/generarPDFCliente";
 
 /**
- * Botón reutilizable para generar y guardar el informe PDF 
+ * Botón reutilizable para generar y guardar el informe PDF
  * Funciona tanto para "inspecciones" como para "contratos" según la prop `tipo`.
  */
 export default function BotonGenerarPDF({ id, tipo = "inspeccion", onGenerado }) {
@@ -37,26 +37,35 @@ export default function BotonGenerarPDF({ id, tipo = "inspeccion", onGenerado })
         });
 
         const filePath = `inspecciones/inspeccion_${id}_${Date.now()}.pdf`;
-        
+
         const { error: uploadError } = await supabase.storage
           .from("pdfs")
-          .upload(filePath, blob, { contentType: "application/pdf", upsert: true });
+          .upload(filePath, blob, {
+            contentType: "application/pdf",
+            upsert: true,
+          });
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage.from("pdfs").getPublicUrl(filePath);
+        const { data: urlData } = supabase.storage
+          .from("pdfs")
+          .getPublicUrl(filePath);
+
         const publicUrl = urlData.publicUrl;
 
         const { error: updateError } = await supabase
           .from("inspecciones")
-          .update({ pdf_url: publicUrl, firmado_en: new Date().toISOString() })
+          .update({
+            pdf_url: publicUrl,
+            firmado_en: new Date().toISOString(),
+          })
           .eq("id", id);
 
         if (updateError) throw updateError;
 
         if (onGenerado) onGenerado(publicUrl);
-        alert("Informe PDF de inspección generado correctamente.");
 
+        alert("Informe PDF de inspección generado correctamente.");
       } else if (tipo === "contrato") {
         // --- FLUJO DE CONTRATOS ---
         const { data: contrato, error } = await supabase
@@ -69,31 +78,50 @@ export default function BotonGenerarPDF({ id, tipo = "inspeccion", onGenerado })
           throw new Error(error?.message || "No se encontró el contrato");
         }
 
-        // Generación del PDF del contrato (puedes adaptarlo si usas una función específica de contratos)
-        const blob = new Blob(["Contrato PDF #" + id], { type: "application/pdf" });
+        // Generación del PDF del contrato
+        const blob = new Blob(["Contrato PDF #" + id], {
+          type: "application/pdf",
+        });
 
         const filePath = `contrato_${id}_${Date.now()}.pdf`;
 
         const { error: uploadError } = await supabase.storage
           .from("contratos")
-          .upload(filePath, blob, { contentType: "application/pdf", upsert: true });
+          .upload(filePath, blob, {
+            contentType: "application/pdf",
+            upsert: true,
+          });
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage.from("contratos").getPublicUrl(filePath);
-        const publicUrl = urlData.publicUrl;
+        // Los contratos serán privados.
+        // Generamos una URL firmada temporal para poder visualizarlo.
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from("contratos")
+          .createSignedUrl(filePath, 3600);
+
+        if (signedError || !signedData?.signedUrl) {
+          throw new Error(
+            signedError?.message ||
+              "No se pudo generar la URL segura del contrato"
+          );
+        }
+
+        const signedUrl = signedData.signedUrl;
 
         const { error: updateError } = await supabase
           .from("contratos")
-          .update({ pdf_url: publicUrl })
+          .update({
+            pdf_url: filePath,
+          })
           .eq("id", id);
 
         if (updateError) throw updateError;
 
-        if (onGenerado) onGenerado(publicUrl);
+        if (onGenerado) onGenerado(signedUrl);
+
         alert("Contrato PDF generado y guardado correctamente.");
       }
-
     } catch (e) {
       console.error("Error generando PDF:", e);
       alert(`No se pudo generar el documento: ${e.message}`);
@@ -108,10 +136,10 @@ export default function BotonGenerarPDF({ id, tipo = "inspeccion", onGenerado })
       disabled={loading}
       onClick={handlePDF}
     >
-      {loading 
-        ? "Generando PDF..." 
-        : tipo === "contrato" 
-          ? "Generar PDF / Ver Contrato" 
+      {loading
+        ? "Generando PDF..."
+        : tipo === "contrato"
+          ? "Generar PDF / Ver Contrato"
           : "Generar PDF"}
     </button>
   );
