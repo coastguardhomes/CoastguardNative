@@ -43,13 +43,6 @@ export default function TecnicoInspeccionExtra() {
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
-  /*
-   * Cargar clientes disponibles para el técnico.
-   *
-   * La seguridad real no depende de esta lista:
-   * Supabase/RLS vuelve a comprobar que la vivienda
-   * seleccionada pertenece al técnico.
-   */
   const cargarClientes = async () => {
     const { data, error: clientesError } = await supabase
       .from("clientes")
@@ -57,26 +50,19 @@ export default function TecnicoInspeccionExtra() {
       .order("nombre");
 
     if (clientesError) {
-      console.error(
-        "Error cargando clientes:",
-        clientesError
-      );
-
+      console.error("Error cargando clientes:", clientesError);
       throw clientesError;
     }
 
     setClientes(data || []);
   };
 
-  /*
-   * Cargar únicamente viviendas del cliente seleccionado.
-   */
   const cargarViviendas = async (nuevoClienteId) => {
     setViviendas([]);
     setViviendaId("");
 
     if (!nuevoClienteId) {
-      return;
+      return [];
     }
 
     const {
@@ -93,7 +79,6 @@ export default function TecnicoInspeccionExtra() {
         "Error cargando viviendas:",
         viviendasError
       );
-
       throw viviendasError;
     }
 
@@ -102,18 +87,10 @@ export default function TecnicoInspeccionExtra() {
     if ((data || []).length === 1) {
       setViviendaId(String(data[0].id));
     }
+
+    return data || [];
   };
 
-  /*
-   * Cargar detalle.
-   *
-   * El parámetro de la ruta continúa siendo la factura cuando
-   * se entra desde el dashboard actual.
-   *
-   * Si existe un extra asociado a esa factura, se edita.
-   *
-   * Si no existe, se permite crear uno nuevo.
-   */
   const cargarDetalleExtra = async () => {
     try {
       setLoading(true);
@@ -135,17 +112,8 @@ export default function TecnicoInspeccionExtra() {
         );
       }
 
-      /*
-       * Primero cargamos los clientes.
-       */
       await cargarClientes();
 
-      /*
-       * Intentamos localizar la factura.
-       *
-       * Si existe, mantenemos el flujo antiguo.
-       * Si no existe, igualmente dejamos crear un extra.
-       */
       let factura = null;
 
       const {
@@ -170,9 +138,6 @@ export default function TecnicoInspeccionExtra() {
 
       let extraEncontrado = null;
 
-      /*
-       * Si hay factura, buscamos el extra asociado.
-       */
       if (factura?.id) {
         const {
           data: extrasPorFactura,
@@ -197,26 +162,29 @@ export default function TecnicoInspeccionExtra() {
         }
       }
 
-      /*
-       * Si encontramos un extra, cargamos sus datos.
-       */
       if (extraEncontrado) {
         setExtraData(extraEncontrado);
 
-        setClienteId(
+        const clienteSeleccionado =
           extraEncontrado.cliente_id
             ? String(extraEncontrado.cliente_id)
-            : ""
+            : "";
+
+        setClienteId(clienteSeleccionado);
+
+        /*
+         * Primero cargamos las viviendas porque esta función
+         * limpia viviendaId. Después restauramos la vivienda
+         * que pertenece al extra.
+         */
+        await cargarViviendas(
+          extraEncontrado.cliente_id
         );
 
         setViviendaId(
           extraEncontrado.vivienda_id
             ? String(extraEncontrado.vivienda_id)
             : ""
-        );
-
-        await cargarViviendas(
-          extraEncontrado.cliente_id
         );
 
         setDescripcion(
@@ -237,7 +205,7 @@ export default function TecnicoInspeccionExtra() {
 
         setPrecio(
           extraEncontrado.precio !== null &&
-          extraEncontrado.precio !== undefined
+            extraEncontrado.precio !== undefined
             ? String(extraEncontrado.precio)
             : ""
         );
@@ -277,14 +245,6 @@ export default function TecnicoInspeccionExtra() {
         return;
       }
 
-      /*
-       * No existe extra.
-       *
-       * Permitimos crear uno nuevo.
-       *
-       * Si existe una factura con cliente/vivienda,
-       * usamos esos datos como valores iniciales.
-       */
       setExtraData(null);
 
       if (factura?.cliente_id) {
@@ -311,7 +271,7 @@ export default function TecnicoInspeccionExtra() {
 
       setPrecio(
         factura?.total !== null &&
-        factura?.total !== undefined
+          factura?.total !== undefined
           ? String(factura.total)
           : ""
       );
@@ -334,9 +294,6 @@ export default function TecnicoInspeccionExtra() {
     cargarDetalleExtra();
   }, [id]);
 
-  /*
-   * Cambio de cliente.
-   */
   const manejarCambioCliente = async (e) => {
     const nuevoClienteId = e.target.value;
 
@@ -370,9 +327,6 @@ export default function TecnicoInspeccionExtra() {
     }
   };
 
-  /*
-   * Subida de fotos.
-   */
   const manejarSubidaFotos = async (e) => {
     const files = e.target.files;
 
@@ -471,9 +425,6 @@ export default function TecnicoInspeccionExtra() {
     }
   };
 
-  /*
-   * Crear o actualizar el extra.
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -550,9 +501,6 @@ export default function TecnicoInspeccionExtra() {
     try {
       setSaving(true);
 
-      /*
-       * Si ya existe el extra, lo actualizamos.
-       */
       if (extraData?.id) {
         const extraPayload = {
           cliente_id: clienteId,
@@ -612,10 +560,6 @@ export default function TecnicoInspeccionExtra() {
           extraActualizado
         );
 
-        /*
-         * Si existe factura, mantenemos actualizado
-         * el precio y la información del trabajo.
-         */
         if (facturaData?.id) {
           const facturaPayload = {
             descripcion:
@@ -638,21 +582,21 @@ export default function TecnicoInspeccionExtra() {
             alerta
           };
 
-          /*
-           * El precio profesional se refleja como base
-           * cuando el técnico está completando el extra.
-           */
           facturaPayload.base =
             precioNumero;
 
           facturaPayload.iva =
             Math.round(
-              precioNumero * 0.21 * 100
+              precioNumero *
+                0.21 *
+                100
             ) / 100;
 
           facturaPayload.total =
             Math.round(
-              precioNumero * 1.21 * 100
+              precioNumero *
+                1.21 *
+                100
             ) / 100;
 
           if (alerta) {
@@ -683,16 +627,6 @@ export default function TecnicoInspeccionExtra() {
         return;
       }
 
-      /*
-       * No existe extra:
-       *
-       * Lo creamos directamente desde el técnico.
-       *
-       * No confiamos en el técnico para decidir
-       * a qué técnico pertenece:
-       * usamos la vivienda seleccionada y la política
-       * RLS de Supabase vuelve a comprobar la asignación.
-       */
       const extraPayload = {
         cliente_id: clienteId,
 
@@ -773,10 +707,6 @@ export default function TecnicoInspeccionExtra() {
         nuevoExtra
       );
 
-      /*
-       * Si el flujo venía desde una factura,
-       * actualizamos también la factura.
-       */
       if (facturaData?.id) {
         const facturaPayload = {
           descripcion:
@@ -803,12 +733,16 @@ export default function TecnicoInspeccionExtra() {
 
           iva:
             Math.round(
-              precioNumero * 0.21 * 100
+              precioNumero *
+                0.21 *
+                100
             ) / 100,
 
           total:
             Math.round(
-              precioNumero * 1.21 * 100
+              precioNumero *
+                1.21 *
+                100
             ) / 100
         };
 
@@ -1195,7 +1129,8 @@ export default function TecnicoInspeccionExtra() {
                     "#f59e0b",
                   fontSize:
                     "12px",
-                  marginBottom: 0
+                  marginBottom:
+                    0
                 }}
               >
                 No hay viviendas disponibles
@@ -1565,8 +1500,7 @@ export default function TecnicoInspeccionExtra() {
                 }
                 onChange={(e) =>
                   setAlerta(
-                    e.target
-                      .checked
+                    e.target.checked
                   )
                 }
                 style={{
@@ -1655,8 +1589,7 @@ export default function TecnicoInspeccionExtra() {
               }
               onChange={(e) =>
                 setDescripcion(
-                  e.target
-                    .value
+                  e.target.value
                 )
               }
               placeholder="Detalla qué se ha reparado o revisado..."
@@ -1714,8 +1647,7 @@ export default function TecnicoInspeccionExtra() {
               }
               onChange={(e) =>
                 setMateriales(
-                  e.target
-                    .value
+                  e.target.value
                 )
               }
               placeholder="Ej: Tubo de PVC, silicona, tornillos..."
@@ -1772,8 +1704,7 @@ export default function TecnicoInspeccionExtra() {
               }
               onChange={(e) =>
                 setTiempo(
-                  e.target
-                    .value
+                  e.target.value
                 )
               }
               placeholder="Ej: 2 horas"
@@ -1860,9 +1791,3 @@ export default function TecnicoInspeccionExtra() {
     </div>
   );
 }
-
-Este archivo sustituye entero al actual. No cambies partes sueltas.
-
-Una cosa importante: he dejado la seguridad crítica en Supabase. Aunque el técnico manipule el "cliente_id", "vivienda_id" o "tecnico_id" desde el navegador, la política "extras_insert_tecnico" que acabamos de poner vuelve a comprobar la relación antes de aceptar la creación.
-
-Después de pegarlo en GitHub, no tocaría nada más todavía: primero probamos este flujo de técnico y comprobamos que cliente → vivienda → precio → crear extra funciona correctamente.
