@@ -9,9 +9,13 @@ import { App } from "@capacitor/app";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#0a0f1a";
-const FONDO_TARJETA = "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))";
+const FONDO_TARJETA =
+  "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))";
 const BORDE_DORADO = "1px solid rgba(255, 215, 0, 0.3)";
-const TEXTO_DORADO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(255,215,0,0.5)" };
+const TEXTO_DORADO = {
+  color: COLOR_DORADO,
+  textShadow: "0 0 12px rgba(255,215,0,0.5)"
+};
 
 const botonEstilo = {
   padding: "12px",
@@ -25,7 +29,7 @@ const botonEstilo = {
   background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
   color: "#ffffff",
   boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
-  transition: "all 0.2s ease",
+  transition: "all 0.2s ease"
 };
 
 export default function ClienteContratoVer() {
@@ -42,14 +46,18 @@ export default function ClienteContratoVer() {
 
   const cargarContrato = async () => {
     try {
-      const { data: contratoData, error: contratoError } = await supabase
-        .from("contratos")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
+      const { data: contratoData, error: contratoError } =
+        await supabase
+          .from("contratos")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
 
       if (contratoError || !contratoData) {
-        console.error("Error cargando contrato:", contratoError);
+        console.error(
+          "Error cargando contrato:",
+          contratoError
+        );
         return;
       }
 
@@ -62,27 +70,32 @@ export default function ClienteContratoVer() {
           .eq("id", contratoData.cliente_id)
           .maybeSingle();
 
-        if (clienteData) setCliente(clienteData);
+        if (clienteData) {
+          setCliente(clienteData);
+        }
       }
     } catch (err) {
       console.error("Excepción en contrato:", err);
     }
   };
 
-  // IMPORTANTE:
-  // El cliente NO debe marcar nunca el contrato como pagado al volver de Stripe.
-  // El único responsable de poner pagado=true es el webhook de Stripe.
+  // El cliente nunca marca el contrato como pagado.
+  // El webhook de Stripe es el responsable de actualizar el pago.
   const verificarYActualizarPago = async () => {
     try {
       await cargarContrato();
     } catch (err) {
-      console.error("Excepción al comprobar el estado del contrato:", err);
+      console.error(
+        "Excepción al comprobar el estado del contrato:",
+        err
+      );
     } finally {
-      // Limpiamos únicamente el marcador local utilizado al iniciar Stripe.
-      // No se utiliza como prueba de pago.
       localStorage.removeItem("contrato_pago_id");
 
-      const queryParams = new URLSearchParams(window.location.search);
+      const queryParams = new URLSearchParams(
+        window.location.search
+      );
+
       const esRetornoStripe =
         queryParams.get("pagado") === "true" ||
         queryParams.get("result") === "success" ||
@@ -101,40 +114,60 @@ export default function ClienteContratoVer() {
   useEffect(() => {
     if (id) {
       setCargando(true);
-      verificarYActualizarPago().finally(() => setCargando(false));
+
+      verificarYActualizarPago().finally(() => {
+        setCargando(false);
+      });
     }
   }, [id, location.key]);
 
   useEffect(() => {
     let appStateListener = null;
+    let activo = true;
 
     if (Capacitor.isNativePlatform()) {
-      App.addListener("appStateChange", ({ isActive }) => {
-        if (isActive) {
-          verificarYActualizarPago();
+      App.addListener(
+        "appStateChange",
+        ({ isActive }) => {
+          if (isActive) {
+            verificarYActualizarPago();
+          }
         }
-      }).then((listener) => {
-        appStateListener = listener;
+      ).then((listener) => {
+        if (activo) {
+          appStateListener = listener;
+        } else {
+          listener.remove();
+        }
       });
     }
 
     const handleFocus = () => {
       verificarYActualizarPago();
     };
+
     window.addEventListener("focus", handleFocus);
 
     return () => {
+      activo = false;
+
       if (appStateListener) {
         appStateListener.remove();
       }
+
       window.removeEventListener("focus", handleFocus);
     };
   }, [id]);
 
-  const est = String(contrato?.estado || "").toLowerCase().trim();
+  const est = String(contrato?.estado || "")
+    .toLowerCase()
+    .trim();
+
   const tieneFirma = Boolean(
-    (contrato?.firma_cliente && contrato.firma_cliente.trim() !== "") ||
-    (contrato?.firma_url && contrato.firma_url.trim() !== "")
+    (contrato?.firma_cliente &&
+      contrato.firma_cliente.trim() !== "") ||
+    (contrato?.firma_url &&
+      contrato.firma_url.trim() !== "")
   );
 
   const esFirmado =
@@ -163,6 +196,7 @@ export default function ClienteContratoVer() {
     }
 
     setEnviando(true);
+
     try {
       const { error } = await supabase
         .from("contratos")
@@ -170,11 +204,17 @@ export default function ClienteContratoVer() {
         .eq("id", id);
 
       if (error) {
-        alert((t("alertaErrorAdmin") || "Error: ") + error.message);
+        alert(
+          (t("alertaErrorAdmin") || "Error: ") +
+            error.message
+        );
       } else {
         try {
           await supabase.functions.invoke("contrato-pdf", {
-            body: { contrato_id: Number(id), id: Number(id) }
+            body: {
+              contrato_id: Number(id),
+              id: Number(id)
+            }
           });
         } catch (fErr) {
           console.log("PDF notificado.");
@@ -184,49 +224,79 @@ export default function ClienteContratoVer() {
           t("alertaContratoEnviado") ||
             "¡Contrato firmado enviado al administrador!"
         );
+
         await cargarContrato();
       }
     } catch (err) {
-      console.error("Error enviando contrato al admin:", err);
-      alert("Error al enviar: " + (err.message || "Error desconocido"));
+      console.error(
+        "Error enviando contrato al admin:",
+        err
+      );
+
+      alert(
+        "Error al enviar: " +
+          (err.message || "Error desconocido")
+      );
     } finally {
       setEnviando(false);
     }
   };
 
   const manejarPagoStripe = async () => {
-    if (!contrato?.precio || Number(contrato.precio) <= 0) {
-      alert("Este contrato no tiene un precio mensual válido configurado.");
+    if (
+      !contrato?.precio ||
+      Number(contrato.precio) <= 0
+    ) {
+      alert(
+        "Este contrato no tiene un precio mensual válido configurado."
+      );
       return;
     }
 
     setPagandoStripe(true);
+
     try {
       localStorage.setItem("contrato_pago_id", id);
 
-      const amountInCents = Math.round(Number(contrato.precio) * 100);
-      const customerEmail = cliente?.email || contrato?.cliente_email || "";
-      const clientId = contrato?.cliente_id || cliente?.id || null;
-
-      const { data, error } = await supabase.functions.invoke(
-        "create-checkout-session",
-        {
-          body: {
-            amount: amountInCents,
-            customerEmail: customerEmail,
-            clientId: clientId,
-            contractId: Number(id),
-            originUrl: window.location.origin
-          }
-        }
+      const amountInCents = Math.round(
+        Number(contrato.precio) * 100
       );
+
+      const customerEmail =
+        cliente?.email ||
+        contrato?.cliente_email ||
+        "";
+
+      const clientId =
+        contrato?.cliente_id ||
+        cliente?.id ||
+        null;
+
+      const { data, error } =
+        await supabase.functions.invoke(
+          "create-checkout-session",
+          {
+            body: {
+              amount: amountInCents,
+              customerEmail: customerEmail,
+              clientId: clientId,
+              contractId: Number(id),
+              originUrl: window.location.origin
+            }
+          }
+        );
 
       if (error) {
         let errorMsg = error.message;
+
         try {
           const body = await error.context?.json();
-          if (body?.error) errorMsg = body.error;
+
+          if (body?.error) {
+            errorMsg = body.error;
+          }
         } catch (e) {}
+
         throw new Error(errorMsg);
       }
 
@@ -242,23 +312,143 @@ export default function ClienteContratoVer() {
         );
       }
     } catch (err) {
-      console.error("Error al iniciar pago con Stripe:", err);
+      console.error(
+        "Error al iniciar pago con Stripe:",
+        err
+      );
+
       localStorage.removeItem("contrato_pago_id");
-      alert("Error de Stripe: " + (err.message || "Error desconocido"));
+
+      alert(
+        "Error de Stripe: " +
+          (err.message || "Error desconocido")
+      );
     } finally {
       setPagandoStripe(false);
     }
   };
 
-  const manejarAbrirPDF = (url) => {
-    if (!url) {
+  // Abre el PDF. Si está en el bucket privado "contratos",
+  // genera un enlace temporal para poder consultarlo.
+  const manejarAbrirPDF = async (url) => {
+    if (!url || typeof url !== "string" || !url.trim()) {
       alert(
         t("alertaNoPdfAdmin") ||
           "El PDF del contrato aún no está disponible."
       );
       return;
     }
-    window.open(url, "_blank");
+
+    try {
+      const valorPDF = url.trim();
+      let urlPDF = valorPDF;
+
+      // Si pdf_url contiene una URL de Supabase Storage,
+      // extraemos la ruta del archivo para renovar el enlace.
+      if (/^https?:\/\//i.test(valorPDF)) {
+        let parsedURL;
+
+        try {
+          parsedURL = new URL(valorPDF);
+        } catch {
+          throw new Error("La URL del PDF no es válida.");
+        }
+
+        const pathname = parsedURL.pathname;
+
+        const patronesStorage = [
+          /\/storage\/v1\/object\/(?:sign|public|authenticated)\/contratos\/(.+)$/,
+          /\/storage\/v1\/object\/contratos\/(.+)$/
+        ];
+
+        let rutaArchivo = null;
+
+        for (const patron of patronesStorage) {
+          const coincidencia = pathname.match(patron);
+
+          if (coincidencia?.[1]) {
+            rutaArchivo = coincidencia[1];
+            break;
+          }
+        }
+
+        if (rutaArchivo) {
+          // Elimina parámetros o fragmentos porque se necesita
+          // la ruta del objeto, no el token antiguo.
+          rutaArchivo = decodeURIComponent(
+            rutaArchivo.split("?")[0]
+          );
+
+          const { data, error } = await supabase.storage
+            .from("contratos")
+            .createSignedUrl(rutaArchivo, 3600);
+
+          if (error) {
+            throw error;
+          }
+
+          if (!data?.signedUrl) {
+            throw new Error(
+              "Supabase no ha devuelto un enlace temporal para el PDF."
+            );
+          }
+
+          urlPDF = data.signedUrl;
+        }
+      } else {
+        // También admite rutas guardadas directamente en pdf_url.
+        let rutaArchivo = valorPDF
+          .replace(/^\/+/, "")
+          .replace(/^contratos\//, "");
+
+        // No aceptar una ruta vacía.
+        if (!rutaArchivo) {
+          throw new Error(
+            "La ruta del PDF está vacía."
+          );
+        }
+
+        const { data, error } = await supabase.storage
+          .from("contratos")
+          .createSignedUrl(rutaArchivo, 3600);
+
+        if (error) {
+          throw error;
+        }
+
+        if (!data?.signedUrl) {
+          throw new Error(
+            "Supabase no ha devuelto un enlace temporal para el PDF."
+          );
+        }
+
+        urlPDF = data.signedUrl;
+      }
+
+      if (Capacitor.isNativePlatform()) {
+        // En Android/iOS abre el PDF fuera del WebView
+        // para evitar la pantalla negra del visor integrado.
+        await Browser.open({ url: urlPDF });
+      } else {
+        // En navegador normal abre una pestaña nueva.
+        const nuevaVentana = window.open(
+          urlPDF,
+          "_blank",
+          "noopener,noreferrer"
+        );
+
+        if (!nuevaVentana) {
+          window.location.href = urlPDF;
+        }
+      }
+    } catch (err) {
+      console.error("Error abriendo el PDF del contrato:", err);
+
+      alert(
+        "No se ha podido abrir el PDF del contrato. " +
+          (err?.message || "Comprueba tu conexión e inténtalo de nuevo.")
+      );
+    }
   };
 
   if (cargando) {
@@ -331,7 +521,9 @@ export default function ClienteContratoVer() {
 
           <p style={{ margin: "6px 0" }}>
             <strong>{t("nombre")}:</strong>{" "}
-            {cliente?.nombre || contrato?.cliente_nombre || "—"}
+            {cliente?.nombre ||
+              contrato?.cliente_nombre ||
+              "—"}
           </p>
 
           <p style={{ margin: "6px 0" }}>
@@ -373,7 +565,9 @@ export default function ClienteContratoVer() {
 
           <p style={{ margin: "6px 0" }}>
             <strong>{t("precioMensual")}:</strong>{" "}
-            {contrato.precio != null ? `${contrato.precio} €` : "—"}
+            {contrato.precio != null
+              ? `${contrato.precio} €`
+              : "—"}
           </p>
 
           <p style={{ margin: "6px 0" }}>
@@ -390,17 +584,20 @@ export default function ClienteContratoVer() {
               }}
             >
               {yaPagado
-                ? `✅ Activo / Pagado`
+                ? "✅ Activo / Pagado"
                 : esFirmado
                 ? `✅ ${t("firmado") || "Firmado"}`
                 : `⏳ ${
-                    t("pendienteFirma") || "Pendiente de firma"
+                    t("pendienteFirma") ||
+                    "Pendiente de firma"
                   }`}
             </span>
           </p>
 
           <button
-            onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
+            onClick={() =>
+              manejarAbrirPDF(contrato?.pdf_url)
+            }
             style={{
               ...botonEstilo,
               background: "rgba(10, 15, 26, 0.8)",
@@ -423,7 +620,8 @@ export default function ClienteContratoVer() {
             ✍️{" "}
             {esFirmado
               ? "Cambiar / Volver a Firmar"
-              : t("firmaDelCliente") || "Firma del Cliente"}
+              : t("firmaDelCliente") ||
+                "Firma del Cliente"}
           </button>
 
           {!yaPagado &&
@@ -436,7 +634,8 @@ export default function ClienteContratoVer() {
                   ...botonEstilo,
                   background:
                     "linear-gradient(135deg, #635bff 0%, #4338ca 100%)",
-                  border: "1px solid rgba(99, 91, 255, 0.5)"
+                  border:
+                    "1px solid rgba(99, 91, 255, 0.5)"
                 }}
               >
                 {pagandoStripe
