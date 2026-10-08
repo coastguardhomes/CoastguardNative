@@ -67,15 +67,16 @@ export default function Register() {
 
     setLoading(true);
 
-    let userIp = "IP_NO_DISPONIBLE";
-
-    try {
-      const ipRes = await fetch("https://api64.ipify.org?format=json");
-      const ipData = await ipRes.json();
-      userIp = ipData.ip;
-    } catch (err) {
-      console.warn("No se pudo obtener la IP del cliente", err);
-    }
+    /*
+     * No enviamos la IP del usuario a un servicio externo.
+     *
+     * La IP no es necesaria para que el registro funcione ni para
+     * acreditar la aceptación de los términos.
+     *
+     * Mantenemos el campo para no romper la estructura existente
+     * de la aplicación/base de datos.
+     */
+    const userIp = "IP_NO_REGISTRADA";
 
     const fechaAceptacion = new Date().toISOString();
     const versionTerminos = "v1.0";
