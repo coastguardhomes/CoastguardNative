@@ -76,6 +76,9 @@ export default function ClienteInspeccionVer() {
   const [esExtra, setEsExtra] =
     useState(false);
 
+  const [clienteId, setClienteId] =
+    useState(null);
+
   useEffect(() => {
     if (id && user) {
       cargarDetalles();
@@ -155,7 +158,9 @@ export default function ClienteInspeccionVer() {
         return;
       }
 
-      const clienteId = cliente.id;
+      const clienteIdActual = cliente.id;
+
+      setClienteId(clienteIdActual);
 
       /*
        * =====================================================
@@ -170,7 +175,7 @@ export default function ClienteInspeccionVer() {
           .from("inspecciones")
           .select("*")
           .eq("id", id)
-          .eq("cliente_id", clienteId)
+          .eq("cliente_id", clienteIdActual)
           .eq("estado", "finalizada")
           .maybeSingle();
 
@@ -189,7 +194,7 @@ export default function ClienteInspeccionVer() {
             .from("extras")
             .select("*")
             .eq("id", id)
-            .eq("cliente_id", clienteId)
+            .eq("cliente_id", clienteIdActual)
             .eq(
               "estado",
               "enviado_cliente"
@@ -216,7 +221,7 @@ export default function ClienteInspeccionVer() {
               )
               .eq(
                 "cliente_id",
-                clienteId
+                clienteIdActual
               )
               .maybeSingle();
 
@@ -291,7 +296,7 @@ export default function ClienteInspeccionVer() {
               .eq("id", extra.id)
               .eq(
                 "cliente_id",
-                clienteId
+                clienteIdActual
               );
           }
 
@@ -311,7 +316,7 @@ export default function ClienteInspeccionVer() {
               )
               .eq(
                 "cliente_id",
-                clienteId
+                clienteIdActual
               );
           }
         }
@@ -501,6 +506,10 @@ export default function ClienteInspeccionVer() {
           .eq(
             "id",
             id
+          )
+          .eq(
+            "cliente_id",
+            clienteId
           );
 
       if (error) {
@@ -518,6 +527,10 @@ export default function ClienteInspeccionVer() {
           .eq(
             "id",
             inspeccion.factura_id
+          )
+          .eq(
+            "cliente_id",
+            clienteId
           );
       }
 
