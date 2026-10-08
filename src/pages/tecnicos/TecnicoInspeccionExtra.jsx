@@ -26,19 +26,94 @@ export default function TecnicoInspeccionExtra() {
   const [extraData, setExtraData] = useState(null);
   const [facturaData, setFacturaData] = useState(null);
 
+  const [clientes, setClientes] = useState([]);
+  const [viviendas, setViviendas] = useState([]);
+
+  const [clienteId, setClienteId] = useState("");
+  const [viviendaId, setViviendaId] = useState("");
+
   const [descripcion, setDescripcion] = useState("");
   const [materiales, setMateriales] = useState("");
   const [tiempo, setTiempo] = useState("");
+  const [precio, setPrecio] = useState("");
+
   const [alerta, setAlerta] = useState(false);
   const [fotos, setFotos] = useState([]);
 
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    cargarDetalleExtra();
-  }, [id]);
+  /*
+   * Cargar clientes disponibles para el técnico.
+   *
+   * La seguridad real no depende de esta lista:
+   * Supabase/RLS vuelve a comprobar que la vivienda
+   * seleccionada pertenece al técnico.
+   */
+  const cargarClientes = async () => {
+    const { data, error: clientesError } = await supabase
+      .from("clientes")
+      .select("id, nombre, direccion, email")
+      .order("nombre");
 
+    if (clientesError) {
+      console.error(
+        "Error cargando clientes:",
+        clientesError
+      );
+
+      throw clientesError;
+    }
+
+    setClientes(data || []);
+  };
+
+  /*
+   * Cargar únicamente viviendas del cliente seleccionado.
+   */
+  const cargarViviendas = async (nuevoClienteId) => {
+    setViviendas([]);
+    setViviendaId("");
+
+    if (!nuevoClienteId) {
+      return;
+    }
+
+    const {
+      data,
+      error: viviendasError
+    } = await supabase
+      .from("viviendas")
+      .select("id, direccion, tecnico_id, cliente_id")
+      .eq("cliente_id", nuevoClienteId)
+      .order("direccion");
+
+    if (viviendasError) {
+      console.error(
+        "Error cargando viviendas:",
+        viviendasError
+      );
+
+      throw viviendasError;
+    }
+
+    setViviendas(data || []);
+
+    if ((data || []).length === 1) {
+      setViviendaId(String(data[0].id));
+    }
+  };
+
+  /*
+   * Cargar detalle.
+   *
+   * El parámetro de la ruta continúa siendo la factura cuando
+   * se entra desde el dashboard actual.
+   *
+   * Si existe un extra asociado a esa factura, se edita.
+   *
+   * Si no existe, se permite crear uno nuevo.
+   */
   const cargarDetalleExtra = async () => {
     try {
       setLoading(true);
@@ -49,9 +124,6 @@ export default function TecnicoInspeccionExtra() {
         data: { user },
         error: userError
       } = await supabase.auth.getUser();
-
-      console.log("USUARIO SESIÓN TÉCNICO:", user?.id);
-      console.log("ERROR SESIÓN TÉCNICO:", userError);
 
       if (userError) {
         throw userError;
@@ -64,17 +136,20 @@ export default function TecnicoInspeccionExtra() {
       }
 
       /*
-       * El dashboard envía el ID de la factura:
-       *
-       * /tecnico/extra/343
-       *
-       * 343 corresponde a facturas.id.
-       * extras.id es UUID, por lo que NO se consulta
-       * extras.id usando este parámetro.
+       * Primero cargamos los clientes.
        */
+      await cargarClientes();
+
+      /*
+       * Intentamos localizar la factura.
+       *
+       * Si existe, mantenemos el flujo antiguo.
+       * Si no existe, igualmente dejamos crear un extra.
+       */
+      let factura = null;
 
       const {
-        data: factura,
+        data: facturaEncontrada,
         error: facturaError
       } = await supabase
         .from("facturas")
@@ -83,93 +158,163 @@ export default function TecnicoInspeccionExtra() {
         .maybeSingle();
 
       if (facturaError) {
-        throw facturaError;
+        console.warn(
+          "No se pudo consultar la factura:",
+          facturaError
+        );
+      } else {
+        factura = facturaEncontrada || null;
       }
 
-      if (!factura) {
-        throw new Error(
-          "No se encontró la factura asociada a este trabajo."
-        );
+      setFacturaData(factura);
+
+      let extraEncontrado = null;
+
+      /*
+       * Si hay factura, buscamos el extra asociado.
+       */
+      if (factura?.id) {
+        const {
+          data: extrasPorFactura,
+          error: extrasPorFacturaError
+        } = await supabase
+          .from("extras")
+          .select("*")
+          .eq("factura_id", factura.id)
+          .order("creado_en", {
+            ascending: false
+          });
+
+        if (extrasPorFacturaError) {
+          throw extrasPorFacturaError;
+        }
+
+        if (
+          extrasPorFactura &&
+          extrasPorFactura.length > 0
+        ) {
+          extraEncontrado = extrasPorFactura[0];
+        }
       }
 
       /*
-       * Buscamos el extra existente mediante factura_id.
-       * No se crea ningún extra nuevo.
+       * Si encontramos un extra, cargamos sus datos.
        */
+      if (extraEncontrado) {
+        setExtraData(extraEncontrado);
 
-      const {
-        data: extrasPorFactura,
-        error: extrasPorFacturaError
-      } = await supabase
-        .from("extras")
-        .select("*")
-        .eq("factura_id", factura.id)
-        .order("creado_en", {
-          ascending: false
-        });
+        setClienteId(
+          extraEncontrado.cliente_id
+            ? String(extraEncontrado.cliente_id)
+            : ""
+        );
 
-      if (extrasPorFacturaError) {
-        throw extrasPorFacturaError;
+        setViviendaId(
+          extraEncontrado.vivienda_id
+            ? String(extraEncontrado.vivienda_id)
+            : ""
+        );
+
+        await cargarViviendas(
+          extraEncontrado.cliente_id
+        );
+
+        setDescripcion(
+          extraEncontrado.descripcion ||
+            extraEncontrado.concepto ||
+            factura?.descripcion ||
+            factura?.concepto ||
+            ""
+        );
+
+        setMateriales(
+          extraEncontrado.materiales || ""
+        );
+
+        setTiempo(
+          extraEncontrado.tiempo_empleado || ""
+        );
+
+        setPrecio(
+          extraEncontrado.precio !== null &&
+          extraEncontrado.precio !== undefined
+            ? String(extraEncontrado.precio)
+            : ""
+        );
+
+        setAlerta(
+          Boolean(extraEncontrado.alerta)
+        );
+
+        if (Array.isArray(extraEncontrado.fotos)) {
+          setFotos(extraEncontrado.fotos);
+        } else if (
+          typeof extraEncontrado.fotos === "string"
+        ) {
+          try {
+            const parsed = JSON.parse(
+              extraEncontrado.fotos
+            );
+
+            if (Array.isArray(parsed)) {
+              setFotos(parsed);
+            } else if (
+              extraEncontrado.fotos.trim()
+            ) {
+              setFotos([
+                extraEncontrado.fotos
+              ]);
+            }
+          } catch {
+            if (extraEncontrado.fotos.trim()) {
+              setFotos([
+                extraEncontrado.fotos
+              ]);
+            }
+          }
+        }
+
+        return;
       }
 
-      if (!extrasPorFactura || extrasPorFactura.length === 0) {
-        throw new Error(
-          "No se encontró el extra asociado a esta factura. No se ha creado ningún extra nuevo para evitar duplicados."
+      /*
+       * No existe extra.
+       *
+       * Permitimos crear uno nuevo.
+       *
+       * Si existe una factura con cliente/vivienda,
+       * usamos esos datos como valores iniciales.
+       */
+      setExtraData(null);
+
+      if (factura?.cliente_id) {
+        setClienteId(
+          String(factura.cliente_id)
+        );
+
+        await cargarViviendas(
+          factura.cliente_id
         );
       }
 
-      const extraEncontrado = extrasPorFactura[0];
-
-      setExtraData(extraEncontrado);
-      setFacturaData(factura);
+      if (factura?.vivienda_id) {
+        setViviendaId(
+          String(factura.vivienda_id)
+        );
+      }
 
       setDescripcion(
-        extraEncontrado.descripcion ||
-          extraEncontrado.concepto ||
-          factura.descripcion ||
-          factura.concepto ||
+        factura?.descripcion ||
+          factura?.concepto ||
           ""
       );
 
-      setMateriales(
-        extraEncontrado.materiales || ""
+      setPrecio(
+        factura?.total !== null &&
+        factura?.total !== undefined
+          ? String(factura.total)
+          : ""
       );
-
-      setTiempo(
-        extraEncontrado.tiempo_empleado || ""
-      );
-
-      setAlerta(
-        Boolean(extraEncontrado.alerta)
-      );
-
-      if (Array.isArray(extraEncontrado.fotos)) {
-        setFotos(extraEncontrado.fotos);
-      } else if (
-        typeof extraEncontrado.fotos === "string"
-      ) {
-        try {
-          const parsed = JSON.parse(
-            extraEncontrado.fotos
-          );
-
-          if (Array.isArray(parsed)) {
-            setFotos(parsed);
-          } else if (
-            extraEncontrado.fotos.trim()
-          ) {
-            setFotos([
-              extraEncontrado.fotos
-            ]);
-          }
-        } catch {
-          if (extraEncontrado.fotos.trim()) {
-            setFotos([
-              extraEncontrado.fotos
-            ]);
-          }
-        }
-      }
     } catch (err) {
       console.error(
         "Error al cargar el trabajo extra:",
@@ -185,6 +330,49 @@ export default function TecnicoInspeccionExtra() {
     }
   };
 
+  useEffect(() => {
+    cargarDetalleExtra();
+  }, [id]);
+
+  /*
+   * Cambio de cliente.
+   */
+  const manejarCambioCliente = async (e) => {
+    const nuevoClienteId = e.target.value;
+
+    setClienteId(nuevoClienteId);
+    setViviendaId("");
+    setViviendas([]);
+    setError("");
+
+    if (!nuevoClienteId) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      await cargarViviendas(
+        nuevoClienteId
+      );
+    } catch (err) {
+      console.error(
+        "Error cargando viviendas:",
+        err
+      );
+
+      setError(
+        err?.message ||
+          "No se pudieron cargar las viviendas."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /*
+   * Subida de fotos.
+   */
   const manejarSubidaFotos = async (e) => {
     const files = e.target.files;
 
@@ -199,13 +387,18 @@ export default function TecnicoInspeccionExtra() {
 
       const nuevasUrls = [...fotos];
 
-      for (let i = 0; i < files.length; i++) {
+      for (
+        let i = 0;
+        i < files.length;
+        i++
+      ) {
         const file = files[i];
 
-        const cleanFileName = file.name.replace(
-          /[^a-zA-Z0-9.]/g,
-          "_"
-        );
+        const cleanFileName =
+          file.name.replace(
+            /[^a-zA-Z0-9.]/g,
+            "_"
+          );
 
         const fileName =
           `${Date.now()}_${Math.floor(
@@ -247,7 +440,9 @@ export default function TecnicoInspeccionExtra() {
               fileName
           );
 
-        if (publicUrlData?.publicUrl) {
+        if (
+          publicUrlData?.publicUrl
+        ) {
           nuevasUrls.push(
             publicUrlData.publicUrl
           );
@@ -276,25 +471,242 @@ export default function TecnicoInspeccionExtra() {
     }
   };
 
+  /*
+   * Crear o actualizar el extra.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!extraData?.id) {
+    setError("");
+    setMensaje("");
+
+    if (!clienteId) {
       setError(
-        "No hay un extra válido para actualizar."
+        "Selecciona el cliente."
+      );
+      return;
+    }
+
+    if (!viviendaId) {
+      setError(
+        "Selecciona la vivienda."
+      );
+      return;
+    }
+
+    const vivienda = viviendas.find(
+      (v) =>
+        String(v.id) ===
+        String(viviendaId)
+    );
+
+    if (!vivienda) {
+      setError(
+        "No se pudo localizar la vivienda seleccionada."
+      );
+      return;
+    }
+
+    if (
+      String(vivienda.cliente_id) !==
+      String(clienteId)
+    ) {
+      setError(
+        "La vivienda seleccionada no pertenece al cliente seleccionado."
+      );
+      return;
+    }
+
+    const precioNumero = Number(
+      String(precio)
+        .replace(",", ".")
+        .trim()
+    );
+
+    if (
+      precio === "" ||
+      !Number.isFinite(precioNumero) ||
+      precioNumero < 0
+    ) {
+      setError(
+        "Introduce un precio profesional válido."
+      );
+      return;
+    }
+
+    const cliente = clientes.find(
+      (c) =>
+        String(c.id) ===
+        String(clienteId)
+    );
+
+    if (!cliente) {
+      setError(
+        "No se pudo localizar el cliente seleccionado."
       );
       return;
     }
 
     try {
       setSaving(true);
-      setError("");
-      setMensaje("");
 
+      /*
+       * Si ya existe el extra, lo actualizamos.
+       */
+      if (extraData?.id) {
+        const extraPayload = {
+          cliente_id: clienteId,
+          vivienda_id: viviendaId,
+
+          descripcion:
+            descripcion ||
+            extraData.descripcion ||
+            "Trabajo extra",
+
+          materiales:
+            materiales || null,
+
+          tiempo_empleado:
+            tiempo || null,
+
+          precio:
+            precioNumero,
+
+          fotos,
+
+          estado_tecnico:
+            "completado",
+
+          estado_admin:
+            "pendiente",
+
+          alerta
+        };
+
+        if (alerta) {
+          extraPayload.alerta_vista =
+            false;
+        }
+
+        const {
+          data: extraActualizado,
+          error: extraUpdateError
+        } = await supabase
+          .from("extras")
+          .update(extraPayload)
+          .eq("id", extraData.id)
+          .select("*")
+          .maybeSingle();
+
+        if (extraUpdateError) {
+          throw extraUpdateError;
+        }
+
+        if (!extraActualizado) {
+          throw new Error(
+            "El extra existe, pero no se ha podido actualizar. Comprueba que la vivienda esté asignada a este técnico."
+          );
+        }
+
+        setExtraData(
+          extraActualizado
+        );
+
+        /*
+         * Si existe factura, mantenemos actualizado
+         * el precio y la información del trabajo.
+         */
+        if (facturaData?.id) {
+          const facturaPayload = {
+            descripcion:
+              descripcion ||
+              facturaData.descripcion ||
+              facturaData.concepto ||
+              null,
+
+            materiales:
+              materiales || null,
+
+            tiempo_empleado:
+              tiempo || null,
+
+            fotos,
+
+            estado_tecnico:
+              "completado",
+
+            alerta
+          };
+
+          /*
+           * El precio profesional se refleja como base
+           * cuando el técnico está completando el extra.
+           */
+          facturaPayload.base =
+            precioNumero;
+
+          facturaPayload.iva =
+            Math.round(
+              precioNumero * 0.21 * 100
+            ) / 100;
+
+          facturaPayload.total =
+            Math.round(
+              precioNumero * 1.21 * 100
+            ) / 100;
+
+          if (alerta) {
+            facturaPayload.alerta_vista =
+              false;
+          }
+
+          const {
+            error: facturaUpdateError
+          } = await supabase
+            .from("facturas")
+            .update(facturaPayload)
+            .eq(
+              "id",
+              facturaData.id
+            );
+
+          if (facturaUpdateError) {
+            throw facturaUpdateError;
+          }
+        }
+
+        alert(
+          "Extra actualizado correctamente y enviado al administrador."
+        );
+
+        navigate("/tecnico");
+        return;
+      }
+
+      /*
+       * No existe extra:
+       *
+       * Lo creamos directamente desde el técnico.
+       *
+       * No confiamos en el técnico para decidir
+       * a qué técnico pertenece:
+       * usamos la vivienda seleccionada y la política
+       * RLS de Supabase vuelve a comprobar la asignación.
+       */
       const extraPayload = {
+        cliente_id: clienteId,
+
+        vivienda_id:
+          viviendaId,
+
+        tecnico_id:
+          vivienda.tecnico_id,
+
+        cliente_email:
+          cliente.email || null,
+
         descripcion:
           descripcion ||
-          extraData.descripcion ||
           "Trabajo extra",
 
         materiales:
@@ -303,7 +715,11 @@ export default function TecnicoInspeccionExtra() {
         tiempo_empleado:
           tiempo || null,
 
-        fotos: fotos,
+        precio:
+          precioNumero,
+
+        estado:
+          "pendiente",
 
         estado_tecnico:
           "completado",
@@ -311,34 +727,56 @@ export default function TecnicoInspeccionExtra() {
         estado_admin:
           "pendiente",
 
-        alerta:
-          alerta
+        direccion:
+          vivienda.direccion ||
+          cliente.direccion ||
+          null,
+
+        fotos,
+
+        alerta,
+
+        creado_en:
+          new Date().toISOString()
       };
 
+      if (facturaData?.id) {
+        extraPayload.factura_id =
+          facturaData.id;
+      }
+
       if (alerta) {
-        extraPayload.alerta_vista = false;
+        extraPayload.alerta_vista =
+          false;
       }
 
       const {
-        data: extraActualizado,
-        error: extraUpdateError
+        data: nuevoExtra,
+        error: errorCrearExtra
       } = await supabase
         .from("extras")
-        .update(extraPayload)
-        .eq("id", extraData.id)
+        .insert(extraPayload)
         .select("*")
         .maybeSingle();
 
-      if (extraUpdateError) {
-        throw extraUpdateError;
+      if (errorCrearExtra) {
+        throw errorCrearExtra;
       }
 
-      if (!extraActualizado) {
+      if (!nuevoExtra) {
         throw new Error(
-          "El extra existe, pero no se ha podido actualizar con la sesión actual del técnico. Comprueba que el técnico esté correctamente asignado a este extra."
+          "El extra se ha enviado pero no se ha podido recuperar el registro creado."
         );
       }
 
+      setExtraData(
+        nuevoExtra
+      );
+
+      /*
+       * Si el flujo venía desde una factura,
+       * actualizamos también la factura.
+       */
       if (facturaData?.id) {
         const facturaPayload = {
           descripcion:
@@ -353,18 +791,30 @@ export default function TecnicoInspeccionExtra() {
           tiempo_empleado:
             tiempo || null,
 
-          fotos:
-            fotos,
+          fotos,
 
           estado_tecnico:
             "completado",
 
-          alerta:
-            alerta
+          alerta,
+
+          base:
+            precioNumero,
+
+          iva:
+            Math.round(
+              precioNumero * 0.21 * 100
+            ) / 100,
+
+          total:
+            Math.round(
+              precioNumero * 1.21 * 100
+            ) / 100
         };
 
         if (alerta) {
-          facturaPayload.alerta_vista = false;
+          facturaPayload.alerta_vista =
+            false;
         }
 
         const {
@@ -372,7 +822,10 @@ export default function TecnicoInspeccionExtra() {
         } = await supabase
           .from("facturas")
           .update(facturaPayload)
-          .eq("id", facturaData.id);
+          .eq(
+            "id",
+            facturaData.id
+          );
 
         if (facturaUpdateError) {
           throw facturaUpdateError;
@@ -380,19 +833,20 @@ export default function TecnicoInspeccionExtra() {
       }
 
       alert(
-        "Inspección enviada correctamente al administrador."
+        "Extra creado correctamente y enviado al administrador."
       );
 
       navigate("/tecnico");
     } catch (err) {
       console.error(
-        "Error al enviar la inspección:",
+        "Error guardando el extra:",
         err
       );
 
       setError(
-        "Error al enviar la inspección: " +
-          (err?.message || "")
+        "Error al guardar el extra: " +
+          (err?.message ||
+            "Error desconocido")
       );
     } finally {
       setSaving(false);
@@ -403,15 +857,22 @@ export default function TecnicoInspeccionExtra() {
     return (
       <div
         style={{
-          backgroundColor: FONDO_PRINCIPAL,
+          backgroundColor:
+            FONDO_PRINCIPAL,
           minHeight: "100vh",
           display: "flex",
-          justifyContent: "center",
+          justifyContent:
+            "center",
           alignItems: "center",
-          fontFamily: "Inter, sans-serif"
+          fontFamily:
+            "Inter, sans-serif"
         }}
       >
-        <h3 style={TEXTO_DORADO_BRILLO}>
+        <h3
+          style={
+            TEXTO_DORADO_BRILLO
+          }
+        >
           Cargando datos del trabajo...
         </h3>
       </div>
@@ -421,12 +882,15 @@ export default function TecnicoInspeccionExtra() {
   return (
     <div
       style={{
-        backgroundColor: FONDO_PRINCIPAL,
+        backgroundColor:
+          FONDO_PRINCIPAL,
         minHeight: "100vh",
         padding: "16px",
         display: "flex",
-        justifyContent: "center",
-        fontFamily: "Inter, sans-serif",
+        justifyContent:
+          "center",
+        fontFamily:
+          "Inter, sans-serif",
         boxSizing: "border-box"
       }}
     >
@@ -434,24 +898,33 @@ export default function TecnicoInspeccionExtra() {
         style={{
           width: "100%",
           maxWidth: "480px",
-          background: FONDO_TARJETA,
-          border: BORDE_DORADO_FINO,
+          background:
+            FONDO_TARJETA,
+          border:
+            BORDE_DORADO_FINO,
           borderRadius: "16px",
           padding: "20px",
           display: "flex",
-          flexDirection: "column",
+          flexDirection:
+            "column",
           gap: "16px",
-          boxShadow: SOMBRA_LUXURY,
-          boxSizing: "border-box"
+          boxShadow:
+            SOMBRA_LUXURY,
+          boxSizing:
+            "border-box"
         }}
       >
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            borderBottom: BORDE_DORADO_FINO,
-            paddingBottom: "14px"
+            justifyContent:
+              "space-between",
+            alignItems:
+              "center",
+            borderBottom:
+              BORDE_DORADO_FINO,
+            paddingBottom:
+              "14px"
           }}
         >
           <button
@@ -460,14 +933,22 @@ export default function TecnicoInspeccionExtra() {
               navigate("/tecnico")
             }
             style={{
-              background: "transparent",
-              border: BORDE_DORADO_FINO,
-              color: COLOR_DORADO,
-              padding: "6px 12px",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "11px",
-              fontWeight: "700"
+              background:
+                "transparent",
+              border:
+                BORDE_DORADO_FINO,
+              color:
+                COLOR_DORADO,
+              padding:
+                "6px 12px",
+              borderRadius:
+                "8px",
+              cursor:
+                "pointer",
+              fontSize:
+                "11px",
+              fontWeight:
+                "700"
             }}
           >
             ← Volver
@@ -476,10 +957,13 @@ export default function TecnicoInspeccionExtra() {
           <h2
             style={{
               ...TEXTO_DORADO_BRILLO,
-              fontSize: "18px",
-              fontWeight: "900",
+              fontSize:
+                "18px",
+              fontWeight:
+                "900",
               margin: 0,
-              textTransform: "uppercase"
+              textTransform:
+                "uppercase"
             }}
           >
             Inspección de Extra
@@ -493,12 +977,18 @@ export default function TecnicoInspeccionExtra() {
                 "rgba(16, 185, 129, 0.15)",
               border:
                 "1px solid rgba(16, 185, 129, 0.4)",
-              padding: "12px",
-              borderRadius: "10px",
-              fontSize: "12px",
-              fontWeight: "700",
-              color: "#34d399",
-              textAlign: "center"
+              padding:
+                "12px",
+              borderRadius:
+                "10px",
+              fontSize:
+                "12px",
+              fontWeight:
+                "700",
+              color:
+                "#34d399",
+              textAlign:
+                "center"
             }}
           >
             {mensaje}
@@ -512,100 +1002,415 @@ export default function TecnicoInspeccionExtra() {
                 "rgba(239, 68, 68, 0.15)",
               border:
                 "1px solid rgba(239, 68, 68, 0.4)",
-              padding: "12px",
-              borderRadius: "10px",
-              fontSize: "12px",
-              fontWeight: "700",
-              color: "#ef4444",
-              textAlign: "center"
+              padding:
+                "12px",
+              borderRadius:
+                "10px",
+              fontSize:
+                "12px",
+              fontWeight:
+                "700",
+              color:
+                "#ef4444",
+              textAlign:
+                "center"
             }}
           >
             {error}
           </div>
         )}
 
-        {extraData && (
-          <div
-            style={{
-              backgroundColor:
-                "rgba(11, 19, 32, 0.9)",
-              padding: "14px",
-              borderRadius: "12px",
-              border: BORDE_DORADO_FINO
-            }}
-          >
-            <p
-              style={{
-                fontSize: "12px",
-                margin: "4px 0",
-                color: "#ccc"
-              }}
-            >
-              <strong
-                style={{
-                  color: COLOR_DORADO
-                }}
-              >
-                Extra:
-              </strong>{" "}
-              {extraData.descripcion ||
-                extraData.concepto ||
-                "Trabajo extra"}
-            </p>
-
-            {facturaData?.id && (
-              <p
-                style={{
-                  fontSize: "12px",
-                  margin: "4px 0",
-                  color: "#ccc"
-                }}
-              >
-                <strong
-                  style={{
-                    color: COLOR_DORADO
-                  }}
-                >
-                  Factura:
-                </strong>{" "}
-                #{facturaData.id}
-              </p>
-            )}
-
-            <p
-              style={{
-                fontSize: "11px",
-                margin: "6px 0 0",
-                color: "#777"
-              }}
-            >
-              ID extra: {extraData.id}
-            </p>
-          </div>
-        )}
-
         <div
           style={{
-            display: "flex",
-            gap: "10px"
+            background:
+              "rgba(11, 19, 32, 0.9)",
+            padding:
+              "14px",
+            borderRadius:
+              "12px",
+            border:
+              BORDE_DORADO_FINO
           }}
         >
           <label
             style={{
-              flex: 1,
-              textAlign: "center",
+              display:
+                "block",
+              fontSize:
+                "12px",
+              color:
+                COLOR_DORADO,
+              fontWeight:
+                "700",
+              textTransform:
+                "uppercase",
+              marginBottom:
+                "7px"
+            }}
+          >
+            Cliente
+          </label>
+
+          <select
+            value={clienteId}
+            onChange={
+              manejarCambioCliente
+            }
+            disabled={saving}
+            style={{
+              width:
+                "100%",
+              padding:
+                "12px",
+              borderRadius:
+                "10px",
+              border:
+                BORDE_DORADO_FINO,
+              background:
+                "#101a29",
+              color:
+                "#fff",
+              fontSize:
+                "13px",
+              boxSizing:
+                "border-box"
+            }}
+          >
+            <option value="">
+              -- Selecciona cliente --
+            </option>
+
+            {clientes.map(
+              (cliente) => (
+                <option
+                  key={
+                    cliente.id
+                  }
+                  value={
+                    cliente.id
+                  }
+                >
+                  {cliente.nombre}
+                  {cliente.direccion
+                    ? ` — ${cliente.direccion}`
+                    : ""}
+                </option>
+              )
+            )}
+          </select>
+        </div>
+
+        <div
+          style={{
+            background:
+              "rgba(11, 19, 32, 0.9)",
+            padding:
+              "14px",
+            borderRadius:
+              "12px",
+            border:
+              BORDE_DORADO_FINO
+          }}
+        >
+          <label
+            style={{
+              display:
+                "block",
+              fontSize:
+                "12px",
+              color:
+                COLOR_DORADO,
+              fontWeight:
+                "700",
+              textTransform:
+                "uppercase",
+              marginBottom:
+                "7px"
+            }}
+          >
+            Vivienda
+          </label>
+
+          <select
+            value={
+              viviendaId
+            }
+            onChange={(e) =>
+              setViviendaId(
+                e.target.value
+              )
+            }
+            disabled={
+              !clienteId ||
+              saving
+            }
+            style={{
+              width:
+                "100%",
+              padding:
+                "12px",
+              borderRadius:
+                "10px",
+              border:
+                BORDE_DORADO_FINO,
+              background:
+                "#101a29",
+              color:
+                "#fff",
+              fontSize:
+                "13px",
+              boxSizing:
+                "border-box"
+            }}
+          >
+            <option value="">
+              {!clienteId
+                ? "-- Selecciona primero un cliente --"
+                : "-- Selecciona vivienda --"}
+            </option>
+
+            {viviendas.map(
+              (vivienda) => (
+                <option
+                  key={
+                    vivienda.id
+                  }
+                  value={
+                    vivienda.id
+                  }
+                >
+                  {vivienda.direccion ||
+                    `Vivienda #${vivienda.id}`}
+                </option>
+              )
+            )}
+          </select>
+
+          {clienteId &&
+            viviendas.length ===
+              0 && (
+              <p
+                style={{
+                  color:
+                    "#f59e0b",
+                  fontSize:
+                    "12px",
+                  marginBottom: 0
+                }}
+              >
+                No hay viviendas disponibles
+                para este cliente.
+              </p>
+            )}
+        </div>
+
+        <div
+          style={{
+            background:
+              "rgba(11, 19, 32, 0.9)",
+            padding:
+              "14px",
+            borderRadius:
+              "12px",
+            border:
+              BORDE_DORADO_FINO
+          }}
+        >
+          <p
+            style={{
+              fontSize:
+                "12px",
+              margin:
+                "4px 0",
+              color:
+                "#ccc"
+            }}
+          >
+            <strong
+              style={{
+                color:
+                  COLOR_DORADO
+              }}
+            >
+              Extra:
+            </strong>{" "}
+            {extraData?.descripcion ||
+              extraData?.concepto ||
+              descripcion ||
+              "Nuevo trabajo extra"}
+          </p>
+
+          {facturaData?.id && (
+            <p
+              style={{
+                fontSize:
+                  "12px",
+                margin:
+                  "4px 0",
+                color:
+                  "#ccc"
+              }}
+            >
+              <strong
+                style={{
+                  color:
+                    COLOR_DORADO
+                }}
+              >
+                Factura:
+              </strong>{" "}
+              #{facturaData.id}
+            </p>
+          )}
+
+          {extraData?.id && (
+            <p
+              style={{
+                fontSize:
+                  "11px",
+                margin:
+                  "6px 0 0",
+                color:
+                  "#777"
+              }}
+            >
+              ID extra:{" "}
+              {extraData.id}
+            </p>
+          )}
+
+          {!extraData && (
+            <p
+              style={{
+                fontSize:
+                  "11px",
+                margin:
+                  "6px 0 0",
+                color:
+                  "#34d399"
+              }}
+            >
+              Nuevo extra: se creará al
+              guardar.
+            </p>
+          )}
+        </div>
+
+        <div
+          style={{
+            background:
+              "rgba(11, 19, 32, 0.9)",
+            padding:
+              "14px",
+            borderRadius:
+              "12px",
+            border:
+              BORDE_DORADO_FINO
+          }}
+        >
+          <label
+            style={{
+              display:
+                "block",
+              fontSize:
+                "12px",
+              color:
+                COLOR_DORADO,
+              fontWeight:
+                "700",
+              textTransform:
+                "uppercase",
+              marginBottom:
+                "7px"
+            }}
+          >
+            Precio profesional (€)
+          </label>
+
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            value={precio}
+            onChange={(e) =>
+              setPrecio(
+                e.target.value
+              )
+            }
+            disabled={saving}
+            placeholder="Ej: 125.00"
+            style={{
+              width:
+                "100%",
+              padding:
+                "13px",
+              borderRadius:
+                "10px",
+              border:
+                BORDE_DORADO_FINO,
+              background:
+                "#101a29",
+              color:
+                "#fff",
+              fontSize:
+                "16px",
+              fontWeight:
+                "700",
+              boxSizing:
+                "border-box"
+            }}
+          />
+
+          <p
+            style={{
+              color:
+                "#888",
+              fontSize:
+                "11px",
+              margin:
+                "7px 0 0"
+            }}
+          >
+            Este es el importe profesional
+            del trabajo extra.
+          </p>
+        </div>
+
+        <div
+          style={{
+            display:
+              "flex",
+            gap:
+              "10px"
+          }}
+        >
+          <label
+            style={{
+              flex:
+                1,
+              textAlign:
+                "center",
               background:
                 "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
-              color: "#fff",
-              padding: "12px",
-              borderRadius: "12px",
-              fontWeight: "900",
-              fontSize: "12px",
-              cursor: "pointer",
-              border: BORDE_DORADO_FINO,
+              color:
+                "#fff",
+              padding:
+                "12px",
+              borderRadius:
+                "12px",
+              fontWeight:
+                "900",
+              fontSize:
+                "12px",
+              cursor:
+                "pointer",
+              border:
+                BORDE_DORADO_FINO,
               boxShadow:
                 "0 4px 15px rgba(245, 158, 11, 0.3)",
-              textTransform: "uppercase"
+              textTransform:
+                "uppercase"
             }}
           >
             📸 Hacer Foto
@@ -614,30 +1419,45 @@ export default function TecnicoInspeccionExtra() {
               type="file"
               accept="image/*"
               capture="environment"
-              onChange={manejarSubidaFotos}
-              disabled={saving}
+              onChange={
+                manejarSubidaFotos
+              }
+              disabled={
+                saving
+              }
               style={{
-                display: "none"
+                display:
+                  "none"
               }}
             />
           </label>
 
           <label
             style={{
-              flex: 1,
-              textAlign: "center",
+              flex:
+                1,
+              textAlign:
+                "center",
               background:
                 "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
-              color: "#fff",
-              padding: "12px",
-              borderRadius: "12px",
-              fontWeight: "900",
-              fontSize: "12px",
-              cursor: "pointer",
-              border: BORDE_DORADO_FINO,
+              color:
+                "#fff",
+              padding:
+                "12px",
+              borderRadius:
+                "12px",
+              fontWeight:
+                "900",
+              fontSize:
+                "12px",
+              cursor:
+                "pointer",
+              border:
+                BORDE_DORADO_FINO,
               boxShadow:
                 "0 4px 15px rgba(56, 189, 248, 0.3)",
-              textTransform: "uppercase"
+              textTransform:
+                "uppercase"
             }}
           >
             🖼️ Galería
@@ -646,10 +1466,15 @@ export default function TecnicoInspeccionExtra() {
               type="file"
               accept="image/*"
               multiple
-              onChange={manejarSubidaFotos}
-              disabled={saving}
+              onChange={
+                manejarSubidaFotos
+              }
+              disabled={
+                saving
+              }
               style={{
-                display: "none"
+                display:
+                  "none"
               }}
             />
           </label>
@@ -658,99 +1483,146 @@ export default function TecnicoInspeccionExtra() {
         {fotos.length > 0 && (
           <div
             style={{
-              display: "flex",
-              gap: "8px",
-              flexWrap: "wrap"
+              display:
+                "flex",
+              gap:
+                "8px",
+              flexWrap:
+                "wrap"
             }}
           >
-            {fotos.map((url, index) => (
-              <img
-                key={index}
-                src={url}
-                alt={`Evidencia ${index + 1}`}
-                style={{
-                  width: "60px",
-                  height: "60px",
-                  objectFit: "cover",
-                  borderRadius: "8px",
-                  border: BORDE_DORADO_FINO
-                }}
-              />
-            ))}
+            {fotos.map(
+              (url, index) => (
+                <img
+                  key={index}
+                  src={url}
+                  alt={`Evidencia ${
+                    index + 1
+                  }`}
+                  style={{
+                    width:
+                      "60px",
+                    height:
+                      "60px",
+                    objectFit:
+                      "cover",
+                    borderRadius:
+                      "8px",
+                    border:
+                      BORDE_DORADO_FINO
+                  }}
+                />
+              )
+            )}
           </div>
         )}
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={
+            handleSubmit
+          }
           style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "14px"
+            display:
+              "flex",
+            flexDirection:
+              "column",
+            gap:
+              "14px"
           }}
         >
           <div
             style={{
               background:
                 "rgba(11, 19, 32, 0.9)",
-              padding: "12px 14px",
-              borderRadius: "12px",
-              border: BORDE_DORADO_FINO,
-              display: "flex",
-              alignItems: "center"
+              padding:
+                "12px 14px",
+              borderRadius:
+                "12px",
+              border:
+                BORDE_DORADO_FINO,
+              display:
+                "flex",
+              alignItems:
+                "center"
             }}
           >
             <label
               style={{
-                display: "flex",
-                alignItems: "center",
-                cursor: "pointer",
-                width: "100%"
+                display:
+                  "flex",
+                alignItems:
+                  "center",
+                cursor:
+                  "pointer",
+                width:
+                  "100%"
               }}
             >
               <input
                 type="checkbox"
-                checked={alerta}
+                checked={
+                  alerta
+                }
                 onChange={(e) =>
                   setAlerta(
-                    e.target.checked
+                    e.target
+                      .checked
                   )
                 }
                 style={{
-                  width: "20px",
-                  height: "20px",
-                  marginRight: "12px",
-                  cursor: "pointer",
-                  accentColor: "#ef4444"
+                  width:
+                    "20px",
+                  height:
+                    "20px",
+                  marginRight:
+                    "12px",
+                  cursor:
+                    "pointer",
+                  accentColor:
+                    "#ef4444"
                 }}
               />
 
               <span
                 style={{
-                  fontSize: "13px",
-                  color: "#ef4444",
-                  fontWeight: "800",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.3px"
+                  fontSize:
+                    "13px",
+                  color:
+                    "#ef4444",
+                  fontWeight:
+                    "800",
+                  textTransform:
+                    "uppercase",
+                  letterSpacing:
+                    "0.3px"
                 }}
               >
-                ⚠️ Marcar como ALERTA / Urgencia importante
+                ⚠️ Marcar como ALERTA /
+                Urgencia importante
               </span>
             </label>
           </div>
 
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px"
+              display:
+                "flex",
+              flexDirection:
+                "column",
+              gap:
+                "6px"
             }}
           >
             <label
               style={{
-                fontSize: "12px",
-                color: COLOR_DORADO,
-                fontWeight: "700",
-                textTransform: "uppercase"
+                fontSize:
+                  "12px",
+                color:
+                  COLOR_DORADO,
+                fontWeight:
+                  "700",
+                textTransform:
+                  "uppercase"
               }}
             >
               Descripción del trabajo realizado:
@@ -760,20 +1632,31 @@ export default function TecnicoInspeccionExtra() {
               style={{
                 backgroundColor:
                   "rgba(11, 19, 32, 0.8)",
-                border: BORDE_DORADO_FINO,
-                borderRadius: "12px",
-                padding: "12px",
-                color: "#fff",
-                fontSize: "13px",
-                resize: "vertical",
-                outline: "none",
-                boxSizing: "border-box"
+                border:
+                  BORDE_DORADO_FINO,
+                borderRadius:
+                  "12px",
+                padding:
+                  "12px",
+                color:
+                  "#fff",
+                fontSize:
+                  "13px",
+                resize:
+                  "vertical",
+                outline:
+                  "none",
+                boxSizing:
+                  "border-box"
               }}
               rows="4"
-              value={descripcion}
+              value={
+                descripcion
+              }
               onChange={(e) =>
                 setDescripcion(
-                  e.target.value
+                  e.target
+                    .value
                 )
               }
               placeholder="Detalla qué se ha reparado o revisado..."
@@ -783,17 +1666,24 @@ export default function TecnicoInspeccionExtra() {
 
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px"
+              display:
+                "flex",
+              flexDirection:
+                "column",
+              gap:
+                "6px"
             }}
           >
             <label
               style={{
-                fontSize: "12px",
-                color: COLOR_DORADO,
-                fontWeight: "700",
-                textTransform: "uppercase"
+                fontSize:
+                  "12px",
+                color:
+                  COLOR_DORADO,
+                fontWeight:
+                  "700",
+                textTransform:
+                  "uppercase"
               }}
             >
               Materiales usados:
@@ -804,18 +1694,28 @@ export default function TecnicoInspeccionExtra() {
               style={{
                 backgroundColor:
                   "rgba(11, 19, 32, 0.8)",
-                border: BORDE_DORADO_FINO,
-                borderRadius: "12px",
-                padding: "12px",
-                color: "#fff",
-                fontSize: "13px",
-                outline: "none",
-                boxSizing: "border-box"
+                border:
+                  BORDE_DORADO_FINO,
+                borderRadius:
+                  "12px",
+                padding:
+                  "12px",
+                color:
+                  "#fff",
+                fontSize:
+                  "13px",
+                outline:
+                  "none",
+                boxSizing:
+                  "border-box"
               }}
-              value={materiales}
+              value={
+                materiales
+              }
               onChange={(e) =>
                 setMateriales(
-                  e.target.value
+                  e.target
+                    .value
                 )
               }
               placeholder="Ej: Tubo de PVC, silicona, tornillos..."
@@ -824,17 +1724,24 @@ export default function TecnicoInspeccionExtra() {
 
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px"
+              display:
+                "flex",
+              flexDirection:
+                "column",
+              gap:
+                "6px"
             }}
           >
             <label
               style={{
-                fontSize: "12px",
-                color: COLOR_DORADO,
-                fontWeight: "700",
-                textTransform: "uppercase"
+                fontSize:
+                  "12px",
+                color:
+                  COLOR_DORADO,
+                fontWeight:
+                  "700",
+                textTransform:
+                  "uppercase"
               }}
             >
               Tiempo empleado:
@@ -845,18 +1752,28 @@ export default function TecnicoInspeccionExtra() {
               style={{
                 backgroundColor:
                   "rgba(11, 19, 32, 0.8)",
-                border: BORDE_DORADO_FINO,
-                borderRadius: "12px",
-                padding: "12px",
-                color: "#fff",
-                fontSize: "13px",
-                outline: "none",
-                boxSizing: "border-box"
+                border:
+                  BORDE_DORADO_FINO,
+                borderRadius:
+                  "12px",
+                padding:
+                  "12px",
+                color:
+                  "#fff",
+                fontSize:
+                  "13px",
+                outline:
+                  "none",
+                boxSizing:
+                  "border-box"
               }}
-              value={tiempo}
+              value={
+                tiempo
+              }
               onChange={(e) =>
                 setTiempo(
-                  e.target.value
+                  e.target
+                    .value
                 )
               }
               placeholder="Ej: 2 horas"
@@ -866,52 +1783,86 @@ export default function TecnicoInspeccionExtra() {
           <button
             type="submit"
             disabled={
-              saving || !extraData
+              saving ||
+              !clienteId ||
+              !viviendaId ||
+              !precio
             }
             style={{
               background:
-                saving || !extraData
+                saving ||
+                !clienteId ||
+                !viviendaId ||
+                !precio
                   ? "rgba(255,255,255,0.08)"
                   : "linear-gradient(135deg, #10b981 0%, #047857 100%)",
 
               color:
-                saving || !extraData
+                saving ||
+                !clienteId ||
+                !viviendaId ||
+                !precio
                   ? "#64748b"
                   : "#fff",
 
               border:
-                saving || !extraData
+                saving ||
+                !clienteId ||
+                !viviendaId ||
+                !precio
                   ? BORDE_DORADO_FINO
                   : "1px solid rgba(16, 185, 129, 0.6)",
 
-              padding: "14px",
-              borderRadius: "16px",
-              fontSize: "14px",
-              fontWeight: "900",
+              padding:
+                "14px",
+              borderRadius:
+                "16px",
+              fontSize:
+                "14px",
+              fontWeight:
+                "900",
 
               cursor:
-                saving || !extraData
+                saving ||
+                !clienteId ||
+                !viviendaId ||
+                !precio
                   ? "not-allowed"
                   : "pointer",
 
-              marginTop: "10px",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
+              marginTop:
+                "10px",
+              textTransform:
+                "uppercase",
+              letterSpacing:
+                "0.5px",
 
               boxShadow:
-                saving || !extraData
+                saving ||
+                !clienteId ||
+                !viviendaId ||
+                !precio
                   ? "none"
                   : "0 4px 15px rgba(16, 185, 129, 0.3)",
 
-              transition: "all 0.2s ease"
+              transition:
+                "all 0.2s ease"
             }}
           >
             {saving
-              ? "Enviando..."
-              : "✅ Enviar Inspección al Administrador"}
+              ? "Guardando..."
+              : extraData
+              ? "✅ Actualizar Extra y Enviar"
+              : "✅ Crear Extra y Enviar"}
           </button>
         </form>
       </div>
     </div>
   );
 }
+
+Este archivo sustituye entero al actual. No cambies partes sueltas.
+
+Una cosa importante: he dejado la seguridad crítica en Supabase. Aunque el técnico manipule el "cliente_id", "vivienda_id" o "tecnico_id" desde el navegador, la política "extras_insert_tecnico" que acabamos de poner vuelve a comprobar la relación antes de aceptar la creación.
+
+Después de pegarlo en GitHub, no tocaría nada más todavía: primero probamos este flujo de técnico y comprobamos que cliente → vivienda → precio → crear extra funciona correctamente.
