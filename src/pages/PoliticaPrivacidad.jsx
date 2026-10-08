@@ -1,65 +1,306 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import './PoliticaPrivacidad.css'; // O tus estilos Tailwind
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import "./PoliticaPrivacidad.css";
 
 export default function PoliticaPrivacidad() {
   const navigate = useNavigate();
 
   return (
-    <div className="privacy-container" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', color: '#333' }}>
-      <button 
-        onClick={() => navigate(-1)} 
-        style={{ marginBottom: '20px', padding: '8px 16px', background: '#0056b3', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+    <div
+      className="privacy-container"
+      style={{
+        padding: "20px",
+        maxWidth: "800px",
+        margin: "0 auto",
+        color: "#333",
+        lineHeight: "1.6",
+      }}
+    >
+      <button
+        onClick={() => navigate(-1)}
+        style={{
+          marginBottom: "20px",
+          padding: "8px 16px",
+          background: "#0056b3",
+          color: "#fff",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
       >
         ← Volver
       </button>
 
-      <h1 style={{ color: '#00356b', textAlign: 'center', marginBottom: '20px' }}>POLÍTICA DE PRIVACIDAD</h1>
+      <h1
+        style={{
+          color: "#00356b",
+          textAlign: "center",
+          marginBottom: "20px",
+        }}
+      >
+        POLÍTICA DE PRIVACIDAD
+      </h1>
 
-      <h3>1. RESPONSABLE DEL TRATAMIENTO DE LOS DATOS</h3>
+      <p>
+        Esta Política de Privacidad informa sobre el tratamiento de datos
+        personales realizado a través de CoastGuard Homes Services y de sus
+        aplicaciones y servicios asociados.
+      </p>
+
+      <h3>1. RESPONSABLE DEL TRATAMIENTO</h3>
+
       <ul>
-        <li><strong>Identidad:</strong> Roxana Collazo Alonso</li>
-        <li><strong>Nombre Comercial / Plataforma:</strong> CoastGuard Homes Services</li>
-        <li><strong>NIF/NIE:</strong> Z1968154A</li>
-        <li><strong>Domicilio profesional:</strong> Pilar de la Horadada (Alicante)</li>
-        <li><strong>Correo electrónico de contacto:</strong> soporte@coastguardhomes.com *(o tu email)*</li>
+        <li>
+          <strong>Responsable:</strong> Roxana Collazo Alonso
+        </li>
+        <li>
+          <strong>Nombre comercial:</strong> CoastGuard Homes Services
+        </li>
+        <li>
+          <strong>NIF/NIE:</strong> Z1968154A
+        </li>
+        <li>
+          <strong>Domicilio profesional:</strong> Pilar de la Horadada,
+          Alicante
+        </li>
+        <li>
+          <strong>Correo electrónico:</strong>{" "}
+          soporte@coastguardhomes.com
+        </li>
       </ul>
 
-      <h3>2. DATOS PERSONALES QUE RECOPILAMOS</h3>
-      <p>A través de nuestra aplicación web y móvil, recopilamos y tratamos la siguiente información indispensable:</p>
+      <h3>2. DATOS PERSONALES TRATADOS</h3>
+
+      <p>
+        Dependiendo del servicio utilizado, pueden tratarse las siguientes
+        categorías de datos:
+      </p>
+
       <ul>
-        <li><strong>Datos de identificación:</strong> Nombre, apellidos, DNI/NIF/Pasaporte.</li>
-        <li><strong>Datos de contacto:</strong> Correo electrónico, teléfono (para alertas y WhatsApp).</li>
-        <li><strong>Datos del inmueble:</strong> Dirección postal exacta, características (tamaño, jardín, piscina) e imágenes adjuntas en los informes.</li>
-        <li><strong>Datos de seguridad:</strong> Códigos de desactivación de alarmas y accesos (almacenados de forma encriptada).</li>
-        <li><strong>Datos de facturación:</strong> Procesados de forma segura a través de nuestra pasarela de pago.</li>
+        <li>
+          Datos identificativos y de contacto, como nombre, apellidos,
+          correo electrónico y teléfono.
+        </li>
+        <li>
+          Datos necesarios para la gestión de la relación contractual y
+          administrativa.
+        </li>
+        <li>
+          Datos relativos a inmuebles, incluyendo dirección, características,
+          incidencias e imágenes asociadas a inspecciones.
+        </li>
+        <li>
+          Datos necesarios para la facturación y gestión de pagos.
+        </li>
+        <li>
+          Datos técnicos y de seguridad necesarios para prestar los servicios
+          contratados.
+        </li>
+        <li>
+          Datos relacionados con la cuenta de usuario, autenticación,
+          preferencias e idioma.
+        </li>
       </ul>
 
-      <h3>3. FINALIDAD DEL TRATAMIENTO</h3>
-      <ol>
-        <li><strong>Prestación del servicio:</strong> Gestionar la custodia de llaves, revisiones semanales y envío de informes.</li>
-        <li><strong>Gestión administrativa y facturación:</strong> Procesar pagos mensuales y emitir facturas.</li>
-        <li><strong>Atención y Emergencias:</strong> Atender comunicaciones urgentes por siniestros o averías.</li>
-        <li><strong>Comunicaciones operativas:</strong> Enviar notificaciones críticas o de seguridad.</li>
-      </ol>
+      <p>
+        Solo se solicitarán los datos necesarios para las finalidades
+        correspondientes. Los datos especialmente sensibles o de acceso a
+        inmuebles se tratarán únicamente cuando resulten necesarios para la
+        prestación del servicio y deberán contar con medidas de seguridad
+        adecuadas.
+      </p>
 
-      <h3>4. LEGITIMACIÓN PARA EL TRATAMIENTO</h3>
+      <h3>3. FINALIDADES DEL TRATAMIENTO</h3>
+
       <ul>
-        <li><strong>Ejecución de un contrato:</strong> Necesario para el cumplimiento del Contrato Marco de servicios.</li>
-        <li><strong>Consentimiento explícito:</strong> Mediante la marcación de la casilla de aceptación durante el registro.</li>
+        <li>
+          Gestionar el alta y mantenimiento de las cuentas de usuario.
+        </li>
+        <li>
+          Gestionar contratos y servicios de supervisión y mantenimiento de
+          viviendas.
+        </li>
+        <li>
+          Gestionar inspecciones, incidencias, fotografías e informes.
+        </li>
+        <li>
+          Emitir y gestionar facturas y pagos.
+        </li>
+        <li>
+          Enviar comunicaciones necesarias para la prestación del servicio.
+        </li>
+        <li>
+          Gestionar avisos e incidencias urgentes cuando sea necesario.
+        </li>
+        <li>
+          Atender solicitudes, reclamaciones y ejercicios de derechos.
+        </li>
+        <li>
+          Cumplir las obligaciones legales aplicables.
+        </li>
       </ul>
 
-      <h3>5. PLAZO DE CONSERVACIÓN</h3>
-      <p>Los datos se conservarán durante la vigencia de la relación comercial. Tras la baja, se bloquearán durante los plazos exigidos por la legislación fiscal española (5 años), destruyéndose de forma segura los códigos de alarma y copias de llaves inmediatamente.</p>
+      <h3>4. BASE JURÍDICA</h3>
 
-      <h3>6. DESTINATARIOS Y CESIÓN DE DATOS</h3>
-      <p>No se cederán datos a terceros, salvo proveedores tecnológicos indispensables (servidores y pasarela de pago) o requerimiento legal de las Fuerzas de Seguridad.</p>
+      <p>
+        Las bases jurídicas aplicables dependerán de la finalidad concreta:
+      </p>
 
-      <h3>7. DERECHOS DEL USUARIO (ARCO-POL)</h3>
-      <p>Puedes ejercer tus derechos de acceso, rectificación, supresión y portabilidad enviando un correo a <strong>soporte@coastguardhomes.com</strong> adjuntando copia de tu DNI. Tienes derecho a reclamar ante la Agencia Española de Protección de Datos (AEPD).</p>
+      <ul>
+        <li>
+          <strong>Ejecución del contrato:</strong> para prestar los servicios
+          contratados, gestionar la cuenta, inspecciones, contratos,
+          facturación y comunicaciones necesarias.
+        </li>
+        <li>
+          <strong>Obligación legal:</strong> para aquellos tratamientos
+          necesarios para cumplir obligaciones fiscales, contables,
+          mercantiles u otras obligaciones legalmente exigibles.
+        </li>
+        <li>
+          <strong>Consentimiento:</strong> cuando sea necesario y se solicite
+          expresamente, pudiendo retirarse en cualquier momento sin afectar a
+          la licitud del tratamiento realizado anteriormente.
+        </li>
+      </ul>
 
-      <h3>8. MEDIDAS DE SEGURIDAD</h3>
-      <p>Aplicamos medidas técnicas y organizativas rigurosas, con especial celo y cifrado en los códigos de alarma y accesos a los inmuebles.</p>
+      <h3>5. CONSERVACIÓN DE LOS DATOS</h3>
+
+      <p>
+        Los datos personales se conservarán durante el tiempo necesario para
+        cumplir la finalidad para la que fueron recogidos y, cuando proceda,
+        durante los plazos necesarios para cumplir obligaciones legales o
+        atender posibles responsabilidades.
+      </p>
+
+      <p>
+        La conservación no se realizará durante un plazo único e
+        indiscriminado para todos los datos. Los distintos tipos de
+        información podrán conservarse durante períodos diferentes en función
+        de su finalidad y de las obligaciones legales aplicables.
+      </p>
+
+      <p>
+        Cuando determinados datos dejen de ser necesarios, se procederá a su
+        supresión, anonimización o bloqueo cuando legalmente corresponda.
+      </p>
+
+      <h3>6. DESTINATARIOS Y ENCARGADOS DEL TRATAMIENTO</h3>
+
+      <p>
+        Para prestar los servicios pueden intervenir proveedores tecnológicos
+        que actúen como encargados del tratamiento o proveedores independientes
+        respecto de determinados servicios, según corresponda.
+      </p>
+
+      <p>
+        Entre ellos pueden encontrarse proveedores de alojamiento,
+        infraestructura tecnológica, almacenamiento, autenticación,
+        comunicaciones, generación de documentos y servicios de pago.
+      </p>
+
+      <p>
+        Estos proveedores solo tendrán acceso a los datos necesarios para
+        prestar los servicios correspondientes y deberán estar sujetos a las
+        obligaciones de protección de datos que resulten aplicables.
+      </p>
+
+      <p>
+        También podrán comunicarse datos cuando exista una obligación legal,
+        requerimiento de una autoridad competente o resulte necesario para la
+        defensa de derechos y reclamaciones.
+      </p>
+
+      <h3>7. TRANSFERENCIAS INTERNACIONALES</h3>
+
+      <p>
+        Algunos proveedores tecnológicos utilizados para prestar el servicio
+        pueden encontrarse fuera del Espacio Económico Europeo o utilizar
+        infraestructura internacional. Cuando exista una transferencia
+        internacional de datos, se aplicarán las garantías previstas por la
+        normativa de protección de datos, como decisiones de adecuación,
+        cláusulas contractuales tipo u otras garantías legalmente válidas.
+      </p>
+
+      <h3>8. DERECHOS DE LAS PERSONAS</h3>
+
+      <p>
+        Las personas cuyos datos sean tratados pueden ejercer, cuando
+        corresponda, los derechos de:
+      </p>
+
+      <ul>
+        <li>Acceso.</li>
+        <li>Rectificación.</li>
+        <li>Supresión.</li>
+        <li>Oposición.</li>
+        <li>Limitación del tratamiento.</li>
+        <li>Portabilidad.</li>
+        <li>Retirada del consentimiento cuando el tratamiento se base en él.</li>
+      </ul>
+
+      <p>
+        Para ejercer estos derechos puedes escribir a:
+      </p>
+
+      <p>
+        <strong>soporte@coastguardhomes.com</strong>
+      </p>
+
+      <p>
+        La solicitud deberá permitir comprobar razonablemente la identidad de
+        la persona solicitante. No se exigirá sistemáticamente una copia del
+        DNI. Si existieran dudas razonables sobre la identidad, podrá
+        solicitarse información adicional adecuada y proporcional para
+        verificarla.
+      </p>
+
+      <p>
+        Si consideras que el tratamiento de tus datos no se ajusta a la
+        normativa, puedes presentar una reclamación ante la Agencia Española
+        de Protección de Datos (AEPD).
+      </p>
+
+      <h3>9. SEGURIDAD</h3>
+
+      <p>
+        Se aplican medidas técnicas y organizativas destinadas a proteger los
+        datos personales frente a accesos no autorizados, pérdida,
+        destrucción, alteración o divulgación indebida.
+      </p>
+
+      <p>
+        El acceso a la información de clientes se limita según las funciones
+        y permisos necesarios para prestar el servicio. Las medidas de
+        seguridad se revisan y actualizan cuando resulta necesario.
+      </p>
+
+      <h3>10. DATOS DE MENORES</h3>
+
+      <p>
+        Los servicios de CoastGuard están dirigidos a personas con capacidad
+        legal suficiente para contratar los servicios correspondientes. No se
+        pretende recopilar deliberadamente datos personales de menores sin las
+        garantías legalmente exigibles.
+      </p>
+
+      <h3>11. DECISIONES AUTOMATIZADAS</h3>
+
+      <p>
+        No se adoptan decisiones exclusivamente automatizadas que produzcan
+        efectos jurídicos o efectos significativamente similares sobre los
+        usuarios, salvo que se informe previamente y exista una base jurídica
+        que lo permita.
+      </p>
+
+      <h3>12. ACTUALIZACIONES DE ESTA POLÍTICA</h3>
+
+      <p>
+        Esta Política de Privacidad podrá actualizarse cuando cambien los
+        servicios, los tratamientos realizados o la normativa aplicable. La
+        versión vigente será la publicada en la aplicación o en el sitio web
+        correspondiente.
+      </p>
     </div>
   );
 }
