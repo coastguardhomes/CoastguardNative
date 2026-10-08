@@ -1,56 +1,112 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "../../lib/supabase"; // Asegúrate de que esta sea tu ruta correcta
+import { supabase } from "../../lib/supabase";
 
 export default function ClienteContratoExito() {
   const [searchParams] = useSearchParams();
-  const sessionId = searchParams.get("session_id");
-  const contractId = searchParams.get("contract_id");
+  const contractId = searchParams.get("contractId") || searchParams.get("contract_id");
+  const result = searchParams.get("result");
+  const activated = searchParams.get("activated");
   const navigate = useNavigate();
-  const [mensajeEstado, setMensajeEstado] = useState("Actualizando el estado de tu contrato...");
+
+  const [mensajeEstado, setMensajeEstado] = useState(
+    "Comprobando el estado de tu contrato..."
+  );
   const [errorDetalle, setErrorDetalle] = useState(null);
+  const [comprobado, setComprobado] = useState(false);
 
   useEffect(() => {
-    const actualizarContrato = async () => {
-      if (!contractId) {
-        setMensajeEstado("Error: No se encontró el ID del contrato en el enlace.");
+    let cancelado = false;
+
+    const comprobarContrato = async () => {
+      if (!contractId || !/^\d+$/.test(contractId)) {
+        if (!cancelado) {
+          setErrorDetalle("No se encontró un ID de contrato válido.");
+          setMensajeEstado(
+            "No se pudo comprobar el estado del contrato."
+          );
+          setComprobado(true);
+        }
         return;
       }
 
       try {
-        console.log("Intentando actualizar contrato ID:", contractId);
-
-        // Intentamos actualizar el estado a activo
         const { data, error } = await supabase
           .from("contratos")
-          .update({ estado: "activo" })
-          .eq("id", contractId)
-          .select(); // .select() es clave para que devuelva si realmente actualizó algo
+          .select("id, estado, pagado")
+          .eq("id", Number(contractId))
+          .maybeSingle();
 
         if (error) {
-          console.error("Error de Supabase:", error);
-          setErrorDetalle(error.message);
-          setMensajeEstado("❌ Error al actualizar en la base de datos.");
-          alert(`Error de Supabase: ${error.message} (Código: ${error.code})`);
-        } else if (!data || data.length === 0) {
-          console.warn("No se encontró ninguna fila con ese ID o RLS lo bloqueó.");
-          setErrorDetalle("No se encontró el contrato o permisos insuficientes.");
-          setMensajeEstado("⚠️ El pago se realizó, pero no se encontró el contrato para actualizarlo.");
-          alert("Aviso: El pago se hizo, pero Supabase no encontró el contrato (o las políticas RLS lo impiden).");
-        } else {
-          console.log("Contrato actualizado con éxito:", data);
-          setMensajeEstado("¡Tu contrato ya se encuentra activo y la suscripción está en marcha!");
+          throw error;
         }
+
+        if (cancelado) return;
+
+        if (!data) {
+          setErrorDetalle(
+            "No se encontró el contrato o no tienes permiso para consultarlo."
+          );
+          setMensajeEstado(
+            "No se pudo comprobar el estado del contrato."
+          );
+          setComprobado(true);
+          return;
+        }
+
+        if (data.estado === "activo") {
+          setErrorDetalle(null);
+          setMensajeEstado(
+            "¡Tu contrato ya se encuentra activo y la suscripción está en marcha!"
+          );
+        } else if (result === "success" && activated === "pending") {
+          setErrorDetalle(null);
+          setMensajeEstado(
+            "El pago está siendo confirmado por Stripe. El contrato se activará automáticamente cuando la confirmación final esté disponible."
+          );
+        } else if (result === "cancelled") {
+          setErrorDetalle(null);
+          setMensajeEstado(
+            "El proceso de pago fue cancelado. Tu contrato no ha sido activado."
+          );
+        } else {
+          setErrorDetalle(
+            "El contrato todavía no figura como activo."
+          );
+          setMensajeEstado(
+            "El pago ha vuelto a la aplicación, pero el contrato todavía no aparece activado. Vuelve a intentarlo en unos instantes."
+          );
+        }
+
+        setComprobado(true);
       } catch (err) {
-        console.error("Excepción inesperada:", err);
-        setErrorDetalle(err.message);
-        setMensajeEstado("❌ Error inesperado al procesar.");
-        alert(`Excepción: ${err.message}`);
+        if (cancelado) return;
+
+        console.error("Error comprobando contrato:", err);
+
+        setErrorDetalle(
+          err?.message || "No se pudo comprobar el contrato."
+        );
+        setMensajeEstado(
+          "No se pudo comprobar el estado del contrato."
+        );
+        setComprobado(true);
       }
     };
 
-    actualizarContrato();
-  }, [contractId]);
+    comprobarContrato();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [contractId, result, activated]);
+
+  const titulo =
+    errorDetalle && comprobado
+      ? "Aviso en la confirmación"
+      : result === "cancelled"
+        ? "Pago cancelado"
+        : "¡Pago y suscripción!";
 
   return (
     <div
@@ -78,26 +134,66 @@ export default function ClienteContratoExito() {
           boxShadow: "0 0 25px rgba(255, 215, 0, 0.15)",
         }}
       >
-        <div style={{ fontSize: "50px", marginBottom: "20px" }}>{errorDetalle ? "⚠️" : "🎉"}</div>
-        
-        <h1 style={{ color: "#e0b034", fontSize: "24px", marginBottom: "15px", fontWeight: "700" }}>
-          {errorDetalle ? "Aviso en la Actualización" : "¡Pago y Suscripción Exitosa!"}
+        <div
+          style={{
+            fontSize: "50px",
+            marginBottom: "20px",
+          }}
+        >
+          {errorDetalle ? "⚠️" : result === "cancelled" ? "↩️" : "🎉"}
+        </div>
+
+        <h1
+          style={{
+            color: "#e0b034",
+            fontSize: "24px",
+            marginBottom: "15px",
+            fontWeight: "700",
+          }}
+        >
+          {titulo}
         </h1>
-        
-        <p style={{ color: errorDetalle ? "#ff6b6b" : "#9ca3af", fontSize: "15px", lineHeight: "1.5", marginBottom: "25px" }}>
+
+        <p
+          style={{
+            color: errorDetalle ? "#ff6b6b" : "#9ca3af",
+            fontSize: "15px",
+            lineHeight: "1.5",
+            marginBottom: "25px",
+          }}
+        >
           {mensajeEstado}
         </p>
 
         {errorDetalle && (
-          <div style={{ background: "rgba(255,0,0,0.1)", border: "1px solid red", padding: "10px", borderRadius: "8px", fontSize: "12px", color: "#ff8080", marginBottom: "20px", textAlign: "left", wordBreak: "break-all" }}>
-            <strong>Detalle técnico:</strong> {errorDetalle}
+          <div
+            style={{
+              background: "rgba(255,0,0,0.1)",
+              border: "1px solid red",
+              padding: "10px",
+              borderRadius: "8px",
+              fontSize: "12px",
+              color: "#ff8080",
+              marginBottom: "20px",
+              textAlign: "left",
+              wordBreak: "break-word",
+            }}
+          >
+            <strong>Detalle:</strong> {errorDetalle}
           </div>
         )}
 
         <button
-          onClick={() => navigate(`/cliente/contrato/${contractId}`)}
+          onClick={() => {
+            if (contractId && /^\d+$/.test(contractId)) {
+              navigate(`/cliente/contrato/${contractId}`);
+            } else {
+              navigate("/cliente/contratos");
+            }
+          }}
           style={{
-            background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
+            background:
+              "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
             color: "#ffffff",
             border: "none",
             borderRadius: "10px",
@@ -109,7 +205,9 @@ export default function ClienteContratoExito() {
             boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
           }}
         >
-          Ver mi Contrato
+          {result === "cancelled"
+            ? "Volver a mi contrato"
+            : "Ver mi contrato"}
         </button>
       </div>
     </div>
