@@ -33,18 +33,45 @@ export default function CrearContrato() {
     { id: "basico", nombre: "Básico", precio: 39, frecuencia: 30 },
     { id: "standard", nombre: "Standard", precio: 59, frecuencia: 30 },
     { id: "premium", nombre: "Premium", precio: 79, frecuencia: 30 },
-    { id: "custodia_llaves", nombre: "Custodia de llaves", precio: 15, frecuencia: 30 },
+    {
+      id: "custodia_llaves",
+      nombre: "Custodia de llaves",
+      precio: 15,
+      frecuencia: 30,
+    },
   ];
+
+  // Único punto de cálculo fiscal: el precio del formulario
+  // se considera la base imponible.
+  function calcularImportes(baseIntroducida) {
+    const base = Number(Number(baseIntroducida).toFixed(2));
+    const iva = Number((base * 0.21).toFixed(2));
+    const total = Number((base + iva).toFixed(2));
+
+    return { base, iva, total };
+  }
 
   function calcularPuntos(v) {
     let puntos = 0;
 
-    if (v.metros_cuadrados > 80 && v.metros_cuadrados <= 120) puntos += 5;
-    else if (v.metros_cuadrados > 120 && v.metros_cuadrados <= 180) puntos += 10;
-    else if (v.metros_cuadrados > 180) puntos += 15;
+    if (v.metros_cuadrados > 80 && v.metros_cuadrados <= 120) {
+      puntos += 5;
+    } else if (
+      v.metros_cuadrados > 120 &&
+      v.metros_cuadrados <= 180
+    ) {
+      puntos += 10;
+    } else if (v.metros_cuadrados > 180) {
+      puntos += 15;
+    }
 
-    if (v.habitaciones > 1) puntos += (v.habitaciones - 1) * 2;
-    if (v.banos > 1) puntos += (v.banos - 1) * 3;
+    if (v.habitaciones > 1) {
+      puntos += (v.habitaciones - 1) * 2;
+    }
+
+    if (v.banos > 1) {
+      puntos += (v.banos - 1) * 3;
+    }
 
     if (v.tiene_piscina) puntos += 10;
     if (v.tiene_jardin) puntos += 8;
@@ -64,17 +91,32 @@ export default function CrearContrato() {
   }, []);
 
   async function cargarDatos() {
-    const { data: clientesData } = await supabase
-      .from("clientes")
-      .select("id, nombre, dni, cif, email");
+    const { data: clientesData, error: clientesError } =
+      await supabase
+        .from("clientes")
+        .select("id, nombre, dni, cif, email");
 
-    const { data: viviendasData } = await supabase
-      .from("viviendas")
-      .select("*");
+    const { data: viviendasData, error: viviendasError } =
+      await supabase
+        .from("viviendas")
+        .select("*");
 
-    const { data: tecnicosData } = await supabase
-      .from("tecnicos")
-      .select("id, nombre");
+    const { data: tecnicosData, error: tecnicosError } =
+      await supabase
+        .from("tecnicos")
+        .select("id, nombre");
+
+    if (clientesError) {
+      console.error("Error cargando clientes:", clientesError);
+    }
+
+    if (viviendasError) {
+      console.error("Error cargando viviendas:", viviendasError);
+    }
+
+    if (tecnicosError) {
+      console.error("Error cargando técnicos:", tecnicosError);
+    }
 
     setClientes(clientesData || []);
     setViviendas(viviendasData || []);
@@ -91,6 +133,7 @@ export default function CrearContrato() {
 
   function handleClienteChange(e) {
     const clienteId = e.target.value;
+
     const clienteEncontrado = clientes.find(
       (c) => String(c.id) === String(clienteId)
     );
@@ -102,28 +145,35 @@ export default function CrearContrato() {
       dni: clienteEncontrado
         ? clienteEncontrado.dni || clienteEncontrado.cif || ""
         : "",
+      precio_vivienda: 0,
+      precio:
+        prev.modalidad === "custodia_llaves"
+          ? Number(prev.precio_modalidad || 0)
+          : 0,
     }));
   }
 
   function handleViviendaChange(e) {
     const viviendaId = e.target.value;
+
     const vivienda = viviendas.find(
       (v) => String(v.id) === String(viviendaId)
     );
 
     setForm((prev) => {
       const esCustodia = prev.modalidad === "custodia_llaves";
+
       const precioVivienda = esCustodia
         ? 0
         : vivienda
-        ? calcularPrecioVivienda(vivienda)
-        : 0;
+          ? calcularPrecioVivienda(vivienda)
+          : 0;
 
       const precioModalidad = Number(
         prev.precio_modalidad || 0
       );
 
-      const precioTotal = Number(
+      const precioBase = Number(
         (precioVivienda + precioModalidad).toFixed(2)
       );
 
@@ -131,7 +181,7 @@ export default function CrearContrato() {
         ...prev,
         vivienda_id: viviendaId,
         precio_vivienda: precioVivienda,
-        precio: precioTotal,
+        precio: precioBase,
       };
     });
   }
@@ -145,6 +195,7 @@ export default function CrearContrato() {
 
     setForm((prev) => {
       const precioModalidad = Number(mod.precio);
+
       const esCustodia =
         modalidadId === "custodia_llaves";
 
@@ -152,7 +203,7 @@ export default function CrearContrato() {
         ? 0
         : Number(prev.precio_vivienda || 0);
 
-      const precioTotal = Number(
+      const precioBase = Number(
         (precioModalidad + precioVivienda).toFixed(2)
       );
 
@@ -162,7 +213,7 @@ export default function CrearContrato() {
         frecuencia: mod.frecuencia,
         precio_modalidad: precioModalidad,
         precio_vivienda: precioVivienda,
-        precio: precioTotal,
+        precio: precioBase,
       };
     });
   }
@@ -171,19 +222,14 @@ export default function CrearContrato() {
     const nuevaFechaInicio = e.target.value;
     let nuevaFechaFin = form.fecha_fin;
 
-    if (
-      nuevaFechaInicio &&
-      form.duracion_meses
-    ) {
+    if (nuevaFechaInicio && form.duracion_meses) {
       const fecha = new Date(nuevaFechaInicio);
 
       fecha.setMonth(
-        fecha.getMonth() +
-          Number(form.duracion_meses)
+        fecha.getMonth() + Number(form.duracion_meses)
       );
 
-      nuevaFechaFin =
-        fecha.toISOString().split("T")[0];
+      nuevaFechaFin = fecha.toISOString().split("T")[0];
     }
 
     setForm((prev) => ({
@@ -197,19 +243,14 @@ export default function CrearContrato() {
     const nuevaDuracion = e.target.value;
     let nuevaFechaFin = form.fecha_fin;
 
-    if (
-      form.fecha_inicio &&
-      nuevaDuracion
-    ) {
+    if (form.fecha_inicio && nuevaDuracion) {
       const fecha = new Date(form.fecha_inicio);
 
       fecha.setMonth(
-        fecha.getMonth() +
-          Number(nuevaDuracion)
+        fecha.getMonth() + Number(nuevaDuracion)
       );
 
-      nuevaFechaFin =
-        fecha.toISOString().split("T")[0];
+      nuevaFechaFin = fecha.toISOString().split("T")[0];
     }
 
     setForm((prev) => ({
@@ -239,17 +280,19 @@ export default function CrearContrato() {
     }
 
     if (!form.fecha_inicio) {
-      setMensaje(
-        "Selecciona la fecha de inicio."
-      );
+      setMensaje("Selecciona la fecha de inicio.");
       return;
     }
 
-    const precioFinal = Number(form.precio);
+    const precioBase = Number(form.precio);
+    const importes = calcularImportes(precioBase);
 
-    if (!precioFinal || precioFinal <= 0) {
+    if (
+      !Number.isFinite(precioBase) ||
+      precioBase <= 0
+    ) {
       setMensaje(
-        "El precio total del contrato no puede ser 0 o estar vacío."
+        "El precio base del contrato no puede ser 0 o estar vacío."
       );
       return;
     }
@@ -260,82 +303,52 @@ export default function CrearContrato() {
     );
 
     try {
-      if (
-        form.dni &&
-        form.cliente_id
-      ) {
-        await supabase
+      if (form.dni && form.cliente_id) {
+        const { error: dniError } = await supabase
           .from("clientes")
-          .update({
-            dni: form.dni
-          })
-          .eq(
-            "id",
-            form.cliente_id
-          );
+          .update({ dni: form.dni })
+          .eq("id", form.cliente_id);
+
+        if (dniError) throw dniError;
       }
 
-      let fechaFinFinal =
-        form.fecha_fin;
+      let fechaFinFinal = form.fecha_fin;
 
-      if (
-        !fechaFinFinal &&
-        form.fecha_inicio
-      ) {
-        const fechaInicioObj =
-          new Date(
-            form.fecha_inicio
-          );
-
-        const meses =
-          Number(
-            form.duracion_meses
-          ) || 12;
+      if (!fechaFinFinal && form.fecha_inicio) {
+        const fechaInicioObj = new Date(form.fecha_inicio);
+        const meses = Number(form.duracion_meses) || 12;
 
         fechaInicioObj.setMonth(
-          fechaInicioObj.getMonth() +
-            meses
+          fechaInicioObj.getMonth() + meses
         );
 
-        fechaFinFinal =
-          fechaInicioObj
-            .toISOString()
-            .split("T")[0];
+        fechaFinFinal = fechaInicioObj
+          .toISOString()
+          .split("T")[0];
       }
 
-      const {
-        data,
-        error
-      } = await supabase
+      // Se guarda la base y el desglose fiscal calculado aquí.
+      const { data, error } = await supabase
         .from("contratos")
         .insert([
           {
-            cliente_id:
-              String(form.cliente_id),
-            vivienda_id:
-              Number(form.vivienda_id),
-            tecnico_id:
-              String(form.tecnico_id),
-            fecha_inicio:
-              form.fecha_inicio,
-            fecha_fin:
-              fechaFinFinal,
-            precio:
-              precioFinal,
-            notas:
-              form.notas,
-            frecuencia:
-              Number(
-                form.frecuencia || 30
-              ),
-            modalidad:
-              form.modalidad,
-            estado:
-              "pendiente",
-            duracion_meses:
-              Number(
-                form.duracion_meses || 12
-              ),
+            cliente_id: String(form.cliente_id),
+            vivienda_id: Number(form.vivienda_id),
+            tecnico_id: String(form.tecnico_id),
+            fecha_inicio: form.fecha_inicio,
+            fecha_fin: fechaFinFinal,
+
+            precio: importes.base,
+            iva: importes.iva,
+            precio_total: importes.total,
+
+            notas: form.notas,
+            frecuencia: Number(form.frecuencia || 30),
+            modalidad: form.modalidad,
+            estado: "pendiente",
+            duracion_meses: Number(
+              form.duracion_meses || 12
+            ),
           },
         ])
         .select("*")
@@ -345,108 +358,78 @@ export default function CrearContrato() {
 
       const contratoId = data.id;
 
-      const precio =
-        Number(form.precio || 0);
-
-      const baseFactura =
-        precio;
-
-      const ivaFactura =
-        Number(
-          (
-            precio * 0.21
-          ).toFixed(2)
-        );
-
-      const totalFactura =
-        Number(
-          (
-            precio * 1.21
-          ).toFixed(2)
-        );
-
+      // La factura reutiliza los importes guardados en el contrato.
+      // No vuelve a calcular ni a añadir IVA.
       const {
-        error: facturaError
-      } = await supabase
+        base: baseFactura,
+        iva: ivaFactura,
+        total: totalFactura,
+      } = importes;
+
+      const { error: facturaError } = await supabase
         .from("facturas")
         .insert([
           {
-            cliente_id:
-              String(form.cliente_id),
-            vivienda_id:
-              Number(form.vivienda_id),
-            contrato_id:
-              Number(contratoId),
+            cliente_id: String(form.cliente_id),
+            vivienda_id: Number(form.vivienda_id),
+            contrato_id: Number(contratoId),
 
-            tipo:
-              "contrato",
+            tipo: "contrato",
 
             descripcion:
-              form.modalidad ===
-              "custodia_llaves"
+              form.modalidad === "custodia_llaves"
                 ? "Custodia de llaves"
                 : "Subscripción mensual",
 
-            base:
-              baseFactura,
+            base: baseFactura,
+            iva: ivaFactura,
+            total: totalFactura,
+            monto: totalFactura,
 
-            iva:
-              ivaFactura,
+            estado_tecnico: "no_enviar",
+            estado: "pendiente",
+            estado_pago: "pendiente",
 
-            total:
-              totalFactura,
-
-            estado_tecnico:
-              "no_enviar",
-
-            estado:
-              "pendiente",
-
-            estado_pago:
-              "pendiente",
-
-            fecha:
-              new Date()
-                .toISOString()
-                .slice(0, 10),
+            fecha: new Date()
+              .toISOString()
+              .slice(0, 10),
           },
         ])
         .select()
         .single();
 
-      if (facturaError) {
-        throw facturaError;
+      if (facturaError) throw facturaError;
+
+      // La generación del PDF no cambia los importes fiscales.
+      const { error: pdfError } =
+        await supabase.functions.invoke(
+          "contrato-pdf",
+          {
+            body: {
+              contratoId,
+              id: contratoId,
+            },
+          }
+        );
+
+      if (pdfError) {
+        console.error(
+          "No se pudo generar el PDF del contrato:",
+          pdfError
+        );
       }
 
-      await supabase.functions.invoke(
-        "contrato-pdf",
-        {
-          body: {
-            contratoId:
-              contratoId,
-            id:
-              contratoId,
-          },
-        }
-      );
-
-      setMensaje(
-        "¡Contrato creado con éxito! ✔"
-      );
+      setMensaje("¡Contrato creado con éxito! ✔");
 
       setTimeout(() => {
         navigate("/contratos");
       }, 1500);
-
     } catch (e) {
-      console.error(
-        "Error general creando contrato:",
-        e
-      );
+      console.error("Error general creando contrato:", e);
 
       setMensaje(
         "Error creando contrato: " +
-        e.message
+          (e?.message || "Error desconocido")
       );
 
       setProcesando(false);
@@ -458,13 +441,15 @@ export default function CrearContrato() {
     width: "100%",
     marginBottom: "15px",
     borderRadius: "10px",
-    border:
-      "1px solid rgba(255,255,255,0.2)",
-    background:
-      "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.2)",
+    background: "rgba(255,255,255,0.08)",
     color: "#fff",
     boxSizing: "border-box",
   };
+
+  const importesActuales = calcularImportes(
+    Number(form.precio || 0)
+  );
 
   return (
     <Menu>
@@ -474,8 +459,7 @@ export default function CrearContrato() {
           background: "#0a0f1a",
           minHeight: "100vh",
           color: "#fff",
-          fontFamily:
-            "Inter, sans-serif",
+          fontFamily: "Inter, sans-serif",
           boxSizing: "border-box",
         }}
       >
@@ -485,8 +469,7 @@ export default function CrearContrato() {
             marginBottom: "25px",
             fontSize: "28px",
             fontWeight: "700",
-            textShadow:
-              "0 0 8px rgba(0,153,255,0.6)",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
           Crear Contrato
@@ -498,19 +481,16 @@ export default function CrearContrato() {
               marginBottom: "15px",
               padding: "10px",
               borderRadius: "8px",
-              background:
-                mensaje.includes("éxito")
-                  ? "rgba(74,222,128,0.1)"
-                  : "rgba(0,153,255,0.1)",
-              color:
-                mensaje.includes("éxito")
-                  ? "#4ade80"
-                  : "#4db8ff",
+              background: mensaje.includes("éxito")
+                ? "rgba(74,222,128,0.1)"
+                : "rgba(0,153,255,0.1)",
+              color: mensaje.includes("éxito")
+                ? "#4ade80"
+                : "#4db8ff",
               fontWeight: "600",
-              border:
-                mensaje.includes("éxito")
-                  ? "1px solid rgba(74,222,128,0.3)"
-                  : "1px solid rgba(0,153,255,0.3)",
+              border: mensaje.includes("éxito")
+                ? "1px solid rgba(74,222,128,0.3)"
+                : "1px solid rgba(0,153,255,0.3)",
             }}
           >
             {mensaje}
@@ -519,24 +499,14 @@ export default function CrearContrato() {
 
         <div
           style={{
-            background:
-              "rgba(255,255,255,0.05)",
+            background: "rgba(255,255,255,0.05)",
             padding: "20px",
             borderRadius: "14px",
-            border:
-              "1px solid rgba(255,255,255,0.1)",
-            boxShadow:
-              "0 0 12px rgba(0,153,255,0.2)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          <label
-            style={{
-              display: "block",
-              marginBottom: "6px",
-              fontSize: "14px",
-              color: "#9fb3c8"
-            }}
-          >
+          <label style={labelStyle}>
             Cliente:
           </label>
 
@@ -545,28 +515,15 @@ export default function CrearContrato() {
             onChange={handleClienteChange}
             style={inputStyle}
           >
-            <option value="">
-              Selecciona cliente
-            </option>
-
+            <option value="">Selecciona cliente</option>
             {clientes.map((c) => (
-              <option
-                key={c.id}
-                value={c.id}
-              >
+              <option key={c.id} value={c.id}>
                 {c.nombre}
               </option>
             ))}
           </select>
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "6px",
-              fontSize: "14px",
-              color: "#9fb3c8"
-            }}
-          >
+          <label style={labelStyle}>
             DNI / NIE:
           </label>
 
@@ -577,20 +534,13 @@ export default function CrearContrato() {
             onChange={(e) =>
               setForm({
                 ...form,
-                dni: e.target.value
+                dni: e.target.value,
               })
             }
             style={inputStyle}
           />
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "6px",
-              fontSize: "14px",
-              color: "#9fb3c8"
-            }}
-          >
+          <label style={labelStyle}>
             Vivienda:
           </label>
 
@@ -599,28 +549,15 @@ export default function CrearContrato() {
             onChange={handleViviendaChange}
             style={inputStyle}
           >
-            <option value="">
-              Selecciona vivienda
-            </option>
-
+            <option value="">Selecciona vivienda</option>
             {viviendasFiltradas.map((v) => (
-              <option
-                key={v.id}
-                value={v.id}
-              >
+              <option key={v.id} value={v.id}>
                 {v.direccion}
               </option>
             ))}
           </select>
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "6px",
-              fontSize: "14px",
-              color: "#9fb3c8"
-            }}
-          >
+          <label style={labelStyle}>
             Técnico:
           </label>
 
@@ -629,70 +566,39 @@ export default function CrearContrato() {
             onChange={(e) =>
               setForm({
                 ...form,
-                tecnico_id:
-                  String(
-                    e.target.value
-                  )
+                tecnico_id: String(e.target.value),
               })
             }
             style={inputStyle}
           >
-            <option value="">
-              Selecciona técnico
-            </option>
-
+            <option value="">Selecciona técnico</option>
             {tecnicos.map((t) => (
-              <option
-                key={t.id}
-                value={t.id}
-              >
+              <option key={t.id} value={t.id}>
                 {t.nombre}
               </option>
             ))}
           </select>
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "6px",
-              fontSize: "14px",
-              color: "#9fb3c8"
-            }}
-          >
+          <label style={labelStyle}>
             Modalidad:
           </label>
 
           <select
             value={form.modalidad}
             onChange={(e) =>
-              seleccionarModalidad(
-                e.target.value
-              )
+              seleccionarModalidad(e.target.value)
             }
             style={inputStyle}
           >
-            <option value="">
-              Selecciona modalidad
-            </option>
-
+            <option value="">Selecciona modalidad</option>
             {modalidades.map((m) => (
-              <option
-                key={m.id}
-                value={m.id}
-              >
-                {m.nombre} — {m.precio}€
+              <option key={m.id} value={m.id}>
+                {m.nombre} — {m.precio}€ + IVA
               </option>
             ))}
           </select>
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "6px",
-              fontSize: "14px",
-              color: "#9fb3c8"
-            }}
-          >
+          <label style={labelStyle}>
             Duración (meses):
           </label>
 
@@ -703,14 +609,7 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "6px",
-              fontSize: "14px",
-              color: "#9fb3c8"
-            }}
-          >
+          <label style={labelStyle}>
             Fecha inicio:
           </label>
 
@@ -721,14 +620,7 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "6px",
-              fontSize: "14px",
-              color: "#9fb3c8"
-            }}
-          >
+          <label style={labelStyle}>
             Fecha de finalización:
           </label>
 
@@ -738,22 +630,14 @@ export default function CrearContrato() {
             onChange={(e) =>
               setForm({
                 ...form,
-                fecha_fin:
-                  e.target.value
+                fecha_fin: e.target.value,
               })
             }
             style={inputStyle}
           />
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "6px",
-              fontSize: "14px",
-              color: "#9fb3c8"
-            }}
-          >
-            Precio total (€/mes):
+          <label style={labelStyle}>
+            Precio base sin IVA (€/mes):
           </label>
 
           <input
@@ -762,21 +646,36 @@ export default function CrearContrato() {
             readOnly
             style={{
               ...inputStyle,
-              background:
-                "rgba(255,255,255,0.15)",
+              background: "rgba(255,255,255,0.15)",
               fontWeight: "bold",
               color: "#4db8ff",
             }}
           />
 
-          <label
+          <div
             style={{
-              display: "block",
-              marginBottom: "6px",
+              marginTop: "-8px",
+              marginBottom: "15px",
+              color: "#9fb3c8",
               fontSize: "14px",
-              color: "#9fb3c8"
             }}
           >
+            <div>
+              IVA (21%): {importesActuales.iva.toFixed(2)} € / mes
+            </div>
+
+            <div
+              style={{
+                marginTop: "6px",
+                color: "#4db8ff",
+                fontWeight: "700",
+              }}
+            >
+              Total con IVA: {importesActuales.total.toFixed(2)} € / mes
+            </div>
+          </div>
+
+          <label style={labelStyle}>
             Frecuencia de visitas (días):
           </label>
 
@@ -786,21 +685,13 @@ export default function CrearContrato() {
             onChange={(e) =>
               setForm({
                 ...form,
-                frecuencia:
-                  e.target.value
+                frecuencia: e.target.value,
               })
             }
             style={inputStyle}
           />
 
-          <label
-            style={{
-              display: "block",
-              marginBottom: "6px",
-              fontSize: "14px",
-              color: "#9fb3c8"
-            }}
-          >
+          <label style={labelStyle}>
             Notas adicionales:
           </label>
 
@@ -809,8 +700,7 @@ export default function CrearContrato() {
             onChange={(e) =>
               setForm({
                 ...form,
-                notas:
-                  e.target.value
+                notas: e.target.value,
               })
             }
             style={{
@@ -833,18 +723,21 @@ export default function CrearContrato() {
               fontWeight: "700",
               fontSize: "17px",
               cursor: "pointer",
-              boxShadow:
-                "0 0 10px rgba(0,153,255,0.4)",
-              opacity:
-                procesando ? 0.6 : 1,
+              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+              opacity: procesando ? 0.6 : 1,
             }}
           >
-            {procesando
-              ? "Procesando..."
-              : "Crear Contrato"}
+            {procesando ? "Procesando..." : "Crear Contrato"}
           </button>
         </div>
       </div>
     </Menu>
   );
 }
+
+const labelStyle = {
+  display: "block",
+  marginBottom: "6px",
+  fontSize: "14px",
+  color: "#9fb3c8",
+};
