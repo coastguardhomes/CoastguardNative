@@ -35,7 +35,6 @@ export default function TecnicoInspeccionExtra() {
   const [descripcion, setDescripcion] = useState("");
   const [materiales, setMateriales] = useState("");
   const [tiempo, setTiempo] = useState("");
-  const [precio, setPrecio] = useState("");
 
   const [alerta, setAlerta] = useState(false);
   const [fotos, setFotos] = useState([]);
@@ -44,13 +43,20 @@ export default function TecnicoInspeccionExtra() {
   const [error, setError] = useState("");
 
   const cargarClientes = async () => {
-    const { data, error: clientesError } = await supabase
+    const {
+      data,
+      error: clientesError
+    } = await supabase
       .from("clientes")
       .select("id, nombre, direccion, email")
       .order("nombre");
 
     if (clientesError) {
-      console.error("Error cargando clientes:", clientesError);
+      console.error(
+        "Error cargando clientes:",
+        clientesError
+      );
+
       throw clientesError;
     }
 
@@ -79,6 +85,7 @@ export default function TecnicoInspeccionExtra() {
         "Error cargando viviendas:",
         viviendasError
       );
+
       throw viviendasError;
     }
 
@@ -173,9 +180,9 @@ export default function TecnicoInspeccionExtra() {
         setClienteId(clienteSeleccionado);
 
         /*
-         * Primero cargamos las viviendas porque esta función
-         * limpia viviendaId. Después restauramos la vivienda
-         * que pertenece al extra.
+         * Primero cargamos las viviendas.
+         * Después restauramos la vivienda asociada
+         * al extra existente.
          */
         await cargarViviendas(
           extraEncontrado.cliente_id
@@ -201,13 +208,6 @@ export default function TecnicoInspeccionExtra() {
 
         setTiempo(
           extraEncontrado.tiempo_empleado || ""
-        );
-
-        setPrecio(
-          extraEncontrado.precio !== null &&
-            extraEncontrado.precio !== undefined
-            ? String(extraEncontrado.precio)
-            : ""
         );
 
         setAlerta(
@@ -267,13 +267,6 @@ export default function TecnicoInspeccionExtra() {
         factura?.descripcion ||
           factura?.concepto ||
           ""
-      );
-
-      setPrecio(
-        factura?.total !== null &&
-          factura?.total !== undefined
-          ? String(factura.total)
-          : ""
       );
     } catch (err) {
       console.error(
@@ -394,9 +387,7 @@ export default function TecnicoInspeccionExtra() {
               fileName
           );
 
-        if (
-          publicUrlData?.publicUrl
-        ) {
+        if (publicUrlData?.publicUrl) {
           nuevasUrls.push(
             publicUrlData.publicUrl
           );
@@ -422,6 +413,7 @@ export default function TecnicoInspeccionExtra() {
       );
     } finally {
       setSaving(false);
+      e.target.value = "";
     }
   };
 
@@ -468,23 +460,6 @@ export default function TecnicoInspeccionExtra() {
       return;
     }
 
-    const precioNumero = Number(
-      String(precio)
-        .replace(",", ".")
-        .trim()
-    );
-
-    if (
-      precio === "" ||
-      !Number.isFinite(precioNumero) ||
-      precioNumero < 0
-    ) {
-      setError(
-        "Introduce un precio profesional válido."
-      );
-      return;
-    }
-
     const cliente = clientes.find(
       (c) =>
         String(c.id) ===
@@ -501,11 +476,13 @@ export default function TecnicoInspeccionExtra() {
     try {
       setSaving(true);
 
+      /*
+       * El técnico únicamente informa del trabajo realizado.
+       * No envía precios, IVA, totales ni otros importes
+       * administrativos en las actualizaciones.
+       */
       if (extraData?.id) {
         const extraPayload = {
-          cliente_id: clienteId,
-          vivienda_id: viviendaId,
-
           descripcion:
             descripcion ||
             extraData.descripcion ||
@@ -517,23 +494,16 @@ export default function TecnicoInspeccionExtra() {
           tiempo_empleado:
             tiempo || null,
 
-          precio:
-            precioNumero,
-
           fotos,
 
           estado_tecnico:
             "completado",
 
-          estado_admin:
-            "pendiente",
-
           alerta
         };
 
         if (alerta) {
-          extraPayload.alerta_vista =
-            false;
+          extraPayload.alerta_vista = false;
         }
 
         const {
@@ -552,14 +522,17 @@ export default function TecnicoInspeccionExtra() {
 
         if (!extraActualizado) {
           throw new Error(
-            "El extra existe, pero no se ha podido actualizar. Comprueba que la vivienda esté asignada a este técnico."
+            "El extra no se ha podido actualizar. Comprueba que el técnico tenga permiso para completar la inspección."
           );
         }
 
-        setExtraData(
-          extraActualizado
-        );
+        setExtraData(extraActualizado);
 
+        /*
+         * Solo actualizamos los datos técnicos de la factura.
+         * No modificamos base, IVA, total, precio ni estado
+         * administrativo.
+         */
         if (facturaData?.id) {
           const facturaPayload = {
             descripcion:
@@ -582,26 +555,8 @@ export default function TecnicoInspeccionExtra() {
             alerta
           };
 
-          facturaPayload.base =
-            precioNumero;
-
-          facturaPayload.iva =
-            Math.round(
-              precioNumero *
-                0.21 *
-                100
-            ) / 100;
-
-          facturaPayload.total =
-            Math.round(
-              precioNumero *
-                1.21 *
-                100
-            ) / 100;
-
           if (alerta) {
-            facturaPayload.alerta_vista =
-              false;
+            facturaPayload.alerta_vista = false;
           }
 
           const {
@@ -609,10 +564,7 @@ export default function TecnicoInspeccionExtra() {
           } = await supabase
             .from("facturas")
             .update(facturaPayload)
-            .eq(
-              "id",
-              facturaData.id
-            );
+            .eq("id", facturaData.id);
 
           if (facturaUpdateError) {
             throw facturaUpdateError;
@@ -620,18 +572,24 @@ export default function TecnicoInspeccionExtra() {
         }
 
         alert(
-          "Extra actualizado correctamente y enviado al administrador."
+          "Inspección actualizada correctamente y enviada al administrador."
         );
 
         navigate("/tecnico");
         return;
       }
 
+      /*
+       * Nuevo extra.
+       *
+       * El precio no se solicita al técnico ni se incluye
+       * en el registro. La valoración económica corresponde
+       * al administrador.
+       */
       const extraPayload = {
         cliente_id: clienteId,
 
-        vivienda_id:
-          viviendaId,
+        vivienda_id: viviendaId,
 
         tecnico_id:
           vivienda.tecnico_id,
@@ -648,9 +606,6 @@ export default function TecnicoInspeccionExtra() {
 
         tiempo_empleado:
           tiempo || null,
-
-        precio:
-          precioNumero,
 
         estado:
           "pendiente",
@@ -680,8 +635,7 @@ export default function TecnicoInspeccionExtra() {
       }
 
       if (alerta) {
-        extraPayload.alerta_vista =
-          false;
+        extraPayload.alerta_vista = false;
       }
 
       const {
@@ -699,14 +653,17 @@ export default function TecnicoInspeccionExtra() {
 
       if (!nuevoExtra) {
         throw new Error(
-          "El extra se ha enviado pero no se ha podido recuperar el registro creado."
+          "No se ha podido recuperar el registro del extra creado."
         );
       }
 
-      setExtraData(
-        nuevoExtra
-      );
+      setExtraData(nuevoExtra);
 
+      /*
+       * Si existe una factura asociada, solo enviamos
+       * información técnica. Los importes originales
+       * de la factura permanecen intactos.
+       */
       if (facturaData?.id) {
         const facturaPayload = {
           descripcion:
@@ -726,29 +683,11 @@ export default function TecnicoInspeccionExtra() {
           estado_tecnico:
             "completado",
 
-          alerta,
-
-          base:
-            precioNumero,
-
-          iva:
-            Math.round(
-              precioNumero *
-                0.21 *
-                100
-            ) / 100,
-
-          total:
-            Math.round(
-              precioNumero *
-                1.21 *
-                100
-            ) / 100
+          alerta
         };
 
         if (alerta) {
-          facturaPayload.alerta_vista =
-            false;
+          facturaPayload.alerta_vista = false;
         }
 
         const {
@@ -756,10 +695,7 @@ export default function TecnicoInspeccionExtra() {
         } = await supabase
           .from("facturas")
           .update(facturaPayload)
-          .eq(
-            "id",
-            facturaData.id
-          );
+          .eq("id", facturaData.id);
 
         if (facturaUpdateError) {
           throw facturaUpdateError;
@@ -767,18 +703,18 @@ export default function TecnicoInspeccionExtra() {
       }
 
       alert(
-        "Extra creado correctamente y enviado al administrador."
+        "Extra creado correctamente y enviado al administrador para su valoración."
       );
 
       navigate("/tecnico");
     } catch (err) {
       console.error(
-        "Error guardando el extra:",
+        "Error guardando la inspección:",
         err
       );
 
       setError(
-        "Error al guardar el extra: " +
+        "Error al guardar la inspección: " +
           (err?.message ||
             "Error desconocido")
       );
@@ -795,18 +731,12 @@ export default function TecnicoInspeccionExtra() {
             FONDO_PRINCIPAL,
           minHeight: "100vh",
           display: "flex",
-          justifyContent:
-            "center",
+          justifyContent: "center",
           alignItems: "center",
-          fontFamily:
-            "Inter, sans-serif"
+          fontFamily: "Inter, sans-serif"
         }}
       >
-        <h3
-          style={
-            TEXTO_DORADO_BRILLO
-          }
-        >
+        <h3 style={TEXTO_DORADO_BRILLO}>
           Cargando datos del trabajo...
         </h3>
       </div>
@@ -816,15 +746,12 @@ export default function TecnicoInspeccionExtra() {
   return (
     <div
       style={{
-        backgroundColor:
-          FONDO_PRINCIPAL,
+        backgroundColor: FONDO_PRINCIPAL,
         minHeight: "100vh",
         padding: "16px",
         display: "flex",
-        justifyContent:
-          "center",
-        fontFamily:
-          "Inter, sans-serif",
+        justifyContent: "center",
+        fontFamily: "Inter, sans-serif",
         boxSizing: "border-box"
       }}
     >
@@ -832,57 +759,38 @@ export default function TecnicoInspeccionExtra() {
         style={{
           width: "100%",
           maxWidth: "480px",
-          background:
-            FONDO_TARJETA,
-          border:
-            BORDE_DORADO_FINO,
+          background: FONDO_TARJETA,
+          border: BORDE_DORADO_FINO,
           borderRadius: "16px",
           padding: "20px",
           display: "flex",
-          flexDirection:
-            "column",
+          flexDirection: "column",
           gap: "16px",
-          boxShadow:
-            SOMBRA_LUXURY,
-          boxSizing:
-            "border-box"
+          boxShadow: SOMBRA_LUXURY,
+          boxSizing: "border-box"
         }}
       >
         <div
           style={{
             display: "flex",
-            justifyContent:
-              "space-between",
-            alignItems:
-              "center",
-            borderBottom:
-              BORDE_DORADO_FINO,
-            paddingBottom:
-              "14px"
+            justifyContent: "space-between",
+            alignItems: "center",
+            borderBottom: BORDE_DORADO_FINO,
+            paddingBottom: "14px"
           }}
         >
           <button
             type="button"
-            onClick={() =>
-              navigate("/tecnico")
-            }
+            onClick={() => navigate("/tecnico")}
             style={{
-              background:
-                "transparent",
-              border:
-                BORDE_DORADO_FINO,
-              color:
-                COLOR_DORADO,
-              padding:
-                "6px 12px",
-              borderRadius:
-                "8px",
-              cursor:
-                "pointer",
-              fontSize:
-                "11px",
-              fontWeight:
-                "700"
+              background: "transparent",
+              border: BORDE_DORADO_FINO,
+              color: COLOR_DORADO,
+              padding: "6px 12px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontSize: "11px",
+              fontWeight: "700"
             }}
           >
             ← Volver
@@ -891,13 +799,10 @@ export default function TecnicoInspeccionExtra() {
           <h2
             style={{
               ...TEXTO_DORADO_BRILLO,
-              fontSize:
-                "18px",
-              fontWeight:
-                "900",
+              fontSize: "18px",
+              fontWeight: "900",
               margin: 0,
-              textTransform:
-                "uppercase"
+              textTransform: "uppercase"
             }}
           >
             Inspección de Extra
@@ -907,22 +812,14 @@ export default function TecnicoInspeccionExtra() {
         {mensaje && (
           <div
             style={{
-              backgroundColor:
-                "rgba(16, 185, 129, 0.15)",
-              border:
-                "1px solid rgba(16, 185, 129, 0.4)",
-              padding:
-                "12px",
-              borderRadius:
-                "10px",
-              fontSize:
-                "12px",
-              fontWeight:
-                "700",
-              color:
-                "#34d399",
-              textAlign:
-                "center"
+              backgroundColor: "rgba(16, 185, 129, 0.15)",
+              border: "1px solid rgba(16, 185, 129, 0.4)",
+              padding: "12px",
+              borderRadius: "10px",
+              fontSize: "12px",
+              fontWeight: "700",
+              color: "#34d399",
+              textAlign: "center"
             }}
           >
             {mensaje}
@@ -932,22 +829,14 @@ export default function TecnicoInspeccionExtra() {
         {error && (
           <div
             style={{
-              backgroundColor:
-                "rgba(239, 68, 68, 0.15)",
-              border:
-                "1px solid rgba(239, 68, 68, 0.4)",
-              padding:
-                "12px",
-              borderRadius:
-                "10px",
-              fontSize:
-                "12px",
-              fontWeight:
-                "700",
-              color:
-                "#ef4444",
-              textAlign:
-                "center"
+              backgroundColor: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              padding: "12px",
+              borderRadius: "10px",
+              fontSize: "12px",
+              fontWeight: "700",
+              color: "#ef4444",
+              textAlign: "center"
             }}
           >
             {error}
@@ -956,30 +845,20 @@ export default function TecnicoInspeccionExtra() {
 
         <div
           style={{
-            background:
-              "rgba(11, 19, 32, 0.9)",
-            padding:
-              "14px",
-            borderRadius:
-              "12px",
-            border:
-              BORDE_DORADO_FINO
+            background: "rgba(11, 19, 32, 0.9)",
+            padding: "14px",
+            borderRadius: "12px",
+            border: BORDE_DORADO_FINO
           }}
         >
           <label
             style={{
-              display:
-                "block",
-              fontSize:
-                "12px",
-              color:
-                COLOR_DORADO,
-              fontWeight:
-                "700",
-              textTransform:
-                "uppercase",
-              marginBottom:
-                "7px"
+              display: "block",
+              fontSize: "12px",
+              color: COLOR_DORADO,
+              fontWeight: "700",
+              textTransform: "uppercase",
+              marginBottom: "7px"
             }}
           >
             Cliente
@@ -987,114 +866,73 @@ export default function TecnicoInspeccionExtra() {
 
           <select
             value={clienteId}
-            onChange={
-              manejarCambioCliente
-            }
+            onChange={manejarCambioCliente}
             disabled={saving}
             style={{
-              width:
-                "100%",
-              padding:
-                "12px",
-              borderRadius:
-                "10px",
-              border:
-                BORDE_DORADO_FINO,
-              background:
-                "#101a29",
-              color:
-                "#fff",
-              fontSize:
-                "13px",
-              boxSizing:
-                "border-box"
+              width: "100%",
+              padding: "12px",
+              borderRadius: "10px",
+              border: BORDE_DORADO_FINO,
+              background: "#101a29",
+              color: "#fff",
+              fontSize: "13px",
+              boxSizing: "border-box"
             }}
           >
             <option value="">
               -- Selecciona cliente --
             </option>
 
-            {clientes.map(
-              (cliente) => (
-                <option
-                  key={
-                    cliente.id
-                  }
-                  value={
-                    cliente.id
-                  }
-                >
-                  {cliente.nombre}
-                  {cliente.direccion
-                    ? ` — ${cliente.direccion}`
-                    : ""}
-                </option>
-              )
-            )}
+            {clientes.map((cliente) => (
+              <option
+                key={cliente.id}
+                value={cliente.id}
+              >
+                {cliente.nombre}
+                {cliente.direccion
+                  ? ` — ${cliente.direccion}`
+                  : ""}
+              </option>
+            ))}
           </select>
         </div>
 
         <div
           style={{
-            background:
-              "rgba(11, 19, 32, 0.9)",
-            padding:
-              "14px",
-            borderRadius:
-              "12px",
-            border:
-              BORDE_DORADO_FINO
+            background: "rgba(11, 19, 32, 0.9)",
+            padding: "14px",
+            borderRadius: "12px",
+            border: BORDE_DORADO_FINO
           }}
         >
           <label
             style={{
-              display:
-                "block",
-              fontSize:
-                "12px",
-              color:
-                COLOR_DORADO,
-              fontWeight:
-                "700",
-              textTransform:
-                "uppercase",
-              marginBottom:
-                "7px"
+              display: "block",
+              fontSize: "12px",
+              color: COLOR_DORADO,
+              fontWeight: "700",
+              textTransform: "uppercase",
+              marginBottom: "7px"
             }}
           >
             Vivienda
           </label>
 
           <select
-            value={
-              viviendaId
-            }
+            value={viviendaId}
             onChange={(e) =>
-              setViviendaId(
-                e.target.value
-              )
+              setViviendaId(e.target.value)
             }
-            disabled={
-              !clienteId ||
-              saving
-            }
+            disabled={!clienteId || saving}
             style={{
-              width:
-                "100%",
-              padding:
-                "12px",
-              borderRadius:
-                "10px",
-              border:
-                BORDE_DORADO_FINO,
-              background:
-                "#101a29",
-              color:
-                "#fff",
-              fontSize:
-                "13px",
-              boxSizing:
-                "border-box"
+              width: "100%",
+              padding: "12px",
+              borderRadius: "10px",
+              border: BORDE_DORADO_FINO,
+              background: "#101a29",
+              color: "#fff",
+              fontSize: "13px",
+              boxSizing: "border-box"
             }}
           >
             <option value="">
@@ -1103,70 +941,46 @@ export default function TecnicoInspeccionExtra() {
                 : "-- Selecciona vivienda --"}
             </option>
 
-            {viviendas.map(
-              (vivienda) => (
-                <option
-                  key={
-                    vivienda.id
-                  }
-                  value={
-                    vivienda.id
-                  }
-                >
-                  {vivienda.direccion ||
-                    `Vivienda #${vivienda.id}`}
-                </option>
-              )
-            )}
+            {viviendas.map((vivienda) => (
+              <option
+                key={vivienda.id}
+                value={vivienda.id}
+              >
+                {vivienda.direccion ||
+                  `Vivienda #${vivienda.id}`}
+              </option>
+            ))}
           </select>
 
-          {clienteId &&
-            viviendas.length ===
-              0 && (
-              <p
-                style={{
-                  color:
-                    "#f59e0b",
-                  fontSize:
-                    "12px",
-                  marginBottom:
-                    0
-                }}
-              >
-                No hay viviendas disponibles
-                para este cliente.
-              </p>
-            )}
+          {clienteId && viviendas.length === 0 && (
+            <p
+              style={{
+                color: "#f59e0b",
+                fontSize: "12px",
+                marginBottom: 0
+              }}
+            >
+              No hay viviendas disponibles para este cliente.
+            </p>
+          )}
         </div>
 
         <div
           style={{
-            background:
-              "rgba(11, 19, 32, 0.9)",
-            padding:
-              "14px",
-            borderRadius:
-              "12px",
-            border:
-              BORDE_DORADO_FINO
+            background: "rgba(11, 19, 32, 0.9)",
+            padding: "14px",
+            borderRadius: "12px",
+            border: BORDE_DORADO_FINO
           }}
         >
           <p
             style={{
-              fontSize:
-                "12px",
-              margin:
-                "4px 0",
-              color:
-                "#ccc"
+              fontSize: "12px",
+              margin: "4px 0",
+              color: "#ccc"
             }}
           >
-            <strong
-              style={{
-                color:
-                  COLOR_DORADO
-              }}
-            >
+            <strong style={{ color: COLOR_DORADO }}>
               Extra:
             </strong>{" "}
             {extraData?.descripcion ||
@@ -1178,20 +992,12 @@ export default function TecnicoInspeccionExtra() {
           {facturaData?.id && (
             <p
               style={{
-                fontSize:
-                  "12px",
-                margin:
-                  "4px 0",
-                color:
-                  "#ccc"
+                fontSize: "12px",
+                margin: "4px 0",
+                color: "#ccc"
               }}
             >
-              <strong
-                style={{
-                  color:
-                    COLOR_DORADO
-                }}
-              >
+              <strong style={{ color: COLOR_DORADO }}>
                 Factura:
               </strong>{" "}
               #{facturaData.id}
@@ -1201,151 +1007,105 @@ export default function TecnicoInspeccionExtra() {
           {extraData?.id && (
             <p
               style={{
-                fontSize:
-                  "11px",
-                margin:
-                  "6px 0 0",
-                color:
-                  "#777"
+                fontSize: "11px",
+                margin: "6px 0 0",
+                color: "#777"
               }}
             >
-              ID extra:{" "}
-              {extraData.id}
+              ID extra: {extraData.id}
             </p>
           )}
 
           {!extraData && (
             <p
               style={{
-                fontSize:
-                  "11px",
-                margin:
-                  "6px 0 0",
-                color:
-                  "#34d399"
+                fontSize: "11px",
+                margin: "6px 0 0",
+                color: "#34d399"
               }}
             >
-              Nuevo extra: se creará al
-              guardar.
+              Nuevo extra: se creará al guardar.
             </p>
           )}
         </div>
 
         <div
           style={{
-            background:
-              "rgba(11, 19, 32, 0.9)",
-            padding:
-              "14px",
-            borderRadius:
-              "12px",
-            border:
-              BORDE_DORADO_FINO
+            background: "rgba(11, 19, 32, 0.9)",
+            padding: "14px",
+            borderRadius: "12px",
+            border: BORDE_DORADO_FINO
           }}
         >
-          <label
+          <p
             style={{
-              display:
-                "block",
-              fontSize:
-                "12px",
-              color:
-                COLOR_DORADO,
-              fontWeight:
-                "700",
-              textTransform:
-                "uppercase",
-              marginBottom:
-                "7px"
+              fontSize: "12px",
+              color: COLOR_DORADO,
+              fontWeight: "700",
+              textTransform: "uppercase",
+              margin: "0 0 7px"
             }}
           >
-            Precio profesional (€)
-          </label>
-
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="0.01"
-            value={precio}
-            onChange={(e) =>
-              setPrecio(
-                e.target.value
-              )
-            }
-            disabled={saving}
-            placeholder="Ej: 125.00"
-            style={{
-              width:
-                "100%",
-              padding:
-                "13px",
-              borderRadius:
-                "10px",
-              border:
-                BORDE_DORADO_FINO,
-              background:
-                "#101a29",
-              color:
-                "#fff",
-              fontSize:
-                "16px",
-              fontWeight:
-                "700",
-              boxSizing:
-                "border-box"
-            }}
-          />
+            Valoración económica
+          </p>
 
           <p
             style={{
-              color:
-                "#888",
-              fontSize:
-                "11px",
-              margin:
-                "7px 0 0"
+              color: "#ccc",
+              fontSize: "13px",
+              margin: 0,
+              lineHeight: 1.5
             }}
           >
-            Este es el importe profesional
-            del trabajo extra.
+            El precio, el IVA y el total de la factura
+            son gestionados por el administrador.
+            El técnico únicamente registra los datos
+            de la inspección.
           </p>
+
+          {extraData?.precio !== null &&
+            extraData?.precio !== undefined && (
+              <p
+                style={{
+                  color: "#888",
+                  fontSize: "12px",
+                  margin: "8px 0 0"
+                }}
+              >
+                Precio registrado:{" "}
+                {Number(extraData.precio).toLocaleString(
+                  "es-ES",
+                  {
+                    style: "currency",
+                    currency: "EUR"
+                  }
+                )}
+              </p>
+            )}
         </div>
 
         <div
           style={{
-            display:
-              "flex",
-            gap:
-              "10px"
+            display: "flex",
+            gap: "10px"
           }}
         >
           <label
             style={{
-              flex:
-                1,
-              textAlign:
-                "center",
+              flex: 1,
+              textAlign: "center",
               background:
                 "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
-              color:
-                "#fff",
-              padding:
-                "12px",
-              borderRadius:
-                "12px",
-              fontWeight:
-                "900",
-              fontSize:
-                "12px",
-              cursor:
-                "pointer",
-              border:
-                BORDE_DORADO_FINO,
+              color: "#fff",
+              padding: "12px",
+              borderRadius: "12px",
+              fontWeight: "900",
+              fontSize: "12px",
+              cursor: "pointer",
+              border: BORDE_DORADO_FINO,
               boxShadow:
                 "0 4px 15px rgba(245, 158, 11, 0.3)",
-              textTransform:
-                "uppercase"
+              textTransform: "uppercase"
             }}
           >
             📸 Hacer Foto
@@ -1354,45 +1114,28 @@ export default function TecnicoInspeccionExtra() {
               type="file"
               accept="image/*"
               capture="environment"
-              onChange={
-                manejarSubidaFotos
-              }
-              disabled={
-                saving
-              }
-              style={{
-                display:
-                  "none"
-              }}
+              onChange={manejarSubidaFotos}
+              disabled={saving}
+              style={{ display: "none" }}
             />
           </label>
 
           <label
             style={{
-              flex:
-                1,
-              textAlign:
-                "center",
+              flex: 1,
+              textAlign: "center",
               background:
                 "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
-              color:
-                "#fff",
-              padding:
-                "12px",
-              borderRadius:
-                "12px",
-              fontWeight:
-                "900",
-              fontSize:
-                "12px",
-              cursor:
-                "pointer",
-              border:
-                BORDE_DORADO_FINO,
+              color: "#fff",
+              padding: "12px",
+              borderRadius: "12px",
+              fontWeight: "900",
+              fontSize: "12px",
+              cursor: "pointer",
+              border: BORDE_DORADO_FINO,
               boxShadow:
                 "0 4px 15px rgba(56, 189, 248, 0.3)",
-              textTransform:
-                "uppercase"
+              textTransform: "uppercase"
             }}
           >
             🖼️ Galería
@@ -1401,16 +1144,9 @@ export default function TecnicoInspeccionExtra() {
               type="file"
               accept="image/*"
               multiple
-              onChange={
-                manejarSubidaFotos
-              }
-              disabled={
-                saving
-              }
-              style={{
-                display:
-                  "none"
-              }}
+              onChange={manejarSubidaFotos}
+              disabled={saving}
+              style={{ display: "none" }}
             />
           </label>
         </div>
@@ -1418,145 +1154,96 @@ export default function TecnicoInspeccionExtra() {
         {fotos.length > 0 && (
           <div
             style={{
-              display:
-                "flex",
-              gap:
-                "8px",
-              flexWrap:
-                "wrap"
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap"
             }}
           >
-            {fotos.map(
-              (url, index) => (
-                <img
-                  key={index}
-                  src={url}
-                  alt={`Evidencia ${
-                    index + 1
-                  }`}
-                  style={{
-                    width:
-                      "60px",
-                    height:
-                      "60px",
-                    objectFit:
-                      "cover",
-                    borderRadius:
-                      "8px",
-                    border:
-                      BORDE_DORADO_FINO
-                  }}
-                />
-              )
-            )}
+            {fotos.map((url, index) => (
+              <img
+                key={index}
+                src={url}
+                alt={`Evidencia ${index + 1}`}
+                style={{
+                  width: "60px",
+                  height: "60px",
+                  objectFit: "cover",
+                  borderRadius: "8px",
+                  border: BORDE_DORADO_FINO
+                }}
+              />
+            ))}
           </div>
         )}
 
         <form
-          onSubmit={
-            handleSubmit
-          }
+          onSubmit={handleSubmit}
           style={{
-            display:
-              "flex",
-            flexDirection:
-              "column",
-            gap:
-              "14px"
+            display: "flex",
+            flexDirection: "column",
+            gap: "14px"
           }}
         >
           <div
             style={{
-              background:
-                "rgba(11, 19, 32, 0.9)",
-              padding:
-                "12px 14px",
-              borderRadius:
-                "12px",
-              border:
-                BORDE_DORADO_FINO,
-              display:
-                "flex",
-              alignItems:
-                "center"
+              background: "rgba(11, 19, 32, 0.9)",
+              padding: "12px 14px",
+              borderRadius: "12px",
+              border: BORDE_DORADO_FINO,
+              display: "flex",
+              alignItems: "center"
             }}
           >
             <label
               style={{
-                display:
-                  "flex",
-                alignItems:
-                  "center",
-                cursor:
-                  "pointer",
-                width:
-                  "100%"
+                display: "flex",
+                alignItems: "center",
+                cursor: "pointer",
+                width: "100%"
               }}
             >
               <input
                 type="checkbox"
-                checked={
-                  alerta
-                }
+                checked={alerta}
                 onChange={(e) =>
-                  setAlerta(
-                    e.target.checked
-                  )
+                  setAlerta(e.target.checked)
                 }
                 style={{
-                  width:
-                    "20px",
-                  height:
-                    "20px",
-                  marginRight:
-                    "12px",
-                  cursor:
-                    "pointer",
-                  accentColor:
-                    "#ef4444"
+                  width: "20px",
+                  height: "20px",
+                  marginRight: "12px",
+                  cursor: "pointer",
+                  accentColor: "#ef4444"
                 }}
               />
 
               <span
                 style={{
-                  fontSize:
-                    "13px",
-                  color:
-                    "#ef4444",
-                  fontWeight:
-                    "800",
-                  textTransform:
-                    "uppercase",
-                  letterSpacing:
-                    "0.3px"
+                  fontSize: "13px",
+                  color: "#ef4444",
+                  fontWeight: "800",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.3px"
                 }}
               >
-                ⚠️ Marcar como ALERTA /
-                Urgencia importante
+                ⚠️ Marcar como ALERTA / Urgencia importante
               </span>
             </label>
           </div>
 
           <div
             style={{
-              display:
-                "flex",
-              flexDirection:
-                "column",
-              gap:
-                "6px"
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
             }}
           >
             <label
               style={{
-                fontSize:
-                  "12px",
-                color:
-                  COLOR_DORADO,
-                fontWeight:
-                  "700",
-                textTransform:
-                  "uppercase"
+                fontSize: "12px",
+                color: COLOR_DORADO,
+                fontWeight: "700",
+                textTransform: "uppercase"
               }}
             >
               Descripción del trabajo realizado:
@@ -1564,33 +1251,20 @@ export default function TecnicoInspeccionExtra() {
 
             <textarea
               style={{
-                backgroundColor:
-                  "rgba(11, 19, 32, 0.8)",
-                border:
-                  BORDE_DORADO_FINO,
-                borderRadius:
-                  "12px",
-                padding:
-                  "12px",
-                color:
-                  "#fff",
-                fontSize:
-                  "13px",
-                resize:
-                  "vertical",
-                outline:
-                  "none",
-                boxSizing:
-                  "border-box"
+                backgroundColor: "rgba(11, 19, 32, 0.8)",
+                border: BORDE_DORADO_FINO,
+                borderRadius: "12px",
+                padding: "12px",
+                color: "#fff",
+                fontSize: "13px",
+                resize: "vertical",
+                outline: "none",
+                boxSizing: "border-box"
               }}
               rows="4"
-              value={
-                descripcion
-              }
+              value={descripcion}
               onChange={(e) =>
-                setDescripcion(
-                  e.target.value
-                )
+                setDescripcion(e.target.value)
               }
               placeholder="Detalla qué se ha reparado o revisado..."
               required
@@ -1599,24 +1273,17 @@ export default function TecnicoInspeccionExtra() {
 
           <div
             style={{
-              display:
-                "flex",
-              flexDirection:
-                "column",
-              gap:
-                "6px"
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
             }}
           >
             <label
               style={{
-                fontSize:
-                  "12px",
-                color:
-                  COLOR_DORADO,
-                fontWeight:
-                  "700",
-                textTransform:
-                  "uppercase"
+                fontSize: "12px",
+                color: COLOR_DORADO,
+                fontWeight: "700",
+                textTransform: "uppercase"
               }}
             >
               Materiales usados:
@@ -1625,30 +1292,18 @@ export default function TecnicoInspeccionExtra() {
             <input
               type="text"
               style={{
-                backgroundColor:
-                  "rgba(11, 19, 32, 0.8)",
-                border:
-                  BORDE_DORADO_FINO,
-                borderRadius:
-                  "12px",
-                padding:
-                  "12px",
-                color:
-                  "#fff",
-                fontSize:
-                  "13px",
-                outline:
-                  "none",
-                boxSizing:
-                  "border-box"
+                backgroundColor: "rgba(11, 19, 32, 0.8)",
+                border: BORDE_DORADO_FINO,
+                borderRadius: "12px",
+                padding: "12px",
+                color: "#fff",
+                fontSize: "13px",
+                outline: "none",
+                boxSizing: "border-box"
               }}
-              value={
-                materiales
-              }
+              value={materiales}
               onChange={(e) =>
-                setMateriales(
-                  e.target.value
-                )
+                setMateriales(e.target.value)
               }
               placeholder="Ej: Tubo de PVC, silicona, tornillos..."
             />
@@ -1656,24 +1311,17 @@ export default function TecnicoInspeccionExtra() {
 
           <div
             style={{
-              display:
-                "flex",
-              flexDirection:
-                "column",
-              gap:
-                "6px"
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px"
             }}
           >
             <label
               style={{
-                fontSize:
-                  "12px",
-                color:
-                  COLOR_DORADO,
-                fontWeight:
-                  "700",
-                textTransform:
-                  "uppercase"
+                fontSize: "12px",
+                color: COLOR_DORADO,
+                fontWeight: "700",
+                textTransform: "uppercase"
               }}
             >
               Tiempo empleado:
@@ -1682,30 +1330,18 @@ export default function TecnicoInspeccionExtra() {
             <input
               type="text"
               style={{
-                backgroundColor:
-                  "rgba(11, 19, 32, 0.8)",
-                border:
-                  BORDE_DORADO_FINO,
-                borderRadius:
-                  "12px",
-                padding:
-                  "12px",
-                color:
-                  "#fff",
-                fontSize:
-                  "13px",
-                outline:
-                  "none",
-                boxSizing:
-                  "border-box"
+                backgroundColor: "rgba(11, 19, 32, 0.8)",
+                border: BORDE_DORADO_FINO,
+                borderRadius: "12px",
+                padding: "12px",
+                color: "#fff",
+                fontSize: "13px",
+                outline: "none",
+                boxSizing: "border-box"
               }}
-              value={
-                tiempo
-              }
+              value={tiempo}
               onChange={(e) =>
-                setTiempo(
-                  e.target.value
-                )
+                setTiempo(e.target.value)
               }
               placeholder="Ej: 2 horas"
             />
@@ -1716,75 +1352,61 @@ export default function TecnicoInspeccionExtra() {
             disabled={
               saving ||
               !clienteId ||
-              !viviendaId ||
-              !precio
+              !viviendaId
             }
             style={{
               background:
                 saving ||
                 !clienteId ||
-                !viviendaId ||
-                !precio
+                !viviendaId
                   ? "rgba(255,255,255,0.08)"
                   : "linear-gradient(135deg, #10b981 0%, #047857 100%)",
 
               color:
                 saving ||
                 !clienteId ||
-                !viviendaId ||
-                !precio
+                !viviendaId
                   ? "#64748b"
                   : "#fff",
 
               border:
                 saving ||
                 !clienteId ||
-                !viviendaId ||
-                !precio
+                !viviendaId
                   ? BORDE_DORADO_FINO
                   : "1px solid rgba(16, 185, 129, 0.6)",
 
-              padding:
-                "14px",
-              borderRadius:
-                "16px",
-              fontSize:
-                "14px",
-              fontWeight:
-                "900",
+              padding: "14px",
+              borderRadius: "16px",
+              fontSize: "14px",
+              fontWeight: "900",
 
               cursor:
                 saving ||
                 !clienteId ||
-                !viviendaId ||
-                !precio
+                !viviendaId
                   ? "not-allowed"
                   : "pointer",
 
-              marginTop:
-                "10px",
-              textTransform:
-                "uppercase",
-              letterSpacing:
-                "0.5px",
+              marginTop: "10px",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
 
               boxShadow:
                 saving ||
                 !clienteId ||
-                !viviendaId ||
-                !precio
+                !viviendaId
                   ? "none"
                   : "0 4px 15px rgba(16, 185, 129, 0.3)",
 
-              transition:
-                "all 0.2s ease"
+              transition: "all 0.2s ease"
             }}
           >
             {saving
               ? "Guardando..."
               : extraData
-              ? "✅ Actualizar Extra y Enviar"
-              : "✅ Crear Extra y Enviar"}
+              ? "✅ Actualizar inspección y enviar"
+              : "✅ Completar inspección y enviar"}
           </button>
         </form>
       </div>
