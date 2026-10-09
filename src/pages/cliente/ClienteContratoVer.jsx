@@ -243,12 +243,17 @@ export default function ClienteContratoVer() {
   };
 
   const manejarPagoStripe = async () => {
+    // Stripe debe cobrar el total fiscal guardado en el contrato.
+    // No se calcula ni se añade IVA desde esta pantalla.
+    const totalGuardado = Number(contrato?.precio_total);
+
     if (
-      !contrato?.precio ||
-      Number(contrato.precio) <= 0
+      contrato?.precio_total == null ||
+      !Number.isFinite(totalGuardado) ||
+      totalGuardado <= 0
     ) {
       alert(
-        "Este contrato no tiene un precio mensual válido configurado."
+        "Este contrato no tiene un total mensual con IVA válido guardado. Contacta con el administrador antes de pagar."
       );
       return;
     }
@@ -259,7 +264,7 @@ export default function ClienteContratoVer() {
       localStorage.setItem("contrato_pago_id", id);
 
       const amountInCents = Math.round(
-        Number(contrato.precio) * 100
+        totalGuardado * 100
       );
 
       const customerEmail =
@@ -473,6 +478,41 @@ export default function ClienteContratoVer() {
     );
   }
 
+  if (!contrato) {
+    return (
+      <Menu>
+        <div
+          style={{
+            minHeight: "100vh",
+            background: FONDO_PRINCIPAL,
+            color: "#fff",
+            padding: "20px",
+            fontFamily: "Inter, sans-serif"
+          }}
+        >
+          <h2 style={TEXTO_DORADO}>
+            No se ha podido cargar el contrato.
+          </h2>
+          <button
+            onClick={() => navigate(-1)}
+            style={botonEstilo}
+          >
+            Volver
+          </button>
+        </div>
+      </Menu>
+    );
+  }
+
+  const precioBase = Number(contrato.precio);
+  const ivaGuardado = Number(contrato.iva);
+  const totalGuardado = Number(contrato.precio_total);
+
+  const formatoEuro = (valor) =>
+    Number.isFinite(valor)
+      ? `${valor.toFixed(2)} €`
+      : "—";
+
   return (
     <Menu>
       <div
@@ -563,12 +603,51 @@ export default function ClienteContratoVer() {
             {contrato.frecuencia || 30} {t("dias")}
           </p>
 
-          <p style={{ margin: "6px 0" }}>
-            <strong>{t("precioMensual")}:</strong>{" "}
-            {contrato.precio != null
-              ? `${contrato.precio} €`
-              : "—"}
-          </p>
+          {/* Importes fiscales: se muestran los valores guardados. */}
+          <div
+            style={{
+              marginTop: "16px",
+              marginBottom: "18px",
+              padding: "14px",
+              borderRadius: "10px",
+              border: "1px solid rgba(224, 176, 52, 0.25)",
+              background: "rgba(10, 15, 26, 0.55)"
+            }}
+          >
+            <p style={{ margin: "6px 0" }}>
+              <strong>Precio base mensual:</strong>{" "}
+              {formatoEuro(precioBase)}
+            </p>
+
+            <p style={{ margin: "6px 0" }}>
+              <strong>IVA (21%):</strong>{" "}
+              {contrato.iva != null
+                ? formatoEuro(ivaGuardado)
+                : "No registrado"}
+            </p>
+
+            <div
+              style={{
+                borderTop: "1px solid rgba(224, 176, 52, 0.35)",
+                marginTop: "12px",
+                paddingTop: "12px"
+              }}
+            >
+              <p
+                style={{
+                  margin: "6px 0",
+                  fontSize: "18px",
+                  fontWeight: "700",
+                  color: COLOR_DORADO
+                }}
+              >
+                Total mensual con IVA:{" "}
+                {contrato.precio_total != null
+                  ? formatoEuro(totalGuardado)
+                  : "No registrado"}
+              </p>
+            </div>
+          </div>
 
           <p style={{ margin: "6px 0" }}>
             <strong>{t("fechaInicio")}:</strong>{" "}
@@ -625,8 +704,9 @@ export default function ClienteContratoVer() {
           </button>
 
           {!yaPagado &&
-            contrato.precio != null &&
-            Number(contrato.precio) > 0 && (
+            contrato.precio_total != null &&
+            Number.isFinite(totalGuardado) &&
+            totalGuardado > 0 && (
               <button
                 onClick={manejarPagoStripe}
                 disabled={pagandoStripe}
@@ -640,7 +720,9 @@ export default function ClienteContratoVer() {
               >
                 {pagandoStripe
                   ? "Conectando con Stripe..."
-                  : `💳 Suscribirse y Pagar (${contrato.precio} €/mes)`}
+                  : `💳 Suscribirse y Pagar (${formatoEuro(
+                      totalGuardado
+                    )}/mes, IVA incluido)`}
               </button>
             )}
 
