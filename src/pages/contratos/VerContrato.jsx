@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 
 export default function VerContrato() {
   const { id } = useParams();
@@ -9,6 +10,7 @@ export default function VerContrato() {
 
   const [contrato, setContrato] = useState(null);
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [firmaUrlSegura, setFirmaUrlSegura] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
   const [generando, setGenerando] = useState(false);
@@ -19,29 +21,31 @@ export default function VerContrato() {
   }, [id]);
 
   const resolverPdfUrl = async (valor) => {
-    if (!valor) return null;
-
-    // Data URI generada por la Edge Function actual.
-    if (/^data:/i.test(valor)) {
-      return valor;
-    }
-
-    // URLs completas antiguas o URLs firmadas ya generadas.
-    if (/^https?:\/\//i.test(valor)) {
-      return valor;
-    }
-
-    // Ruta de Storage: generar URL firmada temporal.
-    const { data, error } = await supabase.storage
-      .from("contratos")
-      .createSignedUrl(valor, 3600);
-
-    if (error || !data?.signedUrl) {
-      console.error("Error generando URL firmada del contrato:", error);
+    if (typeof valor !== "string" || !valor.trim()) {
       return null;
     }
 
-    return data.signedUrl;
+    const referencia = valor.trim();
+
+    // Compatibilidad con PDF devueltos como Data URI.
+    if (/^data:/i.test(referencia)) {
+      return referencia;
+    }
+
+    // Convierte rutas o URL antiguas de Storage en URL temporal.
+    try {
+      return await resolverUrlPdfSegura(
+        referencia,
+        "contratos",
+        3600
+      );
+    } catch (error) {
+      console.error(
+        "Error resolviendo URL del PDF del contrato:",
+        error
+      );
+      return null;
+    }
   };
 
   const cargarContrato = async () => {
@@ -146,7 +150,8 @@ export default function VerContrato() {
     }
   };
 
-  // Botón Azul: Pone el contrato a disposición del rol cliente para que pueda firmarlo (SIN ENVÍO DE EMAIL)
+  // Pone el contrato a disposición del rol cliente para que pueda firmarlo.
+  // No envía ningún correo.
   const enviarAlRolCliente = async () => {
     try {
       setEnviando(true);
@@ -234,7 +239,61 @@ export default function VerContrato() {
     };
   };
 
-  const firmaUrl = contrato?.firma_cliente || contrato?.firma_url;
+  const firmaUrlOriginal =
+    contrato?.firma_cliente || contrato?.firma_url || null;
+
+  // Resolver también la firma si está guardada en Storage.
+  useEffect(() => {
+    let cancelado = false;
+
+    const resolverFirma = async () => {
+      setFirmaUrlSegura(null);
+
+      if (
+        typeof firmaUrlOriginal !== "string" ||
+        !firmaUrlOriginal.trim()
+      ) {
+        return;
+      }
+
+      const referencia = firmaUrlOriginal.trim();
+
+      // Mantener compatibilidad con firmas guardadas como Data URI.
+      if (/^data:/i.test(referencia)) {
+        if (!cancelado) {
+          setFirmaUrlSegura(referencia);
+        }
+        return;
+      }
+
+      try {
+        const url = await resolverUrlPdfSegura(
+          referencia,
+          "firmas",
+          3600
+        );
+
+        if (!cancelado) {
+          setFirmaUrlSegura(url);
+        }
+      } catch (error) {
+        console.error(
+          "Error resolviendo la firma del cliente:",
+          error
+        );
+
+        if (!cancelado) {
+          setFirmaUrlSegura(null);
+        }
+      }
+    };
+
+    resolverFirma();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [firmaUrlOriginal]);
 
   return (
     <Menu>
@@ -414,13 +473,12 @@ export default function VerContrato() {
                 </p>
 
                 {/* PREVISUALIZACIÓN DE LA FIRMA EN EL PANEL ADMIN */}
-                {firmaUrl ? (
+                {firmaUrlOriginal ? (
                   <div
                     style={{
                       marginTop: "12px",
                       padding: "10px",
-                      background:
-                        "rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.08)",
                       borderRadius: "10px",
                     }}
                   >
@@ -434,16 +492,28 @@ export default function VerContrato() {
                       ✍️ Firma del Cliente Registrada:
                     </p>
 
-                    <img
-                      src={firmaUrl}
-                      alt="Firma cliente"
-                      style={{
-                        maxHeight: "80px",
-                        background: "#fff",
-                        padding: "4px",
-                        borderRadius: "6px",
-                      }}
-                    />
+                    {firmaUrlSegura ? (
+                      <img
+                        src={firmaUrlSegura}
+                        alt="Firma cliente"
+                        style={{
+                          maxHeight: "80px",
+                          maxWidth: "100%",
+                          background: "#fff",
+                          padding: "4px",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    ) : (
+                      <p
+                        style={{
+                          color: "#fbbf24",
+                          fontSize: "13px",
+                        }}
+                      >
+                        No se ha podido cargar la imagen de la firma.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <p
@@ -513,12 +583,10 @@ export default function VerContrato() {
                 onClick={abrirPDF}
                 style={{
                   padding: "12px",
-                  background:
-                    "rgba(255,255,255,0.15)",
+                  background: "rgba(255,255,255,0.15)",
                   color: "#fff",
                   borderRadius: "10px",
-                  border:
-                    "1px solid rgba(255,255,255,0.3)",
+                  border: "1px solid rgba(255,255,255,0.3)",
                   fontWeight: "700",
                   cursor: "pointer",
                 }}
