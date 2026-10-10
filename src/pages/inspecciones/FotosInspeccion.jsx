@@ -2,7 +2,12 @@ import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import {
+  Camera,
+  CameraResultType,
+  CameraSource,
+} from "@capacitor/camera";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 
 export default function FotosInspeccion() {
   const { id } = useParams();
@@ -14,15 +19,24 @@ export default function FotosInspeccion() {
   const [fotoGrande, setFotoGrande] = useState(null);
 
   useEffect(() => {
-    cargarFotosInspeccion();
+    let cancelado = false;
+
+    async function cargar() {
+      await cargarFotosInspeccion(() => cancelado);
+    }
+
+    cargar();
+
+    return () => {
+      cancelado = true;
+    };
   }, [id]);
 
-  async function cargarFotosInspeccion() {
+  async function cargarFotosInspeccion(estaCancelado = () => false) {
     setLoading(true);
     setMensaje("");
 
     try {
-      // 1️⃣ Consultar los registros de la base de datos
       const { data, error } = await supabase
         .from("fotos_inspeccion")
         .select("*")
@@ -30,39 +44,58 @@ export default function FotosInspeccion() {
         .order("id", { ascending: false });
 
       if (error) {
-        console.error("Error BD fotos:", error);
-        setMensaje("Error cargando fotos: " + error.message);
-        setLoading(false);
-        return;
+        throw error;
       }
 
-      // 2️⃣ Mapear y asegurar que cada foto tenga una URL pública válida
-      const fotosProcesadas = (data || []).map((foto) => {
-        let urlFinal = foto.url;
+      const fotosProcesadas = await Promise.all(
+        (data || []).map(async (foto) => {
+          const referencia =
+            foto.archivo ||
+            foto.url_storage_o_path ||
+            foto.url ||
+            "";
 
-        // Si no hay URL directa o el path guardado es relativo, reconstruir con Supabase Storage
-        if (!urlFinal || !urlFinal.startsWith("http")) {
-          const nombreArchivo = foto.archivo || foto.url_storage_o_path;
-          if (nombreArchivo) {
-            const { data: pubUrl } = supabase.storage
-              .from("fotos")
-              .getPublicUrl(nombreArchivo);
-            urlFinal = pubUrl?.publicUrl || "";
+          let urlFinal = "";
+
+          if (referencia) {
+            try {
+              urlFinal = await resolverUrlPdfSegura(
+                referencia,
+                "fotos",
+                3600
+              );
+            } catch (errorUrl) {
+              console.error(
+                "Error resolviendo URL de foto:",
+                foto.id,
+                errorUrl
+              );
+            }
           }
-        }
 
-        return {
-          ...foto,
-          url: urlFinal,
-        };
-      });
+          return {
+            ...foto,
+            url: urlFinal || "",
+          };
+        })
+      );
 
-      setFotos(fotosProcesadas);
+      if (!estaCancelado()) {
+        setFotos(fotosProcesadas);
+      }
     } catch (err) {
-      console.error("Error inesperado al cargar fotos:", err);
-      setMensaje("Error al procesar la galería de fotos.");
+      console.error("Error cargando fotos:", err);
+
+      if (!estaCancelado()) {
+        setMensaje(
+          "Error cargando fotos: " +
+            (err.message || "Error desconocido")
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!estaCancelado()) {
+        setLoading(false);
+      }
     }
   }
 
@@ -82,35 +115,30 @@ export default function FotosInspeccion() {
       const blob = await (await fetch(base64)).blob();
       const nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
 
-      // Subir archivo físico al Storage
       const { error: storageError } = await supabase.storage
         .from("fotos")
         .upload(nombreArchivo, blob, {
           contentType: "image/jpeg",
-          upsert: true,
+          upsert: false,
         });
 
       if (storageError) {
         console.error("Storage Error:", storageError);
-        setMensaje("Error al subir imagen al servidor: " + storageError.message);
+        setMensaje(
+          "Error al subir imagen al servidor: " +
+            storageError.message
+        );
         return;
       }
 
-      // Obtener URL pública
-      const { data: urlData } = supabase.storage
-        .from("fotos")
-        .getPublicUrl(nombreArchivo);
-
-      const publicUrl = urlData?.publicUrl || "";
-
-      // Guardar referencia en la tabla fotos_inspeccion
+      // Guardamos la ruta interna, no una URL pública.
       const { error: insertError } = await supabase
         .from("fotos_inspeccion")
         .insert([
           {
             inspeccion_id: String(id),
             archivo: nombreArchivo,
-            url: publicUrl,
+            url: nombreArchivo,
             principal: false,
             tipo: "inspeccion",
           },
@@ -118,15 +146,30 @@ export default function FotosInspeccion() {
 
       if (insertError) {
         console.error("Insert Error:", insertError);
-        setMensaje("Error guardando en BD: " + insertError.message);
+
+        // Evitar dejar archivos huérfanos si falla el registro.
+        const { error: errorEliminar } = await supabase.storage
+          .from("fotos")
+          .remove([nombreArchivo]);
+
+        if (errorEliminar) {
+          console.error(
+            "No se pudo limpiar la foto subida:",
+            errorEliminar
+          );
+        }
+
+        setMensaje(
+          "Error guardando en BD: " + insertError.message
+        );
         return;
       }
 
       setMensaje("¡Foto subida con éxito! ✔");
-      setTimeout(() => setMensaje(""), 3000);
 
-      // Recargar lista
-      cargarFotosInspeccion();
+      await cargarFotosInspeccion();
+
+      setTimeout(() => setMensaje(""), 3000);
     } catch (e) {
       console.error("Error en cámara:", e);
       setMensaje("Operación de cámara cancelada o con error.");
@@ -134,47 +177,92 @@ export default function FotosInspeccion() {
   }
 
   async function borrarFoto(foto) {
-    if (!window.confirm("¿Seguro que quieres eliminar esta foto?")) return;
-
-    // 1. Borrar de la base de datos
-    const { error } = await supabase
-      .from("fotos_inspeccion")
-      .delete()
-      .eq("id", foto.id);
-
-    if (error) {
-      setMensaje("Error al eliminar foto de la base de datos");
+    if (!window.confirm("¿Seguro que quieres eliminar esta foto?")) {
       return;
     }
 
-    // 2. Intentar borrar del Storage si existe el nombre de archivo
-    if (foto.archivo) {
-      await supabase.storage.from("fotos").remove([foto.archivo]);
-    }
+    try {
+      const { error } = await supabase
+        .from("fotos_inspeccion")
+        .delete()
+        .eq("id", foto.id);
 
-    cargarFotosInspeccion();
+      if (error) {
+        throw error;
+      }
+
+      if (foto.archivo) {
+        const { error: errorStorage } = await supabase.storage
+          .from("fotos")
+          .remove([foto.archivo]);
+
+        if (errorStorage) {
+          console.error(
+            "No se pudo eliminar el archivo de Storage:",
+            errorStorage
+          );
+          setMensaje(
+            "Registro eliminado, pero no se pudo borrar el archivo almacenado."
+          );
+          await cargarFotosInspeccion();
+          return;
+        }
+      }
+
+      if (fotoGrande?.id === foto.id) {
+        setFotoGrande(null);
+      }
+
+      setMensaje("Foto eliminada correctamente.");
+      await cargarFotosInspeccion();
+    } catch (err) {
+      console.error("Error eliminando foto:", err);
+      setMensaje(
+        "Error al eliminar foto: " +
+          (err.message || "Error desconocido")
+      );
+    }
   }
 
   async function marcarPrincipal(foto) {
-    await supabase
-      .from("fotos_inspeccion")
-      .update({ principal: false })
-      .eq("inspeccion_id", String(id));
+    try {
+      const { error: errorQuitar } = await supabase
+        .from("fotos_inspeccion")
+        .update({ principal: false })
+        .eq("inspeccion_id", String(id));
 
-    await supabase
-      .from("fotos_inspeccion")
-      .update({ principal: true })
-      .eq("id", foto.id);
+      if (errorQuitar) {
+        throw errorQuitar;
+      }
 
-    cargarFotosInspeccion();
+      const { error: errorMarcar } = await supabase
+        .from("fotos_inspeccion")
+        .update({ principal: true })
+        .eq("id", foto.id);
+
+      if (errorMarcar) {
+        throw errorMarcar;
+      }
+
+      await cargarFotosInspeccion();
+    } catch (err) {
+      console.error("Error marcando foto principal:", err);
+      setMensaje(
+        "No se pudo marcar la foto como principal."
+      );
+    }
   }
 
   return (
     <Menu>
       <div style={contenedor}>
-        <h1 style={titulo}>Galería de Fotos de la Inspección</h1>
+        <h1 style={titulo}>
+          Galería de Fotos de la Inspección
+        </h1>
 
-        {mensaje && <p style={mensajeEstilo}>{mensaje}</p>}
+        {mensaje && (
+          <p style={mensajeEstilo}>{mensaje}</p>
+        )}
 
         <button onClick={subirFoto} style={botonSubir}>
           📸 Tomar foto
@@ -182,7 +270,16 @@ export default function FotosInspeccion() {
 
         {fotoGrande && (
           <div style={contenedorGrande}>
-            <img src={fotoGrande.url} alt="Grande" style={imagenGrandeEstilo} />
+            {fotoGrande.url ? (
+              <img
+                src={fotoGrande.url}
+                alt="Foto ampliada de la inspección"
+                style={imagenGrandeEstilo}
+              />
+            ) : (
+              <p>No se pudo cargar esta foto.</p>
+            )}
+
             <button
               onClick={() => setFotoGrande(null)}
               style={botonCerrarGrande}
@@ -204,37 +301,64 @@ export default function FotosInspeccion() {
           <div style={grid}>
             {fotos.map((foto) => (
               <div key={foto.id} style={card}>
-                <img
-                  src={foto.url}
-                  alt="Inspección"
-                  style={{
-                    width: "100%",
-                    height: "120px",
-                    objectFit: "cover",
-                    borderRadius: "10px",
-                    border: foto.principal
-                      ? "3px solid #4ade80"
-                      : "2px solid #4db8ff",
-                    marginBottom: "10px",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setFotoGrande(foto)}
-                  onError={(e) => {
-                    console.error("Error al renderizar imagen:", foto.url);
-                    e.target.src =
-                      "https://via.placeholder.com/150?text=Error+Carga";
-                  }}
-                />
+                {foto.url ? (
+                  <img
+                    src={foto.url}
+                    alt="Inspección"
+                    style={{
+                      width: "100%",
+                      height: "120px",
+                      objectFit: "cover",
+                      borderRadius: "10px",
+                      border: foto.principal
+                        ? "3px solid #4ade80"
+                        : "2px solid #4db8ff",
+                      marginBottom: "10px",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setFotoGrande(foto)}
+                    onError={() => {
+                      console.error(
+                        "Error al renderizar imagen:",
+                        foto.id
+                      );
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      height: "120px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: "10px",
+                      color: "#a0aec0",
+                      background: "rgba(255,255,255,0.05)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    Foto no disponible
+                  </div>
+                )}
+
                 <button
                   onClick={() => marcarPrincipal(foto)}
                   style={{
                     ...boton,
-                    background: foto.principal ? "#4ade80" : "#4db8ff",
+                    background: foto.principal
+                      ? "#4ade80"
+                      : "#4db8ff",
                   }}
                 >
-                  {foto.principal ? "Principal ✔" : "Hacer principal"}
+                  {foto.principal
+                    ? "Principal ✔"
+                    : "Hacer principal"}
                 </button>
-                <button onClick={() => borrarFoto(foto)} style={botonEliminar}>
+
+                <button
+                  onClick={() => borrarFoto(foto)}
+                  style={botonEliminar}
+                >
                   Eliminar
                 </button>
               </div>
@@ -242,9 +366,10 @@ export default function FotosInspeccion() {
           </div>
         )}
 
-        {/* RUTAS CORREGIDAS PARA ROL TÉCNICO */}
         <button
-          onClick={() => navigate(`/tecnico/inspeccion/${id}/checklist`)}
+          onClick={() =>
+            navigate(`/tecnico/inspeccion/${id}/checklist`)
+          }
           style={botonContinuar}
         >
           Ir a Checklist ➔
@@ -269,6 +394,7 @@ const contenedor = {
   fontFamily: "Inter, sans-serif",
   paddingBottom: "100px",
 };
+
 const titulo = {
   fontSize: "22px",
   fontWeight: "700",
@@ -276,12 +402,15 @@ const titulo = {
   color: "#4db8ff",
   textAlign: "center",
 };
+
 const mensajeEstilo = {
   marginBottom: "15px",
   color: "#4db8ff",
   fontWeight: "600",
   textAlign: "center",
+  overflowWrap: "anywhere",
 };
+
 const botonSubir = {
   width: "100%",
   padding: "14px",
@@ -294,6 +423,7 @@ const botonSubir = {
   cursor: "pointer",
   marginBottom: "20px",
 };
+
 const contenedorGrande = {
   marginBottom: "25px",
   textAlign: "center",
@@ -301,6 +431,7 @@ const contenedorGrande = {
   padding: "20px",
   borderRadius: "14px",
 };
+
 const imagenGrandeEstilo = {
   width: "100%",
   maxHeight: "400px",
@@ -308,6 +439,7 @@ const imagenGrandeEstilo = {
   borderRadius: "10px",
   marginBottom: "15px",
 };
+
 const botonCerrarGrande = {
   padding: "12px",
   background: "#4db8ff",
@@ -318,12 +450,19 @@ const botonCerrarGrande = {
   fontWeight: "700",
   width: "100%",
 };
-const vacioEstilo = { textAlign: "center", color: "#a0aec0", margin: "20px 0" };
+
+const vacioEstilo = {
+  textAlign: "center",
+  color: "#a0aec0",
+  margin: "20px 0",
+};
+
 const grid = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
   gap: "20px",
 };
+
 const card = {
   background: "rgba(255,255,255,0.05)",
   padding: "12px",
@@ -331,6 +470,7 @@ const card = {
   border: "1px solid rgba(255,255,255,0.1)",
   textAlign: "center",
 };
+
 const boton = {
   width: "100%",
   padding: "10px",
@@ -341,6 +481,7 @@ const boton = {
   cursor: "pointer",
   marginBottom: "8px",
 };
+
 const botonEliminar = {
   width: "100%",
   padding: "12px",
@@ -351,6 +492,7 @@ const botonEliminar = {
   fontWeight: "700",
   cursor: "pointer",
 };
+
 const botonContinuar = {
   marginTop: "30px",
   padding: "14px",
@@ -363,6 +505,7 @@ const botonContinuar = {
   fontSize: "17px",
   cursor: "pointer",
 };
+
 const botonVolver = {
   marginTop: "12px",
   padding: "14px",
