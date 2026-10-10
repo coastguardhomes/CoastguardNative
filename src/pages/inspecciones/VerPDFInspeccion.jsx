@@ -1,29 +1,20 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 import Menu from "../../layouts/Menu";
 
 const BUCKET_PDFS = "pdfs";
 const BUCKET_LEGACY = "pdf_inspecciones";
 
-function obtenerUrlPdf(valor) {
+async function obtenerUrlPdf(valor) {
   if (!valor || typeof valor !== "string") return null;
 
   const valorLimpio = valor.trim();
   if (!valorLimpio) return null;
 
-  // Si ya está guardada una URL completa, conservarla.
-  if (/^https?:\/\//i.test(valorLimpio)) {
-    return valorLimpio;
-  }
-
-  // Si solo está guardada la ruta, usar el bucket actual.
-  const { data } = supabase.storage
-    .from(BUCKET_PDFS)
-    .getPublicUrl(valorLimpio.replace(/^\/+/, ""));
-
-  return data?.publicUrl || null;
+  // Convierte rutas o URL antiguas de Storage en enlaces temporales.
+  return await resolverUrlPdfSegura(valorLimpio, BUCKET_PDFS, 3600);
 }
 
 async function buscarPdfAntiguo(id) {
@@ -45,7 +36,7 @@ async function buscarPdfAntiguo(id) {
     },
   ];
 
-  // Los archivos antiguos pueden tener cualquiera de estos nombres.
+  // Intentar recuperar los archivos históricos por sus nombres conocidos.
   for (const candidato of candidatos) {
     const { data, error } = await supabase.storage
       .from(candidato.bucket)
@@ -56,7 +47,7 @@ async function buscarPdfAntiguo(id) {
     }
   }
 
-  // Los informes actuales se guardan con una marca de tiempo.
+  // Los informes actuales pueden llevar una marca de tiempo en el nombre.
   const { data: archivos, error: errorLista } = await supabase.storage
     .from(BUCKET_PDFS)
     .list("inspecciones", {
@@ -115,6 +106,7 @@ export default function VerPDFInspeccion() {
 
         if (error) {
           console.error("Error consultando la inspección:", error);
+
           throw new Error(
             "No se pudo consultar la inspección. Comprueba tus permisos e inténtalo de nuevo."
           );
@@ -124,9 +116,9 @@ export default function VerPDFInspeccion() {
           throw new Error("No se encontró la inspección solicitada.");
         }
 
-        let url = obtenerUrlPdf(inspeccion.pdf_url);
+        let url = await obtenerUrlPdf(inspeccion.pdf_url);
 
-        // Si no hay URL guardada, intentar recuperar el documento antiguo.
+        // Si no hay una URL utilizable, intentar recuperar el documento antiguo.
         if (!url) {
           url = await buscarPdfAntiguo(id);
         }
@@ -145,6 +137,7 @@ export default function VerPDFInspeccion() {
         if (cancelado) return;
 
         console.error("Error cargando PDF de inspección:", error);
+
         setMensaje(
           error?.message || "Se produjo un error al cargar el PDF."
         );
