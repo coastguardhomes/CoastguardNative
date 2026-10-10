@@ -16,12 +16,12 @@ export default function AvisosCobro() {
   const [facturas, setFacturas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [pdfUrls, setPdfUrls] = useState({});
 
   useEffect(() => {
     let cancelado = false;
 
     async function cargarFacturas() {
-      // Mantenemos la tabla interna de Supabase 'facturas' por estructura, pero comercialmente es un Aviso de Cobro
       const { data, error: errorFacturas } = await supabase
         .from("facturas")
         .select("*")
@@ -33,17 +33,95 @@ export default function AvisosCobro() {
         console.error("Error cargando avisos de cobro:", errorFacturas);
         setError("No se pudieron cargar los avisos de cobro.");
       } else {
-        setFacturas(data || []);
+        const listaFacturas = data || [];
+        setFacturas(listaFacturas);
+
+        // Preparar enlaces temporales para los PDF con ruta de Storage.
+        const entradasPdf = await Promise.all(
+          listaFacturas
+            .filter((factura) => factura.pdf_storage_path)
+            .map(async (factura) => {
+              const { data: signedData, error: signedError } =
+                await supabase.storage
+                  .from("facturas")
+                  .createSignedUrl(factura.pdf_storage_path, 3600);
+
+              if (signedError) {
+                console.error(
+                  "Error generando enlace temporal del PDF de la factura:",
+                  factura.id,
+                  signedError
+                );
+
+                return [String(factura.id), null];
+              }
+
+              return [
+                String(factura.id),
+                signedData?.signedUrl || null,
+              ];
+            })
+        );
+
+        if (!cancelado) {
+          setPdfUrls(Object.fromEntries(entradasPdf));
+        }
       }
 
-      setLoading(false);
+      if (!cancelado) {
+        setLoading(false);
+      }
     }
 
-    cargarFacturas();
+    cargarFacturas().catch((errorCarga) => {
+      console.error("Error cargando avisos de cobro:", errorCarga);
+
+      if (!cancelado) {
+        setError("No se pudieron cargar los avisos de cobro.");
+        setLoading(false);
+      }
+    });
+
     return () => {
       cancelado = true;
     };
   }, []);
+
+  const handleVerPDF = async (factura, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      let url = factura.pdf_storage_path
+        ? pdfUrls[String(factura.id)]
+        : factura.pdf_url;
+
+      // Reintentar si no se pudo generar el enlace durante la carga.
+      if (!url && factura.pdf_storage_path) {
+        const { data, error: signedError } = await supabase.storage
+          .from("facturas")
+          .createSignedUrl(factura.pdf_storage_path, 3600);
+
+        if (signedError) {
+          throw signedError;
+        }
+
+        url = data?.signedUrl || null;
+      }
+
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        alert(
+          "No se pudo obtener el documento. Comprueba tus permisos e inténtalo de nuevo."
+        );
+      }
+    } catch (errorPdf) {
+      console.error("Error abriendo el PDF de la factura:", errorPdf);
+
+      alert("No se pudo abrir el documento. Inténtalo de nuevo.");
+    }
+  };
 
   const totalPendiente = facturas
     .filter((f) => f.estado !== "pagada")
@@ -67,6 +145,7 @@ export default function AvisosCobro() {
                 <span style={estilos.valor}>{facturas.length}</span>
                 <span style={estilos.clave}>Avisos</span>
               </div>
+
               <div style={estilos.dato}>
                 <span style={{ ...estilos.valor, color: COLOR_DORADO }}>
                   {totalPendiente.toFixed(2)} €
@@ -83,18 +162,35 @@ export default function AvisosCobro() {
               >
                 <div style={estilos.tarjeta}>
                   <div style={estilos.cabeceraTarjeta}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={estilos.numero}>{f.numero || `#${f.id}`}</span>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <span style={estilos.numero}>
+                        {f.numero || `#${f.id}`}
+                      </span>
+
                       {f.estado_tecnico === "completado" && (
-                        <span style={estilos.badgeTecnico}>📸 Inspección Lista</span>
+                        <span style={estilos.badgeTecnico}>
+                          📸 Inspección Lista
+                        </span>
                       )}
                     </div>
+
                     <span
                       style={{
                         ...estilos.estado,
-                        color: f.estado === "pagada" || f.estado === "finalizado" ? "#34d399" : COLOR_DORADO,
+                        color:
+                          f.estado === "pagada" ||
+                          f.estado === "finalizado"
+                            ? "#34d399"
+                            : COLOR_DORADO,
                         borderColor:
-                          f.estado === "pagada" || f.estado === "finalizado"
+                          f.estado === "pagada" ||
+                          f.estado === "finalizado"
                             ? "rgba(52, 211, 153, 0.4)"
                             : "rgba(224, 176, 52, 0.4)",
                       }}
@@ -103,17 +199,35 @@ export default function AvisosCobro() {
                     </span>
                   </div>
 
-                  <Fila clave="Fecha" valor={String(f.fecha || "").slice(0, 10)} />
-                  <Fila clave="Base" valor={`${Number(f.base || 0).toFixed(2)} €`} />
-                  <Fila clave="IVA" valor={`${Number(f.iva || 0).toFixed(2)} €`} />
-                  <Fila clave="Total" valor={`${Number(f.total || 0).toFixed(2)} €`} destacado />
-                  {f.descripcion && <Fila clave="Concepto" valor={f.descripcion} />}
+                  <Fila
+                    clave="Fecha"
+                    valor={String(f.fecha || "").slice(0, 10)}
+                  />
 
-                  {f.pdf_url && (
-                    <a
-                      href={f.pdf_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                  <Fila
+                    clave="Base"
+                    valor={`${Number(f.base || 0).toFixed(2)} €`}
+                  />
+
+                  <Fila
+                    clave="IVA"
+                    valor={`${Number(f.iva || 0).toFixed(2)} €`}
+                  />
+
+                  <Fila
+                    clave="Total"
+                    valor={`${Number(f.total || 0).toFixed(2)} €`}
+                    destacado
+                  />
+
+                  {f.descripcion && (
+                    <Fila clave="Concepto" valor={f.descripcion} />
+                  )}
+
+                  {(f.pdf_storage_path || f.pdf_url) && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleVerPDF(f, e)}
                       style={{
                         marginTop: "10px",
                         display: "inline-block",
@@ -125,10 +239,11 @@ export default function AvisosCobro() {
                         fontWeight: "700",
                         fontSize: "12px",
                         textAlign: "center",
+                        cursor: "pointer",
                       }}
                     >
                       📄 Ver Documento
-                    </a>
+                    </button>
                   )}
                 </div>
               </Link>
@@ -136,7 +251,10 @@ export default function AvisosCobro() {
           </>
         )}
 
-        <button onClick={() => navigate("/facturas/crear")} style={estilos.boton}>
+        <button
+          onClick={() => navigate("/facturas/crear")}
+          style={estilos.boton}
+        >
           + Nuevo aviso de cobro
         </button>
 
@@ -147,7 +265,11 @@ export default function AvisosCobro() {
           >
             Estadísticas
           </button>
-          <button onClick={() => navigate("/extras")} style={estilos.botonSec}>
+
+          <button
+            onClick={() => navigate("/extras")}
+            style={estilos.botonSec}
+          >
             Servicios extra
           </button>
         </div>
@@ -160,6 +282,7 @@ function Fila({ clave, valor, destacado }) {
   return (
     <div style={estilos.fila}>
       <span style={estilos.claveFila}>{clave}</span>
+
       <span
         style={{
           ...estilos.valorFila,
@@ -192,10 +315,10 @@ const estilos = {
     textAlign: "center",
     textTransform: "uppercase",
   },
-  resumen: { 
-    display: "flex", 
-    gap: "12px", 
-    marginBottom: "16px" 
+  resumen: {
+    display: "flex",
+    gap: "12px",
+    marginBottom: "16px",
   },
   dato: {
     flex: 1,
@@ -210,17 +333,17 @@ const estilos = {
     gap: "4px",
     boxSizing: "border-box",
   },
-  valor: { 
-    fontSize: "18px", 
-    fontWeight: "900", 
-    color: "#fff" 
+  valor: {
+    fontSize: "18px",
+    fontWeight: "900",
+    color: "#fff",
   },
-  clave: { 
-    fontSize: "11px", 
-    color: COLOR_DORADO, 
-    fontWeight: "700", 
+  clave: {
+    fontSize: "11px",
+    color: COLOR_DORADO,
+    fontWeight: "700",
     textTransform: "uppercase",
-    letterSpacing: "0.5px"
+    letterSpacing: "0.5px",
   },
   tarjeta: {
     background: FONDO_TARJETA,
@@ -237,10 +360,10 @@ const estilos = {
     alignItems: "center",
     marginBottom: "10px",
   },
-  numero: { 
-    fontSize: "15px", 
-    fontWeight: "900", 
-    color: COLOR_DORADO 
+  numero: {
+    fontSize: "15px",
+    fontWeight: "900",
+    color: COLOR_DORADO,
   },
   badgeTecnico: {
     fontSize: "10px",
@@ -271,14 +394,14 @@ const estilos = {
     fontWeight: "700",
     textTransform: "uppercase",
   },
-  valorFila: { 
-    textAlign: "right" 
+  valorFila: {
+    textAlign: "right",
   },
-  texto: { 
-    color: "#aaa", 
-    fontSize: "13px", 
+  texto: {
+    color: "#aaa",
+    fontSize: "13px",
     marginBottom: "12px",
-    textAlign: "center" 
+    textAlign: "center",
   },
   boton: {
     width: "100%",
@@ -296,10 +419,10 @@ const estilos = {
     boxShadow: "0 4px 15px rgba(56, 189, 248, 0.3)",
     boxSizing: "border-box",
   },
-  acciones: { 
-    display: "flex", 
-    gap: "10px", 
-    marginTop: "12px" 
+  acciones: {
+    display: "flex",
+    gap: "10px",
+    marginTop: "12px",
   },
   botonSec: {
     flex: 1,
