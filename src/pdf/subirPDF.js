@@ -3,6 +3,10 @@ import { supabase } from "../lib/supabase";
 /**
  * Sube un PDF a Supabase y guarda su URL en la inspección.
  * Compatible con WEB + APP.
+ *
+ * Mantiene `url` con el formato antiguo para no romper los
+ * componentes existentes y devuelve `signedUrl` como alternativa
+ * temporal para acceder al PDF cuando el bucket sea privado.
  */
 export async function subirPDF(inspeccionId, pdfBlob) {
   if (!inspeccionId || !pdfBlob) {
@@ -27,15 +31,18 @@ export async function subirPDF(inspeccionId, pdfBlob) {
   }
 
   // Comprobar la firma real del PDF: %PDF-
-  // Esto también permite archivos móviles cuyo MIME viene vacío.
+  // También permite archivos móviles cuyo MIME viene vacío.
   let firmaPDFValida = false;
 
   try {
     const primerosBytes = pdfBlob.slice(0, 5);
 
     if (typeof primerosBytes.text === "function") {
-      firmaPDFValida = (await primerosBytes.text()) === "%PDF-";
-    } else if (typeof primerosBytes.arrayBuffer === "function") {
+      firmaPDFValida =
+        (await primerosBytes.text()) === "%PDF-";
+    } else if (
+      typeof primerosBytes.arrayBuffer === "function"
+    ) {
       const bytes = new Uint8Array(
         await primerosBytes.arrayBuffer()
       );
@@ -64,12 +71,14 @@ export async function subirPDF(inspeccionId, pdfBlob) {
   }
 
   // Verificar que la inspección existe.
-  const { data: inspeccion, error: inspeccionError } =
-    await supabase
-      .from("inspecciones")
-      .select("id")
-      .eq("id", inspeccionId)
-      .maybeSingle();
+  const {
+    data: inspeccion,
+    error: inspeccionError,
+  } = await supabase
+    .from("inspecciones")
+    .select("id")
+    .eq("id", inspeccionId)
+    .maybeSingle();
 
   if (inspeccionError || !inspeccion) {
     return {
@@ -99,11 +108,14 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     return {
       ok: false,
       mensaje: "Error subiendo PDF",
-      error: uploadError.message || "Error de almacenamiento",
+      error:
+        uploadError.message ||
+        "Error de almacenamiento",
     };
   }
 
-  // Se mantiene la URL pública para no cambiar el flujo actual.
+  // Mantener el formato antiguo de la URL guardada.
+  // Generar esta URL no hace público un bucket privado.
   const { data: urlData } = supabase.storage
     .from(bucket)
     .getPublicUrl(filePath);
@@ -119,29 +131,63 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     };
   }
 
-  // Guardar la URL en la inspección.
+  // Guardar pdf_url para conservar la compatibilidad existente.
   // No incluir firmado_en: esa columna no existe en inspecciones.
-  const { error: updateError } = await supabase
-    .from("inspecciones")
-    .update({
-      pdf_url: publicUrl,
-    })
-    .eq("id", inspeccionId);
+  const { data: inspeccionActualizada, error: updateError } =
+    await supabase
+      .from("inspecciones")
+      .update({
+        pdf_url: publicUrl,
+      })
+      .eq("id", inspeccionId)
+      .select("id, pdf_url")
+      .maybeSingle();
 
-  if (updateError) {
+  if (updateError || !inspeccionActualizada) {
     return {
       ok: false,
       mensaje:
-        "PDF subido, pero hubo un error guardando la URL en la inspección",
-      error: updateError.message || "Error actualizando la inspección",
+        "PDF subido, pero no se pudo confirmar el guardado en la inspección",
+      error:
+        updateError?.message ||
+        "La base de datos no confirmó la actualización. Comprueba los permisos de la inspección.",
       filePath,
     };
+  }
+
+  // Intentar generar un enlace temporal para el bucket privado.
+  // Es adicional: no cambia el valor de `url` que esperan
+  // los componentes existentes.
+  let signedUrl = null;
+
+  try {
+    const {
+      data: signedData,
+      error: signedError,
+    } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(filePath, 3600);
+
+    if (signedError) {
+      console.warn(
+        "El PDF se guardó, pero no se pudo generar el enlace temporal:",
+        signedError.message
+      );
+    } else {
+      signedUrl = signedData?.signedUrl || null;
+    }
+  } catch (errorFirma) {
+    console.warn(
+      "No se pudo generar el enlace temporal del PDF:",
+      errorFirma
+    );
   }
 
   return {
     ok: true,
     mensaje: "PDF subido y guardado correctamente",
     url: publicUrl,
+    signedUrl,
     id: inspeccionId,
     filePath,
     mime: "application/pdf",
