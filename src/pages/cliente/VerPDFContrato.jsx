@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -14,7 +15,7 @@ export default function VerPDFContrato() {
   const [pdfURL, setPdfURL] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Seguridad: comprobar acceso al contrato mediante RLS
+  // Comprobar que el usuario puede acceder al contrato mediante RLS.
   useEffect(() => {
     let cancelado = false;
 
@@ -22,6 +23,7 @@ export default function VerPDFContrato() {
       if (!user) {
         if (!cancelado) {
           setLoading(false);
+          setPdfURL("");
         }
         return;
       }
@@ -30,7 +32,7 @@ export default function VerPDFContrato() {
         .from("contratos")
         .select("id")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
       if (!cancelado && (error || !data)) {
         navigate("/cliente/dashboard");
@@ -44,135 +46,99 @@ export default function VerPDFContrato() {
     };
   }, [user, id, navigate]);
 
-  const cargarPDF = async () => {
-    try {
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarPDF() {
       setLoading(true);
+      setPdfURL("");
 
-      if (!user) {
-        setPdfURL("");
-        return;
-      }
+      try {
+        if (!user || !id) {
+          return;
+        }
 
-      const { data, error } = await supabase
-        .from("contratos")
-        .select("pdf_url")
-        .eq("id", id)
-        .single();
+        const { data, error } = await supabase
+          .from("contratos")
+          .select("pdf_url")
+          .eq("id", id)
+          .maybeSingle();
 
-      if (error || !data?.pdf_url) {
-        console.error(
-          "Error o sin PDF en contrato:",
-          error
-        );
-
-        setPdfURL("");
-        return;
-      }
-
-      let filePath = data.pdf_url;
-
-      /*
-       * Los registros antiguos pueden contener:
-       *
-       * https://.../storage/v1/object/public/contratos/archivo.pdf
-       *
-       * o:
-       *
-       * contratos/archivo.pdf
-       *
-       * o directamente:
-       *
-       * archivo.pdf
-       *
-       * Convertimos todo a una ruta interna del bucket.
-       */
-
-      if (/^https?:\/\//i.test(filePath)) {
-        try {
-          const url = new URL(filePath);
-
-          const marker =
-            "/storage/v1/object/public/contratos/";
-
-          const index =
-            url.pathname.indexOf(marker);
-
-          if (index !== -1) {
-            filePath = decodeURIComponent(
-              url.pathname.substring(
-                index + marker.length
-              )
-            );
-          }
-        } catch (e) {
+        if (error) {
           console.error(
-            "No se pudo interpretar la URL antigua del contrato:",
-            e
+            "Error consultando el PDF del contrato:",
+            error
+          );
+          return;
+        }
+
+        if (!data?.pdf_url) {
+          console.info(
+            "El contrato todavía no tiene PDF generado."
+          );
+          return;
+        }
+
+        const valor = data.pdf_url.trim();
+
+        if (!valor) {
+          return;
+        }
+
+        let url;
+
+        // Compatibilidad con contratos antiguos cuyo PDF se
+        // guardó directamente como Data URI.
+        if (/^data:/i.test(valor)) {
+          url = valor;
+        } else {
+          // Resuelve rutas internas y URL antiguas de Storage,
+          // incluidas las públicas, firmadas o autenticadas.
+          // Genera una URL temporal válida durante una hora.
+          url = await resolverUrlPdfSegura(
+            valor,
+            "contratos",
+            3600
           );
         }
+
+        if (cancelado) {
+          return;
+        }
+
+        if (!url) {
+          console.error(
+            "No se pudo generar el enlace temporal del contrato."
+          );
+          return;
+        }
+
+        setPdfURL(url);
+      } catch (err) {
+        if (!cancelado) {
+          console.error(
+            "Error cargando PDF del contrato:",
+            err
+          );
+          setPdfURL("");
+        }
+      } finally {
+        if (!cancelado) {
+          setLoading(false);
+        }
       }
-
-      filePath = filePath.replace(
-        /^contratos\//,
-        ""
-      );
-
-      filePath = filePath.replace(
-        /^\/+/,
-        ""
-      );
-
-      if (!filePath) {
-        setPdfURL("");
-        return;
-      }
-
-      /*
-       * Crear URL firmada válida durante 1 hora.
-       *
-       * El acceso a Storage privado queda protegido por
-       * las políticas RLS del bucket.
-       */
-      const {
-        data: signedData,
-        error: signedError,
-      } = await supabase.storage
-        .from("contratos")
-        .createSignedUrl(
-          filePath,
-          3600
-        );
-
-      if (
-        signedError ||
-        !signedData?.signedUrl
-      ) {
-        console.error(
-          "Error creando URL firmada:",
-          signedError
-        );
-
-        setPdfURL("");
-        return;
-      }
-
-      setPdfURL(signedData.signedUrl);
-    } catch (err) {
-      console.error(
-        "Error crítico cargando PDF del contrato:",
-        err
-      );
-
-      setPdfURL("");
-    } finally {
-      setLoading(false);
     }
-  };
 
-  useEffect(() => {
     if (user && id) {
       cargarPDF();
+    } else {
+      setPdfURL("");
+      setLoading(false);
     }
+
+    return () => {
+      cancelado = true;
+    };
   }, [user, id]);
 
   if (loading) {
@@ -238,8 +204,7 @@ export default function VerPDFContrato() {
             marginBottom: "25px",
             fontSize: "28px",
             fontWeight: "700",
-            textShadow:
-              "0 0 8px rgba(0,153,255,0.6)",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
           {t("pdfTituloVista")} #{id}
@@ -265,14 +230,11 @@ export default function VerPDFContrato() {
 
         <div
           style={{
-            background:
-              "rgba(255,255,255,0.05)",
+            background: "rgba(255,255,255,0.05)",
             padding: "10px",
             borderRadius: "14px",
-            border:
-              "1px solid rgba(255,255,255,0.1)",
-            boxShadow:
-              "0 0 12px rgba(0,153,255,0.2)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
             marginBottom: "20px",
           }}
         >
@@ -290,12 +252,9 @@ export default function VerPDFContrato() {
         </div>
 
         <button
-          onClick={() =>
-            window.open(
-              pdfURL,
-              "_blank"
-            )
-          }
+          onClick={() => {
+            window.open(pdfURL, "_blank", "noopener,noreferrer");
+          }}
           style={{
             width: "100%",
             padding: "12px",
@@ -306,8 +265,7 @@ export default function VerPDFContrato() {
             cursor: "pointer",
             fontWeight: "700",
             fontSize: "16px",
-            boxShadow:
-              "0 0 10px rgba(0,153,255,0.4)",
+            boxShadow: "0 0 10px rgba(0,153,255,0.4)",
           }}
         >
           {t("pdfAbrirNuevaPestana")}
