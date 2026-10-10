@@ -1,100 +1,66 @@
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 
-serve(async (_req) => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+Deno.serve(async (req: Request) => {
+  try {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
 
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+    if (!token) {
+      return new Response(JSON.stringify({ ok: false, error: "No autenticado" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
-  // 1) Obtener contratos activos
-  const { data: contratos, error: contratosError } = await supabase
-    .from("contratos")
-    .select("id, cliente_id, vivienda_id, tecnico_id, frecuencia, fecha_inicio, fecha_fin")
-    .eq("estado", "activo");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
 
-  if (contratosError) {
-    console.error("Error obteniendo contratos:", contratosError);
-    return new Response("Error obteniendo contratos", { status: 500 });
-  }
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
 
-  if (!contratos || contratos.length === 0) {
-    console.log("No hay contratos activos");
-    return new Response("OK (sin contratos activos)", { status: 200 });
-  }
+    if (userError || !userData.user) {
+      return new Response(JSON.stringify({ ok: false, error: "Sesión no válida" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
-  for (const contrato of contratos) {
-    const contratoId = contrato.id;
-    const frecuencia = contrato.frecuencia; // semanal | quincenal | mensual
-    const clienteId = contrato.cliente_id;
-    const viviendaId = contrato.vivienda_id;
-    const tecnicoId = contrato.tecnico_id;
-
-    // 2) Última inspección
-    const { data: ultimaInspeccion, error: ultimaError } = await supabase
-      .from("inspecciones")
-      .select("id, fecha")
-      .eq("contrato_id", contratoId)
-      .order("fecha", { ascending: false })
-      .limit(1)
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("rol")
+      .eq("id", userData.user.id)
       .maybeSingle();
 
-    if (ultimaError) {
-      console.error(`Error obteniendo última inspección contrato ${contratoId}:`, ultimaError);
-      continue;
-    }
-
-    let fechaReferencia: Date;
-
-    if (ultimaInspeccion && ultimaInspeccion.fecha) {
-      fechaReferencia = new Date(ultimaInspeccion.fecha);
-    } else if (contrato.fecha_inicio) {
-      fechaReferencia = new Date(contrato.fecha_inicio);
-    } else {
-      fechaReferencia = new Date(hoy);
-    }
-
-    fechaReferencia.setHours(0, 0, 0, 0);
-
-    // 3) Calcular próxima inspección
-    const proxima = new Date(fechaReferencia);
-
-    if (frecuencia === "semanal") {
-      proxima.setDate(proxima.getDate() + 7);
-    } else if (frecuencia === "quincenal") {
-      proxima.setDate(proxima.getDate() + 14);
-    } else if (frecuencia === "mensual") {
-      proxima.setMonth(proxima.getMonth() + 1);
-    } else {
-      console.log(`Frecuencia desconocida en contrato ${contratoId}:`, frecuencia);
-      continue;
-    }
-
-    proxima.setHours(0, 0, 0, 0);
-
-    // 4) Si toca inspección → crearla
-    if (proxima <= hoy) {
-      console.log(`Creando inspección automática para contrato ${contratoId}`);
-
-      const { error: insertError } = await supabase.from("inspecciones").insert({
-        contrato_id: contratoId,
-        cliente_id: clienteId,
-        vivienda_id: viviendaId,
-        tecnico_id: tecnicoId,
-        fecha: proxima.toISOString().slice(0, 10),
-        estado: "pendiente",
-        origen: "automatico",
+    if (profileError || profile?.rol !== "admin") {
+      return new Response(JSON.stringify({ ok: false, error: "No autorizado" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
       });
-
-      if (insertError) {
-        console.error(`Error creando inspección para contrato ${contratoId}:`, insertError);
-      }
-    } else {
-      console.log(`Aún no toca inspección para contrato ${contratoId}`);
     }
-  }
 
-  return new Response("OK (inspecciones automáticas procesadas)", { status: 200 });
+    const { data, error } = await supabase.rpc("generar_avisos_inspeccion_admin");
+
+    if (error) {
+      console.error("Error generando avisos de inspección:", error);
+      return new Response(JSON.stringify({ ok: false, error: error.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({
+      ok: true,
+      avisosCreados: data ?? 0,
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Error inesperado:", error);
+    return new Response(JSON.stringify({ ok: false, error: "Error interno" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 });
