@@ -3,53 +3,168 @@ import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 
 export default function TecnicoFotos() {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [fotos, setFotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subiendo, setSubiendo] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
-    if (id) cargarFotos();
+    let cancelado = false;
+
+    async function cargar() {
+      if (!id) {
+        setFotos([]);
+        setLoading(false);
+        setMensaje("No se ha indicado la inspección.");
+        return;
+      }
+
+      setLoading(true);
+      setMensaje("");
+
+      try {
+        const { data, error } = await supabase
+          .from("fotos_inspeccion")
+          .select("*")
+          .eq("inspeccion_id", String(id))
+          .order("id", { ascending: false });
+
+        if (error) throw error;
+
+        const fotosProcesadas = await Promise.all(
+          (data || []).map(async (foto) => {
+            const referencia =
+              foto.url ||
+              foto.foto_url ||
+              foto.archivo ||
+              foto.url_storage_o_path;
+
+            if (!referencia) {
+              return { ...foto, url: "" };
+            }
+
+            try {
+              const urlSegura = await resolverUrlPdfSegura(
+                referencia,
+                "fotos",
+                3600
+              );
+
+              return {
+                ...foto,
+                url: urlSegura || "",
+              };
+            } catch (errorFirma) {
+              console.error(
+                "Error resolviendo la foto:",
+                foto.id,
+                errorFirma
+              );
+
+              return { ...foto, url: "" };
+            }
+          })
+        );
+
+        if (!cancelado) {
+          setFotos(fotosProcesadas);
+
+          if (fotosProcesadas.some((foto) => !foto.url)) {
+            setMensaje(
+              "Algunas fotos no se han podido cargar. Comprueba los permisos de Storage."
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error al cargar fotos:", error);
+
+        if (!cancelado) {
+          setMensaje(
+            "Error al cargar fotos: " +
+              (error?.message || "Error desconocido")
+          );
+        }
+      } finally {
+        if (!cancelado) {
+          setLoading(false);
+        }
+      }
+    }
+
+    cargar();
+
+    return () => {
+      cancelado = true;
+    };
   }, [id]);
 
   async function cargarFotos() {
+    if (!id) return;
+
     setLoading(true);
-    setMensaje("");
 
-    const { data, error } = await supabase
-      .from("fotos_inspeccion")
-      .select("*")
-      .eq("inspeccion_id", String(id))
-      .order("id", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("fotos_inspeccion")
+        .select("*")
+        .eq("inspeccion_id", String(id))
+        .order("id", { ascending: false });
 
-    if (error) {
-      console.error("Error al cargar fotos:", error);
-      setMensaje("Error al cargar fotos: " + error.message);
-    } else {
-      // Garantizar que la URL pública sea válida
-      const fotosProcesadas = (data || []).map((f) => {
-        let urlFinal = f.url || f.foto_url;
-        if (!urlFinal || !urlFinal.startsWith("http")) {
-          const archivo = f.archivo || f.url_storage_o_path;
-          if (archivo) {
-            const { data: pubUrl } = supabase.storage
-              .from("fotos")
-              .getPublicUrl(archivo);
-            urlFinal = pubUrl?.publicUrl || "";
+      if (error) throw error;
+
+      const fotosProcesadas = await Promise.all(
+        (data || []).map(async (foto) => {
+          const referencia =
+            foto.url ||
+            foto.foto_url ||
+            foto.archivo ||
+            foto.url_storage_o_path;
+
+          if (!referencia) {
+            return { ...foto, url: "" };
           }
-        }
-        return { ...f, url: urlFinal };
-      });
+
+          try {
+            const urlSegura = await resolverUrlPdfSegura(
+              referencia,
+              "fotos",
+              3600
+            );
+
+            return { ...foto, url: urlSegura || "" };
+          } catch (errorFirma) {
+            console.error(
+              "Error generando URL firmada:",
+              foto.id,
+              errorFirma
+            );
+
+            return { ...foto, url: "" };
+          }
+        })
+      );
+
       setFotos(fotosProcesadas);
+    } catch (error) {
+      console.error("Error actualizando la galería:", error);
+      setMensaje(
+        "Error al actualizar las fotos: " +
+          (error?.message || "Error desconocido")
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function tomarFoto(sourceType) {
+    if (subiendo) return;
+
     try {
       const image = await Camera.getPhoto({
         quality: 80,
@@ -63,75 +178,138 @@ export default function TecnicoFotos() {
       setSubiendo(true);
       setMensaje("Procesando y subiendo foto...");
 
-      const byteCharacters = atob(image.base64String);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      let fileName = null;
+
+      try {
+        const base64Clean = image.base64String.includes("base64,")
+          ? image.base64String.split("base64,")[1]
+          : image.base64String;
+
+        const byteCharacters = atob(base64Clean);
+        const byteNumbers = new Array(byteCharacters.length);
+
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+
+        const byteArray = new Uint8Array(byteNumbers);
+        const extension =
+          String(image.format || "jpeg").toLowerCase() === "png"
+            ? "png"
+            : "jpeg";
+        const contentType =
+          extension === "png" ? "image/png" : "image/jpeg";
+        const blob = new Blob([byteArray], { type: contentType });
+
+        fileName = `inspeccion_${id}_${Date.now()}.${extension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("fotos")
+          .upload(fileName, blob, {
+            contentType,
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Guardamos la ruta interna para que el archivo pueda
+        // utilizarse con un bucket privado y URLs firmadas.
+        const { error: dbError } = await supabase
+          .from("fotos_inspeccion")
+          .insert([
+            {
+              inspeccion_id: String(id),
+              archivo: fileName,
+              url: fileName,
+              tipo: "inspeccion",
+              principal: false,
+            },
+          ]);
+
+        if (dbError) {
+          const { error: removeError } = await supabase.storage
+            .from("fotos")
+            .remove([fileName]);
+
+          if (removeError) {
+            console.error(
+              "No se pudo retirar la foto tras fallar el registro:",
+              removeError
+            );
+          }
+
+          throw dbError;
+        }
+
+        setMensaje("¡Foto subida con éxito!");
+        await cargarFotos();
+      } catch (error) {
+        console.error("Error al guardar la foto:", error);
+
+        setMensaje(
+          "Error al guardar la foto: " +
+            (error?.message || "Error desconocido")
+        );
       }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: `image/${image.format}` });
-
-      const fileName = `inspeccion_${id}_${Date.now()}.${image.format}`;
-
-      // 1️⃣ Subir al bucket unificado "fotos"
-      const { error: uploadError } = await supabase.storage
-        .from("fotos")
-        .upload(fileName, blob, { contentType: `image/${image.format}`, upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      // 2️⃣ Obtener URL pública
-      const { data: publicUrlData } = supabase.storage
-        .from("fotos")
-        .getPublicUrl(fileName);
-
-      const publicUrl = publicUrlData?.publicUrl || "";
-
-      // 3️⃣ Insertar en la tabla unificada "fotos_inspeccion"
-      const { error: dbError } = await supabase.from("fotos_inspeccion").insert([
-        {
-          inspeccion_id: String(id),
-          archivo: fileName,
-          url: publicUrl,
-          tipo: "inspeccion",
-          principal: false,
-        },
-      ]);
-
-      if (dbError) throw dbError;
-
-      setMensaje("¡Foto subida con éxito!");
-      setTimeout(() => setMensaje(""), 3000);
-      cargarFotos();
     } catch (error) {
-      console.error("Error al capturar/subir la foto:", error);
-      setMensaje("Error al guardar la foto: " + (error.message || "Error desconocido"));
+      console.error("Error al capturar o seleccionar la foto:", error);
+
+      setMensaje(
+        "Cámara o galería cancelada o no disponible."
+      );
     } finally {
       setSubiendo(false);
     }
   }
 
   async function eliminarFoto(foto) {
-    if (!window.confirm("¿Seguro que deseas eliminar esta foto?")) return;
+    if (subiendo) return;
 
-    // 1️⃣ Eliminar registro en BD
-    const { error: dbError } = await supabase
-      .from("fotos_inspeccion")
-      .delete()
-      .eq("id", foto.id);
-
-    if (dbError) {
-      console.error("Error al eliminar foto de BD:", dbError);
-      setMensaje("Error al eliminar foto");
+    if (!window.confirm("¿Seguro que deseas eliminar esta foto?")) {
       return;
     }
 
-    // 2️⃣ Eliminar archivo del Storage si existe el nombre del archivo
-    if (foto.archivo) {
-      await supabase.storage.from("fotos").remove([foto.archivo]);
-    }
+    setMensaje("");
 
-    cargarFotos();
+    try {
+      // Primero eliminamos el registro. Si falla, conservamos
+      // el archivo de Storage para no dejar la foto sin referencia.
+      const { error: dbError } = await supabase
+        .from("fotos_inspeccion")
+        .delete()
+        .eq("id", foto.id);
+
+      if (dbError) throw dbError;
+
+      if (foto.archivo) {
+        const { error: storageError } = await supabase.storage
+          .from("fotos")
+          .remove([foto.archivo]);
+
+        if (storageError) {
+          console.error(
+            "No se pudo eliminar el archivo de Storage:",
+            storageError
+          );
+
+          setMensaje(
+            "El registro se eliminó, pero no se pudo borrar el archivo de Storage."
+          );
+          await cargarFotos();
+          return;
+        }
+      }
+
+      setMensaje("Foto eliminada correctamente.");
+      await cargarFotos();
+    } catch (error) {
+      console.error("Error al eliminar foto:", error);
+
+      setMensaje(
+        "Error al eliminar la foto: " +
+          (error?.message || "Error desconocido")
+      );
+    }
   }
 
   return (
@@ -173,8 +351,13 @@ export default function TecnicoFotos() {
           </p>
         )}
 
-        {/* Botones de acción unificados */}
-        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            marginBottom: "20px",
+          }}
+        >
           <button
             onClick={() => tomarFoto(CameraSource.Camera)}
             disabled={subiendo}
@@ -187,8 +370,9 @@ export default function TecnicoFotos() {
               border: "none",
               fontWeight: "700",
               fontSize: "15px",
-              cursor: "pointer",
+              cursor: subiendo ? "not-allowed" : "pointer",
               boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+              opacity: subiendo ? 0.7 : 1,
             }}
           >
             {subiendo ? "Subiendo..." : "📸 Tomar foto"}
@@ -206,8 +390,9 @@ export default function TecnicoFotos() {
               border: "none",
               fontWeight: "700",
               fontSize: "15px",
-              cursor: "pointer",
+              cursor: subiendo ? "not-allowed" : "pointer",
               boxShadow: "0 0 10px rgba(56,189,248,0.4)",
+              opacity: subiendo ? 0.7 : 1,
             }}
           >
             {subiendo ? "Subiendo..." : "🖼️ Galería"}
@@ -215,7 +400,13 @@ export default function TecnicoFotos() {
         </div>
 
         {loading ? (
-          <p style={{ textAlign: "center", opacity: 0.8, color: "#4db8ff" }}>
+          <p
+            style={{
+              textAlign: "center",
+              opacity: 0.8,
+              color: "#4db8ff",
+            }}
+          >
             Cargando fotos...
           </p>
         ) : fotos.length === 0 ? (
@@ -250,21 +441,40 @@ export default function TecnicoFotos() {
                   boxShadow: "0 0 8px rgba(0,153,255,0.2)",
                 }}
               >
-                <img
-                  src={f.url}
-                  alt="Foto Inspección"
-                  style={{
-                    width: "100%",
-                    height: "130px",
-                    objectFit: "cover",
-                  }}
-                  onError={(e) => {
-                    e.target.src =
-                      "https://via.placeholder.com/150?text=Error+Carga";
-                  }}
-                />
+                {f.url ? (
+                  <img
+                    src={f.url}
+                    alt="Foto de inspección"
+                    style={{
+                      width: "100%",
+                      height: "130px",
+                      objectFit: "cover",
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      height: "130px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "8px",
+                      textAlign: "center",
+                      fontSize: "12px",
+                      color: "#fbbf24",
+                    }}
+                  >
+                    No se pudo cargar la foto
+                  </div>
+                )}
+
                 <button
                   onClick={() => eliminarFoto(f)}
+                  disabled={subiendo}
+                  aria-label="Eliminar foto"
                   style={{
                     position: "absolute",
                     top: "6px",
@@ -277,7 +487,7 @@ export default function TecnicoFotos() {
                     height: "28px",
                     fontSize: "14px",
                     fontWeight: "bold",
-                    cursor: "pointer",
+                    cursor: subiendo ? "not-allowed" : "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -290,9 +500,10 @@ export default function TecnicoFotos() {
           </div>
         )}
 
-        {/* Botones de navegación del rol técnico */}
         <button
-          onClick={() => navigate(`/tecnico/inspeccion/${id}/finalizar`)}
+          onClick={() =>
+            navigate(`/tecnico/inspeccion/${id}/finalizar`)
+          }
           style={{
             marginTop: "10px",
             padding: "14px",
