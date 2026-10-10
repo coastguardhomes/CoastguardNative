@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
@@ -67,7 +68,8 @@ export default function BotonGenerarPDF({
           );
         }
 
-        // 4. Obtener la URL pública del archivo.
+        // 4. Conservar la URL histórica en la base de datos
+        // para no romper los componentes que aún la necesitan.
         const { data: urlData } = supabase.storage
           .from("pdfs")
           .getPublicUrl(filePath);
@@ -76,20 +78,37 @@ export default function BotonGenerarPDF({
 
         if (!publicUrl) {
           throw new Error(
-            "No se pudo obtener la URL del PDF."
+            "No se pudo obtener la referencia del PDF."
           );
         }
 
-        // 5. Guardar únicamente la columna existente pdf_url.
-        const { data: inspeccionActualizada, error: updateError } =
-          await supabase
-            .from("inspecciones")
-            .update({
-              pdf_url: publicUrl,
-            })
-            .eq("id", id)
-            .select("id, pdf_url")
-            .maybeSingle();
+        // 5. Generar un enlace temporal para abrir el PDF.
+        const {
+          data: signedData,
+          error: signedError,
+        } = await supabase.storage
+          .from("pdfs")
+          .createSignedUrl(filePath, 3600);
+
+        if (signedError || !signedData?.signedUrl) {
+          throw new Error(
+            signedError?.message ||
+              "No se pudo generar el enlace temporal del PDF. Comprueba los permisos de Storage."
+          );
+        }
+
+        // 6. Guardar únicamente la columna existente pdf_url.
+        const {
+          data: inspeccionActualizada,
+          error: updateError,
+        } = await supabase
+          .from("inspecciones")
+          .update({
+            pdf_url: publicUrl,
+          })
+          .eq("id", id)
+          .select("id, pdf_url")
+          .maybeSingle();
 
         if (updateError) {
           throw new Error(
@@ -103,12 +122,15 @@ export default function BotonGenerarPDF({
           );
         }
 
-        // 6. Avisar a la pantalla que el PDF ya está guardado.
+        // 7. Entregar a la pantalla el enlace temporal,
+        // no la URL pública antigua.
         if (typeof onGenerado === "function") {
-          onGenerado(publicUrl);
+          onGenerado(signedData.signedUrl);
         }
 
-        alert("Informe PDF de inspección generado y guardado correctamente.");
+        alert(
+          "Informe PDF generado y guardado correctamente."
+        );
       } else if (tipo === "contrato") {
         // FLUJO DE CONTRATOS: se conserva independiente.
 
@@ -124,7 +146,7 @@ export default function BotonGenerarPDF({
           );
         }
 
-        // Mantiene aquí el comportamiento original del proyecto.
+        // Mantiene el comportamiento original del proyecto.
         const blob = new Blob(["Contrato PDF #" + id], {
           type: "application/pdf",
         });
@@ -144,10 +166,12 @@ export default function BotonGenerarPDF({
           );
         }
 
-        const { data: signedData, error: signedError } =
-          await supabase.storage
-            .from("contratos")
-            .createSignedUrl(filePath, 3600);
+        const {
+          data: signedData,
+          error: signedError,
+        } = await supabase.storage
+          .from("contratos")
+          .createSignedUrl(filePath, 3600);
 
         if (signedError || !signedData?.signedUrl) {
           throw new Error(
