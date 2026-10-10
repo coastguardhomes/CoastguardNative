@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { resolverUrlPdf } from "../../lib/urlPdf";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 
 export default function VerPDF() {
   const { id } = useParams();
@@ -13,36 +13,96 @@ export default function VerPDF() {
   const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
+    let cancelado = false;
+
     async function cargarPDF() {
-      let query = supabase.from("inspecciones").select("id, pdf_url");
+      setLoading(true);
+      setPdfUrl(null);
+      setMensaje("");
 
-      // 🔥 Si recibimos un ID específico por ruta, lo filtramos; si no, pillamos el último
-      if (id) {
-        query = query.eq("id", id).maybeSingle();
-      } else {
-        query = query.not("pdf_url", "is", null).order("id", { ascending: false }).limit(1).maybeSingle();
+      try {
+        let query = supabase
+          .from("inspecciones")
+          .select("id, pdf_url");
+
+        // Si se recibe un ID, cargar esa inspección.
+        // Si no, conservar el comportamiento original:
+        // buscar la inspección más reciente que tenga PDF.
+        if (id) {
+          query = query.eq("id", id).maybeSingle();
+        } else {
+          query = query
+            .not("pdf_url", "is", null)
+            .order("id", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error("Error cargando PDF:", error);
+          throw new Error(
+            "No se pudo consultar el informe. Comprueba tus permisos e inténtalo de nuevo."
+          );
+        }
+
+        if (cancelado) return;
+
+        if (!data) {
+          setMensaje(
+            id
+              ? "No se encontró la inspección solicitada."
+              : "Todavía no hay ningún informe PDF disponible."
+          );
+          return;
+        }
+
+        if (!data.pdf_url) {
+          setMensaje(
+            "Todavía no hay ningún informe PDF generado para esta inspección."
+          );
+          return;
+        }
+
+        // Generar una URL temporal para el archivo almacenado.
+        // Se admiten las URL públicas antiguas y las rutas relativas.
+        const url = await resolverUrlPdfSegura(
+          data.pdf_url,
+          "pdfs",
+          3600
+        );
+
+        if (cancelado) return;
+
+        if (!url) {
+          throw new Error(
+            "No se pudo abrir el PDF. Puede que el archivo no exista o que tu usuario no tenga permiso para acceder a él."
+          );
+        }
+
+        setPdfUrl(url);
+      } catch (error) {
+        if (cancelado) return;
+
+        console.error("Error cargando PDF de inspección:", error);
+
+        setMensaje(
+          error?.message ||
+            "Se produjo un error al cargar el PDF."
+        );
+      } finally {
+        if (!cancelado) {
+          setLoading(false);
+        }
       }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Error cargando PDF:", error);
-        setMensaje("Error cargando PDF");
-        setLoading(false);
-        return;
-      }
-
-      if (!data?.pdf_url) {
-        setMensaje("Todavía no hay ningún informe PDF generado para esta inspección.");
-        setLoading(false);
-        return;
-      }
-
-      setPdfUrl(resolverUrlPdf(data.pdf_url));
-      setLoading(false);
     }
 
     cargarPDF();
+
+    return () => {
+      cancelado = true;
+    };
   }, [id]);
 
   return (
@@ -71,11 +131,13 @@ export default function VerPDF() {
 
         {mensaje && (
           <p
+            role="alert"
             style={{
               marginBottom: "15px",
               color: "#4db8ff",
               fontWeight: "600",
               textAlign: "center",
+              lineHeight: 1.6,
             }}
           >
             {mensaje}
@@ -83,9 +145,23 @@ export default function VerPDF() {
         )}
 
         {loading ? (
-          <p style={{ opacity: 0.8, textAlign: "center" }}>Cargando PDF...</p>
+          <p
+            style={{
+              opacity: 0.8,
+              textAlign: "center",
+            }}
+          >
+            Cargando PDF...
+          </p>
         ) : !pdfUrl ? (
-          <p style={{ opacity: 0.8, textAlign: "center" }}>No hay PDF disponible.</p>
+          <p
+            style={{
+              opacity: 0.8,
+              textAlign: "center",
+            }}
+          >
+            No hay ningún PDF disponible para mostrar.
+          </p>
         ) : (
           <div
             style={{
@@ -109,30 +185,35 @@ export default function VerPDF() {
               }}
             />
 
-            <a href={pdfUrl} download target="_blank" rel="noopener noreferrer" style={{ width: "100%", display: "block" }}>
-              <button
-                style={{
-                  marginTop: "20px",
-                  padding: "14px",
-                  width: "100%",
-                  background: "#4db8ff",
-                  color: "#000",
-                  borderRadius: "10px",
-                  border: "none",
-                  fontWeight: "700",
-                  fontSize: "17px",
-                  cursor: "pointer",
-                  boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-                }}
-              >
-                Descargar PDF
-              </button>
+            <a
+              href={pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                marginTop: "20px",
+                padding: "14px",
+                width: "100%",
+                display: "block",
+                boxSizing: "border-box",
+                background: "#4db8ff",
+                color: "#000",
+                borderRadius: "10px",
+                textAlign: "center",
+                textDecoration: "none",
+                fontWeight: "700",
+                fontSize: "17px",
+                cursor: "pointer",
+                boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+              }}
+            >
+              Abrir o descargar PDF
             </a>
           </div>
         )}
 
         {id && (
           <button
+            type="button"
             onClick={() => navigate(`/inspecciones/${id}`)}
             style={{
               marginTop: "10px",
