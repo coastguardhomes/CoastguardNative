@@ -1,3 +1,4 @@
+
 import { supabase } from "../lib/supabase";
 
 /**
@@ -81,11 +82,11 @@ export async function subirPDF(inspeccionId, pdfBlob) {
   const publicUrl = urlData.publicUrl;
 
   // GUARDAR URL EN LA INSPECCIÓN
+  // No incluir firmado_en: esa columna no existe en inspecciones.
   const { error: updateError } = await supabase
     .from("inspecciones")
     .update({
       pdf_url: publicUrl,
-      firmado_en: new Date().toISOString(),
     })
     .eq("id", inspeccionId);
 
