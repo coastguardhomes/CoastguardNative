@@ -4,6 +4,54 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 
+async function obtenerUrlPdfSegura(valor) {
+  if (!valor || typeof valor !== "string") {
+    return null;
+  }
+
+  const ruta = valor.trim();
+
+  if (!ruta) {
+    return null;
+  }
+
+  // Para URL antiguas de Supabase, el helper detecta el bucket
+  // original y genera un enlace temporal.
+  if (/^https?:\/\//i.test(ruta)) {
+    return resolverUrlPdfSegura(ruta, "pdfs", 3600);
+  }
+
+  const rutaLimpia = ruta.replace(/^\/+/, "");
+
+  // Si la ruta identifica explícitamente el bucket histórico,
+  // usar ese bucket en lugar de asumir que es "pdfs".
+  if (rutaLimpia.startsWith("pdf_inspecciones/")) {
+    return resolverUrlPdfSegura(
+      rutaLimpia,
+      "pdf_inspecciones",
+      3600
+    );
+  }
+
+  // Intentar primero el bucket actual.
+  const urlActual = await resolverUrlPdfSegura(
+    rutaLimpia,
+    "pdfs",
+    3600
+  );
+
+  if (urlActual) {
+    return urlActual;
+  }
+
+  // Compatibilidad con rutas relativas de archivos históricos.
+  return resolverUrlPdfSegura(
+    rutaLimpia,
+    "pdf_inspecciones",
+    3600
+  );
+}
+
 export default function VerPDF() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -26,8 +74,7 @@ export default function VerPDF() {
           .select("id, pdf_url");
 
         // Si se recibe un ID, cargar esa inspección.
-        // Si no, conservar el comportamiento original:
-        // buscar la inspección más reciente que tenga PDF.
+        // Si no, buscar la inspección más reciente que tenga PDF.
         if (id) {
           query = query.eq("id", id).maybeSingle();
         } else {
@@ -42,6 +89,7 @@ export default function VerPDF() {
 
         if (error) {
           console.error("Error cargando PDF:", error);
+
           throw new Error(
             "No se pudo consultar el informe. Comprueba tus permisos e inténtalo de nuevo."
           );
@@ -65,13 +113,9 @@ export default function VerPDF() {
           return;
         }
 
-        // Generar una URL temporal para el archivo almacenado.
-        // Se admiten las URL públicas antiguas y las rutas relativas.
-        const url = await resolverUrlPdfSegura(
-          data.pdf_url,
-          "pdfs",
-          3600
-        );
+        // Resolver URL públicas antiguas, rutas relativas y
+        // archivos guardados en buckets históricos o actuales.
+        const url = await obtenerUrlPdfSegura(data.pdf_url);
 
         if (cancelado) return;
 
