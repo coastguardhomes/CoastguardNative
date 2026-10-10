@@ -14,23 +14,12 @@ export default function VerInspeccion() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [inspeccion, setInspeccion] =
-    useState(null);
-
-  const [vivienda, setVivienda] =
-    useState(null);
-
-  const [fotos, setFotos] =
-    useState([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [errorMsg, setErrorMsg] =
-    useState("");
-
-  const [publicando, setPublicando] =
-    useState(false);
+  const [inspeccion, setInspeccion] = useState(null);
+  const [vivienda, setVivienda] = useState(null);
+  const [fotos, setFotos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [publicando, setPublicando] = useState(false);
 
   function formatearFecha(fechaISO) {
     if (!fechaISO) return "Sin fecha";
@@ -41,62 +30,155 @@ export default function VerInspeccion() {
       return "Sin fecha";
     }
 
-    const dia = String(
-      fecha.getDate()
-    ).padStart(2, "0");
-
-    const mes = String(
-      fecha.getMonth() + 1
-    ).padStart(2, "0");
-
+    const dia = String(fecha.getDate()).padStart(2, "0");
+    const mes = String(fecha.getMonth() + 1).padStart(2, "0");
     const año = fecha.getFullYear();
 
     return `${dia}/${mes}/${año}`;
   }
 
-  function obtenerUrlFoto(foto) {
-    if (!foto) return "";
-
-    if (
-      typeof foto.url === "string" &&
-      foto.url.startsWith("http")
-    ) {
-      return foto.url;
+  /*
+   * Convierte las rutas de Storage y las antiguas URL de Supabase
+   * en referencias que se pueden firmar para leer buckets privados.
+   */
+  function obtenerReferenciaStorage(valor) {
+    if (typeof valor !== "string" || !valor.trim()) {
+      return null;
     }
 
-    const archivo =
-      foto.archivo ||
-      foto.url_storage_o_path ||
-      (typeof foto.url === "string"
-        ? foto.url
-        : "");
+    const valorLimpio = valor.trim();
 
-    if (!archivo) {
-      return "";
+    if (/^https?:\/\//i.test(valorLimpio)) {
+      try {
+        const url = new URL(valorLimpio);
+        const partes = url.pathname.split("/").filter(Boolean);
+
+        const indiceStorage = partes.findIndex(
+          (parte, index) =>
+            parte === "storage" &&
+            partes[index + 1] === "v1" &&
+            partes[index + 2] === "object"
+        );
+
+        if (indiceStorage === -1) {
+          return null;
+        }
+
+        const tipoObjeto = partes[indiceStorage + 3];
+
+        if (
+          !["public", "sign", "authenticated"].includes(
+            tipoObjeto
+          )
+        ) {
+          return null;
+        }
+
+        const bucket = partes[indiceStorage + 4];
+        const partesArchivo = partes.slice(indiceStorage + 5);
+
+        if (!bucket || partesArchivo.length === 0) {
+          return null;
+        }
+
+        let ruta;
+
+        try {
+          ruta = partesArchivo
+            .map((parte) => decodeURIComponent(parte))
+            .join("/");
+        } catch {
+          ruta = partesArchivo.join("/");
+        }
+
+        if (!ruta) {
+          return null;
+        }
+
+        return {
+          bucket,
+          ruta,
+          clave: `${bucket}/${ruta}`,
+        };
+      } catch {
+        return null;
+      }
     }
 
-    if (archivo.startsWith("http")) {
-      return archivo;
-    }
+    const ruta = valorLimpio.replace(/^\/+/, "");
 
-    const { data } =
-      supabase.storage
-        .from("fotos")
-        .getPublicUrl(archivo);
-
-    return data?.publicUrl || "";
+    return {
+      bucket: "fotos",
+      ruta,
+      clave: `fotos/${ruta}`,
+    };
   }
 
-  function normalizarFoto(
-    foto,
-    index = 0
-  ) {
+  async function obtenerUrlFoto(foto) {
     if (!foto) return null;
 
-    const url =
-      obtenerUrlFoto(foto);
+    const candidatos = [
+      foto.archivo,
+      foto.url_storage_o_path,
+      foto.url,
+    ].filter(
+      (valor, index, lista) =>
+        typeof valor === "string" &&
+        valor.trim() &&
+        lista.indexOf(valor) === index
+    );
 
-    if (!url) {
+    for (const candidato of candidatos) {
+      const referencia = obtenerReferenciaStorage(candidato);
+
+      if (referencia) {
+        try {
+          const { data, error } = await supabase.storage
+            .from(referencia.bucket)
+            .createSignedUrl(referencia.ruta, 3600);
+
+          if (error) {
+            console.error(
+              "Error generando URL firmada para una foto:",
+              error
+            );
+            continue;
+          }
+
+          if (data?.signedUrl) {
+            return {
+              url: data.signedUrl,
+              clave: referencia.clave,
+            };
+          }
+        } catch (error) {
+          console.error(
+            "Error resolviendo foto de inspección:",
+            error
+          );
+        }
+
+        continue;
+      }
+
+      // Mantener las fotos externas que no proceden de Supabase Storage.
+      if (/^https?:\/\//i.test(candidato)) {
+        return {
+          url: candidato,
+          clave: candidato,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  async function normalizarFoto(foto, index = 0) {
+    if (!foto) return null;
+
+    const referencia = await obtenerUrlFoto(foto);
+
+    if (!referencia?.url) {
       return null;
     }
 
@@ -104,15 +186,21 @@ export default function VerInspeccion() {
       ...foto,
       id:
         foto.id ||
-        `foto-${index}-${url}`,
-      url,
+        `foto-${index}-${referencia.clave}`,
+      url: referencia.url,
+      claveFoto: referencia.clave,
     };
   }
 
   useEffect(() => {
+    let cancelado = false;
+
     async function cargarInspeccion() {
       setLoading(true);
       setErrorMsg("");
+      setInspeccion(null);
+      setVivienda(null);
+      setFotos([]);
 
       try {
         const {
@@ -130,36 +218,38 @@ export default function VerInspeccion() {
             error
           );
 
-          setErrorMsg(
-            "No se pudo cargar la inspección: " +
-            error.message
-          );
+          if (!cancelado) {
+            setErrorMsg(
+              "No se pudo cargar la inspección: " +
+                error.message
+            );
+          }
 
           return;
         }
 
         if (!data) {
-          setErrorMsg(
-            "No se encontró la inspección."
-          );
+          if (!cancelado) {
+            setErrorMsg(
+              "No se encontró la inspección."
+            );
+          }
 
           return;
         }
+
+        if (cancelado) return;
 
         setInspeccion(data);
 
         if (data.vivienda_id) {
           const {
             data: viviendaData,
-            error:
-              viviendaError,
+            error: viviendaError,
           } = await supabase
             .from("viviendas")
             .select("*")
-            .eq(
-              "id",
-              data.vivienda_id
-            )
+            .eq("id", data.vivienda_id)
             .maybeSingle();
 
           if (viviendaError) {
@@ -167,10 +257,8 @@ export default function VerInspeccion() {
               "Error cargando vivienda:",
               viviendaError
             );
-          } else if (viviendaData) {
-            setVivienda(
-              viviendaData
-            );
+          } else if (viviendaData && !cancelado) {
+            setVivienda(viviendaData);
           }
         }
 
@@ -180,10 +268,7 @@ export default function VerInspeccion() {
         } = await supabase
           .from("fotos_inspeccion")
           .select("*")
-          .eq(
-            "inspeccion_id",
-            String(id)
-          )
+          .eq("inspeccion_id", String(id))
           .order("id", {
             ascending: false,
           });
@@ -195,52 +280,44 @@ export default function VerInspeccion() {
           );
         }
 
-        const fotosTabla =
-          (fotosData || [])
-            .map(
+        const fotosTabla = (
+          await Promise.all(
+            (fotosData || []).map(
+              (foto, index) =>
+                normalizarFoto(foto, index)
+            )
+          )
+        ).filter(Boolean);
+
+        const fotosCampoOriginales = [];
+
+        if (Array.isArray(data.fotos)) {
+          data.fotos.forEach((foto) => {
+            const objeto =
+              typeof foto === "string"
+                ? {
+                    url: foto,
+                    archivo: foto,
+                  }
+                : foto;
+
+            if (objeto) {
+              fotosCampoOriginales.push(objeto);
+            }
+          });
+        }
+
+        const fotosCampo = (
+          await Promise.all(
+            fotosCampoOriginales.map(
               (foto, index) =>
                 normalizarFoto(
                   foto,
-                  index
+                  index + fotosTabla.length
                 )
             )
-            .filter(Boolean);
-
-        const fotosCampo = [];
-
-        if (
-          Array.isArray(
-            data.fotos
           )
-        ) {
-          data.fotos.forEach(
-            (foto, index) => {
-              const objeto =
-                typeof foto ===
-                "string"
-                  ? {
-                      url: foto,
-                      archivo: foto,
-                    }
-                  : foto;
-
-              const fotoNormalizada =
-                normalizarFoto(
-                  objeto,
-                  index +
-                    fotosTabla.length
-                );
-
-              if (
-                fotoNormalizada
-              ) {
-                fotosCampo.push(
-                  fotoNormalizada
-                );
-              }
-            }
-          );
-        }
+        ).filter(Boolean);
 
         const todasLasFotos = [
           ...fotosTabla,
@@ -248,64 +325,60 @@ export default function VerInspeccion() {
         ];
 
         const fotosUnicas = [];
-        const urlsVistas =
-          new Set();
+        const clavesVistas = new Set();
 
-        todasLasFotos.forEach(
-          (foto) => {
-            if (!foto?.url) {
-              return;
-            }
+        todasLasFotos.forEach((foto) => {
+          if (!foto?.url) return;
 
-            if (
-              urlsVistas.has(
-                foto.url
-              )
-            ) {
-              return;
-            }
+          const clave = foto.claveFoto || foto.url;
 
-            urlsVistas.add(
-              foto.url
-            );
+          if (clavesVistas.has(clave)) return;
 
-            fotosUnicas.push(
-              foto
-            );
-          }
-        );
+          clavesVistas.add(clave);
+          fotosUnicas.push(foto);
+        });
 
-        setFotos(
-          fotosUnicas
-        );
-
+        if (!cancelado) {
+          setFotos(fotosUnicas);
+        }
       } catch (error) {
         console.error(
           "Error general:",
           error
         );
 
-        setErrorMsg(
-          "Error cargando la inspección."
-        );
+        if (!cancelado) {
+          setErrorMsg(
+            "Error cargando la inspección."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelado) {
+          setLoading(false);
+        }
       }
     }
 
     if (id) {
       cargarInspeccion();
+    } else {
+      setErrorMsg(
+        "No se ha indicado el ID de la inspección."
+      );
+      setLoading(false);
     }
+
+    return () => {
+      cancelado = true;
+    };
   }, [id]);
 
   async function publicarParaCliente() {
-    if (!inspeccion) return;
+    if (!inspeccion || publicando) return;
 
     if (
-      inspeccion.estado !==
-        "completada_tecnico" ||
-      inspeccion.estado_tecnico !==
-        "completada"
+      inspeccion.estado !== "completada_tecnico" ||
+      inspeccion.estado_tecnico !== "completada"
     ) {
       setErrorMsg(
         "Esta inspección no está pendiente de revisión administrativa."
@@ -313,14 +386,11 @@ export default function VerInspeccion() {
       return;
     }
 
-    const confirmar =
-      window.confirm(
-        "¿Has revisado las fotos y observaciones y quieres enviar esta inspección al cliente?"
-      );
+    const confirmar = window.confirm(
+      "¿Has revisado las fotos y observaciones y quieres enviar esta inspección al cliente?"
+    );
 
-    if (!confirmar) {
-      return;
-    }
+    if (!confirmar) return;
 
     setPublicando(true);
     setErrorMsg("");
@@ -334,18 +404,11 @@ export default function VerInspeccion() {
         .update({
           estado: "finalizada",
           estado_admin: "aprobada",
-          fecha_finalizacion:
-            new Date().toISOString(),
+          fecha_finalizacion: new Date().toISOString(),
         })
         .eq("id", id)
-        .eq(
-          "estado",
-          "completada_tecnico"
-        )
-        .eq(
-          "estado_tecnico",
-          "completada"
-        )
+        .eq("estado", "completada_tecnico")
+        .eq("estado_tecnico", "completada")
         .select("*")
         .maybeSingle();
 
@@ -357,7 +420,7 @@ export default function VerInspeccion() {
 
         setErrorMsg(
           "No se pudo enviar la inspección al cliente: " +
-          error.message
+            error.message
         );
 
         return;
@@ -376,7 +439,6 @@ export default function VerInspeccion() {
       alert(
         "Inspección enviada al cliente correctamente."
       );
-
     } catch (error) {
       console.error(
         "Error publicando inspección:",
@@ -392,23 +454,18 @@ export default function VerInspeccion() {
   }
 
   async function eliminarInspeccion() {
-    const confirmar =
-      window.confirm(
-        "¿Seguro que deseas eliminar esta inspección?"
-      );
+    const confirmar = window.confirm(
+      "¿Seguro que deseas eliminar esta inspección?"
+    );
 
     if (!confirmar) return;
 
     const {
-      error:
-        checklistError,
+      error: checklistError,
     } = await supabase
       .from("checklist_inspeccion")
       .delete()
-      .eq(
-        "inspeccion_id",
-        id
-      );
+      .eq("inspeccion_id", id);
 
     if (checklistError) {
       console.error(
@@ -422,10 +479,7 @@ export default function VerInspeccion() {
     } = await supabase
       .from("fotos_inspeccion")
       .delete()
-      .eq(
-        "inspeccion_id",
-        id
-      );
+      .eq("inspeccion_id", id);
 
     if (fotosError) {
       console.error(
@@ -554,10 +608,8 @@ export default function VerInspeccion() {
     "Pendiente";
 
   const pendienteRevision =
-    inspeccion.estado ===
-      "completada_tecnico" &&
-    inspeccion.estado_tecnico ===
-      "completada";
+    inspeccion.estado === "completada_tecnico" &&
+    inspeccion.estado_tecnico === "completada";
 
   return (
     <Menu>
@@ -568,8 +620,7 @@ export default function VerInspeccion() {
           minHeight: "100vh",
           color: "#fff",
           paddingBottom: "80px",
-          fontFamily:
-            "Inter, sans-serif",
+          fontFamily: "Inter, sans-serif",
         }}
       >
         <h1
@@ -587,10 +638,8 @@ export default function VerInspeccion() {
               padding: "12px",
               marginBottom: "15px",
               borderRadius: "10px",
-              background:
-                "rgba(239,68,68,0.12)",
-              border:
-                "1px solid rgba(239,68,68,0.4)",
+              background: "rgba(239,68,68,0.12)",
+              border: "1px solid rgba(239,68,68,0.4)",
               color: "#f87171",
             }}
           >
@@ -600,10 +649,8 @@ export default function VerInspeccion() {
 
         <div
           style={{
-            background:
-              "rgba(255,255,255,0.05)",
-            border:
-              "1px solid rgba(77,184,255,0.25)",
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(77,184,255,0.25)",
             borderRadius: "12px",
             padding: "16px",
             marginBottom: "18px",
@@ -620,76 +667,54 @@ export default function VerInspeccion() {
           </h3>
 
           <p>
-            <strong>
-              Dirección:
-            </strong>{" "}
+            <strong>Dirección:</strong>{" "}
             {direccion}
           </p>
 
           <p>
-            <strong>
-              Localidad:
-            </strong>{" "}
+            <strong>Localidad:</strong>{" "}
             {localidad}
           </p>
 
-          {ciudad &&
-            ciudad !== localidad && (
-              <p>
-                <strong>
-                  Ciudad:
-                </strong>{" "}
-                {ciudad}
-              </p>
-            )}
+          {ciudad && ciudad !== localidad && (
+            <p>
+              <strong>Ciudad:</strong>{" "}
+              {ciudad}
+            </p>
+          )}
 
           {provincia && (
             <p>
-              <strong>
-                Provincia:
-              </strong>{" "}
+              <strong>Provincia:</strong>{" "}
               {provincia}
             </p>
           )}
 
           {codigoPostal && (
             <p>
-              <strong>
-                Código postal:
-              </strong>{" "}
+              <strong>Código postal:</strong>{" "}
               {codigoPostal}
             </p>
           )}
         </div>
 
         <p>
-          <strong>
-            Fecha:
-          </strong>{" "}
-          {formatearFecha(
-            inspeccion.fecha
-          )}
+          <strong>Fecha:</strong>{" "}
+          {formatearFecha(inspeccion.fecha)}
         </p>
 
         <p>
-          <strong>
-            Estado:
-          </strong>{" "}
-          {inspeccion.estado ||
-            "Pendiente"}
+          <strong>Estado:</strong>{" "}
+          {inspeccion.estado || "Pendiente"}
         </p>
 
         <p>
-          <strong>
-            Estado técnico:
-          </strong>{" "}
+          <strong>Estado técnico:</strong>{" "}
           {estadoTecnico}
         </p>
 
         <p>
-          <strong>
-            Estado administración:
-          </strong>{" "}
+          <strong>Estado administración:</strong>{" "}
           {estadoAdmin}
         </p>
 
@@ -704,8 +729,7 @@ export default function VerInspeccion() {
 
         <div
           style={{
-            background:
-              "rgba(255,255,255,0.05)",
+            background: "rgba(255,255,255,0.05)",
             borderRadius: "10px",
             padding: "14px",
             whiteSpace: "pre-wrap",
@@ -730,8 +754,7 @@ export default function VerInspeccion() {
             style={{
               padding: "16px",
               borderRadius: "10px",
-              background:
-                "rgba(255,255,255,0.05)",
+              background: "rgba(255,255,255,0.05)",
               color: "#aaa",
               marginBottom: "20px",
             }}
@@ -749,51 +772,39 @@ export default function VerInspeccion() {
               marginBottom: "20px",
             }}
           >
-            {fotos.map(
-              (foto, index) => (
-                <a
-                  key={
-                    foto.id ||
-                    `foto-${index}`
+            {fotos.map((foto, index) => (
+              <a
+                key={foto.id || `foto-${index}`}
+                href={foto.url}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  textDecoration: "none",
+                }}
+              >
+                <img
+                  src={foto.url}
+                  alt={
+                    foto.descripcion ||
+                    "Foto de inspección"
                   }
-                  href={foto.url}
-                  target="_blank"
-                  rel="noreferrer"
                   style={{
-                    textDecoration:
-                      "none",
+                    width: "100%",
+                    height: "150px",
+                    objectFit: "cover",
+                    borderRadius: "10px",
+                    border: foto.principal
+                      ? "3px solid #4ade80"
+                      : "1px solid rgba(77,184,255,0.5)",
+                    display: "block",
+                    background: "#111827",
                   }}
-                >
-                  <img
-                    src={foto.url}
-                    alt={
-                      foto.descripcion ||
-                      "Foto de inspección"
-                    }
-                    style={{
-                      width: "100%",
-                      height: "150px",
-                      objectFit:
-                        "cover",
-                      borderRadius:
-                        "10px",
-                      border:
-                        foto.principal
-                          ? "3px solid #4ade80"
-                          : "1px solid rgba(77,184,255,0.5)",
-                      display:
-                        "block",
-                      background:
-                        "#111827",
-                    }}
-                    onError={(e) => {
-                      e.currentTarget.style.opacity =
-                        "0.35";
-                    }}
-                  />
-                </a>
-              )
-            )}
+                  onError={(e) => {
+                    e.currentTarget.style.opacity = "0.35";
+                  }}
+                />
+              </a>
+            ))}
           </div>
         )}
 
@@ -810,8 +821,7 @@ export default function VerInspeccion() {
             style={{
               color: "#4db8ff",
               fontWeight: "bold",
-              textDecoration:
-                "none",
+              textDecoration: "none",
             }}
           >
             📋 Ir al Checklist
@@ -822,8 +832,7 @@ export default function VerInspeccion() {
             style={{
               color: "#4db8ff",
               fontWeight: "bold",
-              textDecoration:
-                "none",
+              textDecoration: "none",
             }}
           >
             🖼️ Ver Galería de Fotos
@@ -834,8 +843,7 @@ export default function VerInspeccion() {
             style={{
               color: "#4db8ff",
               fontWeight: "bold",
-              textDecoration:
-                "none",
+              textDecoration: "none",
             }}
           >
             📄 Ver PDF
@@ -850,17 +858,13 @@ export default function VerInspeccion() {
               marginTop: "25px",
               padding: "15px",
               width: "100%",
-              background: publicando
-                ? "#64748b"
-                : "#4ade80",
+              background: publicando ? "#64748b" : "#4ade80",
               color: "#052e16",
               borderRadius: "10px",
               border: "none",
               fontWeight: "800",
               fontSize: "17px",
-              cursor: publicando
-                ? "not-allowed"
-                : "pointer",
+              cursor: publicando ? "not-allowed" : "pointer",
             }}
           >
             {publicando
@@ -888,21 +892,15 @@ export default function VerInspeccion() {
         </button>
 
         <button
-          onClick={() =>
-            navigate(
-              "/inspecciones"
-            )
-          }
+          onClick={() => navigate("/inspecciones")}
           style={{
             marginTop: "12px",
             padding: "14px",
             width: "100%",
-            background:
-              "transparent",
+            background: "transparent",
             color: "#4db8ff",
             borderRadius: "10px",
-            border:
-              "1px solid #4db8ff",
+            border: "1px solid #4db8ff",
             fontWeight: "700",
             fontSize: "15px",
             cursor: "pointer",
