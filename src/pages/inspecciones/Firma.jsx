@@ -9,67 +9,80 @@ export default function Firma() {
 
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [firmaGuardada, setFirmaGuardada] = useState(null);
 
   useEffect(() => {
+    let cancelado = false;
+
     async function cargarFirma() {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("firmas_inspeccion")
-          .select("*")
+          .select("id, archivo")
           .eq("inspeccion_id", id)
           .order("id", { ascending: false })
           .limit(1);
 
-        if (data?.length > 0) {
-          const archivo = data[0].archivo;
+        if (error) throw error;
 
-          const { data: urlData } = supabase.storage
+        if (!data?.length || !data[0].archivo) return;
+
+        const { data: urlData, error: urlError } =
+          await supabase.storage
             .from("firmas")
-            .getPublicUrl(archivo);
+            .createSignedUrl(data[0].archivo, 300);
 
-          if (urlData?.publicUrl) {
-            // Evitar caché con timestamp
-            setFirmaGuardada(`${urlData.publicUrl}?t=${Date.now()}`);
-          }
+        if (urlError) throw urlError;
+
+        if (!cancelado && urlData?.signedUrl) {
+          setFirmaGuardada(urlData.signedUrl);
         }
       } catch (err) {
         console.error("Error cargando firma anterior:", err);
+
+        if (!cancelado) {
+          setMensaje(
+            "No se pudo cargar la firma guardada. Comprueba tus permisos."
+          );
+        }
       }
     }
 
-    cargarFirma();
+    if (id) cargarFirma();
+
+    return () => {
+      cancelado = true;
+    };
   }, [id]);
 
   function obtenerPosicion(e) {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
-    
+
     const rect = canvas.getBoundingClientRect();
     const punto = e.touches?.[0] || e.changedTouches?.[0] || e;
-    
-    const escalaX = canvas.width / rect.width;
-    const escalaY = canvas.height / rect.height;
 
     return {
-      x: (punto.clientX - rect.left) * escalaX,
-      y: (punto.clientY - rect.top) * escalaY,
+      x: (punto.clientX - rect.left) * (canvas.width / rect.width),
+      y: (punto.clientY - rect.top) * (canvas.height / rect.height),
     };
   }
 
   function startDrawing(e) {
     if (e.cancelable) e.preventDefault();
+
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    
+    if (!canvas || guardando) return;
+
     const ctx = canvas.getContext("2d");
     const { x, y } = obtenerPosicion(e);
 
     ctx.lineWidth = 3;
     ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     ctx.strokeStyle = "#4db8ff";
-
     ctx.beginPath();
     ctx.moveTo(x, y);
 
@@ -82,7 +95,7 @@ export default function Firma() {
 
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext("2d");
     const { x, y } = obtenerPosicion(e);
 
@@ -96,24 +109,44 @@ export default function Firma() {
 
   function limpiar() {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!canvas || guardando) return;
+
+    canvas.getContext("2d").clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    setMensaje("");
   }
 
   async function guardarFirma() {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+
+    if (!canvas || guardando) return;
+
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
+      setMensaje("El identificador de la inspección no es válido.");
+      return;
+    }
 
     const ctx = canvas.getContext("2d");
-    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    
+    const pixels = ctx.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    ).data;
+
     let hayFirma = false;
+
     for (let i = 3; i < pixels.length; i += 4) {
       if (pixels[i] > 0) {
         const r = pixels[i - 3];
         const g = pixels[i - 2];
         const b = pixels[i - 1];
+
         if (r < 250 || g < 250 || b < 250) {
           hayFirma = true;
           break;
@@ -126,58 +159,73 @@ export default function Firma() {
       return;
     }
 
+    setGuardando(true);
     setMensaje("Guardando firma...");
 
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/png")
-    );
+    let nombreArchivo = null;
 
-    if (!blob) {
-      setMensaje("No se pudo procesar la firma");
-      return;
+    try {
+      const blob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, "image/png")
+      );
+
+      if (!blob) {
+        throw new Error("No se pudo procesar la firma.");
+      }
+
+      nombreArchivo = `firma_${id}_${Date.now()}.png`;
+
+      const { error: errorSubida } = await supabase.storage
+        .from("firmas")
+        .upload(nombreArchivo, blob, {
+          upsert: false,
+          contentType: "image/png",
+          cacheControl: "300",
+        });
+
+      if (errorSubida) throw errorSubida;
+
+      const { error: errorRegistro } = await supabase
+        .from("firmas_inspeccion")
+        .insert([
+          {
+            inspeccion_id: id,
+            archivo: nombreArchivo,
+          },
+        ]);
+
+      if (errorRegistro) {
+        await supabase.storage
+          .from("firmas")
+          .remove([nombreArchivo]);
+
+        throw errorRegistro;
+      }
+
+      const { data: urlData, error: errorUrl } =
+        await supabase.storage
+          .from("firmas")
+          .createSignedUrl(nombreArchivo, 300);
+
+      if (errorUrl) {
+        throw errorUrl;
+      }
+
+      setFirmaGuardada(urlData?.signedUrl || null);
+      setMensaje("Firma guardada correctamente ✔");
+
+      setTimeout(() => {
+        navigate(`/inspecciones/${id}`);
+      }, 1000);
+    } catch (err) {
+      console.error("Error guardando firma:", err);
+
+      setMensaje(
+        err?.message || "No se pudo guardar la firma."
+      );
+    } finally {
+      setGuardando(false);
     }
-
-    const nombreArchivo = `firma_${id}_${Date.now()}.png`;
-
-    const { error: errorSubida } = await supabase.storage
-      .from("firmas")
-      .upload(nombreArchivo, blob, { upsert: true });
-
-    if (errorSubida) {
-      setMensaje("Error guardando firma: " + errorSubida.message);
-      return;
-    }
-
-    await supabase
-      .from("firmas_inspeccion")
-      .delete()
-      .eq("inspeccion_id", id);
-
-    await supabase
-      .from("firmas_inspeccion")
-      .insert([{ inspeccion_id: id, archivo: nombreArchivo }]);
-
-    const { data: urlData } = supabase.storage
-      .from("firmas")
-      .getPublicUrl(nombreArchivo);
-
-    const nuevaUrlFirma = urlData?.publicUrl ? `${urlData.publicUrl}?t=${Date.now()}` : null;
-    setFirmaGuardada(nuevaUrlFirma);
-
-    // Guardar URL de firma en inspecciones
-    await supabase
-      .from("inspecciones")
-      .update({
-        firma_url: urlData?.publicUrl || null,
-        fecha_firma: new Date().toISOString(),
-      })
-      .eq("id", id);
-
-    setMensaje("Firma guardada correctamente ✔");
-
-    setTimeout(() => {
-      navigate(`/inspecciones/${id}`);
-    }, 1000);
   }
 
   return (
@@ -206,17 +254,25 @@ export default function Firma() {
 
         {mensaje && (
           <div
+            role="status"
             style={{
               marginBottom: "20px",
               padding: "12px",
               background: mensaje.includes("correctamente")
                 ? "rgba(74, 222, 128, 0.15)"
                 : "rgba(255, 107, 107, 0.15)",
-              border: `1px solid ${mensaje.includes("correctamente") ? "#4ade80" : "#ff6b6b"}`,
+              border: `1px solid ${
+                mensaje.includes("correctamente")
+                  ? "#4ade80"
+                  : "#ff6b6b"
+              }`,
               borderRadius: "10px",
-              color: mensaje.includes("correctamente") ? "#4ade80" : "#ff6b6b",
+              color: mensaje.includes("correctamente")
+                ? "#4ade80"
+                : "#ff6b6b",
               fontWeight: "600",
               textAlign: "center",
+              overflowWrap: "anywhere",
             }}
           >
             {mensaje}
@@ -233,11 +289,13 @@ export default function Firma() {
             <p style={{ marginBottom: "10px", opacity: 0.8 }}>
               Firma ya registrada:
             </p>
+
             <img
               src={firmaGuardada}
               alt="Firma guardada"
               style={{
                 width: "300px",
+                maxWidth: "100%",
                 borderRadius: "10px",
                 border: "2px solid #4db8ff",
               }}
@@ -245,7 +303,13 @@ export default function Firma() {
           </div>
         )}
 
-        <p style={{ opacity: 0.8, marginBottom: "20px", textAlign: "center" }}>
+        <p
+          style={{
+            opacity: 0.8,
+            marginBottom: "20px",
+            textAlign: "center",
+          }}
+        >
           El cliente debe firmar la inspección realizada.
         </p>
 
@@ -283,7 +347,9 @@ export default function Firma() {
 
           <div style={{ display: "flex", gap: "10px" }}>
             <button
+              type="button"
               onClick={limpiar}
+              disabled={guardando}
               style={{
                 flex: 1,
                 padding: "14px",
@@ -292,14 +358,16 @@ export default function Firma() {
                 borderRadius: "10px",
                 border: "none",
                 fontWeight: "700",
-                cursor: "pointer",
+                cursor: guardando ? "not-allowed" : "pointer",
               }}
             >
               Limpiar firma
             </button>
 
             <button
+              type="button"
               onClick={guardarFirma}
+              disabled={guardando}
               style={{
                 flex: 1,
                 padding: "14px",
@@ -308,16 +376,18 @@ export default function Firma() {
                 borderRadius: "10px",
                 border: "none",
                 fontWeight: "700",
-                cursor: "pointer",
+                cursor: guardando ? "not-allowed" : "pointer",
+                opacity: guardando ? 0.6 : 1,
                 boxShadow: "0 0 10px rgba(0,153,255,0.4)",
               }}
             >
-              Guardar firma
+              {guardando ? "Guardando..." : "Guardar firma"}
             </button>
           </div>
         </div>
 
         <button
+          type="button"
           onClick={() => navigate(`/inspecciones/${id}`)}
           style={{
             padding: "12px",
