@@ -1,3 +1,4 @@
+
 import React, {
   useEffect,
   useState,
@@ -12,6 +13,8 @@ import {
 import Menu from "../../layouts/Menu";
 
 import { supabase } from "../../lib/supabase";
+
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 
 import { useAuth } from "../../context/AuthContext";
 
@@ -79,11 +82,59 @@ export default function ClienteInspeccionVer() {
   const [clienteId, setClienteId] =
     useState(null);
 
+  const [pdfUrl, setPdfUrl] =
+    useState(null);
+
   useEffect(() => {
     if (id && user) {
       cargarDetalles();
     }
   }, [id, user]);
+
+  /*
+   * Genera un enlace temporal para el PDF.
+   *
+   * Se conserva inspeccion.pdf_url como dato de origen.
+   * No se modifica la factura ni el informe guardado.
+   */
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarUrlPdfSegura() {
+      setPdfUrl(null);
+
+      if (!inspeccion?.pdf_url) {
+        return;
+      }
+
+      try {
+        const url = await resolverUrlPdfSegura(
+          inspeccion.pdf_url,
+          "pdfs",
+          3600
+        );
+
+        if (!cancelado) {
+          setPdfUrl(url || null);
+        }
+      } catch (error) {
+        console.error(
+          "Error obteniendo el enlace seguro del PDF:",
+          error
+        );
+
+        if (!cancelado) {
+          setPdfUrl(null);
+        }
+      }
+    }
+
+    cargarUrlPdfSegura();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [inspeccion?.pdf_url]);
 
   function parsearFotos(fotosRaw) {
     if (!fotosRaw) return [];
@@ -1040,11 +1091,9 @@ export default function ClienteInspeccionVer() {
               )}
             </div>
 
-            {inspeccion.pdf_url && (
+            {inspeccion.pdf_url && pdfUrl && (
               <a
-                href={
-                  inspeccion.pdf_url
-                }
+                href={pdfUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
