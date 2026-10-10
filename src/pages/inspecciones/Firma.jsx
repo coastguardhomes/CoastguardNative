@@ -1,231 +1,302 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
-import { useParams, useNavigate } from "react-router-dom";
+import {
+  Camera,
+  CameraResultType,
+  CameraSource,
+} from "@capacitor/camera";
 
-export default function Firma() {
+const DURACION_URL_FIRMADA = 3600;
+
+function obtenerRutaStorage(valor, bucket = "fotos") {
+  if (!valor || typeof valor !== "string") return null;
+
+  const texto = valor.trim();
+  if (!texto) return null;
+
+  // Si ya es una ruta interna de Storage.
+  if (!/^https?:\/\//i.test(texto) && !/^data:/i.test(texto)) {
+    return texto.replace(/^\/+/, "");
+  }
+
+  // Mantener las imágenes externas y los Data URI antiguos.
+  if (/^data:/i.test(texto)) return null;
+
+  try {
+    const url = new URL(texto);
+    const marcador = `/storage/v1/object/`;
+    const posicion = url.pathname.indexOf(marcador);
+
+    if (posicion === -1) return null;
+
+    const resto = url.pathname.slice(posicion + marcador.length);
+    const prefijos = [
+      `public/${bucket}/`,
+      `sign/${bucket}/`,
+      `authenticated/${bucket}/`,
+    ];
+
+    const prefijo = prefijos.find((p) => resto.startsWith(p));
+    if (!prefijo) return null;
+
+    return decodeURIComponent(resto.slice(prefijo.length));
+  } catch {
+    return null;
+  }
+}
+
+async function obtenerUrlFoto(foto) {
+  const valorOriginal = foto.url || foto.foto_url || "";
+  const ruta = obtenerRutaStorage(
+    foto.archivo || foto.url_storage_o_path || valorOriginal,
+    "fotos"
+  );
+
+  if (ruta) {
+    const { data, error } = await supabase.storage
+      .from("fotos")
+      .createSignedUrl(ruta, DURACION_URL_FIRMADA);
+
+    if (error) {
+      console.error("Error creando URL firmada de la foto:", error);
+      return "";
+    }
+
+    return data?.signedUrl || "";
+  }
+
+  // Compatibilidad con imágenes alojadas fuera de Supabase.
+  if (/^https?:\/\//i.test(valorOriginal)) {
+    try {
+      const url = new URL(valorOriginal);
+      if (url.protocol === "https:" || url.protocol === "http:") {
+        return valorOriginal;
+      }
+    } catch {
+      // URL antigua no válida.
+    }
+  }
+
+  return "";
+}
+
+export default function TecnicoFotos() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [guardando, setGuardando] = useState(false);
+  const [fotos, setFotos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [subiendo, setSubiendo] = useState(false);
   const [mensaje, setMensaje] = useState("");
-  const [firmaGuardada, setFirmaGuardada] = useState(null);
 
   useEffect(() => {
     let cancelado = false;
 
-    async function cargarFirma() {
+    async function cargar() {
+      if (!id) {
+        setFotos([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setMensaje("");
+
       try {
         const { data, error } = await supabase
-          .from("firmas_inspeccion")
-          .select("id, archivo")
-          .eq("inspeccion_id", id)
-          .order("id", { ascending: false })
-          .limit(1);
+          .from("fotos_inspeccion")
+          .select("*")
+          .eq("inspeccion_id", String(id))
+          .order("id", { ascending: false });
 
         if (error) throw error;
 
-        if (!data?.length || !data[0].archivo) return;
-
-        const { data: urlData, error: urlError } =
-          await supabase.storage
-            .from("firmas")
-            .createSignedUrl(data[0].archivo, 300);
-
-        if (urlError) throw urlError;
-
-        if (!cancelado && urlData?.signedUrl) {
-          setFirmaGuardada(urlData.signedUrl);
-        }
-      } catch (err) {
-        console.error("Error cargando firma anterior:", err);
+        const fotosProcesadas = await Promise.all(
+          (data || []).map(async (foto) => ({
+            ...foto,
+            url: await obtenerUrlFoto(foto),
+          }))
+        );
 
         if (!cancelado) {
-          setMensaje(
-            "No se pudo cargar la firma guardada. Comprueba tus permisos."
-          );
+          setFotos(fotosProcesadas);
         }
+      } catch (error) {
+        console.error("Error al cargar fotos:", error);
+
+        if (!cancelado) {
+          setMensaje("Error al cargar fotos: " + error.message);
+        }
+      } finally {
+        if (!cancelado) setLoading(false);
       }
     }
 
-    if (id) cargarFirma();
+    cargar();
 
     return () => {
       cancelado = true;
     };
   }, [id]);
 
-  function obtenerPosicion(e) {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-
-    const rect = canvas.getBoundingClientRect();
-    const punto = e.touches?.[0] || e.changedTouches?.[0] || e;
-
-    return {
-      x: (punto.clientX - rect.left) * (canvas.width / rect.width),
-      y: (punto.clientY - rect.top) * (canvas.height / rect.height),
-    };
-  }
-
-  function startDrawing(e) {
-    if (e.cancelable) e.preventDefault();
-
-    const canvas = canvasRef.current;
-    if (!canvas || guardando) return;
-
-    const ctx = canvas.getContext("2d");
-    const { x, y } = obtenerPosicion(e);
-
-    ctx.lineWidth = 3;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = "#4db8ff";
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-
-    setIsDrawing(true);
-  }
-
-  function draw(e) {
-    if (!isDrawing) return;
-    if (e.cancelable) e.preventDefault();
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    const { x, y } = obtenerPosicion(e);
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  }
-
-  function stopDrawing() {
-    setIsDrawing(false);
-  }
-
-  function limpiar() {
-    const canvas = canvasRef.current;
-    if (!canvas || guardando) return;
-
-    canvas.getContext("2d").clearRect(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
+  async function cargarFotos() {
+    setLoading(true);
     setMensaje("");
+
+    try {
+      const { data, error } = await supabase
+        .from("fotos_inspeccion")
+        .select("*")
+        .eq("inspeccion_id", String(id))
+        .order("id", { ascending: false });
+
+      if (error) throw error;
+
+      const fotosProcesadas = await Promise.all(
+        (data || []).map(async (foto) => ({
+          ...foto,
+          url: await obtenerUrlFoto(foto),
+        }))
+      );
+
+      setFotos(fotosProcesadas);
+    } catch (error) {
+      console.error("Error al cargar fotos:", error);
+      setMensaje("Error al cargar fotos: " + error.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function guardarFirma() {
-    const canvas = canvasRef.current;
-
-    if (!canvas || guardando) return;
-
-    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
-      setMensaje("El identificador de la inspección no es válido.");
-      return;
-    }
-
-    const ctx = canvas.getContext("2d");
-    const pixels = ctx.getImageData(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    ).data;
-
-    let hayFirma = false;
-
-    for (let i = 3; i < pixels.length; i += 4) {
-      if (pixels[i] > 0) {
-        const r = pixels[i - 3];
-        const g = pixels[i - 2];
-        const b = pixels[i - 1];
-
-        if (r < 250 || g < 250 || b < 250) {
-          hayFirma = true;
-          break;
-        }
-      }
-    }
-
-    if (!hayFirma) {
-      setMensaje("Debes dibujar la firma antes de guardar.");
-      return;
-    }
-
-    setGuardando(true);
-    setMensaje("Guardando firma...");
-
+  async function tomarFoto(sourceType) {
     let nombreArchivo = null;
 
     try {
-      const blob = await new Promise((resolve) =>
-        canvas.toBlob(resolve, "image/png")
-      );
+      const image = await Camera.getPhoto({
+        quality: 80,
+        allowEditing: false,
+        resultType: CameraResultType.Base64,
+        source: sourceType,
+      });
 
-      if (!blob) {
-        throw new Error("No se pudo procesar la firma.");
+      if (!image.base64String) return;
+
+      setSubiendo(true);
+      setMensaje("Procesando y subiendo foto...");
+
+      const byteCharacters = atob(image.base64String);
+      const byteNumbers = new Array(byteCharacters.length);
+
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
 
-      nombreArchivo = `firma_${id}_${Date.now()}.png`;
+      const byteArray = new Uint8Array(byteNumbers);
+      const formato = (image.format || "jpeg").toLowerCase();
+      const tipoMime =
+        formato === "jpg" ? "image/jpeg" : `image/${formato}`;
+      const blob = new Blob([byteArray], { type: tipoMime });
 
-      const { error: errorSubida } = await supabase.storage
-        .from("firmas")
+      nombreArchivo = `inspeccion_${id}_${Date.now()}.${formato}`;
+
+      // 1. Subir la imagen al bucket fotos.
+      const { error: uploadError } = await supabase.storage
+        .from("fotos")
         .upload(nombreArchivo, blob, {
+          contentType: tipoMime,
           upsert: false,
-          contentType: "image/png",
-          cacheControl: "300",
         });
 
-      if (errorSubida) throw errorSubida;
+      if (uploadError) throw uploadError;
 
-      const { error: errorRegistro } = await supabase
-        .from("firmas_inspeccion")
+      // 2. Guardar la ruta interna, no una URL pública.
+      const { error: dbError } = await supabase
+        .from("fotos_inspeccion")
         .insert([
           {
-            inspeccion_id: id,
+            inspeccion_id: String(id),
             archivo: nombreArchivo,
+            url: nombreArchivo,
+            tipo: "inspeccion",
+            principal: false,
           },
         ]);
 
-      if (errorRegistro) {
-        await supabase.storage
-          .from("firmas")
+      if (dbError) {
+        // Evitar dejar un archivo huérfano si falla el registro.
+        const { error: errorLimpieza } = await supabase.storage
+          .from("fotos")
           .remove([nombreArchivo]);
 
-        throw errorRegistro;
+        if (errorLimpieza) {
+          console.error(
+            "No se pudo limpiar la foto tras fallar el registro:",
+            errorLimpieza
+          );
+        }
+
+        throw dbError;
       }
 
-      const { data: urlData, error: errorUrl } =
-        await supabase.storage
-          .from("firmas")
-          .createSignedUrl(nombreArchivo, 300);
-
-      if (errorUrl) {
-        throw errorUrl;
-      }
-
-      setFirmaGuardada(urlData?.signedUrl || null);
-      setMensaje("Firma guardada correctamente ✔");
-
-      setTimeout(() => {
-        navigate(`/inspecciones/${id}`);
-      }, 1000);
-    } catch (err) {
-      console.error("Error guardando firma:", err);
-
+      await cargarFotos();
+      setMensaje("¡Foto subida con éxito!");
+      setTimeout(() => setMensaje(""), 3000);
+    } catch (error) {
+      console.error("Error al capturar/subir la foto:", error);
       setMensaje(
-        err?.message || "No se pudo guardar la firma."
+        "Error al guardar la foto: " +
+          (error.message || "Error desconocido")
       );
     } finally {
-      setGuardando(false);
+      setSubiendo(false);
     }
+  }
+
+  async function eliminarFoto(foto) {
+    if (!window.confirm("¿Seguro que deseas eliminar esta foto?")) {
+      return;
+    }
+
+    // Resolver también las rutas de registros antiguos.
+    const ruta = obtenerRutaStorage(
+      foto.archivo || foto.url_storage_o_path || foto.url || foto.foto_url,
+      "fotos"
+    );
+
+    // 1. Eliminar el registro de la base de datos.
+    const { error: dbError } = await supabase
+      .from("fotos_inspeccion")
+      .delete()
+      .eq("id", foto.id);
+
+    if (dbError) {
+      console.error("Error al eliminar foto de BD:", dbError);
+      setMensaje("Error al eliminar foto: " + dbError.message);
+      return;
+    }
+
+    // 2. Eliminar el archivo si tenemos su ruta interna.
+    if (ruta) {
+      const { error: storageError } = await supabase.storage
+        .from("fotos")
+        .remove([ruta]);
+
+      if (storageError) {
+        console.error(
+          "El registro se eliminó, pero no se pudo eliminar el archivo:",
+          storageError
+        );
+        setMensaje(
+          "La foto se quitó del listado, pero no se pudo borrar el archivo de Storage."
+        );
+      } else {
+        setMensaje("");
+      }
+    }
+
+    await cargarFotos();
   }
 
   return (
@@ -237,170 +308,212 @@ export default function Firma() {
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
+          paddingBottom: "100px",
         }}
       >
         <h1
           style={{
-            fontSize: "28px",
+            fontSize: "22px",
             fontWeight: "700",
-            marginBottom: "25px",
+            marginBottom: "20px",
             color: "#4db8ff",
-            textShadow: "0 0 8px rgba(0,153,255,0.6)",
             textAlign: "center",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          Firma del Cliente
+          Galería de Fotos de la Inspección
         </h1>
 
         {mensaje && (
-          <div
+          <p
             role="status"
             style={{
-              marginBottom: "20px",
-              padding: "12px",
-              background: mensaje.includes("correctamente")
-                ? "rgba(74, 222, 128, 0.15)"
-                : "rgba(255, 107, 107, 0.15)",
-              border: `1px solid ${
-                mensaje.includes("correctamente")
-                  ? "#4ade80"
-                  : "#ff6b6b"
-              }`,
-              borderRadius: "10px",
-              color: mensaje.includes("correctamente")
-                ? "#4ade80"
-                : "#ff6b6b",
-              fontWeight: "600",
               textAlign: "center",
+              color: "#4db8ff",
+              fontWeight: "600",
+              marginBottom: "15px",
+              fontSize: "14px",
               overflowWrap: "anywhere",
             }}
           >
             {mensaje}
-          </div>
+          </p>
         )}
 
-        {firmaGuardada && (
-          <div
+        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+          <button
+            type="button"
+            onClick={() => tomarFoto(CameraSource.Camera)}
+            disabled={subiendo}
             style={{
-              marginBottom: "20px",
-              textAlign: "center",
+              flex: 1,
+              padding: "14px",
+              background: "#4db8ff",
+              color: "#000",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "15px",
+              cursor: subiendo ? "not-allowed" : "pointer",
+              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
             }}
           >
-            <p style={{ marginBottom: "10px", opacity: 0.8 }}>
-              Firma ya registrada:
-            </p>
+            {subiendo ? "Subiendo..." : "📸 Tomar foto"}
+          </button>
 
-            <img
-              src={firmaGuardada}
-              alt="Firma guardada"
-              style={{
-                width: "300px",
-                maxWidth: "100%",
-                borderRadius: "10px",
-                border: "2px solid #4db8ff",
-              }}
-            />
+          <button
+            type="button"
+            onClick={() => tomarFoto(CameraSource.Photos)}
+            disabled={subiendo}
+            style={{
+              flex: 1,
+              padding: "14px",
+              background: "#38bdf8",
+              color: "#000",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: "700",
+              fontSize: "15px",
+              cursor: subiendo ? "not-allowed" : "pointer",
+              boxShadow: "0 0 10px rgba(56,189,248,0.4)",
+            }}
+          >
+            {subiendo ? "Subiendo..." : "🖼️ Galería"}
+          </button>
+        </div>
+
+        {loading ? (
+          <p style={{ textAlign: "center", opacity: 0.8, color: "#4db8ff" }}>
+            Cargando fotos...
+          </p>
+        ) : fotos.length === 0 ? (
+          <p
+            style={{
+              textAlign: "center",
+              opacity: 0.7,
+              margin: "30px 0",
+              fontSize: "15px",
+            }}
+          >
+            No hay fotos registradas para esta inspección todavía.
+          </p>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: "12px",
+              marginBottom: "25px",
+            }}
+          >
+            {fotos.map((f) => (
+              <div
+                key={f.id}
+                style={{
+                  position: "relative",
+                  background: "rgba(255,255,255,0.05)",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  overflow: "hidden",
+                  boxShadow: "0 0 8px rgba(0,153,255,0.2)",
+                }}
+              >
+                {f.url ? (
+                  <img
+                    src={f.url}
+                    alt="Foto de inspección"
+                    style={{
+                      width: "100%",
+                      height: "130px",
+                      objectFit: "cover",
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src =
+                        "https://via.placeholder.com/150?text=Error+Carga";
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      height: "130px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "8px",
+                      textAlign: "center",
+                      fontSize: "12px",
+                    }}
+                  >
+                    No se pudo cargar esta foto
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => eliminarFoto(f)}
+                  style={{
+                    position: "absolute",
+                    top: "6px",
+                    right: "6px",
+                    background: "rgba(239, 68, 68, 0.9)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "28px",
+                    height: "28px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
           </div>
         )}
-
-        <p
-          style={{
-            opacity: 0.8,
-            marginBottom: "20px",
-            textAlign: "center",
-          }}
-        >
-          El cliente debe firmar la inspección realizada.
-        </p>
-
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            padding: "20px",
-            borderRadius: "14px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
-            marginBottom: "25px",
-          }}
-        >
-          <canvas
-            ref={canvasRef}
-            width={350}
-            height={250}
-            style={{
-              background: "#fff",
-              borderRadius: "10px",
-              border: "2px solid #4db8ff",
-              display: "block",
-              margin: "0 auto 20px auto",
-              maxWidth: "100%",
-              touchAction: "none",
-            }}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-          />
-
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              type="button"
-              onClick={limpiar}
-              disabled={guardando}
-              style={{
-                flex: 1,
-                padding: "14px",
-                background: "rgba(255,255,255,0.08)",
-                color: "#fff",
-                borderRadius: "10px",
-                border: "none",
-                fontWeight: "700",
-                cursor: guardando ? "not-allowed" : "pointer",
-              }}
-            >
-              Limpiar firma
-            </button>
-
-            <button
-              type="button"
-              onClick={guardarFirma}
-              disabled={guardando}
-              style={{
-                flex: 1,
-                padding: "14px",
-                background: "#4db8ff",
-                color: "#000",
-                borderRadius: "10px",
-                border: "none",
-                fontWeight: "700",
-                cursor: guardando ? "not-allowed" : "pointer",
-                opacity: guardando ? 0.6 : 1,
-                boxShadow: "0 0 10px rgba(0,153,255,0.4)",
-              }}
-            >
-              {guardando ? "Guardando..." : "Guardar firma"}
-            </button>
-          </div>
-        </div>
 
         <button
           type="button"
-          onClick={() => navigate(`/inspecciones/${id}`)}
+          onClick={() => navigate(`/tecnico/inspeccion/${id}/finalizar`)}
           style={{
-            padding: "12px",
+            marginTop: "10px",
+            padding: "14px",
             width: "100%",
-            background: "rgba(255,255,255,0.06)",
-            color: "#fff",
+            background: "#4ade80",
+            color: "#000",
             borderRadius: "10px",
-            border: "1px solid rgba(255,255,255,0.18)",
-            fontWeight: "600",
+            border: "none",
+            fontWeight: "700",
+            fontSize: "17px",
+            cursor: "pointer",
+            boxShadow: "0 0 10px rgba(74,222,128,0.4)",
+          }}
+        >
+          Finalizar y enviar al administrador →
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate(`/tecnico/inspeccion/${id}`)}
+          style={{
+            marginTop: "12px",
+            padding: "14px",
+            width: "100%",
+            background: "transparent",
+            color: "#4db8ff",
+            borderRadius: "10px",
+            border: "1px solid #4db8ff",
+            fontWeight: "700",
+            fontSize: "15px",
             cursor: "pointer",
           }}
         >
-          Volver al detalle de la inspección
+          Volver a la inspección
         </button>
       </div>
     </Menu>
