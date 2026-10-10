@@ -1,4 +1,3 @@
-
 import { supabase } from "../supabaseClient";
 import { resolverUrlPdfSegura } from "./urlPdf";
 
@@ -7,7 +6,7 @@ export async function cargarFotosInspeccion(inspeccionId) {
 
   const { data, error } = await supabase
     .from("fotos_inspeccion")
-    .select("id, url, archivo")
+    .select("url, archivo")
     .eq("inspeccion_id", inspeccionId)
     .order("id", { ascending: false });
 
@@ -19,7 +18,7 @@ export async function cargarFotosInspeccion(inspeccionId) {
     return [];
   }
 
-  const fotos = await Promise.all(
+  const resultados = await Promise.all(
     data.map(async (foto) => {
       const referencia = foto.url || foto.archivo;
 
@@ -32,22 +31,26 @@ export async function cargarFotosInspeccion(inspeccionId) {
           3600
         );
 
-        if (!urlSegura) return null;
+        if (!urlSegura) {
+          console.warn(
+            "No se pudo generar una URL segura para una foto de inspección."
+          );
+          return null;
+        }
 
-        return {
-          ...foto,
-          url: urlSegura,
-        };
+        // Se mantiene el contrato original: cada elemento es una URL.
+        return urlSegura;
       } catch (errorFirma) {
         console.error(
           "Error generando URL temporal de la foto:",
           errorFirma
         );
-
         return null;
       }
     })
   );
 
-  return fotos.filter(Boolean);
+  return resultados.filter(
+    (url) => typeof url === "string" && url.length > 0
+  );
 }
