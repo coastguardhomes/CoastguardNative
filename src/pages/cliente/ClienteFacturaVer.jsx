@@ -1,3 +1,4 @@
+
 import React, {
   useEffect,
   useState,
@@ -48,6 +49,8 @@ export default function ClienteFacturaVer() {
   const [factura, setFactura] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfError, setPdfError] = useState("");
 
   useEffect(() => {
     async function cargarFactura() {
@@ -58,6 +61,8 @@ export default function ClienteFacturaVer() {
       try {
         setLoading(true);
         setErrorMsg("");
+        setPdfUrl("");
+        setPdfError("");
 
         /*
          * Localizamos primero al cliente autenticado.
@@ -112,6 +117,49 @@ export default function ClienteFacturaVer() {
         }
 
         setFactura(data);
+
+        /*
+         * Los PDF nuevos se abren mediante una URL firmada y temporal.
+         * La factura ya se ha comprobado contra el cliente autenticado.
+         * Conservamos el enlace antiguo solo para registros heredados que
+         * todavía no tengan una ruta de Storage registrada.
+         */
+        if (data.pdf_storage_path) {
+          try {
+            const {
+              data: signedPdf,
+              error: signedPdfError,
+            } = await supabase.storage
+              .from("facturas")
+              .createSignedUrl(
+                data.pdf_storage_path,
+                3600
+              );
+
+            if (signedPdfError) {
+              throw signedPdfError;
+            }
+
+            if (!signedPdf?.signedUrl) {
+              throw new Error(
+                "Storage no devolvió una URL temporal para el PDF."
+              );
+            }
+
+            setPdfUrl(signedPdf.signedUrl);
+          } catch (pdfErr) {
+            console.error(
+              "Error creando enlace seguro del PDF:",
+              pdfErr
+            );
+
+            setPdfError(
+              "No se pudo generar el enlace seguro del PDF. Inténtalo de nuevo más tarde."
+            );
+          }
+        } else {
+          setPdfUrl(data.pdf_url || "");
+        }
 
         /*
          * Si la factura tiene un aviso pendiente,
@@ -431,9 +479,11 @@ export default function ClienteFacturaVer() {
               </div>
             </div>
 
-            {factura.pdf_url ? (
+            {(factura.pdf_storage_path
+              ? Boolean(pdfUrl)
+              : Boolean(factura.pdf_url)) ? (
               <a
-                href={factura.pdf_url}
+                href={pdfUrl || factura.pdf_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -473,7 +523,8 @@ export default function ClienteFacturaVer() {
                   fontSize: "13px",
                 }}
               >
-                El PDF de esta factura todavía no está disponible.
+                {pdfError ||
+                  "El PDF de esta factura todavía no está disponible."}
               </div>
             )}
           </>
