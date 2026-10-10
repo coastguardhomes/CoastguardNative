@@ -1,26 +1,17 @@
-name: Deploy Supabase Functions
+name: Supabase Functions Deployment (disabled pending source reconciliation)
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'supabase/functions/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  deploy:
+  blocked:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-
-      - name: Deploy ALL Edge Functions
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      - name: Prevent deployment from an outdated local functions folder
         run: |
-          supabase functions deploy --project-ref $SUPABASE_PROJECT_ID --no-verify-jwt
+          echo "::error::Automatic deployment is disabled because the Edge Functions deployed in Supabase differ from the copies in this repository."
+          echo "Reconcile and review each function against the live Supabase version before restoring deployment."
+          exit 1
