@@ -1,87 +1,148 @@
+
 import { supabase } from "../lib/supabase";
 
+const BUCKET_PDFS = "pdfs";
+
 /**
- * Sube un PDF a Supabase y guarda su URL en la inspección
- * Versión estable WEB + APP (2026) - Corregido para permitir actualizaciones
+ * Sube un PDF de inspección a Storage y guarda su ruta interna.
+ * Compatible con un bucket privado.
  */
 export async function guardarPDFEnInspeccion(id, pdfBlob) {
-  if (!id || !pdfBlob) {
+  if (
+    id === null ||
+    id === undefined ||
+    String(id).trim() === "" ||
+    !pdfBlob
+  ) {
     throw new Error("ID o PDF inválido");
   }
 
-  // Validación robusta del PDF (Android/iOS envían blobs sin type)
-  const esPDF =
-    pdfBlob.type === "application/pdf" ||
-    pdfBlob.type === "" ||
-    pdfBlob.name?.endsWith(".pdf") ||
-    pdfBlob.size > 100; // evita PDFs corruptos de 0 bytes
-
-  if (!esPDF) {
-    throw new Error("El archivo no es un PDF válido");
+  if (
+    typeof pdfBlob.slice !== "function" ||
+    typeof pdfBlob.size !== "number" ||
+    pdfBlob.size < 8
+  ) {
+    throw new Error("El archivo PDF está vacío o no es válido");
   }
 
-  // Verificar que la inspección existe
-  const { data: inspeccionExiste, error: existeError } = await supabase
-    .from("inspecciones")
-    .select("id")
-    .eq("id", id)
-    .single();
+  // Verificar la cabecera real del PDF, incluso si el MIME está vacío.
+  let cabecera;
 
-  if (existeError || !inspeccionExiste) {
-    throw new Error("La inspección no existe");
+  try {
+    cabecera = new Uint8Array(
+      await pdfBlob.slice(0, 5).arrayBuffer()
+    );
+  } catch {
+    throw new Error("No se pudo comprobar el formato del PDF");
   }
 
-  // Nombre único para evitar conflictos de caché en Supabase Storage
-  const filePath = `inspecciones/inspeccion_${id}_${Date.now()}.pdf`;
+  const firmaPDF =
+    cabecera.length === 5 &&
+    cabecera[0] === 0x25 &&
+    cabecera[1] === 0x50 &&
+    cabecera[2] === 0x44 &&
+    cabecera[3] === 0x46 &&
+    cabecera[4] === 0x2d;
 
-  // SUBIR PDF
+  if (!firmaPDF) {
+    throw new Error("El archivo no contiene una cabecera PDF válida");
+  }
+
+  // Comprobar que existe la inspección y que el usuario puede consultarla.
+  const { data: inspeccionExiste, error: existeError } =
+    await supabase
+      .from("inspecciones")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle();
+
+  if (existeError) {
+    throw new Error(
+      "No se pudo comprobar la inspección: " +
+        existeError.message
+    );
+  }
+
+  if (!inspeccionExiste) {
+    throw new Error(
+      "La inspección no existe o no tienes permiso para acceder a ella"
+    );
+  }
+
+  const filePath =
+    `inspecciones/inspeccion_${id}_${Date.now()}.pdf`;
+
+  // Subir el PDF sin sobrescribir archivos anteriores.
   const { error: uploadError } = await supabase.storage
-    .from("pdfs")
+    .from(BUCKET_PDFS)
     .upload(filePath, pdfBlob, {
-      upsert: true,
+      upsert: false,
       contentType: "application/pdf",
       cacheControl: "3600",
     });
 
   if (uploadError) {
     throw new Error(
-      "Error subiendo PDF: " +
-        (uploadError.message || JSON.stringify(uploadError))
+      "Error subiendo PDF: " + uploadError.message
     );
   }
 
-  // OBTENER URL PÚBLICA
-  const { data: urlData, error: urlError } = await supabase.storage
-    .from("pdfs")
-    .getPublicUrl(filePath);
+  try {
+    // Generar un enlace temporal para abrir el PDF privado.
+    const { data: signedData, error: signedError } =
+      await supabase.storage
+        .from(BUCKET_PDFS)
+        .createSignedUrl(filePath, 3600);
 
-  if (urlError || !urlData?.publicUrl) {
-    throw new Error("Error obteniendo URL pública del PDF");
+    if (signedError || !signedData?.signedUrl) {
+      throw new Error(
+        "El PDF se subió, pero no se pudo crear el enlace temporal: " +
+          (signedError?.message || "respuesta vacía de Storage")
+      );
+    }
+
+    // Guardar la ruta, nunca una URL pública o temporal.
+    const { data: actualizada, error: updateError } =
+      await supabase
+        .from("inspecciones")
+        .update({ pdf_url: filePath })
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
+
+    if (updateError) {
+      throw new Error(
+        "El PDF se subió, pero no se pudo guardar la ruta: " +
+          updateError.message
+      );
+    }
+
+    if (!actualizada) {
+      throw new Error(
+        "El PDF se subió, pero la base de datos no confirmó la actualización. Comprueba los permisos antes de volver a generarlo."
+      );
+    }
+
+    return {
+      ok: true,
+      id,
+      url: signedData.signedUrl,
+      filePath,
+      mime: "application/pdf",
+    };
+  } catch (error) {
+    // Limpiar únicamente el archivo creado por esta operación fallida.
+    const { error: removeError } = await supabase.storage
+      .from(BUCKET_PDFS)
+      .remove([filePath]);
+
+    if (removeError) {
+      console.error(
+        "No se pudo limpiar el PDF recién subido:",
+        removeError.message
+      );
+    }
+
+    throw error;
   }
-
-  const publicUrl = urlData.publicUrl;
-
-  // GUARDAR URL EN LA INSPECCIÓN
-  const { error: updateError } = await supabase
-    .from("inspecciones")
-    .update({
-      pdf_url: publicUrl,
-      firmado_en: new Date().toISOString(),
-    })
-    .eq("id", id);
-
-  if (updateError) {
-    throw new Error(
-      "PDF subido pero error guardando URL en inspección: " +
-        (updateError.message || JSON.stringify(updateError))
-    );
-  }
-
-  return {
-    ok: true,
-    id,
-    url: publicUrl,
-    filePath,
-    mime: "application/pdf",
-  };
 }
