@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -25,17 +26,22 @@ export default function ClienteFacturasLista() {
 
   const [facturas, setFacturas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pdfUrls, setPdfUrls] = useState({});
 
   useEffect(() => {
+    let cancelado = false;
+
     async function cargar() {
       if (!user) {
         setFacturas([]);
+        setPdfUrls({});
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
+        setPdfUrls({});
 
         /*
          * El campo facturas.cliente_id apunta al registro
@@ -59,7 +65,10 @@ export default function ClienteFacturasLista() {
         }
 
         if (!cliente?.id) {
-          setFacturas([]);
+          if (!cancelado) {
+            setFacturas([]);
+            setPdfUrls({});
+          }
           return;
         }
 
@@ -80,20 +89,88 @@ export default function ClienteFacturasLista() {
           throw error;
         }
 
-        setFacturas(data || []);
+        const listaFacturas = data || [];
+
+        if (cancelado) {
+          return;
+        }
+
+        setFacturas(listaFacturas);
+
+        /*
+         * Generamos enlaces temporales para los PDF que tienen
+         * una ruta privada registrada en pdf_storage_path.
+         * Los registros antiguos conservan su comportamiento
+         * mientras no tengan una ruta de Storage migrada.
+         */
+        const paresPdf = await Promise.all(
+          listaFacturas
+            .filter((f) => f.pdf_storage_path)
+            .map(async (f) => {
+              try {
+                const {
+                  data: signedPdf,
+                  error: signedPdfError,
+                } = await supabase.storage
+                  .from("facturas")
+                  .createSignedUrl(
+                    f.pdf_storage_path,
+                    3600
+                  );
+
+                if (signedPdfError) {
+                  throw signedPdfError;
+                }
+
+                if (!signedPdf?.signedUrl) {
+                  throw new Error(
+                    "Storage no devolvió una URL temporal."
+                  );
+                }
+
+                return [
+                  String(f.id),
+                  signedPdf.signedUrl
+                ];
+              } catch (pdfErr) {
+                console.error(
+                  "Error generando enlace temporal para la factura:",
+                  f.id,
+                  pdfErr
+                );
+
+                return [String(f.id), ""];
+              }
+            })
+        );
+
+        if (!cancelado) {
+          setPdfUrls(
+            Object.fromEntries(paresPdf)
+          );
+        }
       } catch (err) {
         console.error(
           "Error cargando facturas del cliente:",
           err
         );
 
-        setFacturas([]);
+        if (!cancelado) {
+          setFacturas([]);
+          setPdfUrls({});
+        }
       } finally {
-        setLoading(false);
+        if (!cancelado) {
+          setLoading(false);
+        }
       }
     }
 
     cargar();
+
+    return () => {
+      cancelado = true;
+    };
   }, [user]);
 
   const obtenerBadgeEstadoAdmin = (estado) => {
@@ -286,6 +363,10 @@ export default function ClienteFacturasLista() {
                 f.estado_tecnico
               );
 
+            const urlPdf = f.pdf_storage_path
+              ? pdfUrls[String(f.id)]
+              : f.pdf_url;
+
             return (
               <div
                 key={f.id}
@@ -452,7 +533,7 @@ export default function ClienteFacturasLista() {
                 </div>
 
                 {esPagada &&
-                  f.pdf_url && (
+                  Boolean(urlPdf) && (
                     <div
                       style={{
                         marginTop: "14px",
@@ -462,7 +543,7 @@ export default function ClienteFacturasLista() {
                       }}
                     >
                       <a
-                        href={f.pdf_url}
+                        href={urlPdf}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) =>
