@@ -7,12 +7,15 @@ export async function cargarFotosInspeccion(inspeccionId) {
 
   const { data, error } = await supabase
     .from("fotos_inspeccion")
-    .select("url, archivo")
+    .select("id, url, archivo")
     .eq("inspeccion_id", inspeccionId)
     .order("id", { ascending: false });
 
   if (error || !data) {
-    console.error("Error cargando fotos de inspección:", error);
+    console.error(
+      "Error cargando fotos de inspección:",
+      error
+    );
     return [];
   }
 
@@ -29,16 +32,19 @@ export async function cargarFotosInspeccion(inspeccionId) {
           3600
         );
 
-        // Si falla la firma, conservar la URL original para no
-        // romper la visualización mientras el bucket siga público.
-        return urlSegura || foto.url || null;
+        if (!urlSegura) return null;
+
+        return {
+          ...foto,
+          url: urlSegura,
+        };
       } catch (errorFirma) {
         console.error(
-          "Error generando URL de la foto:",
+          "Error generando URL temporal de la foto:",
           errorFirma
         );
 
-        return foto.url || null;
+        return null;
       }
     })
   );
