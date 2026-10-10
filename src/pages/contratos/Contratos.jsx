@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -29,32 +30,32 @@ export default function Contratos() {
   }, []);
 
   const obtenerUrlPdf = async (valor) => {
-    if (!valor) return null;
-
-    // Data URI devuelta por la Edge Function actual.
-    if (/^data:/i.test(valor)) {
-      return valor;
+    if (typeof valor !== "string" || !valor.trim()) {
+      return null;
     }
 
-    // URL completa antigua o URL firmada.
-    if (/^https?:\/\//i.test(valor)) {
-      return valor;
+    const referencia = valor.trim();
+
+    // Mantener compatibilidad con PDF devueltos como Data URI.
+    if (/^data:/i.test(referencia)) {
+      return referencia;
     }
 
-    // Ruta de Storage.
-    const { data, error } = await supabase.storage
-      .from("contratos")
-      .createSignedUrl(valor, 3600);
-
-    if (error || !data?.signedUrl) {
+    // Resolver rutas de Storage y URL antiguas o firmadas.
+    // El helper detecta el bucket y renueva los enlaces de Storage.
+    try {
+      return await resolverUrlPdfSegura(
+        referencia,
+        "contratos",
+        3600
+      );
+    } catch (error) {
       console.error(
-        "Error creando URL firmada del contrato:",
+        "Error resolviendo PDF del contrato:",
         error
       );
       return null;
     }
-
-    return data.signedUrl;
   };
 
   const cargarContratos = async () => {
