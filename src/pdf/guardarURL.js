@@ -1,11 +1,20 @@
 import { supabase } from "../lib/supabase";
 
 /**
- * Guarda la URL del PDF en una inspección
- * Versión estable WEB + APP (2026) - Corregida para permitir actualizaciones
+ * Guarda la URL o ruta del PDF en una inspección.
+ * Compatible con WEB + APP.
+ *
+ * Mantiene el formato de respuesta existente para no romper
+ * los componentes que utilizan esta función.
  */
 export async function guardarURL(inspeccionId, url) {
-  if (!inspeccionId || !url) {
+  if (
+    inspeccionId === null ||
+    inspeccionId === undefined ||
+    String(inspeccionId).trim() === "" ||
+    typeof url !== "string" ||
+    !url.trim()
+  ) {
     return {
       ok: false,
       mensaje: "ID o URL inválidos",
@@ -13,10 +22,13 @@ export async function guardarURL(inspeccionId, url) {
     };
   }
 
-  // Validación robusta de URL PDF (soporta dominios de Supabase y extensiones .pdf)
+  const urlLimpia = url.trim();
+
+  // Validación compatible con URLs antiguas y rutas internas
+  // de archivos PDF en Supabase Storage.
   const esPDF =
-    typeof url === "string" &&
-    (url.includes(".pdf") || url.includes("supabase.co") || url.startsWith("http"));
+    urlLimpia.toLowerCase().includes(".pdf") ||
+    /^https?:\/\//i.test(urlLimpia);
 
   if (!esPDF) {
     return {
@@ -26,42 +38,54 @@ export async function guardarURL(inspeccionId, url) {
     };
   }
 
-  // Verificar que la inspección existe
-  const { data: existe, error: existeError } = await supabase
+  // Verificar que la inspección existe y es accesible.
+  const {
+    data: existe,
+    error: existeError,
+  } = await supabase
     .from("inspecciones")
     .select("id")
     .eq("id", inspeccionId)
-    .single();
+    .maybeSingle();
 
   if (existeError || !existe) {
     return {
       ok: false,
-      mensaje: "La inspección no existe",
-      error: existeError?.message || JSON.stringify(existeError),
+      mensaje: "La inspección no existe o no es accesible",
+      error:
+        existeError?.message ||
+        "No se encontró la inspección",
     };
   }
 
-  // Guardar URL + fecha de firmado (permitiendo actualizar si se regenera el PDF)
-  const { error } = await supabase
+  // Actualizar únicamente pdf_url.
+  // No se modifica firmado_en ni otras columnas.
+  const {
+    data: actualizada,
+    error: updateError,
+  } = await supabase
     .from("inspecciones")
     .update({
-      pdf_url: url,
-      firmado_en: new Date().toISOString(),
+      pdf_url: urlLimpia,
     })
-    .eq("id", inspeccionId);
+    .eq("id", inspeccionId)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
+  if (updateError || !actualizada) {
     return {
       ok: false,
-      mensaje: "Error guardando URL del PDF",
-      error: error.message || JSON.stringify(error),
+      mensaje: "Error guardando la URL del PDF",
+      error:
+        updateError?.message ||
+        "La base de datos no confirmó la actualización. Comprueba los permisos de la inspección.",
     };
   }
 
   return {
     ok: true,
     mensaje: "URL del PDF guardada correctamente",
-    url,
+    url: urlLimpia,
     id: inspeccionId,
     mime: "application/pdf",
   };
