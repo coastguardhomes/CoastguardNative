@@ -17,64 +17,138 @@ export default function FacturasLista() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let cancelado = false;
+
     async function cargarFacturas() {
-      const { data: { session } } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
 
-      if (!session) {
-        setLoading(false);
-        return;
-      }
+        if (sessionError) {
+          throw sessionError;
+        }
 
-      // Mantenemos la consulta a la tabla interna 'facturas' de Supabase
-      const { data, error } = await supabase
-        .from("facturas")
-        .select("*")
-        .order("fecha", { ascending: false });
+        if (!session) {
+          if (!cancelado) {
+            setLoading(false);
+          }
+          return;
+        }
 
-      if (error) {
+        // Mantenemos la consulta a la tabla interna 'facturas' de Supabase.
+        const { data, error } = await supabase
+          .from("facturas")
+          .select("*")
+          .order("fecha", { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+
+        if (!cancelado) {
+          setFacturas(data || []);
+        }
+      } catch (error) {
         console.error("Error cargando avisos de cobro:", error);
-      } else {
-        setFacturas(data || []);
+      } finally {
+        if (!cancelado) {
+          setLoading(false);
+        }
       }
-
-      setLoading(false);
     }
 
     cargarFacturas();
+
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   const handleVerPDF = async (facturaId, e) => {
-    e.stopPropagation(); // Evita que se abra la tarjeta al pulsar el documento
+    e.stopPropagation();
+
     setPdfCargandoId(facturaId);
+
     try {
       const { data, error } = await supabase.functions.invoke("factura-pdf", {
         body: { facturaId, id: facturaId },
       });
 
       if (error) {
-        console.warn("Aviso al generar documento desde Edge Function:", error);
+        console.warn(
+          "Aviso al generar documento desde Edge Function:",
+          error
+        );
       }
 
       const pdfUrl = data?.url || data?.pdf_url || data?.pdfUrl;
 
       if (pdfUrl) {
-        window.open(pdfUrl, "_blank");
-      } else {
-        const { data: facturaData } = await supabase
-          .from("facturas")
-          .select("pdf_url")
-          .eq("id", facturaId)
-          .single();
+        window.open(pdfUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
 
-        if (facturaData && facturaData.pdf_url) {
-          window.open(facturaData.pdf_url, "_blank");
-        } else {
-          alert("El documento se está procesando o no se pudo obtener la URL en este momento. Inténtalo de nuevo en unos segundos.");
+      // Compatibilidad con facturas guardadas antes de añadir pdf_storage_path.
+      const {
+        data: facturaData,
+        error: facturaError,
+      } = await supabase
+        .from("facturas")
+        .select("pdf_storage_path, pdf_url")
+        .eq("id", facturaId)
+        .single();
+
+      if (facturaError) {
+        throw facturaError;
+      }
+
+      if (facturaData?.pdf_storage_path) {
+        const {
+          data: signedData,
+          error: signedError,
+        } = await supabase.storage
+          .from("facturas")
+          .createSignedUrl(facturaData.pdf_storage_path, 3600);
+
+        if (signedError) {
+          throw signedError;
+        }
+
+        if (signedData?.signedUrl) {
+          window.open(
+            signedData.signedUrl,
+            "_blank",
+            "noopener,noreferrer"
+          );
+          return;
         }
       }
+
+      // Solo se utiliza la URL antigua si no hay ruta privada guardada.
+      if (facturaData?.pdf_url) {
+        window.open(
+          facturaData.pdf_url,
+          "_blank",
+          "noopener,noreferrer"
+        );
+        return;
+      }
+
+      alert(
+        "El documento se está procesando o no se pudo obtener la URL en este momento. Inténtalo de nuevo en unos segundos."
+      );
     } catch (err) {
-      console.error("Error al gestionar la vista del documento:", err);
-      alert("Ocurrió un problema de conexión al intentar recuperar el documento.");
+      console.error(
+        "Error al gestionar la vista del documento:",
+        err
+      );
+
+      alert(
+        "Ocurrió un problema al intentar recuperar el documento: " +
+          (err?.message || "Error desconocido")
+      );
     } finally {
       setPdfCargandoId(null);
     }
@@ -170,10 +244,24 @@ export default function FacturasLista() {
                 transition: "transform 0.1s ease",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                <span style={{ fontWeight: "900", color: COLOR_DORADO, fontSize: "15px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "6px",
+                }}
+              >
+                <span
+                  style={{
+                    fontWeight: "900",
+                    color: COLOR_DORADO,
+                    fontSize: "15px",
+                  }}
+                >
                   {f.numero || `#${f.id}`}
                 </span>
+
                 {f.estado_tecnico === "completado" && (
                   <span
                     style={{
@@ -192,22 +280,35 @@ export default function FacturasLista() {
               </div>
 
               <p style={{ margin: "0 0 6px 0" }}>
-                <strong style={{ color: COLOR_DORADO }}>Total:</strong> {Number(f.total || 0).toFixed(2)} €
+                <strong style={{ color: COLOR_DORADO }}>Total:</strong>{" "}
+                {Number(f.total || 0).toFixed(2)} €
               </p>
+
               <p style={{ margin: "0 0 6px 0" }}>
                 <strong style={{ color: COLOR_DORADO }}>Estado:</strong>{" "}
                 <span
                   style={{
-                    color: f.estado === "pagada" || f.estado === "finalizado" ? "#34d399" : COLOR_DORADO,
+                    color:
+                      f.estado === "pagada" || f.estado === "finalizado"
+                        ? "#34d399"
+                        : COLOR_DORADO,
                     fontWeight: "700",
-                    textTransform: "uppercase"
+                    textTransform: "uppercase",
                   }}
                 >
                   {f.estado}
                 </span>
               </p>
-              <p style={{ margin: "0 0 12px 0", opacity: 0.7, fontSize: "12px" }}>
-                <strong style={{ color: COLOR_DORADO }}>Fecha:</strong> {String(f.fecha || "").slice(0, 10)}
+
+              <p
+                style={{
+                  margin: "0 0 12px 0",
+                  opacity: 0.7,
+                  fontSize: "12px",
+                }}
+              >
+                <strong style={{ color: COLOR_DORADO }}>Fecha:</strong>{" "}
+                {String(f.fecha || "").slice(0, 10)}
               </p>
 
               <button
@@ -215,14 +316,16 @@ export default function FacturasLista() {
                 disabled={pdfCargandoId === f.id}
                 style={{
                   width: "100%",
-                  background: "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
+                  background:
+                    "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
                   color: "#fff",
                   border: BORDE_DORADO_FINO,
                   padding: "12px",
                   borderRadius: "12px",
                   fontWeight: "900",
                   fontSize: "12px",
-                  cursor: pdfCargandoId === f.id ? "not-allowed" : "pointer",
+                  cursor:
+                    pdfCargandoId === f.id ? "not-allowed" : "pointer",
                   opacity: pdfCargandoId === f.id ? 0.6 : 1,
                   textTransform: "uppercase",
                   letterSpacing: "0.5px",
@@ -230,7 +333,9 @@ export default function FacturasLista() {
                   boxSizing: "border-box",
                 }}
               >
-                {pdfCargandoId === f.id ? "Generando..." : "📄 Ver Documento"}
+                {pdfCargandoId === f.id
+                  ? "Generando..."
+                  : "📄 Ver Documento"}
               </button>
             </div>
           ))}
