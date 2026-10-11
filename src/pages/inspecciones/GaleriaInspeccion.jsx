@@ -7,6 +7,13 @@ import {
   CameraResultType,
   CameraSource,
 } from "@capacitor/camera";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
+
+const BUCKETS_FOTOS_PERMITIDOS = new Set([
+  "fotos",
+  "inspecciones",
+  "inspection_photos",
+]);
 
 export default function GaleriaInspeccion() {
   const { id } = useParams();
@@ -17,6 +24,10 @@ export default function GaleriaInspeccion() {
   const [mensaje, setMensaje] = useState("");
   const [fotoGrande, setFotoGrande] = useState(null);
 
+  /**
+   * Reconoce las rutas de Storage del proyecto actual.
+   * No confía en buckets ni rutas de otros proyectos.
+   */
   function obtenerReferenciaStorage(valor) {
     if (typeof valor !== "string" || !valor.trim()) {
       return null;
@@ -27,41 +38,40 @@ export default function GaleriaInspeccion() {
     if (/^https?:\/\//i.test(limpio)) {
       try {
         const url = new URL(limpio);
-        const partes = url.pathname.split("/").filter(Boolean);
-
-        const indice = partes.findIndex(
-          (parte, index) =>
-            parte === "storage" &&
-            partes[index + 1] === "v1" &&
-            partes[index + 2] === "object"
+        const urlProyecto = new URL(
+          import.meta.env.VITE_SUPABASE_URL
         );
 
-        if (indice === -1) return null;
-
-        const tipo = partes[indice + 3];
-
-        if (!["public", "sign", "authenticated"].includes(tipo)) {
+        if (
+          url.origin !== urlProyecto.origin ||
+          url.username ||
+          url.password
+        ) {
           return null;
         }
 
-        const bucket = partes[indice + 4];
-        const archivoPartes = partes.slice(indice + 5);
+        const coincidencia = url.pathname.match(
+          /\/storage\/v1\/object\/(?:public|sign|authenticated)\/([^/]+)\/(.+)$/i
+        );
 
-        if (!bucket || archivoPartes.length === 0) {
+        if (!coincidencia) {
           return null;
         }
 
-        let ruta;
+        const bucket = decodeURIComponent(coincidencia[1]);
 
-        try {
-          ruta = archivoPartes
-            .map((parte) => decodeURIComponent(parte))
-            .join("/");
-        } catch {
-          ruta = archivoPartes.join("/");
+        if (!BUCKETS_FOTOS_PERMITIDOS.has(bucket)) {
+          return null;
         }
 
-        if (!ruta) return null;
+        const ruta = coincidencia[2]
+          .split("/")
+          .map((segmento) => decodeURIComponent(segmento))
+          .join("/");
+
+        if (!ruta.trim()) {
+          return null;
+        }
 
         return { bucket, ruta };
       } catch {
@@ -69,9 +79,20 @@ export default function GaleriaInspeccion() {
       }
     }
 
+    // Las rutas relativas actuales pertenecen al bucket "fotos".
+    let ruta = limpio.replace(/^\/+/, "");
+
+    if (ruta.startsWith("fotos/")) {
+      ruta = ruta.slice("fotos/".length);
+    }
+
+    if (!ruta.trim()) {
+      return null;
+    }
+
     return {
       bucket: "fotos",
-      ruta: limpio.replace(/^\/+/, ""),
+      ruta,
     };
   }
 
@@ -91,43 +112,62 @@ export default function GaleriaInspeccion() {
       const referencia = obtenerReferenciaStorage(candidato);
 
       if (referencia) {
-        const { data, error } = await supabase.storage
-          .from(referencia.bucket)
-          .createSignedUrl(referencia.ruta, 3600);
+        try {
+          const urlSegura = await resolverUrlPdfSegura(
+            candidato,
+            referencia.bucket,
+            3600
+          );
 
-        if (error) {
+          if (urlSegura) {
+            return {
+              ...foto,
+              url: urlSegura,
+              archivo:
+                foto?.archivo ||
+                (referencia.bucket === "fotos"
+                  ? referencia.ruta
+                  : candidato),
+              rutaStorage: referencia.ruta,
+              bucketStorage: referencia.bucket,
+            };
+          }
+        } catch (error) {
           console.error(
-            "No se pudo generar el enlace de la foto:",
+            "Error resolviendo la URL de la foto:",
+            foto?.id,
             error
           );
-          continue;
-        }
-
-        if (data?.signedUrl) {
-          return {
-            ...foto,
-            url: data.signedUrl,
-            archivo:
-              foto?.archivo ||
-              (referencia.bucket === "fotos"
-                ? referencia.ruta
-                : candidato),
-            rutaStorage: referencia.ruta,
-            bucketStorage: referencia.bucket,
-          };
         }
 
         continue;
       }
 
-      // No alterar fotos externas que no pertenezcan a Supabase Storage.
+      // Mantener compatibilidad con imágenes externas que no sean
+      // URLs de Storage de otro proyecto Supabase.
       if (/^https?:\/\//i.test(candidato)) {
-        return {
-          ...foto,
-          url: candidato,
-          rutaStorage: null,
-          bucketStorage: null,
-        };
+        try {
+          const urlExterna = await resolverUrlPdfSegura(
+            candidato,
+            "fotos",
+            3600
+          );
+
+          if (urlExterna) {
+            return {
+              ...foto,
+              url: urlExterna,
+              rutaStorage: null,
+              bucketStorage: null,
+            };
+          }
+        } catch (error) {
+          console.error(
+            "Error resolviendo una imagen externa:",
+            foto?.id,
+            error
+          );
+        }
       }
     }
 
@@ -139,7 +179,14 @@ export default function GaleriaInspeccion() {
     };
   }
 
-  const cargarFotos = async () => {
+  async function cargarFotos() {
+    if (!id) {
+      setFotos([]);
+      setLoading(false);
+      setMensaje("No se ha indicado la inspección.");
+      return;
+    }
+
     setLoading(true);
     setMensaje("");
 
@@ -151,9 +198,7 @@ export default function GaleriaInspeccion() {
         .order("id", { ascending: false });
 
       if (error) {
-        setMensaje("Error cargando fotos: " + error.message);
-        setFotos([]);
-        return;
+        throw error;
       }
 
       const fotosResueltas = await Promise.all(
@@ -161,23 +206,43 @@ export default function GaleriaInspeccion() {
       );
 
       setFotos(fotosResueltas.filter((foto) => foto.url));
+
+      if (
+        fotosResueltas.length > 0 &&
+        fotosResueltas.some((foto) => !foto.url)
+      ) {
+        setMensaje(
+          "Algunas fotos no se han podido cargar. Comprueba los permisos de Storage."
+        );
+      }
     } catch (error) {
       console.error("Error cargando fotos:", error);
-      setMensaje("No se pudieron cargar las fotos.");
+      setFotos([]);
+      setMensaje(
+        "No se pudieron cargar las fotos: " +
+          (error?.message || "Error desconocido")
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   async function subirFoto(fuente) {
     try {
+      if (!id) {
+        setMensaje("No se ha indicado la inspección.");
+        return;
+      }
+
       const image = await Camera.getPhoto({
         quality: 70,
         resultType: CameraResultType.Base64,
         source: fuente,
       });
 
-      if (!image.base64String) return;
+      if (!image.base64String) {
+        return;
+      }
 
       setMensaje("Subiendo foto...");
 
@@ -194,6 +259,11 @@ export default function GaleriaInspeccion() {
           });
 
       if (storageError) {
+        console.error(
+          "Error subiendo foto al almacenamiento:",
+          storageError
+        );
+
         setMensaje(
           "Error subiendo foto al almacenamiento: " +
             storageError.message
@@ -214,9 +284,17 @@ export default function GaleriaInspeccion() {
           signedError
         );
 
-        await supabase.storage
-          .from("fotos")
-          .remove([rutaArchivo]);
+        const { error: errorEliminar } =
+          await supabase.storage
+            .from("fotos")
+            .remove([rutaArchivo]);
+
+        if (errorEliminar) {
+          console.error(
+            "No se pudo eliminar el archivo que falló:",
+            errorEliminar
+          );
+        }
 
         setMensaje(
           "La foto se subió, pero no se pudo preparar para visualizarla."
@@ -245,9 +323,17 @@ export default function GaleriaInspeccion() {
           dbError
         );
 
-        await supabase.storage
-          .from("fotos")
-          .remove([rutaArchivo]);
+        const { error: errorEliminar } =
+          await supabase.storage
+            .from("fotos")
+            .remove([rutaArchivo]);
+
+        if (errorEliminar) {
+          console.error(
+            "No se pudo limpiar el archivo subido:",
+            errorEliminar
+          );
+        }
 
         setMensaje(
           "Error guardando foto en la base de datos: " +
@@ -284,14 +370,16 @@ export default function GaleriaInspeccion() {
       setMensaje("¡Foto subida correctamente!");
       setTimeout(() => setMensaje(""), 3000);
     } catch (error) {
-      console.error(error);
+      console.error("Error con la cámara o la subida:", error);
       setMensaje("Acción cancelada o con error.");
     }
   }
 
   const borrarFoto = async (foto) => {
     if (!foto?.id) {
-      setMensaje("No se puede identificar la foto que deseas eliminar.");
+      setMensaje(
+        "No se puede identificar la foto que deseas eliminar."
+      );
       return;
     }
 
@@ -299,78 +387,82 @@ export default function GaleriaInspeccion() {
       "¿Seguro que deseas eliminar esta foto?"
     );
 
-    if (!confirmar) return;
-
-    const { error: dbError } = await supabase
-      .from("fotos_inspeccion")
-      .delete()
-      .eq("id", foto.id)
-      .eq("inspeccion_id", id);
-
-    if (dbError) {
-      console.error(
-        "Error borrando foto de la base de datos:",
-        dbError
-      );
-      setMensaje(
-        "Error borrando foto de la base de datos: " +
-          dbError.message
-      );
+    if (!confirmar) {
       return;
     }
 
-    setFotos((prev) => prev.filter((f) => f.id !== foto.id));
+    try {
+      const { error: dbError } = await supabase
+        .from("fotos_inspeccion")
+        .delete()
+        .eq("id", foto.id)
+        .eq("inspeccion_id", id);
 
-    if (fotoGrande?.id === foto.id) {
-      setFotoGrande(null);
-    }
-
-    if (foto.rutaStorage && foto.bucketStorage) {
-      const { error: storageError } = await supabase.storage
-        .from(foto.bucketStorage)
-        .remove([foto.rutaStorage]);
-
-      if (storageError) {
-        console.error(
-          "No se pudo eliminar el archivo del almacenamiento:",
-          storageError
-        );
-        setMensaje(
-          "La foto se eliminó de la lista, pero no se pudo borrar el archivo almacenado."
-        );
-        return;
+      if (dbError) {
+        throw dbError;
       }
-    }
 
-    setMensaje("Foto eliminada correctamente");
-    setTimeout(() => setMensaje(""), 2000);
+      setFotos((prev) =>
+        prev.filter((f) => f.id !== foto.id)
+      );
+
+      if (fotoGrande?.id === foto.id) {
+        setFotoGrande(null);
+      }
+
+      if (foto.rutaStorage && foto.bucketStorage) {
+        const { error: storageError } = await supabase.storage
+          .from(foto.bucketStorage)
+          .remove([foto.rutaStorage]);
+
+        if (storageError) {
+          console.error(
+            "No se pudo eliminar el archivo del almacenamiento:",
+            storageError
+          );
+
+          setMensaje(
+            "La foto se eliminó de la lista, pero no se pudo borrar el archivo almacenado."
+          );
+          return;
+        }
+      }
+
+      setMensaje("Foto eliminada correctamente");
+      setTimeout(() => setMensaje(""), 2000);
+    } catch (error) {
+      console.error("Error borrando foto:", error);
+
+      setMensaje(
+        "Error borrando foto: " +
+          (error?.message || "Error desconocido")
+      );
+    }
   };
 
   async function marcarPrincipal(foto) {
     try {
-      const {
-        error: quitarError,
-      } = await supabase
+      const { error: quitarError } = await supabase
         .from("fotos_inspeccion")
         .update({ principal: false })
         .eq("inspeccion_id", id);
 
-      if (quitarError) throw quitarError;
+      if (quitarError) {
+        throw quitarError;
+      }
 
-      const {
-        error: principalError,
-      } = await supabase
+      const { error: principalError } = await supabase
         .from("fotos_inspeccion")
         .update({ principal: true })
         .eq("id", foto.id)
         .eq("inspeccion_id", id);
 
-      if (principalError) throw principalError;
+      if (principalError) {
+        throw principalError;
+      }
 
-      /*
-       * Guardamos la ruta persistente, no la URL firmada,
-       * porque esta última caduca.
-       */
+      // Guardar la referencia persistente, nunca el enlace firmado
+      // que caduca. Las fotos actuales se guardan en "fotos".
       const valorPrincipal =
         foto.rutaStorage ||
         foto.archivo ||
@@ -383,7 +475,9 @@ export default function GaleriaInspeccion() {
         })
         .eq("id", id);
 
-      if (inspeccionError) throw inspeccionError;
+      if (inspeccionError) {
+        throw inspeccionError;
+      }
 
       setFotos((prev) =>
         prev.map((f) => ({
@@ -395,7 +489,11 @@ export default function GaleriaInspeccion() {
       setMensaje("Foto marcada como principal");
       setTimeout(() => setMensaje(""), 2000);
     } catch (error) {
-      console.error(error);
+      console.error(
+        "Error marcando foto como principal:",
+        error
+      );
+
       setMensaje(
         "Error marcando foto como principal: " +
           (error?.message || "")
@@ -404,7 +502,7 @@ export default function GaleriaInspeccion() {
   }
 
   async function finalizarYEnviarRevision() {
-    if (fotos.length === 0) {
+    if (!fotos.length) {
       setMensaje(
         "Debes subir al menos una foto antes de finalizar."
       );
@@ -423,10 +521,7 @@ export default function GaleriaInspeccion() {
         .eq("id", id);
 
       if (error) {
-        setMensaje(
-          "Error al enviar a revisión: " + error.message
-        );
-        return;
+        throw error;
       }
 
       setMensaje(
@@ -437,15 +532,83 @@ export default function GaleriaInspeccion() {
         navigate("/tecnico");
       }, 1500);
     } catch (error) {
-      console.error(error);
-      setMensaje("Error al enviar la inspección a revisión.");
+      console.error(
+        "Error enviando la inspección a revisión:",
+        error
+      );
+
+      setMensaje(
+        "Error al enviar la inspección a revisión: " +
+          (error?.message || "Error desconocido")
+      );
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    cargarFotos();
+    let cancelado = false;
+
+    async function cargar() {
+      if (!id) {
+        setFotos([]);
+        setLoading(false);
+        setMensaje("No se ha indicado la inspección.");
+        return;
+      }
+
+      setLoading(true);
+      setMensaje("");
+
+      try {
+        const { data, error } = await supabase
+          .from("fotos_inspeccion")
+          .select("*")
+          .eq("inspeccion_id", id)
+          .order("id", { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+
+        const fotosResueltas = await Promise.all(
+          (data || []).map((foto) => resolverFoto(foto))
+        );
+
+        if (!cancelado) {
+          setFotos(fotosResueltas.filter((foto) => foto.url));
+
+          if (
+            fotosResueltas.length > 0 &&
+            fotosResueltas.some((foto) => !foto.url)
+          ) {
+            setMensaje(
+              "Algunas fotos no se han podido cargar. Comprueba los permisos de Storage."
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error cargando fotos:", error);
+
+        if (!cancelado) {
+          setFotos([]);
+          setMensaje(
+            "No se pudieron cargar las fotos: " +
+              (error?.message || "Error desconocido")
+          );
+        }
+      } finally {
+        if (!cancelado) {
+          setLoading(false);
+        }
+      }
+    }
+
+    cargar();
+
+    return () => {
+      cancelado = true;
+    };
   }, [id]);
 
   return (
@@ -496,6 +659,7 @@ export default function GaleriaInspeccion() {
 
         {mensaje && (
           <p
+            role="status"
             style={{
               marginBottom: "15px",
               color:
@@ -505,6 +669,7 @@ export default function GaleriaInspeccion() {
                   : "#4db8ff",
               fontWeight: "600",
               textAlign: "center",
+              overflowWrap: "anywhere",
             }}
           >
             {mensaje}
@@ -519,6 +684,7 @@ export default function GaleriaInspeccion() {
           }}
         >
           <button
+            type="button"
             onClick={() => subirFoto(CameraSource.Camera)}
             disabled={loading}
             style={{
@@ -537,6 +703,7 @@ export default function GaleriaInspeccion() {
           </button>
 
           <button
+            type="button"
             onClick={() => subirFoto(CameraSource.Photos)}
             disabled={loading}
             style={{
@@ -566,20 +733,25 @@ export default function GaleriaInspeccion() {
               border: "1px solid rgba(255,255,255,0.1)",
             }}
           >
-            <img
-              src={fotoGrande.url}
-              alt="Foto grande"
-              style={{
-                width: "100%",
-                maxHeight: "400px",
-                objectFit: "contain",
-                borderRadius: "10px",
-                border: "3px solid #4db8ff",
-                marginBottom: "15px",
-              }}
-            />
+            {fotoGrande.url ? (
+              <img
+                src={fotoGrande.url}
+                alt="Foto ampliada de inspección"
+                style={{
+                  width: "100%",
+                  maxHeight: "400px",
+                  objectFit: "contain",
+                  borderRadius: "10px",
+                  border: "3px solid #4db8ff",
+                  marginBottom: "15px",
+                }}
+              />
+            ) : (
+              <p>Foto no disponible.</p>
+            )}
 
             <button
+              type="button"
               onClick={() => setFotoGrande(null)}
               style={{
                 padding: "12px",
@@ -632,25 +804,50 @@ export default function GaleriaInspeccion() {
                   textAlign: "center",
                 }}
               >
-                <img
-                  src={foto.url}
-                  alt="Foto de inspección"
-                  style={{
-                    width: "100%",
-                    height: "120px",
-                    objectFit: "cover",
-                    borderRadius: "10px",
-                    border: foto.principal
-                      ? "3px solid #4ade80"
-                      : "2px solid #4db8ff",
-                    marginBottom: "10px",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setFotoGrande(foto)}
-                />
+                {foto.url ? (
+                  <img
+                    src={foto.url}
+                    alt="Foto de inspección"
+                    style={{
+                      width: "100%",
+                      height: "120px",
+                      objectFit: "cover",
+                      borderRadius: "10px",
+                      border: foto.principal
+                        ? "3px solid #4ade80"
+                        : "2px solid #4db8ff",
+                      marginBottom: "10px",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setFotoGrande(foto)}
+                    onError={() => {
+                      console.error(
+                        "No se pudo mostrar la foto:",
+                        foto.id
+                      );
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      height: "120px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: "10px",
+                      color: "#a0aec0",
+                      background: "rgba(255,255,255,0.05)",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    Foto no disponible
+                  </div>
+                )}
 
                 <button
+                  type="button"
                   onClick={() => marcarPrincipal(foto)}
+                  disabled={loading}
                   style={{
                     padding: "10px",
                     background: foto.principal
@@ -659,7 +856,7 @@ export default function GaleriaInspeccion() {
                     border: "none",
                     borderRadius: "10px",
                     color: "#000",
-                    cursor: "pointer",
+                    cursor: loading ? "not-allowed" : "pointer",
                     width: "100%",
                     fontWeight: "700",
                     marginBottom: "8px",
@@ -671,14 +868,16 @@ export default function GaleriaInspeccion() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => borrarFoto(foto)}
+                  disabled={loading}
                   style={{
                     padding: "12px",
                     background: "#ff4444",
                     border: "none",
                     borderRadius: "10px",
                     color: "#fff",
-                    cursor: "pointer",
+                    cursor: loading ? "not-allowed" : "pointer",
                     width: "100%",
                     fontWeight: "700",
                   }}
@@ -691,6 +890,7 @@ export default function GaleriaInspeccion() {
         )}
 
         <button
+          type="button"
           onClick={finalizarYEnviarRevision}
           disabled={loading}
           style={{
@@ -711,6 +911,7 @@ export default function GaleriaInspeccion() {
         </button>
 
         <button
+          type="button"
           onClick={() => navigate(-1)}
           style={{
             marginTop: "12px",
