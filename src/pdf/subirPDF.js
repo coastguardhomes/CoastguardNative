@@ -1,12 +1,12 @@
+
 import { supabase } from "../lib/supabase";
 
 /**
- * Sube un PDF a Supabase y guarda su URL en la inspección.
+ * Sube un PDF a Supabase y guarda su ruta en la inspección.
  * Compatible con WEB + APP.
  *
- * Mantiene `url` con el formato antiguo para no romper los
- * componentes existentes y devuelve `signedUrl` como alternativa
- * temporal para acceder al PDF cuando el bucket sea privado.
+ * Guarda la ruta interna en pdf_url para permitir que el bucket
+ * sea privado. Devuelve signedUrl como enlace temporal de acceso.
  */
 export async function subirPDF(inspeccionId, pdfBlob) {
   if (!inspeccionId || !pdfBlob) {
@@ -30,7 +30,7 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     };
   }
 
-  // Comprobar la firma real del PDF: %PDF-
+  // Comprobar la firma real del PDF: %PDF-.
   // También permite archivos móviles cuyo MIME viene vacío.
   let firmaPDFValida = false;
 
@@ -114,36 +114,41 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     };
   }
 
-  // Mantener el formato antiguo de la URL guardada.
-  // Generar esta URL no hace público un bucket privado.
-  const { data: urlData } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(filePath);
-
-  const publicUrl = urlData?.publicUrl;
-
-  if (!publicUrl) {
-    return {
-      ok: false,
-      mensaje: "Error obteniendo la URL del PDF",
-      error: "Supabase no devolvió una URL válida",
-      filePath,
-    };
-  }
-
-  // Guardar pdf_url para conservar la compatibilidad existente.
+  // Guardar la ruta interna, no una URL pública.
   // No incluir firmado_en: esa columna no existe en inspecciones.
-  const { data: inspeccionActualizada, error: updateError } =
-    await supabase
-      .from("inspecciones")
-      .update({
-        pdf_url: publicUrl,
-      })
-      .eq("id", inspeccionId)
-      .select("id, pdf_url")
-      .maybeSingle();
+  const {
+    data: inspeccionActualizada,
+    error: updateError,
+  } = await supabase
+    .from("inspecciones")
+    .update({
+      pdf_url: filePath,
+    })
+    .eq("id", inspeccionId)
+    .select("id, pdf_url")
+    .maybeSingle();
 
   if (updateError || !inspeccionActualizada) {
+    // Intentar eliminar el archivo si no se pudo guardar
+    // su referencia en la inspección.
+    try {
+      const { error: cleanupError } = await supabase.storage
+        .from(bucket)
+        .remove([filePath]);
+
+      if (cleanupError) {
+        console.warn(
+          "No se pudo limpiar el PDF subido:",
+          cleanupError.message
+        );
+      }
+    } catch (errorLimpieza) {
+      console.warn(
+        "Error al intentar limpiar el PDF subido:",
+        errorLimpieza
+      );
+    }
+
     return {
       ok: false,
       mensaje:
@@ -155,9 +160,7 @@ export async function subirPDF(inspeccionId, pdfBlob) {
     };
   }
 
-  // Intentar generar un enlace temporal para el bucket privado.
-  // Es adicional: no cambia el valor de `url` que esperan
-  // los componentes existentes.
+  // Crear un enlace temporal para consultar el PDF.
   let signedUrl = null;
 
   try {
@@ -186,7 +189,9 @@ export async function subirPDF(inspeccionId, pdfBlob) {
   return {
     ok: true,
     mensaje: "PDF subido y guardado correctamente",
-    url: publicUrl,
+    // Se conserva la propiedad url para el llamador existente,
+    // pero ahora contiene la ruta interna del archivo.
+    url: filePath,
     signedUrl,
     id: inspeccionId,
     filePath,
