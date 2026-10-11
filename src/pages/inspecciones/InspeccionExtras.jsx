@@ -1,7 +1,11 @@
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import { resolverUrlPdfSegura } from "../../lib/urlPdf";
+
+const BUCKET_FOTOS = "facturas";
+const CARPETA_FOTOS = "inspecciones";
 
 export default function InspeccionExtra() {
   const { id } = useParams();
@@ -12,34 +16,48 @@ export default function InspeccionExtra() {
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
 
+  const [factura, setFactura] = useState(null);
+  const [inspeccionId, setInspeccionId] = useState(null);
+
   const [descripcion, setDescripcion] = useState("");
   const [materiales, setMateriales] = useState("");
   const [tiempoEmpleado, setTiempoEmpleado] = useState("");
 
-  // Referencias persistentes de las fotos: rutas internas o URLs antiguas.
+  // Se guardan rutas de Storage, no URLs temporales.
   const [fotos, setFotos] = useState([]);
-
-  // URLs temporales usadas únicamente para mostrar las fotos.
   const [fotosVisibles, setFotosVisibles] = useState([]);
 
   async function resolverFotos(referencias) {
     return Promise.all(
       (Array.isArray(referencias) ? referencias : []).map(
         async (referencia) => {
-          if (!referencia || typeof referencia !== "string") {
+          if (
+            !referencia ||
+            typeof referencia !== "string"
+          ) {
             return "";
+          }
+
+          if (
+            referencia.startsWith("data:") ||
+            referencia.startsWith("blob:")
+          ) {
+            return referencia;
           }
 
           try {
             return (
               (await resolverUrlPdfSegura(
                 referencia,
-                "facturas",
+                BUCKET_FOTOS,
                 3600
               )) || ""
             );
           } catch (err) {
-            console.error("Error resolviendo foto del extra:", err);
+            console.error(
+              "Error resolviendo foto del extra:",
+              err
+            );
             return "";
           }
         }
@@ -56,36 +74,132 @@ export default function InspeccionExtra() {
         setError("");
         setMensaje("");
 
-        const { data, error: err } = await supabase
+        /*
+         * Se carga la factura únicamente para identificar
+         * el trabajo asociado y mostrar su información.
+         * Esta pantalla no actualiza la tabla facturas.
+         */
+        const {
+          data: facturaEncontrada,
+          error: errorFactura,
+        } = await supabase
           .from("facturas")
           .select("*")
           .eq("id", id)
           .maybeSingle();
 
-        if (err) throw err;
+        if (errorFactura) {
+          throw errorFactura;
+        }
 
-        if (!data) {
+        if (!facturaEncontrada) {
           if (!cancelado) {
-            setError("No se encontró el registro de la factura.");
+            setError(
+              "No se encontró el registro de la factura."
+            );
           }
           return;
         }
 
-        const referencias = Array.isArray(data.fotos)
-          ? data.fotos
+        /*
+         * Si ya existe una inspección de tipo extra para esta
+         * factura, la cargamos para evitar crear una nueva cada
+         * vez que se vuelva a abrir esta pantalla.
+         */
+        const {
+          data: inspeccionExistente,
+          error: errorInspeccion,
+        } = await supabase
+          .from("inspecciones")
+          .select("*")
+          .eq("factura_id", id)
+          .eq("tipo", "extra")
+          .order("fecha", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (errorInspeccion) {
+          throw errorInspeccion;
+        }
+
+        let referenciasFotos = Array.isArray(
+          facturaEncontrada.fotos
+        )
+          ? facturaEncontrada.fotos.filter(
+              (foto) => typeof foto === "string"
+            )
           : [];
 
-        const urlsVisibles = await resolverFotos(referencias);
+        if (inspeccionExistente) {
+          const {
+            data: fotosRegistradas,
+            error: errorFotos,
+          } = await supabase
+            .from("inspecciones_fotos")
+            .select("url")
+            .eq("inspeccion_id", inspeccionExistente.id);
+
+          if (errorFotos) {
+            throw errorFotos;
+          }
+
+          referenciasFotos = (
+            fotosRegistradas || []
+          )
+            .map((foto) => foto.url)
+            .filter(
+              (referencia) =>
+                typeof referencia === "string" &&
+                referencia.length > 0
+            );
+
+          if (referenciasFotos.length === 0) {
+            referenciasFotos = Array.isArray(
+              facturaEncontrada.fotos
+            )
+              ? facturaEncontrada.fotos.filter(
+                  (foto) => typeof foto === "string"
+                )
+              : [];
+          }
+        }
+
+        const urlsVisibles = await resolverFotos(
+          referenciasFotos
+        );
 
         if (cancelado) return;
 
-        setDescripcion(data.descripcion || "");
-        setMateriales(data.materiales || "");
-        setTiempoEmpleado(data.tiempo_empleado || "");
-        setFotos(referencias);
+        setFactura(facturaEncontrada);
+        setInspeccionId(
+          inspeccionExistente?.id || null
+        );
+
+        setDescripcion(
+          inspeccionExistente?.descripcion ??
+            facturaEncontrada.descripcion ??
+            ""
+        );
+
+        setMateriales(
+          inspeccionExistente?.materiales ??
+            facturaEncontrada.materiales ??
+            ""
+        );
+
+        setTiempoEmpleado(
+          inspeccionExistente?.tiempo_empleado ??
+            facturaEncontrada.tiempo_empleado ??
+            ""
+        );
+
+        setFotos(referenciasFotos);
         setFotosVisibles(urlsVisibles);
       } catch (err) {
-        console.error("Error cargando inspección:", err);
+        console.error(
+          "Error cargando inspección:",
+          err
+        );
 
         if (!cancelado) {
           setError(
@@ -112,78 +226,99 @@ export default function InspeccionExtra() {
     };
   }, [id]);
 
-  // Subida de fotos desde cámara o galería.
+  // Subida de fotografías desde cámara o galería.
   const manejarSubidaFotos = async (e) => {
     const input = e.target;
-    const files = Array.from(input.files || []);
+    const archivos = Array.from(input.files || []);
 
-    // Permite seleccionar de nuevo el mismo archivo.
+    // Permite volver a seleccionar el mismo archivo.
     input.value = "";
 
-    if (!files.length || guardando) return;
+    if (!archivos.length || guardando) return;
 
     setGuardando(true);
     setError("");
     setMensaje("");
 
-    const nuevasRutasSubidas = [];
+    const rutasSubidas = [];
 
     try {
       const nuevasReferencias = [...fotos];
 
-      for (const file of files) {
-        if (!file.type || !file.type.startsWith("image/")) {
-          throw new Error("Solo se permiten archivos de imagen.");
+      for (const archivo of archivos) {
+        if (
+          !archivo.type ||
+          !archivo.type.startsWith("image/")
+        ) {
+          throw new Error(
+            "Solo se permiten archivos de imagen."
+          );
         }
 
-        const extensionOriginal = file.name.includes(".")
-          ? file.name.split(".").pop().toLowerCase()
+        const extensionOriginal = archivo.name.includes(".")
+          ? archivo.name.split(".").pop().toLowerCase()
           : "jpg";
 
-        const extension = /^[a-z0-9]+$/.test(extensionOriginal)
-          ? extensionOriginal
-          : "jpg";
+        const extension =
+          /^[a-z0-9]+$/.test(extensionOriginal)
+            ? extensionOriginal
+            : "jpg";
 
-        const fileName =
-          `${Date.now()}_${Math.random().toString(36).slice(2)}.${extension}`;
+        const nombreArchivo =
+          `${Date.now()}_${Math.random()
+            .toString(36)
+            .slice(2)}.${extension}`;
 
-        const filePath = `inspecciones/${fileName}`;
+        const rutaArchivo =
+          `${CARPETA_FOTOS}/${nombreArchivo}`;
 
-        const { data: uploadData, error: uploadError } =
-          await supabase.storage
-            .from("facturas")
-            .upload(filePath, file, {
-              contentType: file.type,
-              upsert: false,
-            });
+        const {
+          data: datosSubida,
+          error: errorSubida,
+        } = await supabase.storage
+          .from(BUCKET_FOTOS)
+          .upload(rutaArchivo, archivo, {
+            contentType: archivo.type,
+            upsert: false,
+          });
 
-        if (uploadError) throw uploadError;
+        if (errorSubida) {
+          throw errorSubida;
+        }
 
-        const rutaGuardada = uploadData?.path || filePath;
+        const rutaGuardada =
+          datosSubida?.path || rutaArchivo;
 
-        nuevasRutasSubidas.push(rutaGuardada);
+        rutasSubidas.push(rutaGuardada);
         nuevasReferencias.push(rutaGuardada);
       }
 
-      const nuevasUrlsVisibles = await resolverFotos(nuevasReferencias);
+      const nuevasUrls = await resolverFotos(
+        nuevasReferencias
+      );
 
       setFotos(nuevasReferencias);
-      setFotosVisibles(nuevasUrlsVisibles);
+      setFotosVisibles(nuevasUrls);
       setMensaje("¡Fotos subidas con éxito!");
     } catch (err) {
-      console.error("Error al subir fotos:", err);
+      console.error(
+        "Error al subir fotos:",
+        err
+      );
 
-      // Si falla la subida de un archivo posterior, limpiamos los
-      // archivos que ya se subieron durante esta misma operación.
-      if (nuevasRutasSubidas.length > 0) {
-        const { error: removeError } = await supabase.storage
-          .from("facturas")
-          .remove(nuevasRutasSubidas);
+      // Limpia las imágenes subidas durante esta operación
+      // si falla una subida posterior.
+      if (rutasSubidas.length > 0) {
+        const {
+          error: errorEliminar,
+        } = await supabase.storage
+          .from(BUCKET_FOTOS)
+          .remove(rutasSubidas);
 
-        if (removeError) {
+        if (errorEliminar) {
           console.error(
             "No se pudieron limpiar todos los archivos subidos:",
-            removeError
+            errorEliminar
           );
         }
       }
@@ -197,75 +332,120 @@ export default function InspeccionExtra() {
     }
   };
 
-  // Guardar el trabajo extra y remitirlo a administración.
+  // Guarda la inspección sin modificar los datos administrativos.
   const guardarYEnviarAlAdmin = async () => {
     if (guardando) return;
 
+    if (!factura?.id) {
+      setError(
+        "No se puede guardar: falta la factura asociada."
+      );
+      return;
+    }
+
+    if (!descripcion.trim()) {
+      setError(
+        "Escribe la descripción del trabajo realizado."
+      );
+      return;
+    }
+
+    setGuardando(true);
+    setError("");
+    setMensaje("");
+
+    let idInspeccionGuardada = inspeccionId;
+    let inspeccionNueva = false;
+
     try {
-      setGuardando(true);
-      setError("");
-      setMensaje("");
+      const datosInspeccion = {
+        factura_id: factura.id,
+        descripcion: descripcion.trim(),
+        materiales: materiales.trim(),
+        tiempo_empleado: tiempoEmpleado.trim(),
+        tipo: "extra",
+        fecha: new Date().toISOString(),
+      };
 
-      // Crear el registro de inspección extra.
-      const { data: nuevaInspeccion, error: errIns } = await supabase
-        .from("inspecciones")
-        .insert({
-          factura_id: id,
-          descripcion,
-          materiales,
-          tiempo_empleado: tiempoEmpleado,
-          tipo: "extra",
-          fecha: new Date().toISOString(),
-        })
-        .select()
-        .single();
+      if (inspeccionId) {
+        const {
+          data: inspeccionActualizada,
+          error: errorActualizar,
+        } = await supabase
+          .from("inspecciones")
+          .update(datosInspeccion)
+          .eq("id", inspeccionId)
+          .select("id")
+          .maybeSingle();
 
-      if (errIns) throw errIns;
+        if (errorActualizar) {
+          throw errorActualizar;
+        }
 
-      // Guardar las referencias de las fotos asociadas al extra.
+        if (!inspeccionActualizada) {
+          throw new Error(
+            "No se pudo actualizar la inspección. Comprueba los permisos del técnico."
+          );
+        }
+
+        idInspeccionGuardada =
+          inspeccionActualizada.id;
+      } else {
+        const {
+          data: nuevaInspeccion,
+          error: errorInsertar,
+        } = await supabase
+          .from("inspecciones")
+          .insert(datosInspeccion)
+          .select("id")
+          .single();
+
+        if (errorInsertar) {
+          throw errorInsertar;
+        }
+
+        idInspeccionGuardada = nuevaInspeccion.id;
+        inspeccionNueva = true;
+      }
+
+      /*
+       * Actualiza las referencias de fotos de la inspección.
+       * No se guarda ninguna URL firmada porque caduca.
+       */
+      const {
+        error: errorEliminarFotos,
+      } = await supabase
+        .from("inspecciones_fotos")
+        .delete()
+        .eq(
+          "inspeccion_id",
+          idInspeccionGuardada
+        );
+
+      if (errorEliminarFotos) {
+        throw errorEliminarFotos;
+      }
+
       if (fotos.length > 0) {
-        const fotosInsert = fotos.map((referencia) => ({
-          inspeccion_id: nuevaInspeccion.id,
-          url: referencia,
-        }));
+        const filasFotos = fotos.map(
+          (referencia) => ({
+            inspeccion_id: idInspeccionGuardada,
+            url: referencia,
+          })
+        );
 
-        const { error: errFotos } = await supabase
+        const {
+          error: errorInsertarFotos,
+        } = await supabase
           .from("inspecciones_fotos")
-          .insert(fotosInsert);
+          .insert(filasFotos);
 
-        if (errFotos) {
-          // Evitar dejar la inspección extra creada sin sus fotos
-          // registradas cuando la inserción de fotos falla.
-          const { error: rollbackError } = await supabase
-            .from("inspecciones")
-            .delete()
-            .eq("id", nuevaInspeccion.id);
-
-          if (rollbackError) {
-            console.error(
-              "No se pudo limpiar la inspección extra incompleta:",
-              rollbackError
-            );
-          }
-
-          throw errFotos;
+        if (errorInsertarFotos) {
+          throw errorInsertarFotos;
         }
       }
 
-      // Mantener los campos y el estado técnico que utilizaba el flujo.
-      const { error: updateError } = await supabase
-        .from("facturas")
-        .update({
-          descripcion,
-          materiales,
-          tiempo_empleado: tiempoEmpleado,
-          fotos,
-          estado_tecnico: "completado",
-        })
-        .eq("id", id);
-
-      if (updateError) throw updateError;
-
+      setInspeccionId(idInspeccionGuardada);
       setMensaje(
         "¡Inspección guardada y enviada al administrador correctamente!"
       );
@@ -274,7 +454,34 @@ export default function InspeccionExtra() {
         navigate("/tecnico");
       }, 1500);
     } catch (err) {
-      console.error("Error al guardar:", err);
+      console.error(
+        "Error al guardar la inspección:",
+        err
+      );
+
+      /*
+       * Si se creó una inspección nueva pero falló el registro
+       * de sus fotografías, intentamos eliminar el registro
+       * incompleto para no dejar datos huérfanos.
+       */
+      if (
+        inspeccionNueva &&
+        idInspeccionGuardada
+      ) {
+        const {
+          error: errorRollback,
+        } = await supabase
+          .from("inspecciones")
+          .delete()
+          .eq("id", idInspeccionGuardada);
+
+        if (errorRollback) {
+          console.error(
+            "No se pudo limpiar la inspección incompleta:",
+            errorRollback
+          );
+        }
+      }
 
       setError(
         "Error al guardar la inspección: " +
@@ -286,12 +493,17 @@ export default function InspeccionExtra() {
   };
 
   if (loading) {
-    return <div style={estilos.centrado}>Cargando datos del trabajo...</div>;
+    return (
+      <div style={estilos.centrado}>
+        Cargando datos del trabajo...
+      </div>
+    );
   }
 
   return (
     <div style={estilos.pagina}>
       <button
+        type="button"
         onClick={() => navigate(-1)}
         style={estilos.botonVolver}
         disabled={guardando}
@@ -299,10 +511,30 @@ export default function InspeccionExtra() {
         ← Volver
       </button>
 
-      <h2 style={estilos.titulo}>Inspección de Trabajo</h2>
+      <h2 style={estilos.titulo}>
+        Inspección de Trabajo
+      </h2>
 
-      {mensaje && <p style={estilos.ok}>{mensaje}</p>}
-      {error && <p style={estilos.error}>{error}</p>}
+      {mensaje && (
+        <p style={estilos.ok}>{mensaje}</p>
+      )}
+
+      {error && (
+        <p style={estilos.error}>{error}</p>
+      )}
+
+      <div style={estilos.tarjeta}>
+        <p style={estilos.dato}>
+          <strong>Factura asociada:</strong>{" "}
+          {factura?.numero || `#${factura?.id || id}`}
+        </p>
+
+        <p style={estilos.aviso}>
+          El técnico registra la inspección. El precio,
+          el IVA, el total y el estado administrativo
+          de la factura no se modifican desde esta pantalla.
+        </p>
+      </div>
 
       <div style={estilos.contenedorBotonesFoto}>
         <label
@@ -364,30 +596,43 @@ export default function InspeccionExtra() {
         <label style={estilos.label}>
           Descripción del trabajo realizado:
         </label>
+
         <textarea
           rows="3"
           value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
+          onChange={(e) =>
+            setDescripcion(e.target.value)
+          }
           placeholder="Detalla qué se ha reparado o revisado..."
           style={estilos.textarea}
           disabled={guardando}
         />
 
-        <label style={estilos.label}>Materiales usados:</label>
+        <label style={estilos.label}>
+          Materiales usados:
+        </label>
+
         <input
           type="text"
           value={materiales}
-          onChange={(e) => setMateriales(e.target.value)}
+          onChange={(e) =>
+            setMateriales(e.target.value)
+          }
           placeholder="Ej: Tubo de PVC, silicona, tornillos..."
           style={estilos.input}
           disabled={guardando}
         />
 
-        <label style={estilos.label}>Tiempo empleado:</label>
+        <label style={estilos.label}>
+          Tiempo empleado:
+        </label>
+
         <input
           type="text"
           value={tiempoEmpleado}
-          onChange={(e) => setTiempoEmpleado(e.target.value)}
+          onChange={(e) =>
+            setTiempoEmpleado(e.target.value)
+          }
           placeholder="Ej: 2 horas"
           style={estilos.input}
           disabled={guardando}
@@ -395,12 +640,15 @@ export default function InspeccionExtra() {
       </div>
 
       <button
+        type="button"
         onClick={guardarYEnviarAlAdmin}
         disabled={guardando}
         style={{
           ...estilos.botonEnviar,
           opacity: guardando ? 0.6 : 1,
-          cursor: guardando ? "not-allowed" : "pointer",
+          cursor: guardando
+            ? "not-allowed"
+            : "pointer",
         }}
       >
         {guardando
@@ -418,6 +666,7 @@ const estilos = {
     minHeight: "100vh",
     color: "#fff",
     fontFamily: "Inter, sans-serif",
+    boxSizing: "border-box",
   },
   centrado: {
     minHeight: "100vh",
@@ -449,6 +698,17 @@ const estilos = {
     padding: 16,
     marginBottom: 20,
   },
+  dato: {
+    color: "#d1d5db",
+    fontSize: 13,
+    margin: "4px 0 10px",
+  },
+  aviso: {
+    color: "#fbbf24",
+    fontSize: 12,
+    lineHeight: 1.5,
+    margin: 0,
+  },
   label: {
     display: "block",
     color: "#9fb3c8",
@@ -466,6 +726,7 @@ const estilos = {
     color: "#fff",
     fontSize: 14,
     marginBottom: 10,
+    boxSizing: "border-box",
   },
   textarea: {
     width: "100%",
@@ -476,6 +737,7 @@ const estilos = {
     color: "#fff",
     fontSize: 14,
     marginBottom: 10,
+    boxSizing: "border-box",
   },
   contenedorBotonesFoto: {
     display: "flex",
