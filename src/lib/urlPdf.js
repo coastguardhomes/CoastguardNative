@@ -1,42 +1,21 @@
+
 import { supabase } from "./supabase";
 
 /**
- * Devuelve la URL pública de un archivo.
+ * Resuelve una ruta o URL antigua de Storage mediante una URL firmada.
  *
- * Se conserva por compatibilidad con componentes antiguos.
- * IMPORTANTE: no utilizar para archivos que deban permanecer privados.
+ * Esta función es asíncrona: debe utilizarse con await.
+ * No genera URLs públicas.
+ *
+ * Para archivos que deban permanecer privados, el usuario autenticado
+ * debe tener permiso de acceso al objeto según las políticas de Storage.
  */
-export function resolverUrlPdf(valor, bucket = "pdfs") {
-  if (!valor || typeof valor !== "string") {
-    return null;
-  }
-
-  const valorLimpio = valor.trim();
-
-  if (!valorLimpio) {
-    return null;
-  }
-
-  // Compatibilidad con enlaces que ya estaban guardados.
-  if (/^https?:\/\//i.test(valorLimpio)) {
-    return valorLimpio;
-  }
-
-  let ruta = valorLimpio.replace(/^\/+/, "");
-
-  if (ruta.startsWith(`${bucket}/`)) {
-    ruta = ruta.slice(bucket.length + 1);
-  }
-
-  if (!ruta) {
-    return null;
-  }
-
-  const { data } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(ruta);
-
-  return data?.publicUrl || null;
+export async function resolverUrlPdf(
+  valor,
+  bucket = "pdfs",
+  expiresIn = 3600
+) {
+  return resolverUrlPdfSegura(valor, bucket, expiresIn);
 }
 
 /**
@@ -103,15 +82,15 @@ export async function resolverUrlPdfSegura(
       return null;
     }
 
-    // No permitir que una URL de otro servidor se interprete
-    // como si fuera un objeto del proyecto actual.
+    // No interpretar URLs de otros servidores como objetos
+    // del proyecto Supabase actual.
     if (
       url.origin !== urlProyecto.origin ||
       url.username ||
       url.password
     ) {
-      // Los enlaces externos que no sean de Storage se conservan.
-      // Los enlaces de Storage de otros servidores se rechazan.
+      // Rechazar URLs de Storage de otros servidores.
+      // Conservar enlaces externos que no sean de Storage.
       if (
         /\/storage\/v1\/object\/(?:public|sign|authenticated)\//i.test(
           url.pathname
@@ -127,8 +106,8 @@ export async function resolverUrlPdfSegura(
       /\/storage\/v1\/object\/(?:public|sign|authenticated)\/([^/]+)\/(.+)$/i
     );
 
-    // Si es una URL del proyecto pero no es una URL de un objeto
-    // de Storage reconocible, conservar el comportamiento anterior.
+    // Si no es una URL de objeto de Storage reconocible,
+    // conservar el comportamiento anterior.
     if (!coincidencia) {
       return valorLimpio;
     }
