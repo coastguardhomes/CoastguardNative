@@ -541,6 +541,26 @@ export default function Register() {
             </div>
 
             <button
+              onClick={() => {
+                setModalPrivacidad(false);
+                navigate("/politica-privacidad");
+              }}
+              style={{
+                width: "100%",
+                padding: "10px",
+                marginBottom: "10px",
+                background: "transparent",
+                color: "#4db8ff",
+                border: "1px solid #4db8ff",
+                borderRadius: "6px",
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+            >
+              Leer política de privacidad completa
+            </button>
+
+            <button
               onClick={() => setModalPrivacidad(false)}
               style={{
                 width: "100%",
