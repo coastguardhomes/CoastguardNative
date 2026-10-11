@@ -1,14 +1,19 @@
+
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
 const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
 const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
 const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
-const TEXTO_DORADO_BRILLO = { color: COLOR_DORADO, textShadow: "0 0 12px rgba(224, 176, 52, 0.6)" };
+const TEXTO_DORADO_BRILLO = {
+  color: COLOR_DORADO,
+  textShadow: "0 0 12px rgba(224, 176, 52, 0.6)",
+};
 
 export default function AvisosCobro() {
   const navigate = useNavigate();
@@ -22,65 +27,69 @@ export default function AvisosCobro() {
     let cancelado = false;
 
     async function cargarFacturas() {
-      const { data, error: errorFacturas } = await supabase
-        .from("facturas")
-        .select("*")
-        .order("fecha", { ascending: false });
+      try {
+        const { data, error: errorFacturas } = await supabase
+          .from("facturas")
+          .select("*")
+          .order("fecha", { ascending: false });
 
-      if (cancelado) return;
+        if (cancelado) return;
 
-      if (errorFacturas) {
-        console.error("Error cargando avisos de cobro:", errorFacturas);
-        setError("No se pudieron cargar los avisos de cobro.");
-      } else {
+        if (errorFacturas) {
+          console.error("Error cargando avisos de cobro:", errorFacturas);
+          setError("No se pudieron cargar los avisos de cobro.");
+          return;
+        }
+
         const listaFacturas = data || [];
         setFacturas(listaFacturas);
 
-        // Preparar enlaces temporales para los PDF con ruta de Storage.
+        // Resolver rutas nuevas y URL antiguas de Storage.
+        // Las referencias privadas se muestran mediante URL firmadas temporales.
         const entradasPdf = await Promise.all(
           listaFacturas
-            .filter((factura) => factura.pdf_storage_path)
+            .filter((factura) => factura.pdf_storage_path || factura.pdf_url)
             .map(async (factura) => {
-              const { data: signedData, error: signedError } =
-                await supabase.storage
-                  .from("facturas")
-                  .createSignedUrl(factura.pdf_storage_path, 3600);
+              try {
+                const referencia =
+                  factura.pdf_storage_path || factura.pdf_url;
 
-              if (signedError) {
+                const url = await resolverUrlPdfSegura(
+                  referencia,
+                  "facturas",
+                  3600
+                );
+
+                return [String(factura.id), url || null];
+              } catch (errorPdf) {
                 console.error(
-                  "Error generando enlace temporal del PDF de la factura:",
+                  "Error generando enlace temporal del PDF:",
                   factura.id,
-                  signedError
+                  errorPdf
                 );
 
                 return [String(factura.id), null];
               }
-
-              return [
-                String(factura.id),
-                signedData?.signedUrl || null,
-              ];
             })
         );
 
         if (!cancelado) {
           setPdfUrls(Object.fromEntries(entradasPdf));
         }
-      }
+      } catch (errorCarga) {
+        console.error("Error cargando avisos de cobro:", errorCarga);
 
-      if (!cancelado) {
-        setLoading(false);
+        if (!cancelado) {
+          setError("No se pudieron cargar los avisos de cobro.");
+        }
+      } finally {
+        if (!cancelado) {
+          setLoading(false);
+        }
       }
     }
 
-    cargarFacturas().catch((errorCarga) => {
-      console.error("Error cargando avisos de cobro:", errorCarga);
-
-      if (!cancelado) {
-        setError("No se pudieron cargar los avisos de cobro.");
-        setLoading(false);
-      }
-    });
+    cargarFacturas();
 
     return () => {
       cancelado = true;
@@ -92,21 +101,20 @@ export default function AvisosCobro() {
     e.stopPropagation();
 
     try {
-      let url = factura.pdf_storage_path
-        ? pdfUrls[String(factura.id)]
-        : factura.pdf_url;
+      let url = pdfUrls[String(factura.id)] || null;
 
-      // Reintentar si no se pudo generar el enlace durante la carga.
-      if (!url && factura.pdf_storage_path) {
-        const { data, error: signedError } = await supabase.storage
-          .from("facturas")
-          .createSignedUrl(factura.pdf_storage_path, 3600);
+      // Reintentar si el enlace temporal no se generó durante la carga.
+      if (!url) {
+        const referencia =
+          factura.pdf_storage_path || factura.pdf_url;
 
-        if (signedError) {
-          throw signedError;
+        if (referencia) {
+          url = await resolverUrlPdfSegura(
+            referencia,
+            "facturas",
+            3600
+          );
         }
-
-        url = data?.signedUrl || null;
       }
 
       if (url) {
@@ -118,7 +126,6 @@ export default function AvisosCobro() {
       }
     } catch (errorPdf) {
       console.error("Error abriendo el PDF de la factura:", errorPdf);
-
       alert("No se pudo abrir el documento. Inténtalo de nuevo.");
     }
   };
@@ -137,7 +144,9 @@ export default function AvisosCobro() {
         {loading ? (
           <p style={estilos.texto}>Cargando avisos de cobro...</p>
         ) : facturas.length === 0 ? (
-          <p style={estilos.texto}>No hay avisos de cobro registrados.</p>
+          <p style={estilos.texto}>
+            No hay avisos de cobro registrados.
+          </p>
         ) : (
           <>
             <div style={estilos.resumen}>
