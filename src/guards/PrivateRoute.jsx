@@ -1,3 +1,4 @@
+
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { supabase } from "../supabaseClient";
@@ -9,55 +10,120 @@ export default function PrivateRoute({ allowedRole }) {
   const [authorized, setAuthorized] = useState(null);
   const [checkingRole, setCheckingRole] = useState(true);
 
-  const rutasPublicas = ["/login", "/register", "/reset-password", "/update-password"];
-  const esPublica = rutasPublicas.includes(pathname) || pathname.startsWith("/update-password");
+  const rutasPublicas = [
+    "/login",
+    "/register",
+    "/reset-password",
+    "/update-password",
+    "/auth/callback",
+  ];
+
+  const esPublica =
+    rutasPublicas.includes(pathname) ||
+    pathname.startsWith("/update-password");
+
+  const rolesPermitidos = Array.isArray(allowedRole)
+    ? allowedRole
+    : typeof allowedRole === "string"
+      ? allowedRole.split(",").map((role) => role.trim()).filter(Boolean)
+      : [];
 
   useEffect(() => {
-    async function verifyRole() {
-      // Si la ruta es pública o no hay usuario, cancelamos verificación de rol privado
-      if (!user || esPublica) {
-        setAuthorized(false);
-        setCheckingRole(false);
+    let cancelado = false;
+
+    async function verificarAcceso() {
+      setCheckingRole(true);
+      setAuthorized(null);
+
+      if (esPublica) {
+        if (!cancelado) {
+          setAuthorized(true);
+          setCheckingRole(false);
+        }
         return;
       }
 
-      // Si no se requiere un rol específico, con estar logueado basta
-      if (!allowedRole) {
-        setAuthorized(true);
-        setCheckingRole(false);
+      if (!user) {
+        if (!cancelado) {
+          setAuthorized(false);
+          setCheckingRole(false);
+        }
+        return;
+      }
+
+      if (rolesPermitidos.length === 0) {
+        if (!cancelado) {
+          setAuthorized(true);
+          setCheckingRole(false);
+        }
         return;
       }
 
       try {
-        if (allowedRole === "cliente") {
-          const { data } = await supabase
+        let rolesUsuario = [];
+
+        const { data: perfil, error: errorPerfil } = await supabase
+          .from("profiles")
+          .select("rol")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (errorPerfil) {
+          throw errorPerfil;
+        }
+
+        if (perfil?.rol) {
+          rolesUsuario.push(String(perfil.rol).trim().toLowerCase());
+        }
+
+        if (rolesPermitidos.includes("cliente")) {
+          const { data: cliente, error: errorCliente } = await supabase
             .from("clientes")
             .select("id")
             .eq("usuario_id", user.id)
             .maybeSingle();
-          setAuthorized(!!data);
-        } else if (allowedRole === "admin" || allowedRole === "tecnico") {
-          const { data } = await supabase
-            .from("usuarios")
-            .select("rol")
-            .eq("id", user.id)
-            .maybeSingle();
-          setAuthorized(data?.rol === allowedRole || data?.rol === "admin");
-        } else {
-          setAuthorized(true);
+
+          if (errorCliente) {
+            throw errorCliente;
+          }
+
+          if (cliente) {
+            rolesUsuario.push("cliente");
+          }
         }
-      } catch (err) {
-        console.error("Error verificando rol:", err);
-        setAuthorized(false);
+
+        const rolesNormalizados = rolesPermitidos.map((role) =>
+          String(role).trim().toLowerCase()
+        );
+
+        const tieneAcceso =
+          rolesUsuario.includes("admin") ||
+          rolesNormalizados.some((role) => rolesUsuario.includes(role));
+
+        if (!cancelado) {
+          setAuthorized(tieneAcceso);
+        }
+      } catch (error) {
+        console.error("Error verificando permisos de acceso:", error);
+
+        if (!cancelado) {
+          setAuthorized(false);
+        }
       } finally {
-        setCheckingRole(false);
+        if (!cancelado) {
+          setCheckingRole(false);
+        }
       }
     }
 
     if (!loading) {
-      verifyRole();
+      verificarAcceso();
     }
-  }, [user, loading, allowedRole, pathname, esPublica]);
+
+    return () => {
+      cancelado = true;
+    };
+  }, [user, loading, pathname, esPublica, allowedRole]);
 
   if (loading || checkingRole) {
     return (
@@ -81,12 +147,11 @@ export default function PrivateRoute({ allowedRole }) {
     );
   }
 
-  if (!user && !esPublica) {
-    return <Navigate to="/login" replace />;
+  if (esPublica) {
+    return <Outlet />;
   }
 
-  // Si está logueado pero el rol no corresponde
-  if (user && allowedRole && authorized === false && !esPublica) {
+  if (!user || authorized !== true) {
     return <Navigate to="/login" replace />;
   }
 
