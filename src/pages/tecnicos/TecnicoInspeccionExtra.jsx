@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf.js";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -15,6 +17,99 @@ const TEXTO_DORADO_BRILLO = {
   color: COLOR_DORADO,
   textShadow: "0 0 12px rgba(224, 176, 52, 0.6)"
 };
+
+const BUCKET_FOTOS = "facturas";
+const CARPETA_FOTOS = "inspecciones";
+
+function obtenerReferenciaFoto(foto) {
+  if (typeof foto === "string") {
+    return foto.trim();
+  }
+
+  if (foto && typeof foto === "object") {
+    return (
+      foto.url_foto ||
+      foto.url ||
+      foto.path ||
+      foto.foto_url ||
+      foto.archivo ||
+      foto.url_storage_o_path ||
+      ""
+    );
+  }
+
+  return "";
+}
+
+function obtenerBucketYReferencia(valor) {
+  const referencia = obtenerReferenciaFoto(valor);
+
+  if (!referencia) {
+    return null;
+  }
+
+  if (
+    referencia.startsWith("data:") ||
+    referencia.startsWith("blob:")
+  ) {
+    return {
+      bucket: null,
+      referencia
+    };
+  }
+
+  /*
+   * Si es una URL de Supabase Storage, detectamos el bucket
+   * de origen para poder seguir mostrando fotos antiguas.
+   */
+  const coincidencia = referencia.match(
+    /\/storage\/v1\/object\/(?:public|sign|authenticated)\/([^/]+)\/(.+?)(?:\?.*)?$/i
+  );
+
+  if (coincidencia) {
+    return {
+      bucket: coincidencia[1],
+      referencia
+    };
+  }
+
+  let ruta = referencia.replace(/^\/+/, "");
+
+  /*
+   * Las rutas nuevas se guardan en facturas/inspecciones.
+   * Las rutas antiguas sin carpeta se intentan resolver
+   * en el bucket anterior "extras".
+   */
+  if (ruta.startsWith(`${BUCKET_FOTOS}/`)) {
+    ruta = ruta.slice(`${BUCKET_FOTOS}/`.length);
+
+    return {
+      bucket: BUCKET_FOTOS,
+      referencia: ruta
+    };
+  }
+
+  if (ruta.startsWith("extras/")) {
+    ruta = ruta.slice("extras/".length);
+
+    return {
+      bucket: "extras",
+      referencia: ruta
+    };
+  }
+
+  if (ruta.startsWith(`${CARPETA_FOTOS}/`)) {
+    return {
+      bucket: BUCKET_FOTOS,
+      referencia: ruta
+    };
+  }
+
+  return {
+    bucket: "extras",
+    referencia: ruta
+  };
+}
 
 export default function TecnicoInspeccionExtra() {
   const { id } = useParams();
@@ -38,6 +133,7 @@ export default function TecnicoInspeccionExtra() {
 
   const [alerta, setAlerta] = useState(false);
   const [fotos, setFotos] = useState([]);
+  const [fotosUrlsFirmadas, setFotosUrlsFirmadas] = useState([]);
 
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
@@ -240,12 +336,15 @@ export default function TecnicoInspeccionExtra() {
               ]);
             }
           }
+        } else {
+          setFotos([]);
         }
 
         return;
       }
 
       setExtraData(null);
+      setFotos([]);
 
       if (factura?.cliente_id) {
         setClienteId(
@@ -286,6 +385,76 @@ export default function TecnicoInspeccionExtra() {
   useEffect(() => {
     cargarDetalleExtra();
   }, [id]);
+
+  /*
+   * Genera URLs temporales para mostrar las fotografías.
+   * No utiliza getPublicUrl(), porque el bucket debe ser privado.
+   */
+  useEffect(() => {
+    let cancelado = false;
+
+    async function resolverFotos() {
+      setFotosUrlsFirmadas([]);
+
+      if (!Array.isArray(fotos) || fotos.length === 0) {
+        return;
+      }
+
+      const urls = await Promise.all(
+        fotos.map(async (foto, index) => {
+          const referencia = obtenerBucketYReferencia(foto);
+
+          if (!referencia) {
+            return null;
+          }
+
+          if (
+            referencia.referencia.startsWith("data:") ||
+            referencia.referencia.startsWith("blob:")
+          ) {
+            return referencia.referencia;
+          }
+
+          if (!referencia.bucket) {
+            return null;
+          }
+
+          try {
+            const url = await resolverUrlPdfSegura(
+              referencia.referencia,
+              referencia.bucket,
+              3600
+            );
+
+            if (!url) {
+              console.error(
+                `No se pudo generar el enlace temporal de la foto ${index + 1}.`
+              );
+            }
+
+            return url || null;
+          } catch (err) {
+            console.error(
+              `Error resolviendo la foto ${index + 1}:`,
+              err
+            );
+
+            return null;
+          }
+        })
+      );
+
+      if (!cancelado) {
+        setFotosUrlsFirmadas(urls);
+      }
+    }
+
+    resolverFotos();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [fotos]);
 
   const manejarCambioCliente = async (e) => {
     const nuevoClienteId = e.target.value;
@@ -332,37 +501,46 @@ export default function TecnicoInspeccionExtra() {
       setError("");
       setMensaje("");
 
-      const nuevasUrls = [...fotos];
+      const nuevasFotos = [...fotos];
 
-      for (
-        let i = 0;
-        i < files.length;
-        i++
-      ) {
+      for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
-        const cleanFileName =
-          file.name.replace(
-            /[^a-zA-Z0-9.]/g,
-            "_"
+        if (!file.type.startsWith("image/")) {
+          throw new Error(
+            `El archivo "${file.name}" no es una imagen válida.`
           );
+        }
+
+        const cleanFileName = file.name.replace(
+          /[^a-zA-Z0-9._-]/g,
+          "_"
+        );
 
         const fileName =
           `${Date.now()}_${Math.floor(
             Math.random() * 1000
           )}_${cleanFileName}`;
 
+        /*
+         * Las fotos nuevas van al bucket privado "facturas",
+         * dentro de "inspecciones/".
+         */
+        const storagePath =
+          `${CARPETA_FOTOS}/${fileName}`;
+
         const {
           data: uploadData,
           error: uploadError
         } = await supabase.storage
-          .from("extras")
+          .from(BUCKET_FOTOS)
           .upload(
-            fileName,
+            storagePath,
             file,
             {
               cacheControl: "3600",
-              upsert: true
+              upsert: false,
+              contentType: file.type
             }
           );
 
@@ -378,23 +556,16 @@ export default function TecnicoInspeccionExtra() {
           );
         }
 
-        const {
-          data: publicUrlData
-        } = supabase.storage
-          .from("extras")
-          .getPublicUrl(
-            uploadData?.path ||
-              fileName
-          );
-
-        if (publicUrlData?.publicUrl) {
-          nuevasUrls.push(
-            publicUrlData.publicUrl
-          );
-        }
+        /*
+         * Guardamos únicamente la ruta dentro del bucket,
+         * no una URL pública ni una URL firmada que caducará.
+         */
+        nuevasFotos.push(
+          uploadData?.path || storagePath
+        );
       }
 
-      setFotos(nuevasUrls);
+      setFotos(nuevasFotos);
 
       setMensaje(
         "¡Fotos subidas con éxito!"
@@ -477,8 +648,8 @@ export default function TecnicoInspeccionExtra() {
       setSaving(true);
 
       /*
-       * El técnico únicamente informa del trabajo realizado.
-       * No envía precios, IVA, totales ni otros importes
+       * El técnico informa del trabajo realizado.
+       * No se envían precios, IVA, totales ni otros importes
        * administrativos en las actualizaciones.
        */
       if (extraData?.id) {
@@ -529,7 +700,7 @@ export default function TecnicoInspeccionExtra() {
         setExtraData(extraActualizado);
 
         /*
-         * Solo actualizamos los datos técnicos de la factura.
+         * Solo actualizamos datos técnicos de la factura.
          * No modificamos base, IVA, total, precio ni estado
          * administrativo.
          */
@@ -581,10 +752,7 @@ export default function TecnicoInspeccionExtra() {
 
       /*
        * Nuevo extra.
-       *
-       * El precio no se solicita al técnico ni se incluye
-       * en el registro. La valoración económica corresponde
-       * al administrador.
+       * El precio corresponde al administrador.
        */
       const extraPayload = {
         cliente_id: clienteId,
@@ -660,9 +828,8 @@ export default function TecnicoInspeccionExtra() {
       setExtraData(nuevoExtra);
 
       /*
-       * Si existe una factura asociada, solo enviamos
-       * información técnica. Los importes originales
-       * de la factura permanecen intactos.
+       * Si existe una factura asociada, solo se envía
+       * información técnica y se conservan sus importes.
        */
       if (facturaData?.id) {
         const facturaPayload = {
@@ -727,8 +894,7 @@ export default function TecnicoInspeccionExtra() {
     return (
       <div
         style={{
-          backgroundColor:
-            FONDO_PRINCIPAL,
+          backgroundColor: FONDO_PRINCIPAL,
           minHeight: "100vh",
           display: "flex",
           justifyContent: "center",
@@ -1159,20 +1325,46 @@ export default function TecnicoInspeccionExtra() {
               flexWrap: "wrap"
             }}
           >
-            {fotos.map((url, index) => (
-              <img
-                key={index}
-                src={url}
-                alt={`Evidencia ${index + 1}`}
-                style={{
-                  width: "60px",
-                  height: "60px",
-                  objectFit: "cover",
-                  borderRadius: "8px",
-                  border: BORDE_DORADO_FINO
-                }}
-              />
-            ))}
+            {fotos.map((foto, index) => {
+              const url = fotosUrlsFirmadas[index];
+
+              if (!url) {
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      width: "60px",
+                      height: "60px",
+                      borderRadius: "8px",
+                      border: BORDE_DORADO_FINO,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#94a3b8",
+                      fontSize: "10px",
+                      textAlign: "center"
+                    }}
+                  >
+                    Cargando...
+                  </div>
+                );
+              }
+
+              return (
+                <img
+                  key={index}
+                  src={url}
+                  alt={`Evidencia ${index + 1}`}
+                  style={{
+                    width: "60px",
+                    height: "60px",
+                    objectFit: "cover",
+                    borderRadius: "8px",
+                    border: BORDE_DORADO_FINO
+                  }}
+                />
+              );
+            })}
           </div>
         )}
 
