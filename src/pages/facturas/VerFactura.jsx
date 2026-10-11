@@ -2,19 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { resolverUrlPdfSegura } from '../../lib/urlPdf.js';
 
-const COLOR_DORADO = "#e0b034";
-const FONDO_PRINCIPAL = "#030509";
+const COLOR_DORADO = '#e0b034';
+const FONDO_PRINCIPAL = '#030509';
 const FONDO_TARJETA =
-  "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
+  'linear-gradient(145deg, #0b1320 0%, #04070d 100%)';
 const BORDE_DORADO_FINO =
-  "1px solid rgba(224, 176, 52, 0.4)";
+  '1px solid rgba(224, 176, 52, 0.4)';
 const SOMBRA_LUXURY =
-  "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+  '0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)';
 
 const TEXTO_DORADO_BRILLO = {
   color: COLOR_DORADO,
-  textShadow: "0 0 12px rgba(224, 176, 52, 0.6)"
+  textShadow: '0 0 12px rgba(224, 176, 52, 0.6)'
 };
 
 const traducirConcepto = (texto, idioma) => {
@@ -22,21 +23,23 @@ const traducirConcepto = (texto, idioma) => {
   if (idioma !== 'en' && idioma !== 'english') return texto;
 
   const diccionario = {
-    "Urgencia / Emergencia": "Urgency / Emergency",
-    "Apertura de vivienda": "Property opening",
-    "Supervisión (por hora o fracción)": "Supervision (per hour or fraction)",
-    "Cierre de vivienda": "Property closure",
-    "Gestión del técnico": "Technician management",
-    "Visita rápida": "Quick visit",
-    "Inspección posterior a tormenta": "Post-storm inspection",
-    "Coste del técnico": "Technician cost"
+    'Urgencia / Emergencia': 'Urgency / Emergency',
+    'Apertura de vivienda': 'Property opening',
+    'Supervisión (por hora o fracción)': 'Supervision (per hour or fraction)',
+    'Cierre de vivienda': 'Property closure',
+    'Gestión del técnico': 'Technician management',
+    'Visita rápida': 'Quick visit',
+    'Inspección posterior a tormenta': 'Post-storm inspection',
+    'Coste del técnico': 'Technician cost'
   };
 
   let textoTraducido = texto;
 
   for (const [esp, eng] of Object.entries(diccionario)) {
-    const regex = new RegExp(esp, 'g');
-    textoTraducido = textoTraducido.replace(regex, eng);
+    textoTraducido = textoTraducido.replace(
+      new RegExp(esp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+      eng
+    );
   }
 
   return textoTraducido;
@@ -46,17 +49,12 @@ export default function VerFactura() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  let currentLang = 'es';
-
-  try {
-    const langCtx = useLanguage();
-    currentLang =
-      langCtx?.language ||
-      langCtx?.idioma ||
-      'es';
-  } catch (e) {
-    currentLang = 'es';
-  }
+  // Los hooks deben ejecutarse siempre en el mismo orden.
+  const langCtx = useLanguage();
+  const currentLang =
+    langCtx?.language ||
+    langCtx?.idioma ||
+    'es';
 
   const [factura, setFactura] = useState(null);
   const [cliente, setCliente] = useState(null);
@@ -65,6 +63,7 @@ export default function VerFactura() {
   const [procesando, setProcesando] = useState(false);
   const [inspeccionExtra, setInspeccionExtra] = useState(null);
   const [fotosExtra, setFotosExtra] = useState([]);
+  const [fotosUrlsFirmadas, setFotosUrlsFirmadas] = useState({});
   const [procesandoExtra, setProcesandoExtra] = useState(false);
 
   const parsearFotosExtra = (fotosRaw) => {
@@ -84,9 +83,7 @@ export default function VerFactura() {
 
         return parsed ? [parsed] : [];
       } catch {
-        return fotosRaw.trim()
-          ? [fotosRaw]
-          : [];
+        return fotosRaw.trim() ? [fotosRaw.trim()] : [];
       }
     }
 
@@ -97,42 +94,112 @@ export default function VerFactura() {
     return [];
   };
 
-  const obtenerUrlFotoExtra = (foto) => {
-    if (!foto) return '';
+  /*
+   * Las fotos de inspección se guardan en el bucket privado
+   * "facturas", con rutas como "inspecciones/archivo.jpg".
+   *
+   * Se firman por separado para que el fallo de una fotografía
+   * no impida resolver las demás.
+   */
+  useEffect(() => {
+    let cancelado = false;
 
-    const rawUrl =
-      typeof foto === 'string'
-        ? foto
-        : (
-            foto.url_foto ||
-            foto.url ||
-            foto.path ||
-            foto.foto_url ||
-            foto.archivo ||
-            ''
+    const cargarUrlsFirmadas = async () => {
+      if (!fotosExtra || fotosExtra.length === 0) {
+        setFotosUrlsFirmadas({});
+        return;
+      }
+
+      setFotosUrlsFirmadas({});
+      const nuevasUrls = {};
+
+      for (let i = 0; i < fotosExtra.length; i++) {
+        if (cancelado) return;
+
+        const foto = fotosExtra[i];
+
+        if (!foto) continue;
+
+        const rawValor =
+          typeof foto === 'string'
+            ? foto.trim()
+            : (
+                foto.url_foto ||
+                foto.url ||
+                foto.path ||
+                foto.foto_url ||
+                foto.archivo ||
+                ''
+              );
+
+        if (typeof rawValor !== 'string' || !rawValor.trim()) {
+          continue;
+        }
+
+        const rawUrl = rawValor.trim();
+
+        // Las URL locales no necesitan firmarse.
+        if (
+          rawUrl.startsWith('data:') ||
+          rawUrl.startsWith('blob:')
+        ) {
+          nuevasUrls[i] = rawUrl;
+          continue;
+        }
+
+        try {
+          let valorResolver = rawUrl;
+
+          // Limpiar prefijos solo en rutas relativas.
+          // Las URL completas deben llegar intactas al helper.
+          if (!/^https?:\/\//i.test(valorResolver)) {
+            valorResolver = valorResolver.replace(/^\/+/, '');
+
+            if (valorResolver.startsWith('facturas/')) {
+              valorResolver = valorResolver.slice('facturas/'.length);
+            }
+          }
+
+          const urlResuelta = await resolverUrlPdfSegura(
+            valorResolver,
+            'facturas',
+            3600
           );
 
-    if (!rawUrl) return '';
+          if (cancelado) return;
 
-    if (
-      rawUrl.startsWith('http://') ||
-      rawUrl.startsWith('https://') ||
-      rawUrl.startsWith('data:')
-    ) {
-      return rawUrl;
-    }
+          if (urlResuelta) {
+            nuevasUrls[i] = urlResuelta;
+          } else {
+            console.error(
+              `No se pudo resolver la fotografía ${i + 1}.`
+            );
+          }
+        } catch (error) {
+          console.error(
+            `Error resolviendo la fotografía ${i + 1}:`,
+            error
+          );
+        }
+      }
 
-    const { data } = supabase.storage
-      .from('extras')
-      .getPublicUrl(rawUrl);
+      if (!cancelado) {
+        setFotosUrlsFirmadas(nuevasUrls);
+      }
+    };
 
-    return data?.publicUrl || rawUrl;
-  };
+    cargarUrlsFirmadas();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [fotosExtra]);
 
   const cargarInspeccionExtra = async (facturaData) => {
     try {
       setInspeccionExtra(null);
       setFotosExtra([]);
+      setFotosUrlsFirmadas({});
 
       const {
         data: extraPublicado,
@@ -141,9 +208,7 @@ export default function VerFactura() {
         .from('extras')
         .select('*')
         .eq('factura_id', facturaData.id)
-        .order('created_at', {
-          ascending: false
-        })
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -164,10 +229,7 @@ export default function VerFactura() {
         } = await supabase
           .from('inspecciones')
           .select('*')
-          .eq(
-            'id',
-            extraPublicado.inspeccion_id
-          )
+          .eq('id', extraPublicado.inspeccion_id)
           .maybeSingle();
 
         if (inspeccionError) {
@@ -176,48 +238,31 @@ export default function VerFactura() {
             inspeccionError
           );
         } else {
-          inspeccionData =
-            inspeccionRelacionada;
+          inspeccionData = inspeccionRelacionada;
         }
       }
 
-      let fotos = parsearFotosExtra(
-        extraPublicado.fotos
-      );
+      let fotos = parsearFotosExtra(extraPublicado.fotos);
 
-      if (
-        fotos.length === 0 &&
-        inspeccionData?.id
-      ) {
-        fotos = parsearFotosExtra(
-          inspeccionData.fotos
-        );
+      if (fotos.length === 0 && inspeccionData?.id) {
+        fotos = parsearFotosExtra(inspeccionData.fotos);
       }
 
-      if (
-        fotos.length === 0 &&
-        inspeccionData?.id
-      ) {
+      if (fotos.length === 0 && inspeccionData?.id) {
         const {
           data: fotosInspeccion,
           error: fotosError
         } = await supabase
           .from('inspecciones_fotos')
           .select('*')
-          .eq(
-            'inspeccion_id',
-            inspeccionData.id
-          );
+          .eq('inspeccion_id', inspeccionData.id);
 
         if (fotosError) {
           console.error(
             'Error cargando fotografías de inspección:',
             fotosError
           );
-        } else if (
-          fotosInspeccion &&
-          fotosInspeccion.length > 0
-        ) {
+        } else if (fotosInspeccion?.length) {
           fotos = fotosInspeccion;
         }
       }
@@ -229,10 +274,7 @@ export default function VerFactura() {
         publicado: extraPublicado
       });
     } catch (err) {
-      console.error(
-        'Error cargando inspección extra:',
-        err
-      );
+      console.error('Error cargando inspección extra:', err);
     }
   };
 
@@ -241,9 +283,7 @@ export default function VerFactura() {
       setErrorMsg('');
 
       if (!id) {
-        throw new Error(
-          "ID de factura no proporcionado."
-        );
+        throw new Error('ID de factura no proporcionado.');
       }
 
       const {
@@ -260,42 +300,36 @@ export default function VerFactura() {
       }
 
       if (!facturaData) {
-        throw new Error(
-          "No se encontró el aviso de cobro."
-        );
+        throw new Error('No se encontró el aviso de cobro.');
       }
 
       setFactura(facturaData);
 
-      await cargarInspeccionExtra(
-        facturaData
-      );
+      await cargarInspeccionExtra(facturaData);
 
       if (facturaData.cliente_id) {
         const {
-          data: clienteData
+          data: clienteData,
+          error: clienteError
         } = await supabase
           .from('clientes')
           .select('*')
-          .eq(
-            'id',
-            facturaData.cliente_id
-          )
+          .eq('id', facturaData.cliente_id)
           .single();
 
-        if (clienteData) {
-          setCliente(clienteData);
+        if (clienteError) {
+          console.error('Error cargando cliente:', clienteError);
         }
+
+        setCliente(clienteData || null);
+      } else {
+        setCliente(null);
       }
     } catch (err) {
-      console.error(
-        'Error al cargar la factura:',
-        err
-      );
+      console.error('Error al cargar la factura:', err);
 
       setErrorMsg(
-        err.message ||
-        'No se pudo cargar la información.'
+        err.message || 'No se pudo cargar la información.'
       );
     } finally {
       setLoading(false);
@@ -303,33 +337,36 @@ export default function VerFactura() {
   };
 
   useEffect(() => {
-    cargarDatosSeguros();
+    let cancelado = false;
+
+    const cargar = async () => {
+      if (!cancelado) {
+        await cargarDatosSeguros();
+      }
+    };
+
+    cargar();
+
+    return () => {
+      cancelado = true;
+    };
   }, [id]);
 
   useEffect(() => {
     let ultimoChequeo = 0;
 
     const handleVisibilityChange = () => {
-      if (
-        document.visibilityState ===
-        'visible'
-      ) {
-        const ahora = Date.now();
+      if (document.visibilityState !== 'visible') return;
 
-        if (
-          ahora - ultimoChequeo >
-          3000
-        ) {
-          ultimoChequeo = ahora;
-          cargarDatosSeguros();
-        }
+      const ahora = Date.now();
+
+      if (ahora - ultimoChequeo > 3000) {
+        ultimoChequeo = ahora;
+        cargarDatosSeguros();
       }
     };
 
-    document.addEventListener(
-      'visibilitychange',
-      handleVisibilityChange
-    );
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       document.removeEventListener(
@@ -345,110 +382,78 @@ export default function VerFactura() {
     currentLang;
 
   /*
-   * AVISO INICIAL DE PAGO
-   *
-   * ESTE FLUJO SE MANTIENE.
+   * AVISO INICIAL DE PAGO.
+   * Se conserva el flujo existente de Stripe y email.
    */
   const enviarAvisoPago = async () => {
     try {
       setProcesando(true);
 
       if (!factura) {
-        throw new Error(
-          "No se ha cargado la factura."
-        );
+        throw new Error('No se ha cargado la factura.');
       }
 
       if (!cliente?.email) {
         throw new Error(
-          "El cliente no tiene un correo electrónico registrado."
+          'El cliente no tiene un correo electrónico registrado.'
         );
       }
 
-      const importe = Number(
-        factura.total || 0
-      );
+      const importe = Number(factura.total || 0);
 
       if (!importe || importe <= 0) {
-        throw new Error(
-          "El importe de la factura no es válido."
-        );
+        throw new Error('El importe de la factura no es válido.');
       }
 
       const {
         data: checkoutData,
         error: checkoutError
       } = await supabase.functions.invoke(
-        "create-checkout-session",
+        'create-checkout-session',
         {
           body: {
-            amount: Math.round(
-              importe * 100
-            ),
-            customerEmail:
-              cliente.email,
-            clientId:
-              factura.cliente_id ||
-              null,
-            facturaId:
-              Number(factura.id),
-            originUrl:
-              window.location.origin
+            amount: Math.round(importe * 100),
+            customerEmail: cliente.email,
+            clientId: factura.cliente_id || null,
+            facturaId: Number(factura.id),
+            originUrl: window.location.origin
           }
         }
       );
 
       if (checkoutError) {
-        let errorMsg =
-          checkoutError.message;
+        let mensaje = checkoutError.message;
 
         try {
-          const body =
-            await checkoutError.context?.json();
+          const body = await checkoutError.context?.json();
 
           if (body?.error) {
-            errorMsg =
-              body.error;
+            mensaje = body.error;
           }
-        } catch (e) {}
+        } catch {}
 
-        throw new Error(errorMsg);
+        throw new Error(mensaje);
       }
 
       if (!checkoutData?.url) {
-        throw new Error(
-          "Stripe no ha devuelto una URL de pago."
-        );
+        throw new Error('Stripe no ha devuelto una URL de pago.');
       }
 
-      const {
-        error: errEmail
-      } = await supabase.functions.invoke(
-        'enviar-email',
-        {
+      const { error: errEmail } =
+        await supabase.functions.invoke('enviar-email', {
           body: {
-            factura_id:
-              Number(factura.id),
-            facturaId:
-              Number(factura.id),
-            id:
-              Number(factura.id),
-            tipo:
-              'aviso_pago',
-            customerEmail:
-              cliente.email,
-            customerName:
-              cliente.nombre,
-            stripeUrl:
-              checkoutData.url,
-            title:
-              `Aviso de pago ${
-                factura.numero ||
-                `#${factura.id}`
-              }`
+            factura_id: Number(factura.id),
+            facturaId: Number(factura.id),
+            id: Number(factura.id),
+            tipo: 'aviso_pago',
+            customerEmail: cliente.email,
+            customerName: cliente.nombre,
+            stripeUrl: checkoutData.url,
+            title: `Aviso de pago ${
+              factura.numero || `#${factura.id}`
+            }`
           }
-        }
-      );
+        });
 
       if (errEmail) {
         throw errEmail;
@@ -458,14 +463,10 @@ export default function VerFactura() {
         '¡Aviso de pago enviado por email al cliente correctamente!'
       );
     } catch (err) {
-      console.error(
-        "Error enviando aviso de pago:",
-        err
-      );
+      console.error('Error enviando aviso de pago:', err);
 
       alert(
-        'Error al enviar el aviso: ' +
-        (err.message || '')
+        'Error al enviar el aviso: ' + (err.message || '')
       );
     } finally {
       setProcesando(false);
@@ -473,56 +474,42 @@ export default function VerFactura() {
   };
 
   /*
-   * CONFIRMAR PAGO + FACTURADIRECTA
-   *
-   * ESTE FLUJO SE MANTIENE.
+   * CONFIRMAR PAGO + FACTURADIRECTA.
+   * Se conserva el flujo existente.
    */
   const marcarComoPagada = async () => {
     try {
       setProcesando(true);
 
       if (!factura) {
-        throw new Error(
-          "No se ha cargado la factura."
-        );
+        throw new Error('No se ha cargado la factura.');
       }
 
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke(
-        "factura-pdf",
-        {
+      const { data, error } =
+        await supabase.functions.invoke('factura-pdf', {
           body: {
-            facturaId:
-              Number(factura.id),
-            pagoConfirmado:
-              true
+            facturaId: Number(factura.id),
+            pagoConfirmado: true
           }
-        }
-      );
+        });
 
       if (error) {
-        let mensaje =
-          error.message;
+        let mensaje = error.message;
 
         try {
-          const body =
-            await error.context?.json();
+          const body = await error.context?.json();
 
           if (body?.error) {
-            mensaje =
-              body.error;
+            mensaje = body.error;
           }
-        } catch (e) {}
+        } catch {}
 
         throw new Error(mensaje);
       }
 
       if (!data?.ok) {
         throw new Error(
-          data?.error ||
-          "No se pudo confirmar el pago."
+          data?.error || 'No se pudo confirmar el pago.'
         );
       }
 
@@ -531,17 +518,13 @@ export default function VerFactura() {
       alert(
         data?.facturadirecta?.numero
           ? `Pago confirmado. Factura oficial ${data.facturadirecta.numero} creada y procesada.`
-          : "Pago confirmado y factura oficial procesada correctamente."
+          : 'Pago confirmado y factura oficial procesada correctamente.'
       );
     } catch (err) {
-      console.error(
-        "Error confirmando pago:",
-        err
-      );
+      console.error('Error confirmando pago:', err);
 
       alert(
-        'Error al confirmar el pago: ' +
-        (err.message || '')
+        'Error al confirmar el pago: ' + (err.message || '')
       );
     } finally {
       setProcesando(false);
@@ -549,49 +532,29 @@ export default function VerFactura() {
   };
 
   /*
-   * PUBLICAR INSPECCIÓN EXTRA AL CLIENTE
-   *
-   * IMPORTANTE:
-   *
-   * NO modifica Stripe.
-   * NO modifica factura-pdf.
-   * NO crea otra factura.
-   * NO modifica descripción.
-   * NO modifica materiales.
-   * NO modifica fotos.
-   * NO modifica tiempo.
-   * NO modifica el PDF.
-   *
-   * La publicación se hace mediante la
-   * Edge Function "enviar-extra-cliente".
+   * PUBLICAR INSPECCIÓN EXTRA AL CLIENTE.
+   * No se aprueba aquí la inspección: solo se publica
+   * si técnico y administración ya la han completado/aprobado.
    */
   const aprobarYEnviarAlCliente = async () => {
     try {
       setProcesandoExtra(true);
 
       if (!factura) {
-        throw new Error(
-          'No se ha cargado la factura.'
-        );
+        throw new Error('No se ha cargado la factura.');
       }
 
-      if (
-        !inspeccionExtra?.publicado?.id
-      ) {
-        throw new Error(
-          'No se ha encontrado la inspección extra.'
-        );
+      if (!inspeccionExtra?.publicado?.id) {
+        throw new Error('No se ha encontrado la inspección extra.');
       }
 
-      const estadoPago =
-        String(
-          factura.estado_pago || ''
-        ).toLowerCase();
+      const estadoPago = String(
+        factura.estado_pago || ''
+      ).toLowerCase();
 
-      const estadoFactura =
-        String(
-          factura.estado || ''
-        ).toLowerCase();
+      const estadoFactura = String(
+        factura.estado || ''
+      ).toLowerCase();
 
       const facturaPagada =
         estadoPago === 'pagada' ||
@@ -604,8 +567,7 @@ export default function VerFactura() {
         );
       }
 
-      const extraExistente =
-        inspeccionExtra.publicado;
+      const extraExistente = inspeccionExtra.publicado;
 
       const estadosTecnicoCompletado = [
         'completado',
@@ -614,48 +576,28 @@ export default function VerFactura() {
         'finalizada'
       ];
 
-      const estadoTecnico =
-        String(
-          extraExistente.estado_tecnico ||
-          ''
-        ).toLowerCase();
+      const estadoTecnico = String(
+        extraExistente.estado_tecnico || ''
+      ).toLowerCase();
 
-      if (
-        !estadosTecnicoCompletado.includes(
-          estadoTecnico
-        )
-      ) {
+      if (!estadosTecnicoCompletado.includes(estadoTecnico)) {
         throw new Error(
           'La inspección extra todavía no ha sido completada por el técnico.'
         );
       }
 
-      /*
-       * MUY IMPORTANTE:
-       *
-       * VerFactura NO aprueba la inspección.
-       *
-       * Solo puede publicar una inspección
-       * que ya haya sido aprobada por administración.
-       */
-      const estadoAdmin =
-        String(
-          extraExistente.estado_admin ||
-          ''
-        ).toLowerCase();
+      const estadoAdmin = String(
+        extraExistente.estado_admin || ''
+      ).toLowerCase();
 
-      if (
-        estadoAdmin !== 'aprobada'
-      ) {
+      if (estadoAdmin !== 'aprobada') {
         throw new Error(
           'La inspección extra todavía no ha sido aprobada por administración.'
         );
       }
 
       if (
-        String(
-          extraExistente.estado || ''
-        ).toLowerCase() ===
+        String(extraExistente.estado || '').toLowerCase() ===
         'enviado_cliente'
       ) {
         alert(
@@ -666,19 +608,6 @@ export default function VerFactura() {
         return;
       }
 
-      /*
-       * PUBLICACIÓN SEGURA
-       *
-       * La Edge Function vuelve a comprobar:
-       * - técnico completado
-       * - administración aprobada
-       * - cliente asociado
-       *
-       * Y actualiza:
-       * estado = enviado_cliente
-       * alerta = false
-       * alerta_vista = true
-       */
       const {
         data: envioExtra,
         error: errorExtra
@@ -686,25 +615,21 @@ export default function VerFactura() {
         'enviar-extra-cliente',
         {
           body: {
-            extraId:
-              extraExistente.id
+            extraId: extraExistente.id
           }
         }
       );
 
       if (errorExtra) {
-        let mensaje =
-          errorExtra.message;
+        let mensaje = errorExtra.message;
 
         try {
-          const body =
-            await errorExtra.context?.json();
+          const body = await errorExtra.context?.json();
 
           if (body?.error) {
-            mensaje =
-              body.error;
+            mensaje = body.error;
           }
-        } catch (e) {}
+        } catch {}
 
         throw new Error(mensaje);
       }
@@ -716,33 +641,19 @@ export default function VerFactura() {
         );
       }
 
-      /*
-       * La Edge Function no devuelve
-       * la fila completa de extras.
-       *
-       * Recargamos todo para conservar
-       * exactamente la estructura que
-       * ya utiliza esta pantalla.
-       */
       await cargarDatosSeguros();
 
       alert(
         'Inspección extra publicada correctamente en el portal del cliente.'
       );
     } catch (err) {
-      console.error(
-        'Error publicando inspección extra:',
-        err
-      );
+      console.error('Error publicando inspección extra:', err);
 
       await cargarDatosSeguros();
 
       alert(
         'No se ha podido publicar para el cliente: ' +
-        (
-          err.message ||
-          'Error desconocido.'
-        )
+        (err.message || 'Error desconocido.')
       );
     } finally {
       setProcesandoExtra(false);
@@ -752,7 +663,7 @@ export default function VerFactura() {
   const handleDelete = async () => {
     if (
       !window.confirm(
-        "¿Estás seguro de que deseas eliminar este aviso de cobro?"
+        '¿Estás seguro de que deseas eliminar este aviso de cobro?'
       )
     ) {
       return;
@@ -761,26 +672,19 @@ export default function VerFactura() {
     try {
       setProcesando(true);
 
-      const { error } =
-        await supabase
-          .from('facturas')
-          .delete()
-          .eq('id', id);
+      const { error } = await supabase
+        .from('facturas')
+        .delete()
+        .eq('id', id);
 
       if (error) {
         throw error;
       }
 
-      alert(
-        "Aviso de cobro eliminado correctamente."
-      );
-
+      alert('Aviso de cobro eliminado correctamente.');
       navigate(-1);
     } catch (err) {
-      alert(
-        "Error: " +
-        err.message
-      );
+      alert('Error: ' + err.message);
     } finally {
       setProcesando(false);
     }
@@ -790,58 +694,37 @@ export default function VerFactura() {
     return (
       <div
         style={{
-          backgroundColor:
-            FONDO_PRINCIPAL,
-          minHeight:
-            '100vh',
-          display:
-            'flex',
-          justifyContent:
-            'center',
-          alignItems:
-            'center',
-          fontFamily:
-            'Inter, sans-serif'
+          backgroundColor: FONDO_PRINCIPAL,
+          minHeight: '100vh',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          fontFamily: 'Inter, sans-serif'
         }}
       >
-        <h3
-          style={
-            TEXTO_DORADO_BRILLO
-          }
-        >
+        <h3 style={TEXTO_DORADO_BRILLO}>
           Cargando detalle...
         </h3>
       </div>
     );
   }
 
-  if (
-    errorMsg ||
-    !factura
-  ) {
+  if (errorMsg || !factura) {
     return (
       <div
         style={{
-          backgroundColor:
-            FONDO_PRINCIPAL,
-          minHeight:
-            '100vh',
-          padding:
-            '20px',
-          color:
-            '#fff',
-          fontFamily:
-            'Inter, sans-serif',
-          textAlign:
-            'center'
+          backgroundColor: FONDO_PRINCIPAL,
+          minHeight: '100vh',
+          padding: '20px',
+          color: '#fff',
+          fontFamily: 'Inter, sans-serif',
+          textAlign: 'center'
         }}
       >
         <h2
           style={{
-            color:
-              '#ef4444',
-            marginTop:
-              '40px'
+            color: '#ef4444',
+            marginTop: '40px'
           }}
         >
           ⚠️ Error
@@ -849,10 +732,8 @@ export default function VerFactura() {
 
         <p
           style={{
-            color:
-              '#cbd5e1',
-            fontSize:
-              '14px'
+            color: '#cbd5e1',
+            fontSize: '14px'
           }}
         >
           {errorMsg ||
@@ -860,26 +741,16 @@ export default function VerFactura() {
         </p>
 
         <button
-          onClick={() =>
-            navigate(-1)
-          }
+          onClick={() => navigate(-1)}
           style={{
-            marginTop:
-              '20px',
-            padding:
-              '12px 20px',
-            background:
-              COLOR_DORADO,
-            border:
-              'none',
-            borderRadius:
-              '8px',
-            fontWeight:
-              'bold',
-            cursor:
-              'pointer',
-            color:
-              '#000'
+            marginTop: '20px',
+            padding: '12px 20px',
+            background: COLOR_DORADO,
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            color: '#000'
           }}
         >
           Volver Atrás
@@ -889,407 +760,164 @@ export default function VerFactura() {
   }
 
   const esPagada =
-    factura.estado_pago?.toLowerCase() ===
-      'pagada' ||
-    factura.estado?.toLowerCase() ===
-      'pagada' ||
-    factura.estado?.toLowerCase() ===
-      'finalizado';
+    factura.estado_pago?.toLowerCase() === 'pagada' ||
+    factura.estado?.toLowerCase() === 'pagada' ||
+    factura.estado?.toLowerCase() === 'finalizado';
 
-  const colorEstado =
-    esPagada
-      ? '#34d399'
-      : COLOR_DORADO;
+  const colorEstado = esPagada ? '#34d399' : COLOR_DORADO;
+  const textoEstado = esPagada ? 'PAGADA' : 'PENDIENTE';
 
-  const textoEstado =
-    esPagada
-      ? 'PAGADA'
-      : 'PENDIENTE';
+  const itemsDetalle = Array.isArray(factura.items)
+    ? factura.items
+    : [];
 
-  const itemsDetalle =
-    Array.isArray(
-      factura.items
-    )
-      ? factura.items
-      : [];
+  const descripcionTraducida = traducirConcepto(
+    factura.descripcion,
+    idiomaFinal
+  );
 
-  const descripcionTraducida =
-    traducirConcepto(
-      factura.descripcion,
-      idiomaFinal
-    );
+  const extraActual = inspeccionExtra?.publicado || null;
 
-  const extraActual =
-    inspeccionExtra?.publicado ||
-    null;
+  const estadoExtra = String(
+    extraActual?.estado || ''
+  ).toLowerCase();
 
-  const estadoExtra =
-    String(
-      extraActual?.estado ||
-      ''
-    ).toLowerCase();
+  const estadoAdminExtra = String(
+    extraActual?.estado_admin || ''
+  ).toLowerCase();
 
-  const estadoAdminExtra =
-    String(
-      extraActual?.estado_admin ||
-      ''
-    ).toLowerCase();
+  const estadoTecnicoExtra = String(
+    extraActual?.estado_tecnico || ''
+  ).toLowerCase();
 
-  const estadoTecnicoExtra =
-    String(
-      extraActual?.estado_tecnico ||
-      ''
-    ).toLowerCase();
+  const tecnicoHaCompletadoExtra = [
+    'completado',
+    'completada',
+    'finalizado',
+    'finalizada'
+  ].includes(estadoTecnicoExtra);
 
-  const tecnicoHaCompletadoExtra =
-    [
-      'completado',
-      'completada',
-      'finalizado',
-      'finalizada'
-    ].includes(
-      estadoTecnicoExtra
-    );
-
-  const extraYaEnviado =
-    estadoExtra ===
-    'enviado_cliente';
-
-  const extraAprobado =
-    estadoAdminExtra ===
-    'aprobada';
+  const extraYaEnviado = estadoExtra === 'enviado_cliente';
+  const extraAprobado = estadoAdminExtra === 'aprobada';
 
   return (
-    <div
-      style={
-        estilos.pagina
-      }
-    >
-      <div
-        style={
-          estilos.contenedor
-        }
-      >
-
+    <div style={estilos.pagina}>
+      <div style={estilos.contenedor}>
         <div
           style={{
-            display:
-              'flex',
-            justifyContent:
-              'space-between',
-            alignItems:
-              'center'
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}
         >
           <button
-            onClick={() =>
-              navigate(-1)
-            }
-            style={
-              estilos.botonVolver
-            }
+            onClick={() => navigate(-1)}
+            style={estilos.botonVolver}
           >
             ← Volver
           </button>
 
           <span
             style={{
-              fontSize:
-                '11px',
-              color:
-                '#64748b',
-              textTransform:
-                'uppercase',
-              fontWeight:
-                'bold'
+              fontSize: '11px',
+              color: '#64748b',
+              textTransform: 'uppercase',
+              fontWeight: 'bold'
             }}
           >
             Panel de Administración
           </span>
         </div>
 
-        <div
-          style={
-            estilos.cabecera
-          }
-        >
-          <h2
-            style={
-              estilos.titulo
-            }
-          >
-            {esPagada
-              ? 'FACTURA'
-              : 'AVISO DE COBRO'}{' '}
-            {factura.numero ||
-              `#${factura.id}`}
+        <div style={estilos.cabecera}>
+          <h2 style={estilos.titulo}>
+            {esPagada ? 'FACTURA' : 'AVISO DE COBRO'}{' '}
+            {factura.numero || `#${factura.id}`}
           </h2>
         </div>
 
-        <div
-          style={
-            estilos.tarjeta
-          }
-        >
+        <div style={estilos.tarjeta}>
           <h3
             style={{
               ...TEXTO_DORADO_BRILLO,
-              fontSize:
-                '12px',
-              margin:
-                '0 0 8px 0',
-              textTransform:
-                'uppercase'
+              fontSize: '12px',
+              margin: '0 0 8px 0',
+              textTransform: 'uppercase'
             }}
           >
             Datos del Cliente
           </h3>
 
-          <p
-            style={{
-              fontSize:
-                '13px',
-              color:
-                '#fff',
-              margin:
-                '4px 0'
-            }}
-          >
-            <strong>
-              Nombre:
-            </strong>{' '}
-            {cliente?.nombre ||
-              'N/A'}
+          <p style={estilos.textoBlanco}>
+            <strong>Nombre:</strong> {cliente?.nombre || 'N/A'}
           </p>
 
-          <p
-            style={{
-              fontSize:
-                '13px',
-              color:
-                '#fff',
-              margin:
-                '4px 0'
-            }}
-          >
-            <strong>
-              Email:
-            </strong>{' '}
-            {cliente?.email ||
-              'N/A'}
+          <p style={estilos.textoBlanco}>
+            <strong>Email:</strong> {cliente?.email || 'N/A'}
           </p>
 
-          <p
-            style={{
-              fontSize:
-                '13px',
-              color:
-                '#fff',
-              margin:
-                '4px 0'
-            }}
-          >
-            <strong>
-              Teléfono:
-            </strong>{' '}
-            {cliente?.telefono ||
-              'N/A'}
+          <p style={estilos.textoBlanco}>
+            <strong>Teléfono:</strong> {cliente?.telefono || 'N/A'}
           </p>
         </div>
 
-        <div
-          style={
-            estilos.tarjeta
-          }
-        >
-          <div
-            style={{
-              display:
-                'flex',
-              justifyContent:
-                'space-between',
-              alignItems:
-                'center',
-              marginBottom:
-                '10px'
-            }}
-          >
-            <span
-              style={
-                estilos.etiqueta
-              }
-            >
-              Fecha:
-            </span>
-
-            <span
-              style={
-                estilos.valor
-              }
-            >
+        <div style={estilos.tarjeta}>
+          <div style={estilos.fila}>
+            <span style={estilos.etiqueta}>Fecha:</span>
+            <span style={estilos.valor}>
               {factura.created_at
                 ? factura.created_at.split('T')[0]
                 : 'N/D'}
             </span>
           </div>
 
-          <div
-            style={{
-              display:
-                'flex',
-              justifyContent:
-                'space-between',
-              alignItems:
-                'center',
-              marginBottom:
-                '10px'
-            }}
-          >
-            <span
-              style={
-                estilos.etiqueta
-              }
-            >
-              Estado:
-            </span>
-
+          <div style={estilos.fila}>
+            <span style={estilos.etiqueta}>Estado:</span>
             <span
               style={{
                 ...estilos.valorEstado,
-                color:
-                  colorEstado,
-                borderColor:
-                  colorEstado
+                color: colorEstado,
+                borderColor: colorEstado
               }}
             >
               {textoEstado}
             </span>
           </div>
 
-          <div
-            style={{
-              display:
-                'flex',
-              justifyContent:
-                'space-between',
-              alignItems:
-                'center',
-              marginBottom:
-                '10px'
-            }}
-          >
-            <span
-              style={
-                estilos.etiqueta
-              }
-            >
-              Importe Total:
-            </span>
-
+          <div style={estilos.fila}>
+            <span style={estilos.etiqueta}>Importe Total:</span>
             <span
               style={{
-                fontSize:
-                  '16px',
-                color:
-                  COLOR_DORADO,
-                fontWeight:
-                  '900'
+                fontSize: '16px',
+                color: COLOR_DORADO,
+                fontWeight: '900'
               }}
             >
-              {Number(
-                factura.total ||
-                0
-              ).toFixed(2)} €
+              {Number(factura.total || 0).toFixed(2)} €
             </span>
           </div>
 
-          <div
-            style={{
-              marginTop:
-                '10px',
-              background:
-                'rgba(11, 19, 32, 0.7)',
-              padding:
-                '12px',
-              borderRadius:
-                '10px',
-              border:
-                BORDE_DORADO_FINO
-            }}
-          >
-            <p
-              style={{
-                fontSize:
-                  '12px',
-                color:
-                  '#94a3b8',
-                margin:
-                  '0 0 4px 0',
-                textTransform:
-                  'uppercase',
-                fontWeight:
-                  'bold'
-              }}
-            >
-              Descripción:
-            </p>
-
-            <p
-              style={{
-                fontSize:
-                  '13px',
-                color:
-                  '#fff',
-                margin:
-                  0,
-                whiteSpace:
-                  'pre-wrap',
-                lineHeight:
-                  '1.4'
-              }}
-            >
-              {descripcionTraducida ||
-                'Sin descripción'}
+          <div style={estilos.descripcionCaja}>
+            <p style={estilos.descripcionTitulo}>Descripción:</p>
+            <p style={estilos.descripcionTexto}>
+              {descripcionTraducida || 'Sin descripción'}
             </p>
           </div>
 
           {!esPagada && (
-            <div
-              style={{
-                display:
-                  'flex',
-                flexDirection:
-                  'column',
-                gap:
-                  '8px',
-                marginTop:
-                  '15px'
-              }}
-            >
+            <div style={estilos.botonesPago}>
               <button
-                onClick={
-                  enviarAvisoPago
-                }
-                disabled={
-                  procesando
-                }
-                style={
-                  estilos.botonAzul
-                }
+                onClick={enviarAvisoPago}
+                disabled={procesando}
+                style={estilos.botonAzul}
               >
                 ✉️ Enviar Aviso de Pago (Stripe)
               </button>
 
               <button
-                onClick={
-                  marcarComoPagada
-                }
-                disabled={
-                  procesando
-                }
-                style={
-                  estilos.botonVerde
-                }
+                onClick={marcarComoPagada}
+                disabled={procesando}
+                style={estilos.botonVerde}
               >
                 💳 Confirmar pago y emitir factura
               </button>
@@ -1298,53 +926,24 @@ export default function VerFactura() {
         </div>
 
         {inspeccionExtra && (
-          <div
-            style={
-              estilos.tarjeta
-            }
-          >
-            <div
-              style={{
-                display:
-                  'flex',
-                justifyContent:
-                  'space-between',
-                alignItems:
-                  'center',
-                marginBottom:
-                  '10px'
-              }}
-            >
-              <h3
-                style={{
-                  ...TEXTO_DORADO_BRILLO,
-                  fontSize:
-                    '12px',
-                  margin:
-                    0,
-                  textTransform:
-                    'uppercase'
-                }}
-              >
+          <div style={estilos.tarjeta}>
+            <div style={estilos.cabeceraExtra}>
+              <h3 style={estilos.tituloExtra}>
                 Inspección Extra
               </h3>
 
               <span
                 style={{
-                  fontSize:
-                    '10px',
-                  color:
-                    extraYaEnviado
-                      ? '#34d399'
-                      : extraAprobado
+                  fontSize: '10px',
+                  color: extraYaEnviado
+                    ? '#34d399'
+                    : extraAprobado
+                      ? '#f59e0b'
+                      : tecnicoHaCompletadoExtra
                         ? '#f59e0b'
-                        : tecnicoHaCompletadoExtra
-                          ? '#f59e0b'
-                          : '#94a3b8',
-                  fontWeight:
-                    '900',
-                  textTransform:
-                    'uppercase'
+                        : '#94a3b8',
+                  fontWeight: '900',
+                  textTransform: 'uppercase'
                 }}
               >
                 {extraYaEnviado
@@ -1357,19 +956,8 @@ export default function VerFactura() {
               </span>
             </div>
 
-            <p
-              style={{
-                fontSize:
-                  '13px',
-                color:
-                  '#fff',
-                margin:
-                  '4px 0'
-              }}
-            >
-              <strong>
-                Descripción:
-              </strong>{' '}
+            <p style={estilos.textoBlanco}>
+              <strong>Descripción:</strong>{' '}
               {extraActual?.descripcion ||
                 inspeccionExtra.inspeccion?.descripcion ||
                 'Sin descripción'}
@@ -1377,19 +965,8 @@ export default function VerFactura() {
 
             {(extraActual?.materiales ||
               inspeccionExtra.inspeccion?.materiales_usados) && (
-              <p
-                style={{
-                  fontSize:
-                    '13px',
-                  color:
-                    '#cbd5e1',
-                  margin:
-                    '4px 0'
-                }}
-              >
-                <strong>
-                  Materiales:
-                </strong>{' '}
+              <p style={estilos.textoSecundario}>
+                <strong>Materiales:</strong>{' '}
                 {extraActual?.materiales ||
                   inspeccionExtra.inspeccion?.materiales_usados}
               </p>
@@ -1397,301 +974,136 @@ export default function VerFactura() {
 
             {(extraActual?.tiempo_empleado ||
               inspeccionExtra.inspeccion?.tiempo_empleado) && (
-              <p
-                style={{
-                  fontSize:
-                    '13px',
-                  color:
-                    '#cbd5e1',
-                  margin:
-                    '4px 0'
-                }}
-              >
-                <strong>
-                  Tiempo empleado:
-                </strong>{' '}
+              <p style={estilos.textoSecundario}>
+                <strong>Tiempo empleado:</strong>{' '}
                 {extraActual?.tiempo_empleado ||
                   inspeccionExtra.inspeccion?.tiempo_empleado}
               </p>
             )}
 
             {fotosExtra.length > 0 ? (
-              <div
-                style={{
-                  display:
-                    'grid',
-                  gridTemplateColumns:
-                    'repeat(3, minmax(0, 1fr))',
-                  gap:
-                    '8px',
-                  marginTop:
-                    '12px'
-                }}
-              >
-                {fotosExtra.map(
-                  (foto, index) => {
-                    const url =
-                      obtenerUrlFotoExtra(
-                        foto
-                      );
+              <div style={estilos.rejillaFotos}>
+                {fotosExtra.map((foto, index) => {
+                  const url = fotosUrlsFirmadas[index];
 
-                    if (!url) {
-                      return null;
-                    }
-
+                  if (!url) {
                     return (
-                      <a
+                      <div
                         key={index}
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
+                        style={estilos.fotoPendiente}
+                        aria-label={`Fotografía ${index + 1} no disponible`}
                       >
-                        <img
-                          src={url}
-                          alt={
-                            'Foto de inspección extra ' +
-                            (index + 1)
-                          }
-                          style={{
-                            width:
-                              '100%',
-                            height:
-                              '90px',
-                            objectFit:
-                              'cover',
-                            borderRadius:
-                              '10px',
-                            border:
-                              BORDE_DORADO_FINO
-                          }}
-                        />
-                      </a>
+                        Foto no disponible
+                      </div>
                     );
                   }
-                )}
+
+                  return (
+                    <a
+                      key={index}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img
+                        src={url}
+                        alt={`Foto de inspección extra ${index + 1}`}
+                        style={estilos.foto}
+                        onError={(event) => {
+                          event.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </a>
+                  );
+                })}
               </div>
             ) : (
-              <p
-                style={{
-                  fontSize:
-                    '12px',
-                  color:
-                    '#94a3b8',
-                  marginTop:
-                    '10px'
-                }}
-              >
+              <p style={estilos.textoSinFotos}>
                 No hay fotografías asociadas a esta inspección.
               </p>
             )}
 
             {extraYaEnviado && (
-              <div
-                style={{
-                  marginTop:
-                    '14px',
-                  padding:
-                    '10px',
-                  borderRadius:
-                    '10px',
-                  background:
-                    'rgba(52, 211, 153, 0.08)',
-                  border:
-                    '1px solid rgba(52, 211, 153, 0.35)'
-                }}
-              >
-                <p
-                  style={{
-                    margin:
-                      0,
-                    color:
-                      '#34d399',
-                    fontSize:
-                      '12px',
-                    fontWeight:
-                      '800',
-                    textAlign:
-                      'center'
-                  }}
-                >
+              <div style={estilos.avisoPublicado}>
+                <p style={estilos.textoPublicado}>
                   ✓ Esta inspección extra ya está publicada en el portal del cliente.
                 </p>
               </div>
             )}
 
-            {!extraYaEnviado &&
-              tecnicoHaCompletadoExtra && (
-                <button
-                  onClick={
-                    aprobarYEnviarAlCliente
-                  }
-                  disabled={
-                    procesandoExtra ||
-                    !esPagada ||
-                    !extraAprobado
-                  }
-                  style={{
-                    ...estilos.botonVerde,
-                    marginTop:
-                      '14px',
-                    opacity:
-                      procesandoExtra ||
-                      !esPagada ||
-                      !extraAprobado
-                        ? 0.65
-                        : 1,
-                    cursor:
-                      procesandoExtra ||
-                      !esPagada ||
-                      !extraAprobado
-                        ? 'not-allowed'
-                        : 'pointer'
-                  }}
-                >
-                  {procesandoExtra
-                    ? 'Publicando...'
-                    : '📤 PUBLICAR AL CLIENTE'}
-                </button>
-              )}
+            {!extraYaEnviado && tecnicoHaCompletadoExtra && (
+              <button
+                onClick={aprobarYEnviarAlCliente}
+                disabled={
+                  procesandoExtra ||
+                  !esPagada ||
+                  !extraAprobado
+                }
+                style={{
+                  ...estilos.botonVerde,
+                  marginTop: '14px',
+                  opacity:
+                    procesandoExtra || !esPagada || !extraAprobado
+                      ? 0.65
+                      : 1,
+                  cursor:
+                    procesandoExtra || !esPagada || !extraAprobado
+                      ? 'not-allowed'
+                      : 'pointer'
+                }}
+              >
+                {procesandoExtra
+                  ? 'Publicando...'
+                  : '📤 PUBLICAR AL CLIENTE'}
+              </button>
+            )}
 
-            {!extraYaEnviado &&
-              !tecnicoHaCompletadoExtra && (
-                <div
-                  style={{
-                    marginTop:
-                      '14px',
-                    padding:
-                      '10px',
-                    borderRadius:
-                      '10px',
-                    background:
-                      'rgba(148, 163, 184, 0.08)',
-                    border:
-                      '1px solid rgba(148, 163, 184, 0.25)'
-                  }}
-                >
-                  <p
-                    style={{
-                      margin:
-                        0,
-                      color:
-                        '#94a3b8',
-                      fontSize:
-                        '12px',
-                      textAlign:
-                        'center'
-                    }}
-                  >
-                    La inspección todavía no ha sido completada por el técnico.
-                  </p>
-                </div>
-              )}
+            {!extraYaEnviado && !tecnicoHaCompletadoExtra && (
+              <div style={estilos.avisoPendiente}>
+                <p style={estilos.textoPendiente}>
+                  La inspección todavía no ha sido completada por el técnico.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {itemsDetalle.length > 0 && (
-          <div
-            style={
-              estilos.tarjeta
-            }
-          >
-            <h3
-              style={{
-                ...TEXTO_DORADO_BRILLO,
-                fontSize:
-                  '12px',
-                margin:
-                  '0 0 10px 0',
-                textTransform:
-                  'uppercase'
-              }}
-            >
+          <div style={estilos.tarjeta}>
+            <h3 style={estilos.tituloDesglose}>
               Desglose de Conceptos
             </h3>
 
-            <div
-              style={{
-                display:
-                  'flex',
-                flexDirection:
-                  'column',
-                gap:
-                  '8px'
-              }}
-            >
-              {itemsDetalle.map(
-                (item, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      display:
-                        'flex',
-                      justifyContent:
-                        'space-between',
-                      alignItems:
-                        'center',
-                      padding:
-                        '8px 0',
-                      borderBottom:
-                        '1px solid rgba(255,255,255,0.05)'
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize:
-                          '12px',
-                        color:
-                          '#e2e8f0',
-                        maxWidth:
-                          '70%'
-                      }}
-                    >
-                      {traducirConcepto(
-                        item.concepto ||
-                          item.descripcion,
-                        idiomaFinal
-                      )}
-                    </span>
+            <div style={estilos.listaConceptos}>
+              {itemsDetalle.map((item, index) => (
+                <div key={index} style={estilos.filaConcepto}>
+                  <span style={estilos.concepto}>
+                    {traducirConcepto(
+                      item.concepto || item.descripcion,
+                      idiomaFinal
+                    )}
+                  </span>
 
-                    <span
-                      style={{
-                        fontSize:
-                          '12px',
-                        color:
-                          COLOR_DORADO,
-                        fontWeight:
-                          'bold'
-                      }}
-                    >
-                      {Number(
-                        item.precio ||
-                          item.total ||
-                          0
-                      ).toFixed(2)} €
-                    </span>
-                  </div>
-                )
-              )}
+                  <span style={estilos.precioConcepto}>
+                    {Number(
+                      item.precio || item.total || 0
+                    ).toFixed(2)} €
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
         <button
-          onClick={
-            handleDelete
-          }
-          disabled={
-            procesando
-          }
-          style={
-            estilos.botonEliminar
-          }
+          onClick={handleDelete}
+          disabled={procesando}
+          style={estilos.botonEliminar}
         >
           {procesando
             ? 'Procesando...'
             : '🗑️ Eliminar Aviso de Cobro'}
         </button>
-
       </div>
     </div>
   );
@@ -1699,209 +1111,289 @@ export default function VerFactura() {
 
 const estilos = {
   pagina: {
-    backgroundColor:
-      FONDO_PRINCIPAL,
-    minHeight:
-      '100vh',
-    padding:
-      '16px',
-    display:
-      'flex',
-    justifyContent:
-      'center',
-    fontFamily:
-      'Inter, sans-serif',
-    boxSizing:
-      'border-box'
+    backgroundColor: FONDO_PRINCIPAL,
+    minHeight: '100vh',
+    padding: '16px',
+    display: 'flex',
+    justifyContent: 'center',
+    fontFamily: 'Inter, sans-serif',
+    boxSizing: 'border-box'
   },
 
   contenedor: {
-    width:
-      '100%',
-    maxWidth:
-      '480px',
-    display:
-      'flex',
-    flexDirection:
-      'column',
-    gap:
-      '14px',
-    boxSizing:
-      'border-box'
+    width: '100%',
+    maxWidth: '480px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    boxSizing: 'border-box'
   },
 
   botonVolver: {
-    background:
-      'transparent',
-    border:
-      BORDE_DORADO_FINO,
-    color:
-      COLOR_DORADO,
-    padding:
-      '6px 12px',
-    borderRadius:
-      '8px',
-    cursor:
-      'pointer',
-    fontSize:
-      '12px',
-    fontWeight:
-      'bold'
+    background: 'transparent',
+    border: BORDE_DORADO_FINO,
+    color: COLOR_DORADO,
+    padding: '6px 12px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: 'bold'
   },
 
   cabecera: {
-    display:
-      'flex',
-    justifyContent:
-      'center',
-    alignItems:
-      'center',
-    borderBottom:
-      BORDE_DORADO_FINO,
-    paddingBottom:
-      '12px'
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottom: BORDE_DORADO_FINO,
+    paddingBottom: '12px'
   },
 
   titulo: {
     ...TEXTO_DORADO_BRILLO,
-    fontSize:
-      '16px',
-    fontWeight:
-      '900',
-    margin:
-      0,
-    textTransform:
-      'uppercase',
-    textAlign:
-      'center'
+    fontSize: '16px',
+    fontWeight: '900',
+    margin: 0,
+    textTransform: 'uppercase',
+    textAlign: 'center'
   },
 
   tarjeta: {
-    background:
-      FONDO_TARJETA,
-    border:
-      BORDE_DORADO_FINO,
-    borderRadius:
-      '16px',
-    padding:
-      '16px',
-    boxShadow:
-      SOMBRA_LUXURY,
-    display:
-      'flex',
-    flexDirection:
-      'column',
-    boxSizing:
-      'border-box'
+    background: FONDO_TARJETA,
+    border: BORDE_DORADO_FINO,
+    borderRadius: '16px',
+    padding: '16px',
+    boxShadow: SOMBRA_LUXURY,
+    display: 'flex',
+    flexDirection: 'column',
+    boxSizing: 'border-box'
+  },
+
+  textoBlanco: {
+    fontSize: '13px',
+    color: '#fff',
+    margin: '4px 0'
+  },
+
+  textoSecundario: {
+    fontSize: '13px',
+    color: '#cbd5e1',
+    margin: '4px 0'
+  },
+
+  fila: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '10px'
   },
 
   etiqueta: {
-    fontSize:
-      '12px',
-    color:
-      COLOR_DORADO,
-    fontWeight:
-      '700',
-    textTransform:
-      'uppercase'
+    fontSize: '12px',
+    color: COLOR_DORADO,
+    fontWeight: '700',
+    textTransform: 'uppercase'
   },
 
   valor: {
-    fontSize:
-      '13px',
-    color:
-      '#fff',
-    fontWeight:
-      '600',
-    textAlign:
-      'right'
+    fontSize: '13px',
+    color: '#fff',
+    fontWeight: '600',
+    textAlign: 'right'
   },
 
   valorEstado: {
-    fontSize:
-      '11px',
-    fontWeight:
-      '900',
-    textTransform:
-      'uppercase',
-    border:
-      '1px solid',
-    borderRadius:
-      '20px',
-    padding:
-      '2px 10px'
+    fontSize: '11px',
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    border: '1px solid',
+    borderRadius: '20px',
+    padding: '2px 10px'
+  },
+
+  descripcionCaja: {
+    marginTop: '10px',
+    background: 'rgba(11, 19, 32, 0.7)',
+    padding: '12px',
+    borderRadius: '10px',
+    border: BORDE_DORADO_FINO
+  },
+
+  descripcionTitulo: {
+    fontSize: '12px',
+    color: '#94a3b8',
+    margin: '0 0 4px 0',
+    textTransform: 'uppercase',
+    fontWeight: 'bold'
+  },
+
+  descripcionTexto: {
+    fontSize: '13px',
+    color: '#fff',
+    margin: 0,
+    whiteSpace: 'pre-wrap',
+    lineHeight: '1.4'
+  },
+
+  botonesPago: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    marginTop: '15px'
   },
 
   botonAzul: {
-    width:
-      '100%',
-    padding:
-      '12px',
-    background:
-      'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)',
-    color:
-      '#fff',
-    border:
-      '1px solid rgba(56, 189, 248, 0.5)',
-    borderRadius:
-      '12px',
-    fontWeight:
-      '900',
-    fontSize:
-      '12px',
-    cursor:
-      'pointer',
-    textTransform:
-      'uppercase'
+    width: '100%',
+    padding: '12px',
+    background: 'linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)',
+    color: '#fff',
+    border: '1px solid rgba(56, 189, 248, 0.5)',
+    borderRadius: '12px',
+    fontWeight: '900',
+    fontSize: '12px',
+    cursor: 'pointer',
+    textTransform: 'uppercase'
   },
 
   botonVerde: {
-    width:
-      '100%',
-    padding:
-      '12px',
-    background:
-      'linear-gradient(135deg, #10b981 0%, #047857 100%)',
-    color:
-      '#fff',
-    border:
-      '1px solid rgba(16, 185, 129, 0.6)',
-    borderRadius:
-      '12px',
-    fontWeight:
-      '900',
-    fontSize:
-      '12px',
-    cursor:
-      'pointer',
-    textTransform:
-      'uppercase'
+    width: '100%',
+    padding: '12px',
+    background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+    color: '#fff',
+    border: '1px solid rgba(16, 185, 129, 0.6)',
+    borderRadius: '12px',
+    fontWeight: '900',
+    fontSize: '12px',
+    cursor: 'pointer',
+    textTransform: 'uppercase'
+  },
+
+  cabeceraExtra: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '10px',
+    gap: '8px'
+  },
+
+  tituloExtra: {
+    ...TEXTO_DORADO_BRILLO,
+    fontSize: '12px',
+    margin: 0,
+    textTransform: 'uppercase'
+  },
+
+  rejillaFotos: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: '8px',
+    marginTop: '12px'
+  },
+
+  foto: {
+    width: '100%',
+    height: '90px',
+    objectFit: 'cover',
+    borderRadius: '10px',
+    border: BORDE_DORADO_FINO
+  },
+
+  fotoPendiente: {
+    minHeight: '90px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '6px',
+    boxSizing: 'border-box',
+    textAlign: 'center',
+    fontSize: '11px',
+    color: '#94a3b8',
+    background: 'rgba(148, 163, 184, 0.08)',
+    border: '1px solid rgba(148, 163, 184, 0.25)',
+    borderRadius: '10px'
+  },
+
+  textoSinFotos: {
+    fontSize: '12px',
+    color: '#94a3b8',
+    marginTop: '10px'
+  },
+
+  avisoPublicado: {
+    marginTop: '14px',
+    padding: '10px',
+    borderRadius: '10px',
+    background: 'rgba(52, 211, 153, 0.08)',
+    border: '1px solid rgba(52, 211, 153, 0.35)'
+  },
+
+  textoPublicado: {
+    margin: 0,
+    color: '#34d399',
+    fontSize: '12px',
+    fontWeight: '800',
+    textAlign: 'center'
+  },
+
+  avisoPendiente: {
+    marginTop: '14px',
+    padding: '10px',
+    borderRadius: '10px',
+    background: 'rgba(148, 163, 184, 0.08)',
+    border: '1px solid rgba(148, 163, 184, 0.25)'
+  },
+
+  textoPendiente: {
+    margin: 0,
+    color: '#94a3b8',
+    fontSize: '12px',
+    textAlign: 'center'
+  },
+
+  tituloDesglose: {
+    ...TEXTO_DORADO_BRILLO,
+    fontSize: '12px',
+    margin: '0 0 10px 0',
+    textTransform: 'uppercase'
+  },
+
+  listaConceptos: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  },
+
+  filaConcepto: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '8px 0',
+    borderBottom: '1px solid rgba(255,255,255,0.05)'
+  },
+
+  concepto: {
+    fontSize: '12px',
+    color: '#e2e8f0',
+    maxWidth: '70%'
+  },
+
+  precioConcepto: {
+    fontSize: '12px',
+    color: COLOR_DORADO,
+    fontWeight: 'bold'
   },
 
   botonEliminar: {
-    width:
-      '100%',
-    padding:
-      '14px',
-    background:
-      'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)',
-    color:
-      '#fff',
-    border:
-      '1px solid rgba(239, 68, 68, 0.5)',
-    borderRadius:
-      '14px',
-    fontWeight:
-      '900',
-    fontSize:
-      '12px',
-    cursor:
-      'pointer',
-    textTransform:
-      'uppercase',
-    boxShadow:
-      '0 4px 15px rgba(239, 68, 68, 0.3)',
-    marginTop:
-      '10px'
+    width: '100%',
+    padding: '14px',
+    background: 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)',
+    color: '#fff',
+    border: '1px solid rgba(239, 68, 68, 0.5)',
+    borderRadius: '14px',
+    fontWeight: '900',
+    fontSize: '12px',
+    cursor: 'pointer',
+    textTransform: 'uppercase',
+    boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)',
+    marginTop: '10px'
   }
 };
