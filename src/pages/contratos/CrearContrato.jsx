@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
@@ -41,8 +42,7 @@ export default function CrearContrato() {
     },
   ];
 
-  // Único punto de cálculo fiscal: el precio del formulario
-  // se considera la base imponible.
+  // El precio del formulario se considera la base imponible.
   function calcularImportes(baseIntroducida) {
     const base = Number(Number(baseIntroducida).toFixed(2));
     const iva = Number((base * 0.21).toFixed(2));
@@ -261,6 +261,8 @@ export default function CrearContrato() {
   }
 
   async function crearContrato() {
+    if (procesando) return;
+
     setMensaje("");
 
     if (
@@ -285,7 +287,6 @@ export default function CrearContrato() {
     }
 
     const precioBase = Number(form.precio);
-    const importes = calcularImportes(precioBase);
 
     if (
       !Number.isFinite(precioBase) ||
@@ -297,10 +298,17 @@ export default function CrearContrato() {
       return;
     }
 
+    const importes = calcularImportes(precioBase);
+
     setProcesando(true);
     setMensaje(
       "Creando contrato y generando documentación interna..."
     );
+
+    // Registramos qué operaciones se han completado para informar
+    // correctamente si falla un paso posterior al guardado.
+    let contratoCreadoId = null;
+    let facturaCreada = false;
 
     try {
       if (form.dni && form.cliente_id) {
@@ -327,7 +335,7 @@ export default function CrearContrato() {
           .split("T")[0];
       }
 
-      // Se guarda la base y el desglose fiscal calculado aquí.
+      // Se guarda la base imponible y su desglose fiscal.
       const { data, error } = await supabase
         .from("contratos")
         .insert([
@@ -357,9 +365,9 @@ export default function CrearContrato() {
       if (error) throw error;
 
       const contratoId = data.id;
+      contratoCreadoId = contratoId;
 
-      // La factura reutiliza los importes guardados en el contrato.
-      // No vuelve a calcular ni a añadir IVA.
+      // La factura utiliza los mismos importes guardados en el contrato.
       const {
         base: baseFactura,
         iva: ivaFactura,
@@ -399,8 +407,9 @@ export default function CrearContrato() {
         .single();
 
       if (facturaError) throw facturaError;
+      facturaCreada = true;
 
-      // La generación del PDF no cambia los importes fiscales.
+      // El PDF no debe modificar ni recalcular los importes fiscales.
       const { error: pdfError } =
         await supabase.functions.invoke(
           "contrato-pdf",
@@ -417,20 +426,48 @@ export default function CrearContrato() {
           "No se pudo generar el PDF del contrato:",
           pdfError
         );
+
+        setMensaje(
+          "Contrato y factura creados, pero no se pudo generar el PDF. " +
+          "No vuelvas a crear el contrato: entra en su ficha y usa " +
+          "«Regenerar / Actualizar PDF»."
+        );
+      } else {
+        setMensaje("¡Contrato y factura creados con éxito! ✔");
       }
 
-      setMensaje("¡Contrato creado con éxito! ✔");
-
+      // Aunque falle el PDF, el contrato y la factura ya existen.
+      // Vamos al listado para poder abrir la ficha y reintentar el PDF.
       setTimeout(() => {
         navigate("/contratos");
-      }, 1500);
+      }, pdfError ? 3000 : 1500);
     } catch (e) {
       console.error("Error general creando contrato:", e);
 
-      setMensaje(
-        "Error creando contrato: " +
-          (e?.message || "Error desconocido")
-      );
+      if (contratoCreadoId && !facturaCreada) {
+        setMensaje(
+          "El contrato #" +
+            contratoCreadoId +
+            " sí se guardó, pero falló la creación de su factura. " +
+            "No vuelvas a crear el contrato para evitar duplicados. " +
+            "Revisa la ficha del contrato y las facturas. Detalle: " +
+            (e?.message || "Error desconocido")
+        );
+      } else if (contratoCreadoId && facturaCreada) {
+        setMensaje(
+          "El contrato #" +
+            contratoCreadoId +
+            " y su factura ya se guardaron. Falló un paso posterior; " +
+            "no vuelvas a crear el contrato para evitar duplicados. " +
+            "Puedes revisar la ficha del contrato. Detalle: " +
+            (e?.message || "Error desconocido")
+        );
+      } else {
+        setMensaje(
+          "Error creando contrato: " +
+            (e?.message || "Error desconocido")
+        );
+      }
 
       setProcesando(false);
     }
