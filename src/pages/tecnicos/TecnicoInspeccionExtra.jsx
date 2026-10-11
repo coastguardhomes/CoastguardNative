@@ -59,27 +59,40 @@ function obtenerBucketYReferencia(valor) {
   }
 
   /*
-   * Si es una URL de Supabase Storage, detectamos el bucket
-   * de origen para poder seguir mostrando fotos antiguas.
+   * Conservamos la compatibilidad con fotografías antiguas
+   * que estén guardadas como URL de Supabase Storage.
    */
   const coincidencia = referencia.match(
     /\/storage\/v1\/object\/(?:public|sign|authenticated)\/([^/]+)\/(.+?)(?:\?.*)?$/i
   );
 
   if (coincidencia) {
+    let bucket;
+    let ruta;
+
+    try {
+      bucket = decodeURIComponent(coincidencia[1]);
+
+      ruta = coincidencia[2]
+        .split("/")
+        .map((segmento) => decodeURIComponent(segmento))
+        .join("/");
+    } catch {
+      return null;
+    }
+
     return {
-      bucket: coincidencia[1],
-      referencia
+      bucket,
+      referencia: ruta
     };
   }
 
+  /*
+   * Las rutas nuevas existentes se guardan en el bucket
+   * facturas dentro de inspecciones/.
+   */
   let ruta = referencia.replace(/^\/+/, "");
 
-  /*
-   * Las rutas nuevas se guardan en facturas/inspecciones.
-   * Las rutas antiguas sin carpeta se intentan resolver
-   * en el bucket anterior "extras".
-   */
   if (ruta.startsWith(`${BUCKET_FOTOS}/`)) {
     ruta = ruta.slice(`${BUCKET_FOTOS}/`.length);
 
@@ -89,6 +102,9 @@ function obtenerBucketYReferencia(valor) {
     };
   }
 
+  /*
+   * Compatibilidad con rutas antiguas del bucket extras.
+   */
   if (ruta.startsWith("extras/")) {
     ruta = ruta.slice("extras/".length);
 
@@ -105,6 +121,10 @@ function obtenerBucketYReferencia(valor) {
     };
   }
 
+  /*
+   * Las referencias antiguas sin bucket explícito se
+   * intentan resolver en extras, como hacía el archivo original.
+   */
   return {
     bucket: "extras",
     referencia: ruta
@@ -217,6 +237,10 @@ export default function TecnicoInspeccionExtra() {
 
       await cargarClientes();
 
+      /*
+       * Conservamos la búsqueda de la factura asociada.
+       * No modificamos sus importes ni sus datos administrativos.
+       */
       let factura = null;
 
       const {
@@ -276,9 +300,8 @@ export default function TecnicoInspeccionExtra() {
         setClienteId(clienteSeleccionado);
 
         /*
-         * Primero cargamos las viviendas.
-         * Después restauramos la vivienda asociada
-         * al extra existente.
+         * Primero cargamos las viviendas y después restauramos
+         * la vivienda asociada al extra existente.
          */
         await cargarViviendas(
           extraEncontrado.cliente_id
@@ -325,15 +348,11 @@ export default function TecnicoInspeccionExtra() {
             } else if (
               extraEncontrado.fotos.trim()
             ) {
-              setFotos([
-                extraEncontrado.fotos
-              ]);
+              setFotos([extraEncontrado.fotos]);
             }
           } catch {
             if (extraEncontrado.fotos.trim()) {
-              setFotos([
-                extraEncontrado.fotos
-              ]);
+              setFotos([extraEncontrado.fotos]);
             }
           }
         } else {
@@ -347,9 +366,7 @@ export default function TecnicoInspeccionExtra() {
       setFotos([]);
 
       if (factura?.cliente_id) {
-        setClienteId(
-          String(factura.cliente_id)
-        );
+        setClienteId(String(factura.cliente_id));
 
         await cargarViviendas(
           factura.cliente_id
@@ -357,9 +374,7 @@ export default function TecnicoInspeccionExtra() {
       }
 
       if (factura?.vivienda_id) {
-        setViviendaId(
-          String(factura.vivienda_id)
-        );
+        setViviendaId(String(factura.vivienda_id));
       }
 
       setDescripcion(
@@ -383,12 +398,26 @@ export default function TecnicoInspeccionExtra() {
   };
 
   useEffect(() => {
-    cargarDetalleExtra();
+    let cancelado = false;
+
+    async function cargar() {
+      await cargarDetalleExtra();
+
+      if (cancelado) {
+        return;
+      }
+    }
+
+    cargar();
+
+    return () => {
+      cancelado = true;
+    };
   }, [id]);
 
   /*
-   * Genera URLs temporales para mostrar las fotografías.
-   * No utiliza getPublicUrl(), porque el bucket debe ser privado.
+   * Genera enlaces temporales para visualizar las fotografías.
+   * No utiliza getPublicUrl().
    */
   useEffect(() => {
     let cancelado = false;
@@ -471,9 +500,7 @@ export default function TecnicoInspeccionExtra() {
     try {
       setSaving(true);
 
-      await cargarViviendas(
-        nuevoClienteId
-      );
+      await cargarViviendas(nuevoClienteId);
     } catch (err) {
       console.error(
         "Error cargando viviendas:",
@@ -523,8 +550,10 @@ export default function TecnicoInspeccionExtra() {
           )}_${cleanFileName}`;
 
         /*
-         * Las fotos nuevas van al bucket privado "facturas",
-         * dentro de "inspecciones/".
+         * Conservamos temporalmente el bucket y la ruta actuales
+         * para no romper las políticas existentes. El cambio a un
+         * bucket privado específico requiere preparar antes sus
+         * políticas de lectura y subida para los extras.
          */
         const storagePath =
           `${CARPETA_FOTOS}/${fileName}`;
@@ -534,15 +563,11 @@ export default function TecnicoInspeccionExtra() {
           error: uploadError
         } = await supabase.storage
           .from(BUCKET_FOTOS)
-          .upload(
-            storagePath,
-            file,
-            {
-              cacheControl: "3600",
-              upsert: false,
-              contentType: file.type
-            }
-          );
+          .upload(storagePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type
+          });
 
         if (uploadError) {
           console.error(
@@ -557,8 +582,8 @@ export default function TecnicoInspeccionExtra() {
         }
 
         /*
-         * Guardamos únicamente la ruta dentro del bucket,
-         * no una URL pública ni una URL firmada que caducará.
+         * Guardamos la ruta, no una URL pública ni una URL firmada
+         * que caducará.
          */
         nuevasFotos.push(
           uploadData?.path || storagePath
@@ -566,10 +591,7 @@ export default function TecnicoInspeccionExtra() {
       }
 
       setFotos(nuevasFotos);
-
-      setMensaje(
-        "¡Fotos subidas con éxito!"
-      );
+      setMensaje("¡Fotos subidas con éxito!");
     } catch (err) {
       console.error(
         "Error detallado al subir fotos:",
@@ -595,23 +617,18 @@ export default function TecnicoInspeccionExtra() {
     setMensaje("");
 
     if (!clienteId) {
-      setError(
-        "Selecciona el cliente."
-      );
+      setError("Selecciona el cliente.");
       return;
     }
 
     if (!viviendaId) {
-      setError(
-        "Selecciona la vivienda."
-      );
+      setError("Selecciona la vivienda.");
       return;
     }
 
     const vivienda = viviendas.find(
       (v) =>
-        String(v.id) ===
-        String(viviendaId)
+        String(v.id) === String(viviendaId)
     );
 
     if (!vivienda) {
@@ -633,8 +650,7 @@ export default function TecnicoInspeccionExtra() {
 
     const cliente = clientes.find(
       (c) =>
-        String(c.id) ===
-        String(clienteId)
+        String(c.id) === String(clienteId)
     );
 
     if (!cliente) {
@@ -648,9 +664,9 @@ export default function TecnicoInspeccionExtra() {
       setSaving(true);
 
       /*
-       * El técnico informa del trabajo realizado.
-       * No se envían precios, IVA, totales ni otros importes
-       * administrativos en las actualizaciones.
+       * El técnico registra únicamente la inspección.
+       * No modifica la tabla facturas ni sus importes,
+       * precios, IVA, totales o estado administrativo.
        */
       if (extraData?.id) {
         const extraPayload = {
@@ -659,17 +675,10 @@ export default function TecnicoInspeccionExtra() {
             extraData.descripcion ||
             "Trabajo extra",
 
-          materiales:
-            materiales || null,
-
-          tiempo_empleado:
-            tiempo || null,
-
+          materiales: materiales || null,
+          tiempo_empleado: tiempo || null,
           fotos,
-
-          estado_tecnico:
-            "completado",
-
+          estado_tecnico: "completado",
           alerta
         };
 
@@ -699,49 +708,6 @@ export default function TecnicoInspeccionExtra() {
 
         setExtraData(extraActualizado);
 
-        /*
-         * Solo actualizamos datos técnicos de la factura.
-         * No modificamos base, IVA, total, precio ni estado
-         * administrativo.
-         */
-        if (facturaData?.id) {
-          const facturaPayload = {
-            descripcion:
-              descripcion ||
-              facturaData.descripcion ||
-              facturaData.concepto ||
-              null,
-
-            materiales:
-              materiales || null,
-
-            tiempo_empleado:
-              tiempo || null,
-
-            fotos,
-
-            estado_tecnico:
-              "completado",
-
-            alerta
-          };
-
-          if (alerta) {
-            facturaPayload.alerta_vista = false;
-          }
-
-          const {
-            error: facturaUpdateError
-          } = await supabase
-            .from("facturas")
-            .update(facturaPayload)
-            .eq("id", facturaData.id);
-
-          if (facturaUpdateError) {
-            throw facturaUpdateError;
-          }
-        }
-
         alert(
           "Inspección actualizada correctamente y enviada al administrador."
         );
@@ -751,38 +717,23 @@ export default function TecnicoInspeccionExtra() {
       }
 
       /*
-       * Nuevo extra.
-       * El precio corresponde al administrador.
+       * Nuevo extra: el precio lo establece el administrador.
        */
       const extraPayload = {
         cliente_id: clienteId,
-
         vivienda_id: viviendaId,
-
-        tecnico_id:
-          vivienda.tecnico_id,
-
-        cliente_email:
-          cliente.email || null,
+        tecnico_id: vivienda.tecnico_id,
+        cliente_email: cliente.email || null,
 
         descripcion:
-          descripcion ||
-          "Trabajo extra",
+          descripcion || "Trabajo extra",
 
-        materiales:
-          materiales || null,
+        materiales: materiales || null,
+        tiempo_empleado: tiempo || null,
 
-        tiempo_empleado:
-          tiempo || null,
-
-        estado:
-          "pendiente",
-
-        estado_tecnico:
-          "completado",
-
-        estado_admin:
-          "pendiente",
+        estado: "pendiente",
+        estado_tecnico: "completado",
+        estado_admin: "pendiente",
 
         direccion:
           vivienda.direccion ||
@@ -790,16 +741,12 @@ export default function TecnicoInspeccionExtra() {
           null,
 
         fotos,
-
         alerta,
-
-        creado_en:
-          new Date().toISOString()
+        creado_en: new Date().toISOString()
       };
 
       if (facturaData?.id) {
-        extraPayload.factura_id =
-          facturaData.id;
+        extraPayload.factura_id = facturaData.id;
       }
 
       if (alerta) {
@@ -827,48 +774,6 @@ export default function TecnicoInspeccionExtra() {
 
       setExtraData(nuevoExtra);
 
-      /*
-       * Si existe una factura asociada, solo se envía
-       * información técnica y se conservan sus importes.
-       */
-      if (facturaData?.id) {
-        const facturaPayload = {
-          descripcion:
-            descripcion ||
-            facturaData.descripcion ||
-            facturaData.concepto ||
-            null,
-
-          materiales:
-            materiales || null,
-
-          tiempo_empleado:
-            tiempo || null,
-
-          fotos,
-
-          estado_tecnico:
-            "completado",
-
-          alerta
-        };
-
-        if (alerta) {
-          facturaPayload.alerta_vista = false;
-        }
-
-        const {
-          error: facturaUpdateError
-        } = await supabase
-          .from("facturas")
-          .update(facturaPayload)
-          .eq("id", facturaData.id);
-
-        if (facturaUpdateError) {
-          throw facturaUpdateError;
-        }
-      }
-
       alert(
         "Extra creado correctamente y enviado al administrador para su valoración."
       );
@@ -882,8 +787,7 @@ export default function TecnicoInspeccionExtra() {
 
       setError(
         "Error al guardar la inspección: " +
-          (err?.message ||
-            "Error desconocido")
+          (err?.message || "Error desconocido")
       );
     } finally {
       setSaving(false);
