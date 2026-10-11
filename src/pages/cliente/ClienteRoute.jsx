@@ -1,11 +1,10 @@
-import React from "react";
+ import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function ClienteRoute({ children }) {
   const { user, role, loading } = useAuth();
 
-  // Mientras carga la sesión
   if (loading) {
     return (
       <div
@@ -25,16 +24,21 @@ export default function ClienteRoute({ children }) {
     );
   }
 
-  // Si no hay usuario → fuera
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Si el usuario NO es cliente → fuera
-  if (role !== "cliente") {
-    return <Navigate to="/dashboard" replace />;
+  if (role === "admin") {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
-  // Si todo está bien → mostrar la página
+  if (role === "tecnico") {
+    return <Navigate to="/tecnico" replace />;
+  }
+
+  if (role !== "cliente") {
+    return <Navigate to="/login" replace />;
+  }
+
   return children;
 }
