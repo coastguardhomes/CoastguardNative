@@ -7,7 +7,8 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [idioma, setIdioma] = useState("es");
-  const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const [aceptaPrivacidad, setAceptaPrivacidad] = useState(false);
+  const [aceptaContrato, setAceptaContrato] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -58,9 +59,9 @@ export default function Register() {
       return;
     }
 
-    if (!aceptaTerminos) {
+    if (!aceptaPrivacidad || !aceptaContrato) {
       setErrorMsg(
-        "Debes aceptar la Política de Privacidad y el Contrato Marco de Servicios"
+        "Debes aceptar por separado la Política de Privacidad y el Contrato Marco de Servicios"
       );
       return;
     }
@@ -70,16 +71,14 @@ export default function Register() {
     /*
      * No enviamos la IP del usuario a un servicio externo.
      *
-     * La IP no es necesaria para que el registro funcione ni para
-     * acreditar la aceptación de los términos.
-     *
-     * Mantenemos el campo para no romper la estructura existente
-     * de la aplicación/base de datos.
+     * Conservamos el campo para no modificar la estructura
+     * existente de la aplicación o de la base de datos.
      */
     const userIp = "IP_NO_REGISTRADA";
 
     const fechaAceptacion = new Date().toISOString();
-    const versionTerminos = "v1.0";
+    const versionPrivacidad = "v1.0";
+    const versionContrato = "v1.0";
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -87,11 +86,22 @@ export default function Register() {
       options: {
         emailRedirectTo: "coastguard://auth/callback",
         data: {
+          // Se conservan los metadatos existentes.
           acepta_terminos: true,
           terminos_aceptados_at: fechaAceptacion,
           ip_registro: userIp,
-          version_terminos: versionTerminos,
+          version_terminos: versionContrato,
           idioma,
+
+          // Aceptación independiente de la Política de Privacidad.
+          acepta_privacidad: true,
+          privacidad_aceptada_at: fechaAceptacion,
+          version_privacidad: versionPrivacidad,
+
+          // Aceptación independiente del Contrato Marco.
+          acepta_contrato_marco: true,
+          contrato_marco_aceptado_at: fechaAceptacion,
+          version_contrato_marco: versionContrato,
         },
       },
     });
@@ -113,7 +123,7 @@ export default function Register() {
     }
 
     /*
-     * El perfil se mantiene como antes.
+     * Se conserva la creación del perfil.
      */
     const { error: perfilError } = await supabase
       .from("profiles")
@@ -127,22 +137,18 @@ export default function Register() {
     }
 
     /*
-     * Guardamos también los datos legales del cliente.
-     *
-     * NOTA:
-     * El trigger de Supabase también puede crear/vincular
-     * automáticamente el registro de clientes.
-     *
-     * Este bloque mantiene el comportamiento anterior de la app
-     * hasta que terminemos de corregir y verificar el trigger.
+     * Se conservan la búsqueda y la creación/actualización del cliente.
+     * No añadimos columnas nuevas a la tabla para evitar errores
+     * si el esquema actual no las contiene.
      */
-
-    const { data: clienteExistente, error: clienteBusquedaError } =
-      await supabase
-        .from("clientes")
-        .select("id")
-        .eq("email", user.email)
-        .maybeSingle();
+    const {
+      data: clienteExistente,
+      error: clienteBusquedaError,
+    } = await supabase
+      .from("clientes")
+      .select("id")
+      .eq("email", user.email)
+      .maybeSingle();
 
     if (clienteBusquedaError) {
       console.error(
@@ -153,11 +159,11 @@ export default function Register() {
 
     const datosLegalesCliente = {
       email: user.email,
-      idioma: idioma,
+      idioma,
       acepta_privacidad: true,
       privacidad_aceptada_at: fechaAceptacion,
       ip_registro: userIp,
-      version_privacidad: versionTerminos,
+      version_privacidad: versionPrivacidad,
     };
 
     if (!clienteExistente) {
@@ -202,6 +208,8 @@ export default function Register() {
       navigate("/login", { replace: true });
     }, 2000);
   };
+
+  const aceptaTodo = aceptaPrivacidad && aceptaContrato;
 
   return (
     <div
@@ -357,6 +365,56 @@ export default function Register() {
           </select>
         </div>
 
+        {/* Aceptación independiente de la Política de Privacidad. */}
+        <div
+          style={{
+            marginBottom: "14px",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "10px",
+            textAlign: "left",
+          }}
+        >
+          <input
+            type="checkbox"
+            id="aceptaPrivacidad"
+            checked={aceptaPrivacidad}
+            onChange={(e) => setAceptaPrivacidad(e.target.checked)}
+            style={{
+              marginTop: "4px",
+              cursor: "pointer",
+              width: "18px",
+              height: "18px",
+              flexShrink: 0,
+            }}
+          />
+
+          <label
+            htmlFor="aceptaPrivacidad"
+            style={{
+              fontSize: "12px",
+              lineHeight: "1.5",
+              color: "#9fb3c8",
+              cursor: "pointer",
+            }}
+          >
+            He leído la{" "}
+            <span
+              onClick={() => setModalPrivacidad(true)}
+              style={{
+                color: "#4db8ff",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              Política de Privacidad
+            </span>{" "}
+            y confirmo que he sido informado sobre el tratamiento de mis
+            datos personales.
+          </label>
+        </div>
+
+        {/* Aceptación independiente del Contrato Marco de Servicios. */}
         <div
           style={{
             marginBottom: "20px",
@@ -368,9 +426,9 @@ export default function Register() {
         >
           <input
             type="checkbox"
-            id="terminos"
-            checked={aceptaTerminos}
-            onChange={(e) => setAceptaTerminos(e.target.checked)}
+            id="aceptaContrato"
+            checked={aceptaContrato}
+            onChange={(e) => setAceptaContrato(e.target.checked)}
             style={{
               marginTop: "4px",
               cursor: "pointer",
@@ -381,34 +439,17 @@ export default function Register() {
           />
 
           <label
-            htmlFor="terminos"
+            htmlFor="aceptaContrato"
             style={{
               fontSize: "12px",
-              lineHeight: "1.4",
+              lineHeight: "1.5",
               color: "#9fb3c8",
               cursor: "pointer",
             }}
           >
-            He leído y acepto la{" "}
+            He leído y acepto el{" "}
             <span
-              onClick={(e) => {
-                e.preventDefault();
-                setModalPrivacidad(true);
-              }}
-              style={{
-                color: "#4db8ff",
-                textDecoration: "underline",
-                cursor: "pointer",
-              }}
-            >
-              Política de Privacidad
-            </span>{" "}
-            y los términos del{" "}
-            <span
-              onClick={(e) => {
-                e.preventDefault();
-                setModalContrato(true);
-              }}
+              onClick={() => setModalContrato(true)}
               style={{
                 color: "#4db8ff",
                 textDecoration: "underline",
@@ -423,20 +464,19 @@ export default function Register() {
 
         <button
           onClick={handleRegister}
-          disabled={loading || !aceptaTerminos}
+          disabled={loading || !aceptaTodo}
           style={{
             width: "100%",
             padding: "12px",
             background:
-              !aceptaTerminos || loading ? "#2a324b" : "#0077cc",
+              !aceptaTodo || loading ? "#2a324b" : "#0077cc",
             color: "#fff",
             border: "none",
             borderRadius: "8px",
             fontSize: "16px",
             cursor:
-              !aceptaTerminos || loading ? "not-allowed" : "pointer",
-            opacity:
-              !aceptaTerminos || loading ? "0.4" : "1",
+              !aceptaTodo || loading ? "not-allowed" : "pointer",
+            opacity: !aceptaTodo || loading ? "0.4" : "1",
             transition: "background 0.2s, opacity 0.2s",
           }}
         >
@@ -462,6 +502,7 @@ export default function Register() {
         </button>
       </div>
 
+      {/* Modal de Política de Privacidad. */}
       {modalPrivacidad && (
         <div
           style={{
@@ -579,6 +620,7 @@ export default function Register() {
         </div>
       )}
 
+      {/* Modal del Contrato Marco de Servicios. */}
       {modalContrato && (
         <div
           style={{
