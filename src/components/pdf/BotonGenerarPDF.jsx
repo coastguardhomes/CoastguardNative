@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
@@ -14,6 +15,29 @@ export default function BotonGenerarPDF({
   onGenerado,
 }) {
   const [loading, setLoading] = useState(false);
+
+  // Intenta eliminar un PDF que no haya podido guardarse correctamente.
+  async function limpiarPDFSubido(filePath) {
+    if (!filePath) return;
+
+    try {
+      const { error } = await supabase.storage
+        .from("pdfs")
+        .remove([filePath]);
+
+      if (error) {
+        console.warn(
+          "No se pudo eliminar el PDF sobrante:",
+          error.message
+        );
+      }
+    } catch (errorLimpieza) {
+      console.warn(
+        "Error al limpiar el PDF sobrante:",
+        errorLimpieza
+      );
+    }
+  }
 
   const handlePDF = async () => {
     if (!id) {
@@ -48,7 +72,11 @@ export default function BotonGenerarPDF({
           fotos,
         });
 
-        if (!blob || blob.size === 0) {
+        if (
+          !blob ||
+          typeof blob.size !== "number" ||
+          blob.size === 0
+        ) {
           throw new Error("El PDF generado está vacío.");
         }
 
@@ -70,21 +98,7 @@ export default function BotonGenerarPDF({
           );
         }
 
-        // 4. Mantener la referencia histórica en pdf_url
-        // para no romper los componentes que aún la utilizan.
-        const { data: urlData } = supabase.storage
-          .from("pdfs")
-          .getPublicUrl(filePath);
-
-        const publicUrl = urlData?.publicUrl;
-
-        if (!publicUrl) {
-          throw new Error(
-            "El PDF se ha subido, pero no se pudo obtener su referencia."
-          );
-        }
-
-        // 5. Crear un enlace temporal para mostrar el PDF.
+        // 4. Crear el enlace temporal para mostrar el PDF.
         const {
           data: signedData,
           error: signedError,
@@ -93,38 +107,38 @@ export default function BotonGenerarPDF({
           .createSignedUrl(filePath, 3600);
 
         if (signedError || !signedData?.signedUrl) {
+          await limpiarPDFSubido(filePath);
+
           throw new Error(
             signedError?.message ||
               "No se pudo generar el enlace temporal del PDF. Comprueba los permisos de Storage."
           );
         }
 
-        // 6. Actualizar únicamente la columna existente pdf_url.
+        // 5. Guardar la ruta interna, no una URL pública.
+        // Se conserva la columna existente pdf_url.
         const {
           data: inspeccionActualizada,
           error: updateError,
         } = await supabase
           .from("inspecciones")
           .update({
-            pdf_url: publicUrl,
+            pdf_url: filePath,
           })
           .eq("id", id)
           .select("id, pdf_url")
           .maybeSingle();
 
-        if (updateError) {
+        if (updateError || !inspeccionActualizada) {
+          await limpiarPDFSubido(filePath);
+
           throw new Error(
-            `El PDF se subió, pero no se pudo guardar su URL: ${updateError.message}`
+            updateError?.message ||
+              "El PDF se subió, pero la base de datos no confirmó la actualización. Comprueba los permisos de la inspección antes de volver a generarlo."
           );
         }
 
-        if (!inspeccionActualizada) {
-          throw new Error(
-            "El PDF se subió, pero la base de datos no confirmó la actualización. Comprueba los permisos de la inspección antes de volver a generarlo."
-          );
-        }
-
-        // 7. Devolver el enlace temporal a la pantalla.
+        // 6. Devolver el enlace temporal a la pantalla.
         if (typeof onGenerado === "function") {
           onGenerado(signedData.signedUrl);
         }
@@ -144,7 +158,7 @@ export default function BotonGenerarPDF({
           );
         }
 
-        // 2. Utilizar el generador de contratos que ya existe.
+        // 2. Utilizar el generador de contratos existente.
         // Esta función se encarga de generar el documento
         // y actualizar contratos.pdf_url.
         const { data: resultado, error: funcionError } =
