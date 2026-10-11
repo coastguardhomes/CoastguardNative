@@ -13,6 +13,7 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 
 const COLOR_DORADO = "#e0b034";
 
@@ -32,8 +33,7 @@ const SOMBRA_LUXURY =
 
 const TEXTO_DORADO_BRILLO = {
   color: COLOR_DORADO,
-  textShadow:
-    "0 0 12px rgba(224, 176, 52, 0.6)",
+  textShadow: "0 0 12px rgba(224, 176, 52, 0.6)",
 };
 
 const DEGRADADO_AZUL_BOTON =
@@ -53,8 +53,11 @@ export default function ClienteFacturaVer() {
   const [pdfError, setPdfError] = useState("");
 
   useEffect(() => {
+    let cancelado = false;
+
     async function cargarFactura() {
       if (!user || !id) {
+        setLoading(false);
         return;
       }
 
@@ -63,39 +66,52 @@ export default function ClienteFacturaVer() {
         setErrorMsg("");
         setPdfUrl("");
         setPdfError("");
+        setFactura(null);
 
         /*
          * Localizamos primero al cliente autenticado.
-         *
-         * IMPORTANTE:
          * Nunca confiamos solamente en el ID recibido por URL.
          */
-        let { data: cliente } = await supabase
-          .from("clientes")
-          .select("id")
-          .eq("usuario_id", user.id)
-          .maybeSingle();
+        let { data: cliente, error: errorCliente } =
+          await supabase
+            .from("clientes")
+            .select("id")
+            .eq("usuario_id", user.id)
+            .maybeSingle();
+
+        if (errorCliente) {
+          throw errorCliente;
+        }
 
         if (!cliente) {
-          const { data: clienteByUserId } =
-            await supabase
-              .from("clientes")
-              .select("id")
-              .eq("user_id", user.id)
-              .maybeSingle();
+          const {
+            data: clienteByUserId,
+            error: errorClienteByUserId,
+          } = await supabase
+            .from("clientes")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (errorClienteByUserId) {
+            throw errorClienteByUserId;
+          }
 
           cliente = clienteByUserId;
         }
 
         if (!cliente?.id) {
-          setErrorMsg(
-            "No se encontró el perfil del cliente."
-          );
+          if (!cancelado) {
+            setErrorMsg(
+              "No se encontró el perfil del cliente."
+            );
+          }
+
           return;
         }
 
         /*
-         * Solo podemos cargar una factura que pertenezca
+         * Solo cargamos una factura que pertenezca
          * al cliente autenticado.
          */
         const { data, error } = await supabase
@@ -110,82 +126,77 @@ export default function ClienteFacturaVer() {
         }
 
         if (!data) {
-          setErrorMsg(
-            "No se encontró esta factura o no tienes permiso para verla."
-          );
+          if (!cancelado) {
+            setErrorMsg(
+              "No se encontró esta factura o no tienes permiso para verla."
+            );
+          }
+
           return;
         }
 
-        setFactura(data);
+        if (!cancelado) {
+          setFactura(data);
+        }
 
         /*
-         * Los PDF nuevos se abren mediante una URL firmada y temporal.
-         * La factura ya se ha comprobado contra el cliente autenticado.
-         * Conservamos el enlace antiguo solo para registros heredados que
-         * todavía no tengan una ruta de Storage registrada.
+         * Los PDF nuevos usan pdf_storage_path.
+         * Para facturas antiguas, resolvemos pdf_url mediante
+         * el helper seguro, que firma las URLs de Storage
+         * del proyecto actual en lugar de usar sus URLs públicas.
+         *
+         * No utilizamos directamente data.pdf_url en el enlace.
          */
-        if (data.pdf_storage_path) {
-          try {
-            const {
-              data: signedPdf,
-              error: signedPdfError,
-            } = await supabase.storage
-              .from("facturas")
-              .createSignedUrl(
-                data.pdf_storage_path,
-                3600
-              );
+        const referenciaPdf =
+          data.pdf_storage_path || data.pdf_url;
 
-            if (signedPdfError) {
-              throw signedPdfError;
-            }
+        if (referenciaPdf) {
+          const urlSegura = await resolverUrlPdfSegura(
+            referenciaPdf,
+            "facturas",
+            3600
+          );
 
-            if (!signedPdf?.signedUrl) {
-              throw new Error(
-                "Storage no devolvió una URL temporal para el PDF."
+          if (!cancelado) {
+            if (urlSegura) {
+              setPdfUrl(urlSegura);
+            } else {
+              setPdfError(
+                "No se pudo generar el enlace seguro del PDF. Inténtalo de nuevo más tarde."
               );
             }
-
-            setPdfUrl(signedPdf.signedUrl);
-          } catch (pdfErr) {
-            console.error(
-              "Error creando enlace seguro del PDF:",
-              pdfErr
-            );
-
-            setPdfError(
-              "No se pudo generar el enlace seguro del PDF. Inténtalo de nuevo más tarde."
-            );
           }
-        } else {
-          setPdfUrl(data.pdf_url || "");
+        } else if (!cancelado) {
+          setPdfError(
+            "El PDF de esta factura todavía no está disponible."
+          );
         }
 
         /*
          * Si la factura tiene un aviso pendiente,
          * abrirla lo marca como visto.
          *
-         * NO se modifica:
-         * - estado
-         * - estado_pago
-         * - total
-         * - número
-         * - PDF
+         * No se modifica el estado de la factura,
+         * el pago, el total, el número ni el PDF.
          */
         if (
           data.alerta &&
           !data.alerta_vista
         ) {
-          await supabase
+          const { error: errorAlerta } = await supabase
             .from("facturas")
             .update({
               alerta_vista: true,
             })
             .eq("id", data.id)
-            .eq(
-              "cliente_id",
-              cliente.id
+            .eq("cliente_id", cliente.id);
+
+          if (errorAlerta) {
+            console.error(
+              "Error marcando el aviso como visto:",
+              errorAlerta
             );
+          }
         }
       } catch (err) {
         console.error(
@@ -193,15 +204,23 @@ export default function ClienteFacturaVer() {
           err
         );
 
-        setErrorMsg(
-          "No se pudo cargar la factura."
-        );
+        if (!cancelado) {
+          setErrorMsg(
+            "No se pudo cargar la factura."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelado) {
+          setLoading(false);
+        }
       }
     }
 
     cargarFactura();
+
+    return () => {
+      cancelado = true;
+    };
   }, [id, user]);
 
   if (loading) {
@@ -218,11 +237,7 @@ export default function ClienteFacturaVer() {
             padding: "20px",
           }}
         >
-          <h3
-            style={
-              TEXTO_DORADO_BRILLO
-            }
-          >
+          <h3 style={TEXTO_DORADO_BRILLO}>
             {t("cargandoInformacion") ||
               "Cargando factura..."}
           </h3>
@@ -241,14 +256,11 @@ export default function ClienteFacturaVer() {
           padding: "20px",
           paddingBottom: "100px",
           boxSizing: "border-box",
-          fontFamily:
-            "Inter, sans-serif",
+          fontFamily: "Inter, sans-serif",
         }}
       >
         <button
-          onClick={() =>
-            navigate("/cliente/facturas")
-          }
+          onClick={() => navigate("/cliente/facturas")}
           style={{
             background: "transparent",
             border: "none",
@@ -260,18 +272,14 @@ export default function ClienteFacturaVer() {
             marginBottom: "20px",
           }}
         >
-          ←{" "}
-          {t("volver") ||
-            "Volver a facturas"}
+          ← {t("volver") || "Volver a facturas"}
         </button>
 
         {errorMsg ? (
           <div
             style={{
-              background:
-                "rgba(255,107,107,0.12)",
-              border:
-                "1px solid rgba(255,107,107,0.5)",
+              background: "rgba(255,107,107,0.12)",
+              border: "1px solid rgba(255,107,107,0.5)",
               borderRadius: "16px",
               padding: "20px",
               color: "#ff6b6b",
@@ -284,22 +292,18 @@ export default function ClienteFacturaVer() {
           <>
             <div
               style={{
-                background:
-                  FONDO_TARJETA,
-                border:
-                  BORDE_DORADO_INTENSO,
+                background: FONDO_TARJETA,
+                border: BORDE_DORADO_INTENSO,
                 borderRadius: "20px",
                 padding: "20px",
-                boxShadow:
-                  SOMBRA_LUXURY,
+                boxShadow: SOMBRA_LUXURY,
                 marginBottom: "18px",
               }}
             >
               <div
                 style={{
                   display: "flex",
-                  justifyContent:
-                    "space-between",
+                  justifyContent: "space-between",
                   alignItems: "flex-start",
                   gap: "12px",
                 }}
@@ -309,8 +313,7 @@ export default function ClienteFacturaVer() {
                     style={{
                       fontSize: "11px",
                       color: "#94a3b8",
-                      textTransform:
-                        "uppercase",
+                      textTransform: "uppercase",
                       marginBottom: "6px",
                     }}
                   >
@@ -326,8 +329,7 @@ export default function ClienteFacturaVer() {
                     }}
                   >
                     Factura{" "}
-                    {factura.numero ||
-                      `#${factura.id}`}
+                    {factura.numero || `#${factura.id}`}
                   </h1>
                 </div>
 
@@ -358,8 +360,7 @@ export default function ClienteFacturaVer() {
                         : "#fbbf24",
                     fontSize: "10px",
                     fontWeight: "900",
-                    textTransform:
-                      "uppercase",
+                    textTransform: "uppercase",
                   }}
                 >
                   {factura.estado_pago ||
@@ -371,25 +372,20 @@ export default function ClienteFacturaVer() {
 
             <div
               style={{
-                background:
-                  FONDO_TARJETA,
-                border:
-                  BORDE_DORADO_FINO,
+                background: FONDO_TARJETA,
+                border: BORDE_DORADO_FINO,
                 borderRadius: "18px",
                 padding: "18px",
                 marginBottom: "18px",
-                boxShadow:
-                  SOMBRA_LUXURY,
+                boxShadow: SOMBRA_LUXURY,
               }}
             >
               <h2
                 style={{
                   color: COLOR_DORADO,
                   fontSize: "12px",
-                  textTransform:
-                    "uppercase",
-                  margin:
-                    "0 0 14px 0",
+                  textTransform: "uppercase",
+                  margin: "0 0 14px 0",
                 }}
               >
                 Datos de la factura
@@ -405,8 +401,7 @@ export default function ClienteFacturaVer() {
                 <Fila
                   etiqueta="Número"
                   valor={
-                    factura.numero ||
-                    `#${factura.id}`
+                    factura.numero || `#${factura.id}`
                   }
                 />
 
@@ -417,8 +412,7 @@ export default function ClienteFacturaVer() {
                       factura.fecha ||
                         factura.created_at ||
                         ""
-                    ).slice(0, 10) ||
-                    "—"
+                    ).slice(0, 10) || "—"
                   }
                 />
 
@@ -443,8 +437,7 @@ export default function ClienteFacturaVer() {
                 <div
                   style={{
                     display: "flex",
-                    justifyContent:
-                      "space-between",
+                    justifyContent: "space-between",
                     alignItems: "center",
                     gap: "15px",
                     paddingTop: "12px",
@@ -470,33 +463,26 @@ export default function ClienteFacturaVer() {
                     }}
                   >
                     {factura.total != null
-                      ? `${Number(
-                          factura.total
-                        ).toFixed(2)} €`
+                      ? `${Number(factura.total).toFixed(2)} €`
                       : "—"}
                   </strong>
                 </div>
               </div>
             </div>
 
-            {(factura.pdf_storage_path
-              ? Boolean(pdfUrl)
-              : Boolean(factura.pdf_url)) ? (
+            {pdfUrl ? (
               <a
-                href={pdfUrl || factura.pdf_url}
+                href={pdfUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
                   display: "block",
                   width: "100%",
-                  boxSizing:
-                    "border-box",
+                  boxSizing: "border-box",
                   padding: "16px",
                   borderRadius: "16px",
-                  background:
-                    DEGRADADO_AZUL_BOTON,
-                  border:
-                    BORDE_DORADO_INTENSO,
+                  background: DEGRADADO_AZUL_BOTON,
+                  border: BORDE_DORADO_INTENSO,
                   color: "#fff",
                   textDecoration: "none",
                   textAlign: "center",
@@ -514,10 +500,8 @@ export default function ClienteFacturaVer() {
                 style={{
                   padding: "15px",
                   borderRadius: "14px",
-                  background:
-                    "rgba(245,158,11,0.1)",
-                  border:
-                    "1px solid rgba(245,158,11,0.4)",
+                  background: "rgba(245,158,11,0.1)",
+                  border: "1px solid rgba(245,158,11,0.4)",
                   color: "#fbbf24",
                   textAlign: "center",
                   fontSize: "13px",
@@ -534,16 +518,12 @@ export default function ClienteFacturaVer() {
   );
 }
 
-function Fila({
-  etiqueta,
-  valor,
-}) {
+function Fila({ etiqueta, valor }) {
   return (
     <div
       style={{
         display: "flex",
-        justifyContent:
-          "space-between",
+        justifyContent: "space-between",
         alignItems: "flex-start",
         gap: "15px",
         paddingBottom: "10px",
