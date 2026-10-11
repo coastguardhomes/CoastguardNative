@@ -193,12 +193,14 @@ export default function TecnicoFotos() {
         }
 
         const byteArray = new Uint8Array(byteNumbers);
-        const extension =
-          String(image.format || "jpeg").toLowerCase() === "png"
-            ? "png"
-            : "jpeg";
+
+        // La política de Storage exige que el nombre termine en .jpg.
+        // El tipo MIME conserva el formato real de los datos de la imagen.
+        const formatoImagen = String(image.format || "jpeg").toLowerCase();
         const contentType =
-          extension === "png" ? "image/png" : "image/jpeg";
+          formatoImagen === "png" ? "image/png" : "image/jpeg";
+        const extension = "jpg";
+
         const blob = new Blob([byteArray], { type: contentType });
 
         fileName = `inspeccion_${id}_${Date.now()}.${extension}`;
