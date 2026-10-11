@@ -1,0 +1,44 @@
+/* Estilos de la Política de Privacidad */
+
+.privacy-container {
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-wrap: break-word;
+}
+
+.privacy-container h1,
+.privacy-container h2,
+.privacy-container h3 {
+  line-height: 1.4;
+}
+
+.privacy-container p,
+.privacy-container li {
+  overflow-wrap: anywhere;
+}
+
+.privacy-container button {
+  font: inherit;
+}
+
+@media (max-width: 600px) {
+  .privacy-container {
+    padding: 16px;
+    font-size: 14px;
+  }
+
+  .privacy-container h1 {
+    font-size: 24px;
+  }
+
+  .privacy-container h2 {
+    font-size: 20px;
+  }
+
+  .privacy-container h3 {
+    font-size: 17px;
+  }
+}
