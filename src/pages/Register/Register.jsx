@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
@@ -12,9 +13,6 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-
-  const [modalPrivacidad, setModalPrivacidad] = useState(false);
-  const [modalContrato, setModalContrato] = useState(false);
 
   const navigate = useNavigate();
   const { changeLanguage } = useLanguage();
@@ -34,12 +32,13 @@ export default function Register() {
         if (stringified && stringified !== "{}" && stringified !== "[]") {
           msg = stringified;
         }
-      } catch (e) {}
+      } catch (e) {
+        // Se conserva el mensaje genérico si el error no se puede convertir.
+      }
     }
 
     if (!msg || msg === "{}") {
-      msg =
-        "Error de conexión con el servidor o credenciales inválidas";
+      msg = "Error de conexión con el servidor o credenciales inválidas";
     }
 
     setErrorMsg(customPrefix ? `${customPrefix}: ${msg}` : msg);
@@ -68,12 +67,7 @@ export default function Register() {
 
     setLoading(true);
 
-    /*
-     * No enviamos la IP del usuario a un servicio externo.
-     *
-     * Conservamos el campo para no modificar la estructura
-     * existente de la aplicación o de la base de datos.
-     */
+    // Se conserva el campo existente sin afirmar que se haya registrado la IP real.
     const userIp = "IP_NO_REGISTRADA";
 
     const fechaAceptacion = new Date().toISOString();
@@ -86,19 +80,16 @@ export default function Register() {
       options: {
         emailRedirectTo: "coastguard://auth/callback",
         data: {
-          // Se conservan los metadatos existentes.
           acepta_terminos: true,
           terminos_aceptados_at: fechaAceptacion,
           ip_registro: userIp,
           version_terminos: versionContrato,
           idioma,
 
-          // Aceptación independiente de la Política de Privacidad.
           acepta_privacidad: true,
           privacidad_aceptada_at: fechaAceptacion,
           version_privacidad: versionPrivacidad,
 
-          // Aceptación independiente del Contrato Marco.
           acepta_contrato_marco: true,
           contrato_marco_aceptado_at: fechaAceptacion,
           version_contrato_marco: versionContrato,
@@ -122,9 +113,7 @@ export default function Register() {
       return;
     }
 
-    /*
-     * Se conserva la creación del perfil.
-     */
+    // Se conserva la creación del perfil.
     const { error: perfilError } = await supabase
       .from("profiles")
       .insert({
@@ -136,11 +125,7 @@ export default function Register() {
       console.error("Error creando perfil:", perfilError);
     }
 
-    /*
-     * Se conservan la búsqueda y la creación/actualización del cliente.
-     * No añadimos columnas nuevas a la tabla para evitar errores
-     * si el esquema actual no las contiene.
-     */
+    // Se conserva la búsqueda y creación/actualización del cliente.
     const {
       data: clienteExistente,
       error: clienteBusquedaError,
@@ -176,10 +161,7 @@ export default function Register() {
         });
 
       if (crearClienteError) {
-        console.error(
-          "Error creando cliente:",
-          crearClienteError
-        );
+        console.error("Error creando cliente:", crearClienteError);
       }
     } else {
       const { error: actualizarClienteError } = await supabase
@@ -210,6 +192,18 @@ export default function Register() {
   };
 
   const aceptaTodo = aceptaPrivacidad && aceptaContrato;
+
+  const estiloEnlace = {
+    color: "#4db8ff",
+    textDecoration: "underline",
+    cursor: "pointer",
+  };
+
+  const abrirDocumento = (documento) => (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    navigate(`/documentos-legales#${documento}`);
+  };
 
   return (
     <div
@@ -283,6 +277,7 @@ export default function Register() {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
           style={{
             width: "100%",
             padding: "12px",
@@ -301,6 +296,7 @@ export default function Register() {
           placeholder="Contraseña"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          autoComplete="new-password"
           style={{
             width: "100%",
             padding: "12px",
@@ -342,30 +338,18 @@ export default function Register() {
               boxSizing: "border-box",
             }}
           >
-            <option
-              value="es"
-              style={{ background: "#0a0f1a", color: "#fff" }}
-            >
+            <option value="es" style={{ background: "#0a0f1a", color: "#fff" }}>
               🇪🇸 Español
             </option>
-
-            <option
-              value="en"
-              style={{ background: "#0a0f1a", color: "#fff" }}
-            >
+            <option value="en" style={{ background: "#0a0f1a", color: "#fff" }}>
               🇬🇧 English
             </option>
-
-            <option
-              value="fr"
-              style={{ background: "#0a0f1a", color: "#fff" }}
-            >
+            <option value="fr" style={{ background: "#0a0f1a", color: "#fff" }}>
               🇫🇷 Français
             </option>
           </select>
         </div>
 
-        {/* Aceptación independiente de la Política de Privacidad. */}
         <div
           style={{
             marginBottom: "14px",
@@ -399,22 +383,18 @@ export default function Register() {
             }}
           >
             He leído la{" "}
-            <span
-              onClick={() => setModalPrivacidad(true)}
-              style={{
-                color: "#4db8ff",
-                textDecoration: "underline",
-                cursor: "pointer",
-              }}
+            <a
+              href="/documentos-legales#privacidad"
+              onClick={abrirDocumento("privacidad")}
+              style={estiloEnlace}
             >
               Política de Privacidad
-            </span>{" "}
+            </a>{" "}
             y confirmo que he sido informado sobre el tratamiento de mis
             datos personales.
           </label>
         </div>
 
-        {/* Aceptación independiente del Contrato Marco de Servicios. */}
         <div
           style={{
             marginBottom: "20px",
@@ -448,34 +428,30 @@ export default function Register() {
             }}
           >
             He leído y acepto el{" "}
-            <span
-              onClick={() => setModalContrato(true)}
-              style={{
-                color: "#4db8ff",
-                textDecoration: "underline",
-                cursor: "pointer",
-              }}
+            <a
+              href="/documentos-legales#contrato"
+              onClick={abrirDocumento("contrato")}
+              style={estiloEnlace}
             >
               Contrato Marco de Servicios
-            </span>
+            </a>
             .
           </label>
         </div>
 
         <button
+          type="button"
           onClick={handleRegister}
           disabled={loading || !aceptaTodo}
           style={{
             width: "100%",
             padding: "12px",
-            background:
-              !aceptaTodo || loading ? "#2a324b" : "#0077cc",
+            background: !aceptaTodo || loading ? "#2a324b" : "#0077cc",
             color: "#fff",
             border: "none",
             borderRadius: "8px",
             fontSize: "16px",
-            cursor:
-              !aceptaTodo || loading ? "not-allowed" : "pointer",
+            cursor: !aceptaTodo || loading ? "not-allowed" : "pointer",
             opacity: !aceptaTodo || loading ? "0.4" : "1",
             transition: "background 0.2s, opacity 0.2s",
           }}
@@ -484,6 +460,7 @@ export default function Register() {
         </button>
 
         <button
+          type="button"
           onClick={() => navigate("/login")}
           style={{
             width: "100%",
@@ -501,231 +478,6 @@ export default function Register() {
           Volver al login
         </button>
       </div>
-
-      {/* Modal de Política de Privacidad. */}
-      {modalPrivacidad && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0, 0, 0, 0.8)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 9999,
-            padding: "20px",
-            boxSizing: "border-box",
-          }}
-        >
-          <div
-            style={{
-              background: "#101726",
-              padding: "25px",
-              borderRadius: "12px",
-              maxWidth: "500px",
-              width: "100%",
-              maxHeight: "80vh",
-              overflowY: "auto",
-              border: "1px solid rgba(255,255,255,0.2)",
-              color: "#fff",
-              textAlign: "left",
-            }}
-          >
-            <h3
-              style={{
-                color: "#4db8ff",
-                marginTop: 0,
-                marginBottom: "15px",
-              }}
-            >
-              Política de Privacidad
-            </h3>
-
-            <div
-              style={{
-                fontSize: "13px",
-                lineHeight: "1.6",
-                color: "#ccc",
-                marginBottom: "20px",
-              }}
-            >
-              <p>
-                <strong>1. Responsable del tratamiento:</strong> Roxana
-                Collazo Alonso (NIE: Z1968154A).
-              </p>
-
-              <p>
-                <strong>2. Datos que recopilamos:</strong> Datos de
-                identificación, correo electrónico, datos del inmueble y de
-                facturación necesarios para la prestación del servicio.
-              </p>
-
-              <p>
-                <strong>3. Finalidad:</strong> Gestión administrativa,
-                facturación y atención de avisos o emergencias en la
-                plataforma web y móvil.
-              </p>
-
-              <p>
-                <strong>4. Legitimación:</strong> Ejecución de contrato y
-                consentimiento explícito del usuario mediante el registro.
-              </p>
-
-              <p>
-                <strong>5. Derechos:</strong> Puedes ejercer tus derechos
-                escribiendo un correo a coastguardhomes@gmail.com para
-                solicitar el acceso, rectificación o supresión de tus datos.
-              </p>
-            </div>
-
-            <button
-              onClick={() => {
-                setModalPrivacidad(false);
-                navigate("/politica-privacidad");
-              }}
-              style={{
-                width: "100%",
-                padding: "10px",
-                marginBottom: "10px",
-                background: "transparent",
-                color: "#4db8ff",
-                border: "1px solid #4db8ff",
-                borderRadius: "6px",
-                fontWeight: "bold",
-                cursor: "pointer",
-              }}
-            >
-              Leer política de privacidad completa
-            </button>
-
-            <button
-              onClick={() => setModalPrivacidad(false)}
-              style={{
-                width: "100%",
-                padding: "10px",
-                background: "#0077cc",
-                color: "#fff",
-                border: "none",
-                borderRadius: "6px",
-                fontWeight: "bold",
-                cursor: "pointer",
-              }}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Modal del Contrato Marco de Servicios. */}
-      {modalContrato && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0, 0, 0, 0.8)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 9999,
-            padding: "20px",
-            boxSizing: "border-box",
-          }}
-        >
-          <div
-            style={{
-              background: "#101726",
-              padding: "25px",
-              borderRadius: "12px",
-              maxWidth: "500px",
-              width: "100%",
-              maxHeight: "80vh",
-              overflowY: "auto",
-              border: "1px solid rgba(255,255,255,0.2)",
-              color: "#fff",
-              textAlign: "left",
-            }}
-          >
-            <h3
-              style={{
-                color: "#4db8ff",
-                marginTop: 0,
-                marginBottom: "15px",
-              }}
-            >
-              Contrato Marco de Servicios
-            </h3>
-
-            <div
-              style={{
-                fontSize: "13px",
-                lineHeight: "1.6",
-                color: "#ccc",
-                marginBottom: "20px",
-              }}
-            >
-              <p>
-                <strong>1. Objeto:</strong> Regulación de la prestación de
-                servicios de gestión, avisos y mantenimiento a través de la
-                aplicación.
-              </p>
-
-              <p>
-                <strong>2. Condiciones de contratación y pagos:</strong> Los
-                servicios contratados mediante la plataforma implican las
-                condiciones de cobro y pagos por adelantado o según tarifa
-                acordada.
-              </p>
-
-              <p>
-                <strong>
-                  3. Exención de responsabilidad por fallos en el servicio:
-                </strong>{" "}
-                El Prestador realiza los máximos esfuerzos para mantener la
-                aplicación web operativa las 24 horas del día. No obstante,
-                no se garantiza el acceso continuado, ni la correcta
-                visualización, descarga o utilidad de los elementos e
-                información contenidos en la plataforma, que puedan verse
-                impedidos, dificultados o interrumpidos por factores o
-                circunstancias ajenas a su control (caídas del servidor,
-                fallos en las redes de telecomunicaciones, actualizaciones
-                de mantenimiento o errores de software). El Prestador no se
-                hará responsable de los perjuicios, pérdidas o reclamaciones
-                derivados de interferencias, interrupciones, fallos,
-                omisiones o averías telefónicas o del sistema informático.
-              </p>
-
-              <p>
-                <strong>4. Validez:</strong> La aceptación de este contrato
-                se realiza de forma telemática durante el proceso de registro
-                del usuario.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setModalContrato(false)}
-              style={{
-                width: "100%",
-                padding: "10px",
-                background: "#0077cc",
-                color: "#fff",
-                border: "none",
-                borderRadius: "6px",
-                fontWeight: "bold",
-                cursor: "pointer",
-              }}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
