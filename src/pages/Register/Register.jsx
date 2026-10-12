@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
@@ -29,10 +28,11 @@ export default function Register() {
     } else {
       try {
         const stringified = JSON.stringify(err);
+
         if (stringified && stringified !== "{}" && stringified !== "[]") {
           msg = stringified;
         }
-      } catch (e) {
+      } catch {
         // Se conserva el mensaje genérico si el error no se puede convertir.
       }
     }
@@ -48,7 +48,9 @@ export default function Register() {
     setErrorMsg("");
     setMensaje("");
 
-    if (!email || !password) {
+    const emailNormalizado = email.trim().toLowerCase();
+
+    if (!emailNormalizado || !password) {
       setErrorMsg("Debes completar todos los campos");
       return;
     }
@@ -67,128 +69,134 @@ export default function Register() {
 
     setLoading(true);
 
-    // Se conserva el campo existente sin afirmar que se haya registrado la IP real.
-    const userIp = "IP_NO_REGISTRADA";
+    try {
+      // No se afirma haber registrado la IP real del usuario.
+      const userIp = "IP_NO_REGISTRADA";
 
-    const fechaAceptacion = new Date().toISOString();
-    const versionPrivacidad = "v1.0";
-    const versionContrato = "v1.0";
+      const fechaAceptacion = new Date().toISOString();
+      const versionPrivacidad = "v1.0";
+      const versionContrato = "v1.0";
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: "coastguard://auth/callback",
-        data: {
-          acepta_terminos: true,
-          terminos_aceptados_at: fechaAceptacion,
-          ip_registro: userIp,
-          version_terminos: versionContrato,
-          idioma,
+      const { data, error } = await supabase.auth.signUp({
+        email: emailNormalizado,
+        password,
+        options: {
+          emailRedirectTo: "coastguard://auth/callback",
+          data: {
+            acepta_terminos: true,
+            terminos_aceptados_at: fechaAceptacion,
+            ip_registro: userIp,
+            version_terminos: versionContrato,
+            idioma,
 
-          acepta_privacidad: true,
-          privacidad_aceptada_at: fechaAceptacion,
-          version_privacidad: versionPrivacidad,
+            acepta_privacidad: true,
+            privacidad_aceptada_at: fechaAceptacion,
+            version_privacidad: versionPrivacidad,
 
-          acepta_contrato_marco: true,
-          contrato_marco_aceptado_at: fechaAceptacion,
-          version_contrato_marco: versionContrato,
+            acepta_contrato_marco: true,
+            contrato_marco_aceptado_at: fechaAceptacion,
+            version_contrato_marco: versionContrato,
+          },
         },
-      },
-    });
-
-    if (error) {
-      handleError(error);
-      setLoading(false);
-      return;
-    }
-
-    const user = data?.user;
-
-    if (!user) {
-      setErrorMsg(
-        "Error inesperado creando usuario (sin datos de usuario)"
-      );
-      setLoading(false);
-      return;
-    }
-
-    // Se conserva la creación del perfil.
-    const { error: perfilError } = await supabase
-      .from("profiles")
-      .insert({
-        id: user.id,
-        rol: "cliente",
       });
 
-    if (perfilError) {
-      console.error("Error creando perfil:", perfilError);
-    }
+      if (error) {
+        handleError(error);
+        return;
+      }
 
-    // Se conserva la búsqueda y creación/actualización del cliente.
-    const {
-      data: clienteExistente,
-      error: clienteBusquedaError,
-    } = await supabase
-      .from("clientes")
-      .select("id")
-      .eq("email", user.email)
-      .maybeSingle();
+      const user = data?.user;
 
-    if (clienteBusquedaError) {
-      console.error(
-        "Error buscando cliente existente:",
-        clienteBusquedaError
-      );
-    }
+      if (!user) {
+        setErrorMsg(
+          "Error inesperado creando usuario (sin datos de usuario)"
+        );
+        return;
+      }
 
-    const datosLegalesCliente = {
-      email: user.email,
-      idioma,
-      acepta_privacidad: true,
-      privacidad_aceptada_at: fechaAceptacion,
-      ip_registro: userIp,
-      version_privacidad: versionPrivacidad,
-    };
-
-    if (!clienteExistente) {
-      const { error: crearClienteError } = await supabase
-        .from("clientes")
+      // Se conserva la creación del perfil.
+      const { error: perfilError } = await supabase
+        .from("profiles")
         .insert({
           id: user.id,
-          user_id: user.id,
-          ...datosLegalesCliente,
+          rol: "cliente",
         });
 
-      if (crearClienteError) {
-        console.error("Error creando cliente:", crearClienteError);
+      if (perfilError) {
+        console.error("Error creando perfil:", perfilError);
       }
-    } else {
-      const { error: actualizarClienteError } = await supabase
-        .from("clientes")
-        .update(datosLegalesCliente)
-        .eq("id", clienteExistente.id);
 
-      if (actualizarClienteError) {
+      // Se busca si el cliente ya existe.
+      const {
+        data: clienteExistente,
+        error: clienteBusquedaError,
+      } = await supabase
+        .from("clientes")
+        .select("id")
+        .eq("email", user.email)
+        .maybeSingle();
+
+      if (clienteBusquedaError) {
         console.error(
-          "Error actualizando cliente:",
-          actualizarClienteError
+          "Error buscando cliente existente:",
+          clienteBusquedaError
         );
       }
+
+      const datosLegalesCliente = {
+        email: user.email,
+        idioma,
+        acepta_privacidad: true,
+        privacidad_aceptada_at: fechaAceptacion,
+        ip_registro: userIp,
+        version_privacidad: versionPrivacidad,
+      };
+
+      if (!clienteBusquedaError && !clienteExistente) {
+        const { error: crearClienteError } = await supabase
+          .from("clientes")
+          .insert({
+            id: user.id,
+            user_id: user.id,
+            ...datosLegalesCliente,
+          });
+
+        if (crearClienteError) {
+          console.error(
+            "Error creando cliente:",
+            crearClienteError
+          );
+        }
+      } else if (!clienteBusquedaError && clienteExistente) {
+        const { error: actualizarClienteError } = await supabase
+          .from("clientes")
+          .update(datosLegalesCliente)
+          .eq("id", clienteExistente.id);
+
+        if (actualizarClienteError) {
+          console.error(
+            "Error actualizando cliente:",
+            actualizarClienteError
+          );
+        }
+      }
+
+      changeLanguage(idioma);
+      localStorage.setItem("app_idioma", idioma);
+
+      setMensaje(
+        "Cuenta creada correctamente. Se ha enviado un enlace de confirmación a tu correo."
+      );
+
+      setTimeout(() => {
+        navigate("/login", { replace: true });
+      }, 2000);
+    } catch (error) {
+      console.error("Error durante el registro:", error);
+      handleError(error, "No se ha podido completar el registro");
+    } finally {
+      setLoading(false);
     }
-
-    changeLanguage(idioma);
-    localStorage.setItem("app_idioma", idioma);
-
-    setMensaje(
-      "Cuenta creada correctamente. Se ha enviado un enlace de confirmación a tu correo."
-    );
-
-    setLoading(false);
-
-    setTimeout(() => {
-      navigate("/login", { replace: true });
-    }, 2000);
   };
 
   const aceptaTodo = aceptaPrivacidad && aceptaContrato;
@@ -242,6 +250,7 @@ export default function Register() {
 
         {errorMsg && (
           <div
+            role="alert"
             style={{
               background: "rgba(255,0,0,0.15)",
               padding: "10px",
@@ -259,6 +268,7 @@ export default function Register() {
 
         {mensaje && (
           <div
+            role="status"
             style={{
               background: "rgba(0,255,0,0.15)",
               padding: "10px",
@@ -278,6 +288,7 @@ export default function Register() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
+          required
           style={{
             width: "100%",
             padding: "12px",
@@ -297,6 +308,8 @@ export default function Register() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
+          required
+          minLength={6}
           style={{
             width: "100%",
             padding: "12px",
@@ -312,6 +325,7 @@ export default function Register() {
 
         <div style={{ marginBottom: "20px" }}>
           <label
+            htmlFor="idioma"
             style={{
               display: "block",
               marginBottom: "6px",
@@ -321,10 +335,11 @@ export default function Register() {
               letterSpacing: "0.5px",
             }}
           >
-            Idioma Preferido / Preferred Language
+            Idioma preferido / Preferred Language
           </label>
 
           <select
+            id="idioma"
             value={idioma}
             onChange={(e) => setIdioma(e.target.value)}
             style={{
@@ -332,21 +347,15 @@ export default function Register() {
               padding: "12px",
               borderRadius: "8px",
               border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(255,255,255,0.08)",
+              background: "#0a0f1a",
               color: "#fff",
               fontSize: "15px",
               boxSizing: "border-box",
             }}
           >
-            <option value="es" style={{ background: "#0a0f1a", color: "#fff" }}>
-              🇪🇸 Español
-            </option>
-            <option value="en" style={{ background: "#0a0f1a", color: "#fff" }}>
-              🇬🇧 English
-            </option>
-            <option value="fr" style={{ background: "#0a0f1a", color: "#fff" }}>
-              🇫🇷 Français
-            </option>
+            <option value="es">🇪🇸 Español</option>
+            <option value="en">🇬🇧 English</option>
+            <option value="fr">🇫🇷 Français</option>
           </select>
         </div>
 
@@ -364,6 +373,7 @@ export default function Register() {
             id="aceptaPrivacidad"
             checked={aceptaPrivacidad}
             onChange={(e) => setAceptaPrivacidad(e.target.checked)}
+            required
             style={{
               marginTop: "4px",
               cursor: "pointer",
@@ -409,6 +419,7 @@ export default function Register() {
             id="aceptaContrato"
             checked={aceptaContrato}
             onChange={(e) => setAceptaContrato(e.target.checked)}
+            required
             style={{
               marginTop: "4px",
               cursor: "pointer",
