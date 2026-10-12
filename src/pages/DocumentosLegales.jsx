@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PoliticaPrivacidad from "./PoliticaPrivacidad.jsx";
@@ -85,16 +84,7 @@ export default function DocumentosLegales() {
         <section id="aviso-legal" style={estilos.tarjeta}>
           <h1 style={estilos.titulo}>AVISO LEGAL</h1>
 
-          <p>
-            Este aviso identifica a la titular de CoastGuard Homes
-            Services e informa sobre el uso de la aplicación CoastGuard
-            Homes. Se refiere a la aplicación y no sustituye las
-            condiciones legales de una página web comercial independiente.
-          </p>
-
-          <h2 style={estilos.subtitulo}>
-            1. Titular de la aplicación
-          </h2>
+          <h2 style={estilos.subtitulo}>1. Titular</h2>
 
           <ul>
             <li>
@@ -102,10 +92,6 @@ export default function DocumentosLegales() {
             </li>
             <li>
               <strong>Nombre comercial:</strong> CoastGuard Homes Services.
-            </li>
-            <li>
-              <strong>Forma de ejercicio:</strong> trabajadora autónoma,
-              según los datos facilitados por la titular.
             </li>
             <li>
               <strong>NIF:</strong> Z1968154A.
@@ -122,157 +108,64 @@ export default function DocumentosLegales() {
             </li>
           </ul>
 
-          <h2 style={estilos.subtitulo}>
-            2. Finalidad de la aplicación
-          </h2>
+          <h2 style={estilos.subtitulo}>2. Finalidad de la aplicación</h2>
 
           <p>
-            CoastGuard Homes es una herramienta de apoyo para que los
-            clientes autorizados puedan consultar información relacionada
-            con sus viviendas y con los servicios que tengan contratados
-            o estén gestionando con la titular.
+            CoastGuard Homes es una aplicación destinada a clientes
+            autorizados para consultar información y documentación
+            relacionada con sus viviendas y con los servicios
+            contratados o gestionados con CoastGuard Homes Services.
           </p>
 
           <p>
-            Según los permisos de cada cuenta, la aplicación puede permitir
-            consultar información de viviendas, contratos, revisiones,
-            incidencias, fotografías, informes y documentación relacionada
-            con los servicios correspondientes.
+            Según los permisos de cada cuenta, la aplicación puede
+            permitir consultar datos de viviendas, contratos,
+            revisiones, incidencias, fotografías, informes y otros
+            documentos relacionados con los servicios correspondientes.
           </p>
 
           <p>
-            La aplicación no debe interpretarse como una oferta general
-            abierta al público ni como sustituto del contrato o de las
-            condiciones particulares aceptadas por cada cliente. Los
-            servicios, su alcance, su precio y sus condiciones se
-            determinarán mediante la documentación correspondiente.
+            La aplicación es una herramienta de consulta y gestión
+            para clientes autorizados. Los servicios contratados,
+            su alcance y sus condiciones se rigen por los contratos
+            y acuerdos correspondientes.
           </p>
 
-          <h2 style={estilos.subtitulo}>
-            3. Actividad profesional
-          </h2>
+          <h2 style={estilos.subtitulo}>3. Uso de la aplicación</h2>
 
           <p>
-            CoastGuard Homes Services desarrolla servicios relacionados
-            con la gestión y atención de viviendas. Según lo acordado
-            con cada cliente, estos pueden incluir custodia de llaves,
-            revisiones o inspecciones, registro y comunicación de
-            incidencias, coordinación de actuaciones y otros servicios
-            adicionales expresamente acordados.
+            El usuario debe utilizar la aplicación de forma lícita
+            y acceder únicamente a la información y las funciones
+            autorizadas para su cuenta. No está permitido acceder
+            sin autorización a datos de otras personas o viviendas,
+            alterar información ni eludir los controles de acceso.
           </p>
 
+          <h2 style={estilos.subtitulo}>4. Propiedad intelectual</h2>
+
           <p>
-            No todos los servicios disponibles o mencionados en la
-            aplicación están necesariamente incluidos en una cuota o
-            contrato. El alcance efectivo será el establecido en las
-            condiciones particulares aceptadas por el cliente.
+            Los contenidos, textos, diseños, logotipos y demás
+            elementos de la aplicación están protegidos, cuando
+            corresponda, por la normativa de propiedad intelectual
+            e industrial. Su utilización no autorizada queda prohibida,
+            salvo en los casos permitidos por la ley.
           </p>
 
-          <h2 style={estilos.subtitulo}>
-            4. Acceso y uso autorizado
-          </h2>
+          <h2 style={estilos.subtitulo}>5. Protección de datos</h2>
 
           <p>
-            El acceso a la aplicación está destinado a usuarios
-            autorizados. Cada usuario debe utilizar exclusivamente
-            las funciones y los datos correspondientes a los permisos
-            asignados a su cuenta.
+            El tratamiento de los datos personales se explica en la{" "}
+            <a href="#privacidad">Política de Privacidad</a> disponible
+            en esta misma página.
           </p>
 
-          <p>
-            El usuario es responsable de mantener la confidencialidad
-            de sus credenciales, utilizar la aplicación de forma lícita
-            y comunicar cualquier acceso no autorizado del que tenga
-            conocimiento.
-          </p>
+          <h2 style={estilos.subtitulo}>6. Legislación aplicable</h2>
 
           <p>
-            No está permitido acceder a información de otras personas
-            o viviendas sin autorización, intentar eludir los controles
-            de acceso, alterar datos sin permiso ni utilizar la
-            aplicación con fines ilícitos.
-          </p>
-
-          <h2 style={estilos.subtitulo}>
-            5. Información y disponibilidad
-          </h2>
-
-          <p>
-            La información disponible en la aplicación se facilita
-            para apoyar la gestión de los servicios y la consulta de
-            documentación relacionada con ellos. Su visualización
-            no supone, por sí sola, que se haya contratado una
-            prestación adicional ni que una incidencia vaya a recibir
-            atención inmediata.
-          </p>
-
-          <p>
-            La disponibilidad puede verse afectada por mantenimiento,
-            problemas de conexión, incidencias técnicas u otras
-            circunstancias. Se adoptarán medidas razonables para
-            mantener el funcionamiento de la aplicación, sin excluir
-            las responsabilidades que legalmente correspondan.
-          </p>
-
-          <h2 style={estilos.subtitulo}>
-            6. Propiedad intelectual e industrial
-          </h2>
-
-          <p>
-            Los elementos de la aplicación, incluidos su diseño,
-            estructura, textos, logotipos y componentes, pueden estar
-            protegidos por derechos de propiedad intelectual o
-            industrial de sus respectivos titulares.
-          </p>
-
-          <p>
-            El acceso a la aplicación no concede al usuario derechos
-            de propiedad sobre esos elementos. No se permite su
-            reproducción, distribución, transformación o explotación
-            fuera de los usos autorizados por la ley o por sus
-            titulares.
-          </p>
-
-          <h2 style={estilos.subtitulo}>
-            7. Protección de datos personales
-          </h2>
-
-          <p>
-            El tratamiento de los datos personales relacionados con
-            la aplicación se describe en la Política de Privacidad
-            disponible en esta pantalla.
-          </p>
-
-          <p>
-            Para consultas relacionadas con el tratamiento de datos
-            personales o para ejercer los derechos que correspondan,
-            puede utilizarse el correo electrónico indicado en el
-            apartado de titularidad.
-          </p>
-
-          <h2 style={estilos.subtitulo}>
-            8. Legislación aplicable
-          </h2>
-
-          <p>
-            Este aviso se interpretará conforme a la legislación
-            española y de la Unión Europea que resulte aplicable,
-            sin perjuicio de las normas imperativas y de los derechos
-            que correspondan a los consumidores y usuarios.
-          </p>
-
-          <p>
-            La información de este aviso deberá mantenerse actualizada
-            cuando cambien los datos de la titular, la finalidad de
-            la aplicación o las circunstancias que deban comunicarse
-            legalmente.
-          </p>
-
-          <p>
-            <strong>Nota:</strong> este aviso debe revisarse antes de
-            su publicación definitiva para confirmar la identificación
-            fiscal, los datos de contacto y las obligaciones concretas
-            que correspondan al funcionamiento real de la aplicación.
+            Este aviso se rige por la legislación española y de la
+            Unión Europea que resulte aplicable, respetando en todo
+            caso los derechos irrenunciables de los consumidores
+            y usuarios.
           </p>
         </section>
 
