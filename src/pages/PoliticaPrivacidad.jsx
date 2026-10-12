@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import "./PoliticaPrivacidad.css";
@@ -59,9 +60,6 @@ export default function PoliticaPrivacidad() {
         </li>
         <li>
           <strong>Nombre comercial:</strong> CoastGuard Homes Services
-        </li>
-        <li>
-          <strong>NIE:</strong> Z1968154A
         </li>
         <li>
           <strong>Domicilio profesional:</strong> Calle Clásicas de Arriba,
@@ -461,10 +459,10 @@ export default function PoliticaPrivacidad() {
       </p>
 
       <p>
-        Las personas que realicen inspecciones deberán evitar incluir en las
-        imágenes personas identificables, documentos, datos de contacto u
-        otros elementos personales que no sean necesarios para documentar el
-        estado del inmueble o la incidencia.
+        Las personas que realicen inspecciones deberán evitar incluir en
+        las imágenes personas identificables, documentos, datos de contacto
+        u otros elementos personales que no sean necesarios para documentar
+        el estado del inmueble o la incidencia.
       </p>
 
       <p>
