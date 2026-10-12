@@ -1,16 +1,17 @@
-
 /* Estilos de la pantalla unificada de documentos legales */
 
 html {
   scroll-behavior: auto;
 }
 
+#aviso-legal,
 #contrato,
 #privacidad {
   scroll-margin-top: 20px;
 }
 
 @media (max-width: 600px) {
+  #aviso-legal,
   #contrato,
   #privacidad {
     scroll-margin-top: 12px;
