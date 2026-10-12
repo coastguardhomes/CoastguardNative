@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -13,13 +14,12 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ⭐ BOTÓN ATRÁS NORMAL EN TODA LA APP
+  // Botón atrás normal en toda la aplicación.
   useEffect(() => {
     const backSub = App.addListener("backButton", () => {
-      // Si NO hay usuario → permitir atrás (login)
+      // Si no hay usuario, se conserva el comportamiento existente.
       if (!user) return;
 
-      // Si hay usuario → volver a la pantalla anterior SIEMPRE
       window.history.back();
     });
 
@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
     };
   }, [user]);
 
-  // Cargar sesión al iniciar la app
+  // Cargar sesión al iniciar la aplicación.
   useEffect(() => {
     async function cargarSesion() {
       const { data } = await supabase.auth.getSession();
@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
 
     cargarSesion();
 
-    // Escuchar cambios de sesión
+    // Escuchar cambios de sesión.
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user) {
@@ -58,7 +58,7 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  // Cargar rol del usuario
+  // Cargar el rol del usuario.
   useEffect(() => {
     if (!user) {
       setRole(null);
@@ -80,24 +80,31 @@ export function AuthProvider({ children }) {
     cargarRol();
   }, [user]);
 
-  // Redirección automática por rol
+  // Redirección automática por rol.
   useEffect(() => {
     if (loading) return;
 
-    // ⭐ SI ESTAMOS CAMBIANDO CONTRASEÑA, NO REDIRIGIR AL DASHBOARD
+    // No redirigir durante la actualización de contraseña.
     if (pathname.includes("update-password")) {
       return;
     }
 
+    // Rutas accesibles sin iniciar sesión.
+    // IMPORTANTE: los documentos legales deben permanecer públicos.
     const rutasPublicas = [
       "/",
       "/login",
       "/register",
       "/reset-password",
       "/update-password",
+      "/auth/callback",
+      "/documentos-legales",
+      "/politica-privacidad",
     ];
+
     const esPublica = rutasPublicas.includes(pathname);
 
+    // Sin sesión, solo se permite permanecer en rutas públicas.
     if (!user && !esPublica) {
       navigate("/login", { replace: true });
       return;
@@ -105,6 +112,7 @@ export function AuthProvider({ children }) {
 
     if (!user || !esPublica) return;
 
+    // Si ya existe una sesión, conservar la redirección por rol.
     if (role === "admin") {
       navigate("/admin/dashboard", { replace: true });
       return;
