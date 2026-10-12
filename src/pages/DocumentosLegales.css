@@ -1,0 +1,22 @@
+
+/* Estilos de la pantalla unificada de documentos legales */
+
+html {
+  scroll-behavior: auto;
+}
+
+#contrato,
+#privacidad {
+  scroll-margin-top: 20px;
+}
+
+@media (max-width: 600px) {
+  #contrato,
+  #privacidad {
+    scroll-margin-top: 12px;
+  }
+
+  iframe[title="Política de Privacidad completa"] {
+    min-height: 70vh;
+  }
+}
