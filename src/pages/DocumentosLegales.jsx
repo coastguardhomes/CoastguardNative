@@ -1,6 +1,7 @@
 
 import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import PoliticaPrivacidad from "./PoliticaPrivacidad.jsx";
 import "./DocumentosLegales.css";
 
 const estilos = {
@@ -45,15 +46,6 @@ const estilos = {
     color: "#00356b",
     marginTop: "24px",
   },
-  politica: {
-    display: "block",
-    width: "100%",
-    height: "85vh",
-    minHeight: "650px",
-    border: "1px solid #d8e0ea",
-    borderRadius: "8px",
-    background: "#fff",
-  },
 };
 
 export default function DocumentosLegales() {
@@ -73,7 +65,7 @@ export default function DocumentosLegales() {
         behavior: "auto",
         block: "start",
       });
-    }, 100);
+    }, 150);
 
     return () => window.clearTimeout(timer);
   }, [location.hash]);
@@ -89,10 +81,7 @@ export default function DocumentosLegales() {
           ← Volver al registro
         </button>
 
-        <section
-          id="contrato"
-          style={estilos.tarjeta}
-        >
+        <section id="contrato" style={estilos.tarjeta}>
           <h1 style={estilos.titulo}>
             CONTRATO MARCO DE SERVICIOS
           </h1>
@@ -134,9 +123,7 @@ export default function DocumentosLegales() {
             la normativa aplicable.
           </p>
 
-          <h2 style={estilos.subtitulo}>
-            4. Uso de la plataforma
-          </h2>
+          <h2 style={estilos.subtitulo}>4. Uso de la plataforma</h2>
           <p>
             El usuario deberá utilizar la aplicación de forma lícita,
             facilitar información correcta y mantener la
@@ -165,8 +152,8 @@ export default function DocumentosLegales() {
             El tratamiento de los datos personales se describe en la
             Política de Privacidad disponible en esta misma pantalla.
             La aceptación del contrato no sustituye los consentimientos
-            específicos que puedan resultar necesarios conforme a la
-            normativa aplicable.
+            específicos que puedan resultar necesarios conforme a
+            la normativa aplicable.
           </p>
 
           <h2 style={estilos.subtitulo}>
@@ -190,26 +177,17 @@ export default function DocumentosLegales() {
             irrenunciables del usuario ni limitar responsabilidades
             que legalmente no puedan excluirse.
           </p>
-        </section>
-
-        <section
-          id="privacidad"
-          style={estilos.tarjeta}
-        >
-          <h1 style={estilos.titulo}>
-            POLÍTICA DE PRIVACIDAD
-          </h1>
 
           <p>
-            A continuación puedes consultar la política completa,
-            con todos sus apartados.
+            <strong>Importante:</strong> este texto contiene las ocho
+            cláusulas actualmente mostradas en la aplicación. Debe
+            contrastarse con el contrato marco completo aprobado antes
+            de utilizarlo como versión contractual definitiva.
           </p>
+        </section>
 
-          <iframe
-            title="Política de Privacidad completa"
-            src="/politica-privacidad"
-            style={estilos.politica}
-          />
+        <section id="privacidad" style={estilos.tarjeta}>
+          <PoliticaPrivacidad />
         </section>
 
         <button
