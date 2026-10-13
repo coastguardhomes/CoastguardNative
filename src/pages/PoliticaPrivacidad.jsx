@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import "./PoliticaPrivacidad.css";
@@ -51,11 +52,26 @@ export default function PoliticaPrivacidad() {
       <p>
         Esta Política de Privacidad informa sobre el tratamiento de datos
         personales realizado por CoastGuard Homes Services en relación con
-        su aplicación, sitio web, cuenta de usuario y servicios contratados.
-        El tratamiento se regirá por el Reglamento (UE) 2016/679, General de
-        Protección de Datos (RGPD), la Ley Orgánica 3/2018, de Protección de
-        Datos Personales y garantía de los derechos digitales (LOPDGDD), y
-        las demás disposiciones aplicables.
+        la aplicación CoastGuard Homes y la gestión de los servicios
+        contratados por sus clientes. La aplicación está destinada a
+        consultar y gestionar la información relacionada con la relación
+        contractual y los servicios efectivamente contratados.
+      </p>
+
+      <p>
+        Esta política se refiere a la aplicación y a los tratamientos de
+        datos vinculados a los servicios contratados. El sitio web
+        independiente de CoastGuard Homes constituye un medio distinto
+        y no queda regulado de forma general por esta política cuando
+        realice tratamientos propios; en ese caso, deberá facilitarse la
+        información de privacidad que corresponda a dicho sitio web.
+      </p>
+
+      <p>
+        El tratamiento se regirá por el Reglamento (UE) 2016/679, General
+        de Protección de Datos (RGPD), la Ley Orgánica 3/2018, de Protección
+        de Datos Personales y garantía de los derechos digitales (LOPDGDD),
+        y las demás disposiciones aplicables.
       </p>
 
       <h3>1. RESPONSABLE DEL TRATAMIENTO</h3>
@@ -576,8 +592,8 @@ export default function PoliticaPrivacidad() {
       <p>
         Esta política podrá actualizarse cuando cambien los servicios,
         los tratamientos de datos o la normativa aplicable. La versión
-        vigente será la publicada en la aplicación o en el sitio web
-        correspondiente, junto con la fecha de su última actualización.
+        vigente será la publicada en la aplicación, junto con la fecha
+        de su última actualización.
       </p>
 
       <p>
