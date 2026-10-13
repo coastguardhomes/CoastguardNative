@@ -98,8 +98,9 @@ export default function DocumentosLegales() {
               <strong>NIF/NIE indicado:</strong> Z1968154A.
             </li>
             <li>
-              <strong>Domicilio profesional:</strong> Calle Clásicas de
-              Arriba, 33, 1.º F, Pilar de la Horadada, Alicante, España.
+              <strong>Domicilio profesional:</strong>{" "}
+              Calle Casicas de Arriba, 33, 1.º F, Pilar de la Horadada,
+              Alicante, España.
             </li>
             <li>
               <strong>Correo electrónico:</strong>{" "}
@@ -126,11 +127,12 @@ export default function DocumentosLegales() {
           </p>
 
           <p>
-            El servicio ordinario contratado es la custodia de llaves sin
-            visitas a la vivienda. La existencia de funciones técnicas en la
-            aplicación no significa que se realicen inspecciones, revisiones,
-            visitas, vigilancia permanente o trabajos de mantenimiento.
-            Cualquier servicio adicional deberá ser contratado expresamente.
+            CoastGuard Homes Services ofrece distintos servicios relacionados
+            con la gestión y atención de viviendas. El alcance de cada servicio
+            será el que se describa en las condiciones particulares aceptadas
+            por el cliente. La custodia de llaves, por sí sola, no incluye
+            visitas, inspecciones ni vigilancia de la vivienda. Estos trabajos
+            solo se realizarán cuando se contraten expresamente.
           </p>
 
           <h2 style={estilos.subtitulo}>3. Condiciones de uso</h2>
@@ -187,109 +189,124 @@ export default function DocumentosLegales() {
           <h1 style={estilos.titulo}>CONTRATO MARCO DE SERVICIOS</h1>
 
           <p>
-            Este contrato establece las condiciones generales aplicables
-            a los servicios de CoastGuard Homes Services. El servicio
-            ordinario objeto de la contratación es la custodia de llaves
-            de la vivienda del cliente, sin visitas ni inspecciones del
-            inmueble incluidas en la suscripción.
+            Este contrato establece las condiciones generales aplicables a
+            los servicios de CoastGuard Homes Services. Los servicios
+            concretos que contrate cada cliente, su alcance, su precio y
+            sus condiciones particulares se identificarán en la documentación
+            contractual correspondiente.
           </p>
 
           <p>
-            Las condiciones particulares de cada cliente concretarán la
-            vivienda, el alcance del servicio, la cuota, los impuestos,
-            las condiciones de pago, la fecha de inicio y los demás
-            aspectos específicos de la contratación. En caso de discrepancia,
-            prevalecerán las condiciones particulares aceptadas en aquello
-            que regulen específicamente, sin perjuicio de los derechos
-            legales del cliente.
+            Cuando el servicio contratado sea la custodia de llaves, esta
+            comprenderá las actuaciones expresamente acordadas relacionadas
+            con la recepción, custodia y devolución de las llaves. La custodia
+            de llaves, por sí sola, no incluye visitas ni inspecciones del
+            inmueble.
+          </p>
+
+          <p>
+            Las condiciones particulares concretarán la vivienda, el servicio,
+            la cuota, los impuestos, las condiciones de pago y la fecha de
+            inicio. En caso de discrepancia, prevalecerán las condiciones
+            particulares aceptadas en aquello que regulen específicamente,
+            sin perjuicio de los derechos legales del cliente.
           </p>
 
           <h2 style={estilos.subtitulo}>1. Objeto y alcance del servicio</h2>
 
           <p>
-            CoastGuard Homes Services prestará el servicio de custodia de
-            llaves conforme a las condiciones particulares aceptadas por
-            el cliente. La custodia comprende únicamente las actuaciones
-            expresamente acordadas relacionadas con la recepción, conservación
-            y devolución de las llaves.
+            CoastGuard Homes Services prestará los servicios que el cliente
+            haya contratado y aceptado expresamente, de acuerdo con el alcance
+            descrito en las condiciones particulares.
           </p>
 
           <p>
-            La suscripción no incluye visitas a la vivienda, inspecciones,
-            revisiones periódicas, vigilancia permanente, atención de
-            emergencias, reparaciones, limpieza, mantenimiento ni otras
-            actuaciones sobre el inmueble.
+            La custodia de llaves comprende únicamente las actuaciones
+            acordadas relacionadas con la recepción, conservación y devolución
+            de las llaves. No incluye por sí misma visitas a la vivienda,
+            inspecciones, revisiones periódicas, vigilancia permanente,
+            atención de emergencias, reparaciones, limpieza, mantenimiento
+            ni otras actuaciones sobre el inmueble.
           </p>
 
           <p>
-            La disponibilidad de una función en la aplicación no implica
-            que la actividad correspondiente esté incluida en la suscripción.
-            El servicio se limita a las prestaciones expresamente indicadas
-            en las condiciones particulares aceptadas.
+            Si el cliente contrata expresamente un servicio de visitas,
+            inspecciones, informes, fotografías u otras actuaciones, su alcance,
+            frecuencia, precio y condiciones se determinarán en las condiciones
+            particulares o en el presupuesto aceptado.
+          </p>
+
+          <p>
+            La disponibilidad de una función en la aplicación no implica que
+            la actividad correspondiente esté incluida en el servicio
+            contratado. Solo se prestarán las actuaciones expresamente
+            acordadas.
           </p>
 
           <h2 style={estilos.subtitulo}>2. Custodia y gestión de llaves</h2>
 
           <p>
-            El cliente deberá facilitar las llaves y la información
-            estrictamente necesaria para identificarlas y gestionar
-            correctamente el servicio. La recepción y devolución se
-            coordinarán por los medios acordados entre las partes.
+            Cuando se contrate la custodia de llaves, el cliente deberá
+            facilitar las llaves y la información estrictamente necesaria
+            para identificarlas y gestionar correctamente el servicio.
+            La recepción y devolución se coordinarán por los medios acordados
+            entre las partes.
           </p>
 
           <p>
-            Las llaves se custodiarán con medidas razonables de seguridad
-            y acceso restringido. El cliente deberá comunicar cualquier
-            circunstancia relevante para la identificación, utilización
-            autorizada o devolución de las llaves.
+            Las llaves se custodiarán aplicando medidas razonables de seguridad
+            y limitando su acceso a las personas autorizadas. El cliente deberá
+            comunicar cualquier circunstancia relevante para la identificación,
+            gestión o devolución de las llaves.
           </p>
 
           <p>
             La custodia no autoriza por sí sola a entrar en la vivienda,
-            realizar visitas, inspeccionar el inmueble ni entregar las
-            llaves a terceros. Cualquier actuación que requiera acceso
-            a la vivienda o entrega a otra persona deberá contar con
-            autorización expresa y con las condiciones que correspondan.
+            realizar visitas, inspeccionar el inmueble ni entregar las llaves
+            a terceros. Cualquier actuación que requiera acceso a la vivienda
+            o entrega a otra persona deberá contar con autorización expresa
+            y con las condiciones que correspondan.
           </p>
 
           <p>
-            El alcance concreto de la custodia, los procedimientos de
-            entrega y devolución y las responsabilidades de cada parte
-            se interpretarán conforme a las condiciones aceptadas y a la
-            normativa aplicable. Ninguna cláusula excluye responsabilidades
-            que legalmente no puedan excluirse.
+            El alcance concreto de la custodia, los procedimientos de entrega
+            y devolución y las responsabilidades de cada parte se interpretarán
+            conforme a las condiciones aceptadas y a la normativa aplicable.
+            Ninguna cláusula excluye responsabilidades que legalmente no
+            puedan excluirse.
           </p>
 
           <h2 style={estilos.subtitulo}>3. Precio y facturación</h2>
 
           <p>
-            La cuota de la suscripción se cobra mensualmente. La duración
-            contractual, la periodicidad de pago y la renovación son
-            conceptos distintos: el contrato tiene una duración inicial
-            de doce (12) meses, aunque el pago de la cuota se efectúe
-            mensualmente.
+            La suscripción se factura y se abona mensualmente. No existe una
+            permanencia contractual mínima de doce meses ni una obligación
+            de mantener la suscripción durante un año. El cliente podrá
+            solicitar la cancelación en cualquier momento, respetando el
+            preaviso de un (1) mes establecido en este contrato, sin perjuicio
+            de los derechos legales que le correspondan.
           </p>
 
           <p>
-            Antes de confirmar la contratación, el cliente recibirá
-            información sobre el importe de la cuota, los impuestos
-            aplicables, el importe total que corresponda y las prestaciones
-            incluidas.
+            Antes de confirmar la contratación, el cliente recibirá información
+            sobre el importe de la cuota, los impuestos aplicables, el importe
+            total que corresponda y las prestaciones incluidas.
           </p>
 
           <p>
-            La facturación y los cobros se gestionarán mediante los
-            proveedores y los procedimientos habilitados para la
-            contratación. Los datos de pago serán tratados conforme a
-            las condiciones aplicables a dichos proveedores.
+            La facturación y los cobros se gestionarán mediante los proveedores
+            y los procedimientos habilitados para la contratación. Los datos
+            de pago serán tratados conforme a las condiciones aplicables a
+            dichos proveedores.
           </p>
 
           <p>
             El precio acordado no se modificará unilateralmente. Cualquier
             propuesta de cambio deberá comunicarse previamente, indicando
-            el nuevo importe y la fecha propuesta de aplicación, y requerirá
-            la aceptación expresa del cliente cuando afecte a las condiciones
-            contractuales aceptadas.
+            el nuevo importe y la fecha propuesta de aplicación. Cuando el
+            cambio afecte a las condiciones contractuales aceptadas, se
+            requerirá la aceptación expresa del cliente cuando así lo exija
+            la normativa aplicable o el propio contrato.
           </p>
 
           <h2 style={estilos.subtitulo}>
@@ -297,39 +314,35 @@ export default function DocumentosLegales() {
           </h2>
 
           <p>
-            El contrato tendrá una duración inicial de doce (12) meses
-            desde la fecha de inicio indicada en las condiciones particulares.
-            Finalizado ese período, se renovará automáticamente por períodos
-            sucesivos de doce (12) meses, salvo que cualquiera de las partes
-            comunique su voluntad de no continuar conforme a las condiciones
-            de cancelación establecidas en este contrato.
+            La suscripción tiene una periodicidad mensual y no está sujeta
+            a una permanencia anual. Se mantendrá activa mientras el cliente
+            no solicite su cancelación y se cumplan las condiciones de la
+            contratación.
           </p>
 
           <p>
-            Aunque la duración contractual y su renovación sean anuales,
-            la cuota se abonará mensualmente. El pago mensual no transforma
-            por sí solo la duración del contrato en una contratación mensual
-            sin período contractual.
+            El cliente podrá solicitar la cancelación en cualquier momento,
+            sin necesidad de esperar al vencimiento de un período anual.
+            Para ello deberá comunicarlo con un (1) mes de preaviso a
+            CoastGuard Homes Services.
           </p>
 
           <p>
-            El cliente podrá solicitar la cancelación en cualquier momento
-            mediante una comunicación dirigida a CoastGuard Homes Services,
-            con un (1) mes de preaviso. La solicitud podrá enviarse al correo
-            electrónico{" "}
+            La solicitud podrá enviarse al correo electrónico{" "}
             <a href="mailto:coastguardhomes@gmail.com">
               coastguardhomes@gmail.com
             </a>
-            . También podrán utilizarse los canales de contacto disponibles
-            en la aplicación.
+            . También podrán utilizarse otros canales de contacto habilitados
+            por CoastGuard Homes Services que permitan dejar constancia de
+            la solicitud.
           </p>
 
           <p>
-            La comunicación deberá permitir identificar al cliente y el
-            contrato que desea cancelar. Se recomienda conservar el mensaje
-            enviado y la confirmación de recepción. CoastGuard Homes Services
-            gestionará la solicitud y confirmará la fecha efectiva de baja
-            por un medio duradero.
+            La comunicación deberá permitir identificar al cliente y la
+            suscripción que desea cancelar. Se recomienda conservar el
+            mensaje enviado y la confirmación de recepción. CoastGuard Homes
+            Services gestionará la solicitud y comunicará la fecha efectiva
+            de baja por un medio duradero.
           </p>
 
           <p>
@@ -340,27 +353,36 @@ export default function DocumentosLegales() {
           </p>
 
           <p>
-            Durante el preaviso, el servicio seguirá activo en los términos
-            contratados y se abonarán las cantidades que correspondan hasta
-            la fecha efectiva de finalización. No se generarán cuotas por
-            períodos posteriores a dicha fecha, sin perjuicio de las
-            cantidades válidamente devengadas, las facturas pendientes y
-            las obligaciones que legalmente deban mantenerse.
+            Durante el período de preaviso, el servicio continuará activo
+            en los términos contratados y se abonarán las cantidades que
+            correspondan hasta la fecha efectiva de finalización. Una vez
+            efectiva la baja, no se cobrarán nuevas cuotas por períodos
+            posteriores a dicha fecha, sin perjuicio de cantidades válidamente
+            devengadas, facturas pendientes u otras obligaciones que deban
+            mantenerse legalmente.
           </p>
 
           <p>
             La gestión administrativa de la baja podrá realizarse manualmente
             por CoastGuard Homes Services después de recibir y verificar la
-            comunicación del cliente. La acción de cancelar una suscripción
-            en la plataforma de pagos no sustituye la comunicación de baja
-            ni modifica por sí sola las condiciones de preaviso establecidas
-            en este contrato.
+            comunicación del cliente. La cancelación de un método de pago
+            o una acción en la plataforma de pagos no sustituye por sí sola
+            la comunicación de baja ni elimina cantidades legítimamente
+            pendientes.
           </p>
 
           <p>
-            Lo anterior se entiende sin perjuicio del derecho de desistimiento
-            y de cualquier otro derecho de terminación que resulte aplicable
-            legalmente al cliente.
+            No se exigirán cuotas correspondientes a una permanencia anual
+            inexistente ni penalizaciones por el mero hecho de cancelar la
+            suscripción conforme a estas condiciones. Lo anterior se entiende
+            sin perjuicio de las cantidades devengadas hasta la fecha efectiva
+            de baja y de cualquier derecho legal del cliente.
+          </p>
+
+          <p>
+            Estas condiciones se entienden sin perjuicio del derecho de
+            desistimiento y de cualquier otro derecho de terminación que
+            resulte aplicable legalmente al cliente.
           </p>
 
           <h2 style={estilos.subtitulo}>
@@ -384,29 +406,29 @@ export default function DocumentosLegales() {
             El servicio adicional solo quedará autorizado cuando el cliente
             haya aceptado expresamente el presupuesto. No se realizarán
             trabajos adicionales ni se cobrará su importe sin esa aceptación,
-            salvo que exista otra autorización previa, expresa y válida
-            que contemple específicamente la actuación correspondiente.
+            salvo que exista otra autorización previa, expresa y válida que
+            contemple específicamente la actuación correspondiente.
           </p>
 
           <p>
             Si durante un trabajo autorizado se detecta la necesidad de
             realizar actuaciones que modifiquen el precio o el alcance,
-            se facilitará el presupuesto correspondiente y se obtendrá
-            una nueva aceptación antes de ejecutarlas.
+            se facilitará el presupuesto correspondiente y se obtendrá una
+            nueva aceptación antes de ejecutarlas.
           </p>
 
           <h2 style={estilos.subtitulo}>6. Obligaciones del cliente</h2>
 
           <p>
-            El cliente deberá facilitar información veraz y suficiente
-            para identificar la vivienda y gestionar la custodia de las
-            llaves, abonar las cantidades debidas y comunicar los cambios
-            que puedan afectar al servicio.
+            El cliente deberá facilitar información veraz y suficiente para
+            identificar la vivienda y gestionar los servicios contratados,
+            abonar las cantidades debidas y comunicar los cambios que puedan
+            afectar a la prestación del servicio.
           </p>
 
           <p>
-            El cliente deberá informar de las personas autorizadas para
-            recibir las llaves, cuando proceda, y mantener actualizados
+            Cuando proceda, el cliente deberá informar de las personas
+            autorizadas para recibir las llaves y mantener actualizados
             los datos de contacto necesarios para las comunicaciones
             relativas al servicio.
           </p>
@@ -414,33 +436,34 @@ export default function DocumentosLegales() {
           <h2 style={estilos.subtitulo}>7. Obligaciones de la prestadora</h2>
 
           <p>
-            CoastGuard Homes Services prestará el servicio dentro del
-            alcance contratado, gestionará la custodia de las llaves con
-            medidas razonables de seguridad, atenderá las comunicaciones
-            relativas al servicio y facilitará la información contractual
-            y de facturación que corresponda.
+            CoastGuard Homes Services prestará los servicios dentro del
+            alcance contratado, aplicará medidas razonables de seguridad
+            para la custodia de llaves cuando corresponda, atenderá las
+            comunicaciones relacionadas con el servicio y facilitará la
+            información contractual y de facturación que proceda.
           </p>
 
           <p>
-            La prestadora no garantiza la ausencia absoluta de riesgos
-            ni asumirá obligaciones de vigilancia, inspección o acceso
-            a la vivienda que no estén expresamente incluidas en las
-            condiciones aceptadas.
+            La prestadora no garantiza la ausencia absoluta de riesgos ni
+            asumirá obligaciones de vigilancia, inspección o acceso a la
+            vivienda que no estén expresamente incluidas en las condiciones
+            aceptadas.
           </p>
 
           <h2 style={estilos.subtitulo}>8. Incidencias y comunicaciones</h2>
 
           <p>
-            Las comunicaciones relativas a la custodia, las llaves, los
+            Las comunicaciones relativas a los servicios, las llaves, los
             pagos, la documentación o la cancelación podrán realizarse
-            mediante los canales habilitados para el servicio.
+            mediante los canales habilitados para la relación contractual.
           </p>
 
           <p>
-            La disponibilidad de un canal para comunicar incidencias
-            no implica vigilancia permanente, atención de emergencias
-            ni respuesta inmediata. Ante un peligro inmediato para
-            personas o bienes, deberán utilizarse los servicios públicos
+            La disponibilidad de un canal para comunicar incidencias no
+            implica vigilancia permanente, atención de emergencias ni
+            respuesta inmediata, salvo que se haya contratado expresamente
+            un servicio con esas características. Ante un peligro inmediato
+            para personas o bienes, deberán utilizarse los servicios públicos
             de emergencia correspondientes.
           </p>
 
@@ -461,19 +484,20 @@ export default function DocumentosLegales() {
             excluyen responsabilidades legalmente exigibles.
           </p>
 
-          <h2 style={estilos.subtitulo}>10. Protección de datos personales</h2>
+          <h2 style={estilos.subtitulo}>
+            10. Protección de datos personales
+          </h2>
 
           <p>
-            El tratamiento de los datos personales se describe en la
-            Política de Privacidad disponible en esta misma página.
-            Los datos se tratarán conforme a la normativa aplicable y
-            a la información facilitada al usuario.
+            El tratamiento de los datos personales se describe en la Política
+            de Privacidad disponible en esta misma página. Los datos se
+            tratarán conforme a la normativa aplicable y a la información
+            facilitada al usuario.
           </p>
 
           <p>
             La aceptación de este contrato no sustituye los consentimientos
-            específicos que puedan ser necesarios para tratamientos
-            concretos.
+            específicos que puedan ser necesarios para tratamientos concretos.
           </p>
 
           <h2 style={estilos.subtitulo}>
@@ -481,17 +505,17 @@ export default function DocumentosLegales() {
           </h2>
 
           <p>
-            Cuando el cliente tenga la condición legal de consumidor y
-            el contrato se celebre a distancia, dispondrá, como regla
-            general y cuando resulte aplicable, de catorce (14) días
-            naturales para ejercer el derecho de desistimiento desde la
-            celebración del contrato de servicios, sin necesidad de
-            justificar la decisión ni soportar penalización por ello.
+            Cuando el cliente tenga la condición legal de consumidor y el
+            contrato se celebre a distancia, dispondrá, como regla general
+            y cuando resulte aplicable, de catorce (14) días naturales para
+            ejercer el derecho de desistimiento desde la celebración del
+            contrato de servicios, sin necesidad de justificar la decisión
+            ni soportar penalización por ello.
           </p>
 
           <p>
-            Para ejercer el derecho, el cliente deberá enviar dentro
-            del plazo una declaración inequívoca de desistimiento a{" "}
+            Para ejercer el derecho, el cliente deberá enviar dentro del
+            plazo una declaración inequívoca de desistimiento a{" "}
             <a href="mailto:coastguardhomes@gmail.com">
               coastguardhomes@gmail.com
             </a>
@@ -513,8 +537,8 @@ export default function DocumentosLegales() {
             del servicio solo podrá aplicarse cuando se cumplan todos los
             requisitos legales, incluidos el consentimiento previo expreso
             y el reconocimiento informado exigible. El mero inicio parcial
-            del servicio no implica por sí solo la pérdida automática
-            del derecho.
+            del servicio no implica por sí solo la pérdida automática del
+            derecho.
           </p>
 
           <p>
@@ -529,35 +553,34 @@ export default function DocumentosLegales() {
             <a href="mailto:coastguardhomes@gmail.com">
               coastguardhomes@gmail.com
             </a>
-            ): Por la presente comunico que desisto del contrato del
-            siguiente servicio: [indicar servicio]. Nombre del consumidor:
-            [nombre y apellidos]. Correo electrónico asociado a la cuenta:
-            [correo]. Fecha de contratación: [fecha]. Fecha de comunicación:
-            [fecha].
+            ): Por la presente comunico que desisto del contrato del siguiente
+            servicio: [indicar servicio]. Nombre del consumidor: [nombre y
+            apellidos]. Correo electrónico asociado a la cuenta: [correo].
+            Fecha de contratación: [fecha]. Fecha de comunicación: [fecha].
           </p>
 
           <h2 style={estilos.subtitulo}>12. Aceptación y documentación</h2>
 
           <p>
-            Este contrato marco establece las condiciones generales de
-            la relación entre las partes. Su aceptación durante el registro
+            Este contrato marco establece las condiciones generales de la
+            relación entre las partes. Su aceptación durante el registro
             no implica por sí sola la contratación de una suscripción de
-            pago ni de un servicio adicional cuyo precio y condiciones
-            no hayan sido comunicados y aceptados.
+            pago ni de un servicio adicional cuyo precio y condiciones no
+            hayan sido comunicados y aceptados.
           </p>
 
           <p>
             La suscripción quedará concretada mediante las condiciones
             particulares aceptadas, en las que constarán, como mínimo,
-            el servicio contratado, la vivienda identificada, la cuota,
-            los impuestos, la periodicidad de pago, la duración contractual,
-            las condiciones de renovación y la fecha de inicio.
+            el servicio contratado, la vivienda identificada cuando
+            corresponda, la cuota, los impuestos, la periodicidad de pago,
+            las condiciones de cancelación y la fecha de inicio.
           </p>
 
           <p>
-            Se conservará constancia de la aceptación y de la versión
-            del documento aceptado conforme a las posibilidades del
-            sistema y a la normativa aplicable.
+            Se conservará constancia de la aceptación y de la versión del
+            documento aceptado conforme a las posibilidades del sistema
+            y a la normativa aplicable.
           </p>
 
           <h2 style={estilos.subtitulo}>
@@ -567,8 +590,8 @@ export default function DocumentosLegales() {
           <p>
             El contrato se interpretará conforme a la legislación española
             y de la Unión Europea que resulte aplicable. Ninguna cláusula
-            pretende eliminar derechos irrenunciables del cliente ni
-            limitar responsabilidades que legalmente no puedan excluirse.
+            pretende eliminar derechos irrenunciables del cliente ni limitar
+            responsabilidades que legalmente no puedan excluirse.
           </p>
 
           <p>
