@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
@@ -74,8 +75,10 @@ export default function Register() {
       const userIp = "IP_NO_REGISTRADA";
 
       const fechaAceptacion = new Date().toISOString();
-      const versionPrivacidad = "v1.0";
-      const versionContrato = "v1.0";
+
+      // Versiones de los documentos legales actualizados.
+      const versionPrivacidad = "v1.1";
+      const versionContrato = "v1.1";
 
       const { data, error } = await supabase.auth.signUp({
         email: emailNormalizado,
