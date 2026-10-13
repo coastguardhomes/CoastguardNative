@@ -40,6 +40,34 @@ export default function CrearContrato() {
     },
   ];
 
+  // Calcula la fecha final del período contractual de 12 meses.
+  // No utiliza la frecuencia de visitas para calcularla.
+  function calcularFechaFin(fechaInicio, meses = 12) {
+    if (!fechaInicio) return null;
+
+    const partes = fechaInicio.split("-").map(Number);
+
+    if (
+      partes.length !== 3 ||
+      partes.some((n) => !Number.isFinite(n))
+    ) {
+      return null;
+    }
+
+    const [anio, mes, dia] = partes;
+    const indiceMes = mes - 1 + meses;
+    const anioFinal = anio + Math.floor(indiceMes / 12);
+    const mesFinal = indiceMes % 12;
+    const ultimoDia = new Date(
+      anioFinal,
+      mesFinal + 1,
+      0
+    ).getDate();
+    const diaFinal = Math.min(dia, ultimoDia);
+
+    return `${anioFinal}-${String(mesFinal + 1).padStart(2, "0")}-${String(diaFinal).padStart(2, "0")}`;
+  }
+
   // El precio introducido se considera la base imponible.
   function calcularImportes(baseIntroducida) {
     const base = Number(Number(baseIntroducida).toFixed(2));
@@ -193,9 +221,7 @@ export default function CrearContrato() {
 
     setForm((prev) => {
       const precioModalidad = Number(mod.precio);
-
-      const esCustodia =
-        modalidadId === "custodia_llaves";
+      const esCustodia = modalidadId === "custodia_llaves";
 
       const precioVivienda = esCustodia
         ? 0
@@ -267,6 +293,14 @@ export default function CrearContrato() {
     }
 
     const importes = calcularImportes(precioBase);
+    const fechaFinContrato = calcularFechaFin(form.fecha_inicio, 12);
+
+    if (!fechaFinContrato) {
+      setMensaje(
+        "No se pudo calcular la fecha de finalización del contrato."
+      );
+      return;
+    }
 
     setProcesando(true);
     setMensaje(
@@ -286,9 +320,8 @@ export default function CrearContrato() {
         if (dniError) throw dniError;
       }
 
-      // La suscripción no tiene vencimiento anual.
-      // Se guardan ambos campos como NULL para no crear
-      // una permanencia o fecha de finalización ficticia.
+      // La duración contractual es de 12 meses.
+      // El pago es mensual y no existe permanencia mínima anual.
       const frecuenciaContrato =
         form.modalidad === "custodia_llaves"
           ? null
@@ -302,17 +335,15 @@ export default function CrearContrato() {
             vivienda_id: Number(form.vivienda_id),
             tecnico_id: String(form.tecnico_id),
             fecha_inicio: form.fecha_inicio,
-            fecha_fin: null,
-
+            fecha_fin: fechaFinContrato,
             precio: importes.base,
             iva: importes.iva,
             precio_total: importes.total,
-
             notas: form.notas,
             frecuencia: frecuenciaContrato,
             modalidad: form.modalidad,
             estado: "pendiente",
-            duracion_meses: null,
+            duracion_meses: 12,
           },
         ])
         .select("*")
@@ -323,8 +354,6 @@ export default function CrearContrato() {
       const contratoId = data.id;
       contratoCreadoId = contratoId;
 
-      // La factura utiliza los mismos importes guardados
-      // en el contrato.
       const {
         base: baseFactura,
         iva: ivaFactura,
@@ -338,26 +367,19 @@ export default function CrearContrato() {
             cliente_id: String(form.cliente_id),
             vivienda_id: Number(form.vivienda_id),
             contrato_id: Number(contratoId),
-
             tipo: "contrato",
-
             descripcion:
               form.modalidad === "custodia_llaves"
                 ? "Custodia de llaves"
                 : "Suscripción mensual",
-
             base: baseFactura,
             iva: ivaFactura,
             total: totalFactura,
             monto: totalFactura,
-
             estado_tecnico: "no_enviar",
             estado: "pendiente",
             estado_pago: "pendiente",
-
-            fecha: new Date()
-              .toISOString()
-              .slice(0, 10),
+            fecha: new Date().toISOString().slice(0, 10),
           },
         ])
         .select()
@@ -366,17 +388,14 @@ export default function CrearContrato() {
       if (facturaError) throw facturaError;
       facturaCreada = true;
 
-      // El PDF no debe modificar ni recalcular los importes fiscales.
+      // La función genera el PDF con los datos guardados.
       const { error: pdfError } =
-        await supabase.functions.invoke(
-          "contrato-pdf",
-          {
-            body: {
-              contratoId,
-              id: contratoId,
-            },
-          }
-        );
+        await supabase.functions.invoke("contrato-pdf", {
+          body: {
+            contratoId,
+            id: contratoId,
+          },
+        });
 
       if (pdfError) {
         console.error(
@@ -393,8 +412,7 @@ export default function CrearContrato() {
         setMensaje("¡Contrato y factura creados con éxito! ✔");
       }
 
-      // Aunque falle el PDF, el contrato y la factura ya existen.
-      // Vamos al listado para poder abrir la ficha y reintentar el PDF.
+      // Si falla el PDF, el contrato y la factura ya están guardados.
       setTimeout(() => {
         navigate("/contratos");
       }, pdfError ? 3000 : 1500);
@@ -503,9 +521,7 @@ export default function CrearContrato() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
-          <label style={labelStyle}>
-            Cliente:
-          </label>
+          <label style={labelStyle}>Cliente:</label>
 
           <select
             value={form.cliente_id}
@@ -520,9 +536,7 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          <label style={labelStyle}>
-            DNI / NIE:
-          </label>
+          <label style={labelStyle}>DNI / NIE:</label>
 
           <input
             type="text"
@@ -537,9 +551,7 @@ export default function CrearContrato() {
             style={inputStyle}
           />
 
-          <label style={labelStyle}>
-            Vivienda:
-          </label>
+          <label style={labelStyle}>Vivienda:</label>
 
           <select
             value={form.vivienda_id}
@@ -554,9 +566,7 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          <label style={labelStyle}>
-            Técnico responsable:
-          </label>
+          <label style={labelStyle}>Técnico responsable:</label>
 
           <select
             value={form.tecnico_id}
@@ -576,9 +586,7 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          <label style={labelStyle}>
-            Modalidad:
-          </label>
+          <label style={labelStyle}>Modalidad:</label>
 
           <select
             value={form.modalidad}
@@ -595,9 +603,7 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          <label style={labelStyle}>
-            Fecha de inicio:
-          </label>
+          <label style={labelStyle}>Fecha de inicio:</label>
 
           <input
             type="date"
@@ -623,7 +629,8 @@ export default function CrearContrato() {
               fontSize: "14px",
             }}
           >
-            Suscripción mensual, sin permanencia anual. El cliente puede
+            El contrato tiene duración y renovación anual, con facturación
+            mensual. No existe permanencia mínima anual: el cliente puede
             solicitar la cancelación en cualquier momento con un mes de
             preaviso, conforme al contrato marco.
           </div>
@@ -704,9 +711,7 @@ export default function CrearContrato() {
             </p>
           )}
 
-          <label style={labelStyle}>
-            Notas adicionales:
-          </label>
+          <label style={labelStyle}>Notas adicionales:</label>
 
           <textarea
             value={form.notas}
