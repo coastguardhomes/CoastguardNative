@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PoliticaPrivacidad from "./PoliticaPrivacidad.jsx";
@@ -171,9 +172,7 @@ export default function DocumentosLegales() {
 
         {/* CONTRATO MARCO */}
         <section id="contrato" style={estilos.tarjeta}>
-          <h1 style={estilos.titulo}>
-            CONTRATO MARCO DE SERVICIOS
-          </h1>
+          <h1 style={estilos.titulo}>CONTRATO MARCO DE SERVICIOS</h1>
 
           <p>
             Este contrato establece las condiciones generales de los
@@ -235,11 +234,14 @@ export default function DocumentosLegales() {
           </p>
 
           <p>
-            La cuota acordada permanecerá fija durante el periodo
-            contratado. No se aplicará una modificación del precio
-            sin la aceptación expresa del cliente. Cualquier propuesta
-            de cambio deberá comunicarse previamente, indicando el
-            nuevo importe y la fecha propuesta para su aplicación.
+            La cuota acordada permanecerá fija mientras se mantengan
+            las condiciones particulares aceptadas. No se aplicará una
+            modificación del precio sin la aceptación expresa del cliente.
+            Cualquier propuesta de cambio deberá comunicarse previamente,
+            indicando el nuevo importe y la fecha propuesta para su
+            aplicación. Si el cliente no acepta el cambio, podrá mantener
+            las condiciones vigentes o cancelar la suscripción conforme
+            a este contrato.
           </p>
 
           <h2 style={estilos.subtitulo}>
@@ -247,39 +249,39 @@ export default function DocumentosLegales() {
           </h2>
 
           <p>
-            La duración inicial de la suscripción será de doce (12)
-            meses desde la fecha de inicio indicada en las condiciones
-            particulares.
+            La suscripción se contrata por períodos mensuales, sin
+            permanencia mínima anual. Comienza en la fecha indicada en
+            las condiciones particulares y se renueva automáticamente
+            mes a mes mientras ninguna de las partes la dé por terminada
+            conforme a este contrato.
           </p>
 
           <p>
-            Una vez finalizado el periodo inicial, la suscripción se
-            renovará automáticamente por periodos sucesivos de doce
-            (12) meses, salvo que el cliente comunique su cancelación.
+            El cliente puede cancelar la suscripción en cualquier momento,
+            sin penalización por permanencia ni obligación de pagar los
+            meses posteriores a la fecha efectiva de baja. Para organizar
+            la finalización del servicio, deberá comunicar la cancelación
+            con un (1) mes de preaviso, sin perjuicio de los derechos
+            legales que puedan permitir una terminación más favorable.
           </p>
 
           <p>
-            Aunque exista un periodo inicial de doce meses y renovación
-            automática, el cliente podrá solicitar la cancelación en
-            cualquier momento, tanto durante el periodo inicial como
-            durante cualquiera de las renovaciones, mediante un preaviso
-            de un (1) mes.
+            La cancelación surtirá efecto al cumplirse un mes desde que
+            el prestador reciba la comunicación, salvo que confirme por
+            escrito una fecha anterior o que la normativa aplicable
+            otorgue al cliente un derecho más favorable. El prestador
+            confirmará por un medio duradero la recepción de la solicitud
+            y la fecha efectiva de finalización.
           </p>
 
           <p>
-            La cancelación surtirá efecto al cumplirse un mes desde la
-            comunicación del cliente, salvo que las partes acuerden
-            expresamente una fecha anterior o la normativa aplicable
-            establezca una condición más favorable para el cliente.
-            El prestador confirmará la fecha efectiva de finalización.
-          </p>
-
-          <p>
-            No se cobrará una penalización por los meses que queden
-            pendientes del periodo anual. Durante el preaviso, el
-            servicio seguirá activo y se abonarán las cuotas que
-            correspondan hasta la fecha efectiva de finalización,
-            conforme a las condiciones de facturación aceptadas.
+            Durante el preaviso, el servicio seguirá activo y se abonarán
+            las cuotas mensuales que correspondan hasta la fecha efectiva
+            de finalización, según el período de facturación y las
+            condiciones comunicadas antes de contratar. No se cobrarán
+            penalizaciones por meses de una supuesta permanencia anual ni
+            cuotas correspondientes a períodos posteriores a la baja
+            efectiva.
           </p>
 
           <p>
@@ -292,9 +294,15 @@ export default function DocumentosLegales() {
           </p>
 
           <p>
-            La solicitud de cancelación podrá realizarse mediante
-            los canales habilitados por el prestador que permitan
-            dejar constancia de la comunicación.
+            La cancelación podrá comunicarse desde los canales de contacto
+            disponibles en la aplicación o por correo electrónico a{" "}
+            <a href="mailto:coastguardhomes@gmail.com">
+              coastguardhomes@gmail.com
+            </a>
+            . La comunicación deberá permitir identificar al cliente y la
+            suscripción que desea cancelar. No será necesario justificar
+            la decisión. El cliente podrá conservar el mensaje enviado
+            y la confirmación de recepción.
           </p>
 
           <h2 style={estilos.subtitulo}>
@@ -325,9 +333,8 @@ export default function DocumentosLegales() {
           </p>
 
           <p>
-            El pago del servicio extra se realizará después de la
-            aceptación del presupuesto, conforme a las condiciones
-            comunicadas y aceptadas para ese servicio.
+            El pago del servicio extra se realizará conforme a las
+            condiciones comunicadas y aceptadas para ese servicio.
           </p>
 
           <p>
@@ -446,26 +453,58 @@ export default function DocumentosLegales() {
           </h2>
 
           <p>
-            Cuando la contratación se realice a distancia con un
-            consumidor y la normativa reconozca un derecho de
-            desistimiento, se informará al cliente del plazo, del
-            procedimiento para ejercerlo y de sus consecuencias.
+            Si el cliente tiene la condición legal de consumidor y la
+            contratación a distancia está sujeta al derecho de
+            desistimiento, podrá desistir en un plazo de catorce (14)
+            días naturales desde la celebración del contrato de servicios,
+            salvo que resulte aplicable una regla legal distinta. El
+            ejercicio de este derecho no requiere justificar la decisión
+            ni conlleva penalización.
           </p>
 
           <p>
-            Cuando resulte aplicable, el plazo general de desistimiento
-            para contratos de servicios celebrados a distancia será
-            de catorce días naturales desde la celebración del contrato,
-            sin perjuicio de las excepciones, requisitos y reglas
-            especiales previstos legalmente.
+            Para ejercerlo, el cliente deberá enviar dentro del plazo una
+            declaración inequívoca de que desea desistir a{" "}
+            <a href="mailto:coastguardhomes@gmail.com">
+              coastguardhomes@gmail.com
+            </a>
+            . También podrá utilizar el modelo orientativo que aparece
+            al final de esta cláusula. Se recomienda indicar nombre y
+            apellidos, correo asociado a la cuenta y servicio contratado
+            para poder identificar la contratación. El plazo se respetará
+            si la comunicación se envía antes de que finalice.
           </p>
 
           <p>
-            Si el cliente solicita que el servicio comience durante
-            el periodo de desistimiento, se recabará la solicitud
-            expresa y los reconocimientos que correspondan conforme
-            a la normativa. La pérdida del derecho de desistimiento
-            solo se aplicará cuando se cumplan los requisitos legales.
+            Si el cliente solicita expresamente que el servicio comience
+            durante el plazo de desistimiento, podrá tener que abonar,
+            cuando legalmente proceda y se cumplan los requisitos de
+            información y solicitud expresa, la parte proporcional del
+            servicio efectivamente prestado hasta el momento en que
+            comunique el desistimiento. La pérdida del derecho por
+            ejecución completa solo podrá aplicarse si se cumplen todos
+            los requisitos legales, incluida la solicitud o consentimiento
+            previo expreso y el reconocimiento informado exigible. La mera
+            contratación o el inicio parcial del servicio no supone por
+            sí solo la pérdida automática del derecho.
+          </p>
+
+          <p>
+            <strong>
+              Modelo orientativo de comunicación de desistimiento:
+            </strong>
+          </p>
+
+          <p>
+            A la atención de Roxana Collazo Alonso, CoastGuard Homes Services
+            (
+            <a href="mailto:coastguardhomes@gmail.com">
+              coastguardhomes@gmail.com
+            </a>
+            ): Por la presente comunico que desisto del contrato del
+            siguiente servicio: [indicar servicio]. Nombre del consumidor:
+            [nombre y apellidos]. Correo de la cuenta: [correo electrónico].
+            Fecha de contratación: [fecha]. Fecha de la comunicación: [fecha].
           </p>
 
           <h2 style={estilos.subtitulo}>
@@ -483,9 +522,11 @@ export default function DocumentosLegales() {
           <p>
             La suscripción quedará concretada mediante las condiciones
             particulares aceptadas, en las que se indicarán la vivienda,
-            el alcance del plan, la frecuencia de revisión, la cuota,
-            los impuestos, la fecha de inicio y la fecha prevista
-            de finalización del periodo inicial.
+            el alcance del plan, la frecuencia de revisión, la cuota
+            mensual, los impuestos, la periodicidad de facturación y
+            la fecha de inicio. No existirá una fecha de finalización
+            anual ni permanencia mínima, sin perjuicio de la cancelación
+            conforme a este contrato.
           </p>
 
           <p>
@@ -509,16 +550,6 @@ export default function DocumentosLegales() {
             Si una disposición fuera declarada inválida o inaplicable,
             las restantes conservarán su eficacia en la medida
             permitida por la ley.
-          </p>
-
-          <p>
-            <strong>Información importante:</strong> este texto es
-            una propuesta contractual adaptada a las condiciones
-            comerciales indicadas. Antes de utilizarlo como versión
-            definitiva con clientes reales, debe revisarse jurídicamente
-            y coordinarse con las condiciones particulares, la
-            facturación y el documento contractual que se entregue
-            al cliente.
           </p>
         </section>
 
