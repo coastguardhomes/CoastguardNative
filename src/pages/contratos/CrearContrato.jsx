@@ -16,14 +16,12 @@ export default function CrearContrato() {
     vivienda_id: "",
     tecnico_id: "",
     fecha_inicio: "",
-    fecha_fin: "",
     precio: "",
     precio_vivienda: 0,
     precio_modalidad: 0,
     notas: "",
     frecuencia: "",
     modalidad: "",
-    duracion_meses: "12",
     dni: "",
   });
 
@@ -38,11 +36,11 @@ export default function CrearContrato() {
       id: "custodia_llaves",
       nombre: "Custodia de llaves",
       precio: 15,
-      frecuencia: 30,
+      frecuencia: null,
     },
   ];
 
-  // El precio del formulario se considera la base imponible.
+  // El precio introducido se considera la base imponible.
   function calcularImportes(baseIntroducida) {
     const base = Number(Number(baseIntroducida).toFixed(2));
     const iva = Number((base * 0.21).toFixed(2));
@@ -210,54 +208,12 @@ export default function CrearContrato() {
       return {
         ...prev,
         modalidad: modalidadId,
-        frecuencia: mod.frecuencia,
+        frecuencia: esCustodia ? "" : mod.frecuencia,
         precio_modalidad: precioModalidad,
         precio_vivienda: precioVivienda,
         precio: precioBase,
       };
     });
-  }
-
-  function handleFechaInicioChange(e) {
-    const nuevaFechaInicio = e.target.value;
-    let nuevaFechaFin = form.fecha_fin;
-
-    if (nuevaFechaInicio && form.duracion_meses) {
-      const fecha = new Date(nuevaFechaInicio);
-
-      fecha.setMonth(
-        fecha.getMonth() + Number(form.duracion_meses)
-      );
-
-      nuevaFechaFin = fecha.toISOString().split("T")[0];
-    }
-
-    setForm((prev) => ({
-      ...prev,
-      fecha_inicio: nuevaFechaInicio,
-      fecha_fin: nuevaFechaFin,
-    }));
-  }
-
-  function handleDuracionChange(e) {
-    const nuevaDuracion = e.target.value;
-    let nuevaFechaFin = form.fecha_fin;
-
-    if (form.fecha_inicio && nuevaDuracion) {
-      const fecha = new Date(form.fecha_inicio);
-
-      fecha.setMonth(
-        fecha.getMonth() + Number(nuevaDuracion)
-      );
-
-      nuevaFechaFin = fecha.toISOString().split("T")[0];
-    }
-
-    setForm((prev) => ({
-      ...prev,
-      duracion_meses: nuevaDuracion,
-      fecha_fin: nuevaFechaFin,
-    }));
   }
 
   async function crearContrato() {
@@ -286,6 +242,18 @@ export default function CrearContrato() {
       return;
     }
 
+    if (
+      form.modalidad !== "custodia_llaves" &&
+      (!form.frecuencia ||
+        !Number.isFinite(Number(form.frecuencia)) ||
+        Number(form.frecuencia) <= 0)
+    ) {
+      setMensaje(
+        "Indica una frecuencia de visitas válida para esta modalidad."
+      );
+      return;
+    }
+
     const precioBase = Number(form.precio);
 
     if (
@@ -305,8 +273,6 @@ export default function CrearContrato() {
       "Creando contrato y generando documentación interna..."
     );
 
-    // Registramos qué operaciones se han completado para informar
-    // correctamente si falla un paso posterior al guardado.
     let contratoCreadoId = null;
     let facturaCreada = false;
 
@@ -320,22 +286,14 @@ export default function CrearContrato() {
         if (dniError) throw dniError;
       }
 
-      let fechaFinFinal = form.fecha_fin;
+      // La suscripción no tiene vencimiento anual.
+      // Se guardan ambos campos como NULL para no crear
+      // una permanencia o fecha de finalización ficticia.
+      const frecuenciaContrato =
+        form.modalidad === "custodia_llaves"
+          ? null
+          : Number(form.frecuencia);
 
-      if (!fechaFinFinal && form.fecha_inicio) {
-        const fechaInicioObj = new Date(form.fecha_inicio);
-        const meses = Number(form.duracion_meses) || 12;
-
-        fechaInicioObj.setMonth(
-          fechaInicioObj.getMonth() + meses
-        );
-
-        fechaFinFinal = fechaInicioObj
-          .toISOString()
-          .split("T")[0];
-      }
-
-      // Se guarda la base imponible y su desglose fiscal.
       const { data, error } = await supabase
         .from("contratos")
         .insert([
@@ -344,19 +302,17 @@ export default function CrearContrato() {
             vivienda_id: Number(form.vivienda_id),
             tecnico_id: String(form.tecnico_id),
             fecha_inicio: form.fecha_inicio,
-            fecha_fin: fechaFinFinal,
+            fecha_fin: null,
 
             precio: importes.base,
             iva: importes.iva,
             precio_total: importes.total,
 
             notas: form.notas,
-            frecuencia: Number(form.frecuencia || 30),
+            frecuencia: frecuenciaContrato,
             modalidad: form.modalidad,
             estado: "pendiente",
-            duracion_meses: Number(
-              form.duracion_meses || 12
-            ),
+            duracion_meses: null,
           },
         ])
         .select("*")
@@ -367,7 +323,8 @@ export default function CrearContrato() {
       const contratoId = data.id;
       contratoCreadoId = contratoId;
 
-      // La factura utiliza los mismos importes guardados en el contrato.
+      // La factura utiliza los mismos importes guardados
+      // en el contrato.
       const {
         base: baseFactura,
         iva: ivaFactura,
@@ -387,7 +344,7 @@ export default function CrearContrato() {
             descripcion:
               form.modalidad === "custodia_llaves"
                 ? "Custodia de llaves"
-                : "Subscripción mensual",
+                : "Suscripción mensual",
 
             base: baseFactura,
             iva: ivaFactura,
@@ -488,6 +445,8 @@ export default function CrearContrato() {
     Number(form.precio || 0)
   );
 
+  const esCustodia = form.modalidad === "custodia_llaves";
+
   return (
     <Menu>
       <div
@@ -514,6 +473,7 @@ export default function CrearContrato() {
 
         {mensaje && (
           <p
+            role="status"
             style={{
               marginBottom: "15px",
               padding: "10px",
@@ -595,7 +555,7 @@ export default function CrearContrato() {
           </select>
 
           <label style={labelStyle}>
-            Técnico:
+            Técnico responsable:
           </label>
 
           <select
@@ -636,42 +596,37 @@ export default function CrearContrato() {
           </select>
 
           <label style={labelStyle}>
-            Duración (meses):
-          </label>
-
-          <input
-            type="number"
-            value={form.duracion_meses}
-            onChange={handleDuracionChange}
-            style={inputStyle}
-          />
-
-          <label style={labelStyle}>
-            Fecha inicio:
+            Fecha de inicio:
           </label>
 
           <input
             type="date"
             value={form.fecha_inicio}
-            onChange={handleFechaInicioChange}
-            style={inputStyle}
-          />
-
-          <label style={labelStyle}>
-            Fecha de finalización:
-          </label>
-
-          <input
-            type="date"
-            value={form.fecha_fin}
             onChange={(e) =>
               setForm({
                 ...form,
-                fecha_fin: e.target.value,
+                fecha_inicio: e.target.value,
               })
             }
             style={inputStyle}
           />
+
+          <div
+            style={{
+              padding: "12px",
+              marginBottom: "18px",
+              borderRadius: "8px",
+              background: "rgba(77,184,255,0.08)",
+              border: "1px solid rgba(77,184,255,0.25)",
+              color: "#b8dfff",
+              lineHeight: "1.6",
+              fontSize: "14px",
+            }}
+          >
+            Suscripción mensual, sin permanencia anual. El cliente puede
+            solicitar la cancelación en cualquier momento con un mes de
+            preaviso, conforme al contrato marco.
+          </div>
 
           <label style={labelStyle}>
             Precio base sin IVA (€/mes):
@@ -712,21 +667,42 @@ export default function CrearContrato() {
             </div>
           </div>
 
-          <label style={labelStyle}>
-            Frecuencia de visitas (días):
-          </label>
+          {!esCustodia && (
+            <>
+              <label style={labelStyle}>
+                Frecuencia de visitas (días):
+              </label>
 
-          <input
-            type="number"
-            value={form.frecuencia}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                frecuencia: e.target.value,
-              })
-            }
-            style={inputStyle}
-          />
+              <input
+                type="number"
+                min="1"
+                value={form.frecuencia}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    frecuencia: e.target.value,
+                  })
+                }
+                style={inputStyle}
+              />
+            </>
+          )}
+
+          {esCustodia && (
+            <p
+              style={{
+                marginTop: 0,
+                marginBottom: "15px",
+                color: "#9fb3c8",
+                fontSize: "14px",
+                lineHeight: "1.6",
+              }}
+            >
+              La custodia de llaves no incluye visitas ni inspecciones
+              de la vivienda. Cualquier servicio adicional requiere
+              contratación expresa.
+            </p>
+          )}
 
           <label style={labelStyle}>
             Notas adicionales:
@@ -747,6 +723,7 @@ export default function CrearContrato() {
           />
 
           <button
+            type="button"
             onClick={crearContrato}
             disabled={procesando}
             style={{
