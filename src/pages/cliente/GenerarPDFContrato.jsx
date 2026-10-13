@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import { supabase } from "../../lib/supabase";
@@ -40,7 +41,6 @@ export default function GenerarPDFContrato({
     setLoading(true);
 
     try {
-      // Mantener el idioma configurado para el cliente.
       if (cliente?.idioma) {
         changeLanguage(cliente.idioma);
       }
@@ -57,57 +57,57 @@ export default function GenerarPDFContrato({
             {
               titulo: "1. Objeto del contrato",
               texto:
-                "El prestador realizará los servicios de inspección y revisión de la vivienda que se hayan acordado con el cliente. El alcance del servicio será el correspondiente a la modalidad contratada y a las características de la vivienda.",
+                "El servicio contratado consiste en la custodia de llaves de la vivienda identificada en las condiciones particulares. Esta modalidad no incluye visitas, inspecciones ni revisiones periódicas de la vivienda. Cualquier otra prestación deberá describirse y aceptarse expresamente por separado.",
             },
             {
-              titulo: "2. Suscripción, frecuencia y precio",
+              titulo: "2. Suscripción mensual y precio",
               texto:
-                "El servicio se presta mediante una suscripción con la frecuencia de revisión indicada en este contrato. La cuota mensual acordada es la que figura en el apartado de detalles del servicio. El precio pactado se mantendrá durante el periodo contractual, salvo que el cliente acepte expresamente una modificación. La aceptación deberá poder acreditarse.",
+                "El servicio se presta mediante una suscripción de facturación mensual. La cuota mensual acordada es la que figura en los detalles del servicio. El precio se mantendrá mientras continúen las condiciones particulares aceptadas. Cualquier modificación de la cuota, modalidad o alcance requerirá comunicación previa y aceptación expresa del cliente.",
             },
             {
               titulo: "3. Duración y renovación",
               texto:
-                "El contrato inicial tendrá una duración de doce (12) meses desde la fecha de inicio indicada en este documento. Al finalizar dicho periodo, se renovará automáticamente por periodos sucesivos de doce (12) meses, salvo que el cliente comunique su voluntad de no renovarlo conforme a las condiciones de cancelación aquí recogidas.",
+                "El contrato tiene duración indefinida y se renueva mes a mes desde la fecha de inicio indicada en las condiciones particulares. No existe una permanencia mínima anual ni un plazo inicial obligatorio de doce meses.",
             },
             {
               titulo: "4. Cancelación y preaviso",
               texto:
-                "El cliente podrá solicitar la cancelación en cualquier momento, comunicándolo con un preaviso mínimo de un (1) mes. La prestación finalizará una vez transcurrido dicho preaviso. No se aplicará una penalización por las mensualidades correspondientes al tiempo restante del periodo contractual que no vaya a disfrutarse, sin perjuicio de las cantidades vencidas o de los servicios efectivamente prestados que estén pendientes de pago.",
+                "El cliente puede cancelar la suscripción en cualquier momento, comunicándolo por un medio que permita acreditar la solicitud con un mes de preaviso. El servicio se mantendrá durante el preaviso y finalizará en la fecha efectiva confirmada por el prestador. No se aplicarán penalizaciones por permanencia anual ni se cobrarán cuotas correspondientes a períodos posteriores a la fecha efectiva de finalización. Se abonarán las cantidades válidamente devengadas hasta esa fecha.",
             },
             {
-              titulo: "5. Servicios extraordinarios y extras",
+              titulo: "5. Custodia de llaves y acceso a la vivienda",
               texto:
-                "Los trabajos o servicios que no estén incluidos en la suscripción se considerarán extras. Antes de realizarlos, el cliente recibirá un presupuesto con su alcance y precio y deberá aceptarlo expresamente. No se ejecutarán ni cobrarán extras sin la aceptación previa del cliente, salvo que este haya autorizado expresamente otra actuación conforme a la normativa aplicable.",
+                "El cliente autoriza la custodia de las llaves entregadas para la finalidad contratada. Las llaves se conservarán con medidas razonables de seguridad y confidencialidad, y no se utilizarán para acceder a la vivienda ni se entregarán a terceros salvo autorización del cliente o causa legal que lo permita. La custodia de llaves no implica visitas, inspecciones, vigilancia continua ni garantía de ausencia de incidentes.",
             },
             {
-              titulo: "6. Funciones y límites del técnico",
+              titulo: "6. Límites del servicio",
               texto:
-                "El técnico realizará las inspecciones y registrará las observaciones correspondientes. No está autorizado a modificar la cuota, el precio de los servicios, las condiciones administrativas ni otros términos económicos del contrato. Cualquier cambio de estas condiciones deberá tramitarse por los canales autorizados y contar con la aceptación expresa del cliente cuando corresponda.",
+                "La cuota incluye únicamente la custodia de llaves en los términos acordados. No incluye inspecciones, revisiones del inmueble, vigilancia permanente, reparaciones, mantenimiento, desplazamientos, gestión de emergencias ni actuaciones de terceros, salvo que se contraten y acepten expresamente por separado.",
             },
             {
-              titulo: "7. Alcance de las inspecciones",
+              titulo: "7. Servicios extraordinarios y extras",
               texto:
-                "Las inspecciones se limitarán al alcance del servicio contratado y a las comprobaciones que puedan realizarse razonablemente durante la visita. Salvo pacto expreso por escrito, el servicio no equivale a una vigilancia continua de la vivienda, no garantiza la ausencia de averías o daños y no sustituye las reparaciones, intervenciones especializadas ni actuaciones de emergencia que puedan resultar necesarias.",
+                "Cualquier servicio no incluido expresamente en la custodia de llaves requerirá un presupuesto previo que indique el alcance, el precio y los impuestos aplicables. El cliente deberá aceptarlo expresamente antes de que se realice el trabajo. No se ejecutarán ni cobrarán servicios adicionales sin dicha aceptación, salvo que exista una autorización previa, expresa y válida para una actuación concreta.",
             },
             {
-              titulo: "8. Incidencias y comunicación",
+              titulo: "8. Incidencias y comunicaciones",
               texto:
-                "Las incidencias detectadas se comunicarán mediante los canales habilitados para el servicio, de acuerdo con el alcance contratado. La comunicación de una incidencia no implica por sí sola que su reparación esté incluida en la suscripción. Cuando la solución requiera trabajos adicionales, se aplicará el procedimiento de presupuesto y aceptación previa de los extras.",
+                "Las comunicaciones relacionadas con la custodia de llaves se realizarán mediante los canales acordados. La existencia de un canal de comunicación no supone vigilancia permanente, atención de emergencias ni respuesta inmediata. Si el cliente necesita una visita, inspección o actuación adicional, deberá solicitarla y aceptar las condiciones y el precio correspondientes antes de su ejecución.",
             },
             {
               titulo: "9. Contratación a distancia y desistimiento",
               texto:
-                "Cuando el contrato se celebre a distancia o fuera del establecimiento y el cliente tenga legalmente la condición de consumidor, se respetará el derecho de desistimiento que resulte aplicable, incluidos los plazos, excepciones y requisitos establecidos por la normativa vigente. Si el cliente solicita que el servicio comience durante el plazo de desistimiento, se recabarán las manifestaciones y autorizaciones que legalmente correspondan. Esta cláusula no limita los derechos irrenunciables del consumidor.",
+                "Cuando el cliente tenga la condición legal de consumidor y el contrato se celebre a distancia o fuera del establecimiento mercantil, se respetará el derecho de desistimiento y los requisitos que resulten aplicables. El plazo general para contratos de servicios es de catorce días naturales desde la celebración, salvo regla legal distinta. Si el cliente solicita que el servicio comience durante ese plazo, se recabará la solicitud expresa y la información legalmente exigibles. El inicio parcial del servicio no elimina automáticamente el derecho de desistimiento.",
             },
             {
               titulo: "10. Protección de datos y confidencialidad",
               texto:
-                "Los datos personales se tratarán para gestionar la relación contractual, coordinar las inspecciones, atender incidencias y cumplir las obligaciones legales aplicables. Su tratamiento se realizará conforme a la normativa de protección de datos vigente y a la información de privacidad facilitada al cliente. El prestador mantendrá la confidencialidad de la información a la que acceda durante la prestación del servicio, salvo obligación legal o autorización válida.",
+                "Los datos personales se tratarán para gestionar la cuenta, la relación contractual, la custodia de llaves, las comunicaciones y las obligaciones legales aplicables. El prestador mantendrá la confidencialidad de la información conocida durante el servicio y limitará el acceso a las personas que lo necesiten para la finalidad contratada. La información adicional sobre el tratamiento de datos está disponible en la Política de Privacidad.",
             },
             {
               titulo: "11. Aceptación y derechos del cliente",
               texto:
-                "La aceptación del contrato deberá quedar registrada por el procedimiento habilitado. El cliente podrá solicitar aclaraciones sobre el servicio, la cuota, los extras o la cancelación y ejercer los derechos que le reconozca la legislación aplicable. Ninguna condición de este documento pretende excluir derechos legalmente irrenunciables.",
+                "La aceptación del contrato deberá quedar registrada mediante el procedimiento habilitado. El cliente recibirá o podrá consultar las condiciones particulares que identifican la vivienda, el servicio, la cuota mensual, los impuestos y la fecha de inicio. Ninguna condición de este documento pretende excluir derechos legalmente irrenunciables del consumidor.",
             },
           ],
           firma: "Firma del cliente",
@@ -121,57 +121,57 @@ export default function GenerarPDFContrato({
             {
               titulo: "1. Purpose of the agreement",
               texto:
-                "The provider will carry out the property inspection and review services agreed with the client. The scope of the service will be determined by the subscribed plan and the characteristics of the property.",
+                "The subscribed service consists of keeping the keys to the property identified in the specific terms. This service does not include property visits, inspections or periodic reviews. Any additional service must be described and expressly accepted separately.",
             },
             {
-              titulo: "2. Subscription, frequency and price",
+              titulo: "2. Monthly subscription and price",
               texto:
-                "The service is provided by subscription at the review frequency stated in this agreement. The agreed monthly fee is shown in the service details. The agreed price will remain unchanged during the contractual period unless the client expressly accepts a change. Such acceptance must be capable of being evidenced.",
+                "The service is provided through a subscription billed monthly. The agreed monthly fee is shown in the service details. The price will remain in effect while the accepted specific terms remain unchanged. Any change to the fee, service type or scope requires prior notice and the client's express acceptance.",
             },
             {
               titulo: "3. Term and renewal",
               texto:
-                "The initial term is twelve (12) months from the start date stated in this document. At the end of that term, the agreement will automatically renew for successive periods of twelve (12) months unless the client gives notice of non-renewal in accordance with the cancellation conditions below.",
+                "The agreement has an indefinite term and renews monthly from the start date stated in the specific terms. There is no minimum annual commitment or mandatory initial twelve-month term.",
             },
             {
               titulo: "4. Cancellation and notice",
               texto:
-                "The client may request cancellation at any time by giving at least one (1) month's notice. The service will end when that notice period expires. No penalty will be charged for monthly fees relating to the unused remainder of the contractual period, without prejudice to amounts already due or services actually provided and still unpaid.",
+                "The client may cancel the subscription at any time by giving one month's notice through a channel that allows the request to be evidenced. The service will remain active during the notice period and will end on the effective date confirmed by the provider. No annual commitment penalty will apply, and fees will not be charged for periods after the effective end date. Amounts validly accrued up to that date remain payable.",
             },
             {
-              titulo: "5. Additional services",
+              titulo: "5. Key custody and access to the property",
               texto:
-                "Work or services not included in the subscription are treated as extras. Before they are carried out, the client will receive a quotation describing their scope and price and must expressly accept it. Extras will not be performed or charged without the client's prior acceptance, unless the client has expressly authorised another arrangement in accordance with applicable law.",
+                "The client authorises the provider to keep the keys for the agreed purpose. The keys will be stored with reasonable security and confidentiality measures and will not be used to enter the property or handed to third parties except with the client's authorisation or where legally permitted. Key custody does not include visits, inspections, continuous surveillance or a guarantee that incidents will not occur.",
             },
             {
-              titulo: "6. Technician's role and limitations",
+              titulo: "6. Service limitations",
               texto:
-                "The technician will carry out inspections and record relevant observations. The technician is not authorised to change the subscription fee, service prices, administrative conditions or other financial terms of this agreement. Changes must be handled through authorised channels and, where required, expressly accepted by the client.",
+                "The fee includes only key custody as agreed. It does not include inspections, property reviews, permanent surveillance, repairs, maintenance, travel, emergency management or third-party work unless separately contracted and expressly accepted.",
             },
             {
-              titulo: "7. Scope of inspections",
+              titulo: "7. Additional services",
               texto:
-                "Inspections are limited to the subscribed service and checks that can reasonably be performed during the visit. Unless expressly agreed in writing, the service is not continuous property surveillance, does not guarantee that breakdowns or damage will not occur, and does not replace repairs, specialist work or emergency services that may be necessary.",
+                "Any service not expressly included in key custody requires a prior quotation stating the scope, price and applicable taxes. The client must expressly accept the quotation before the work is performed. Additional services will not be carried out or charged without that acceptance, unless there is a prior, express and valid authorisation for a specific action.",
             },
             {
               titulo: "8. Issues and communication",
               texto:
-                "Issues identified will be reported through the channels provided for the service and within the agreed scope. Reporting an issue does not by itself mean that its repair is included in the subscription. Where additional work is required, the quotation and prior acceptance procedure for extras will apply.",
+                "Communications relating to key custody will take place through the agreed channels. The existence of a communication channel does not imply continuous surveillance, emergency response or an immediate response. If the client requires a visit, inspection or additional action, it must be requested and the applicable terms and price accepted before it is carried out.",
             },
             {
               titulo: "9. Distance contracts and withdrawal",
               texto:
-                "Where the agreement is concluded at a distance or away from business premises and the client qualifies as a consumer, any applicable statutory right of withdrawal will be respected, including the time limits, exceptions and requirements under applicable law. If the client asks for the service to begin during the withdrawal period, any legally required statements and authorisations will be obtained. This clause does not restrict non-waivable consumer rights.",
+                "Where the client legally qualifies as a consumer and the agreement is concluded at a distance or away from business premises, any applicable right of withdrawal and its legal requirements will be respected. The general withdrawal period for service contracts is fourteen calendar days from conclusion, unless a different legal rule applies. If the client requests that the service begin during that period, the express request and information required by law will be obtained. Partial performance does not automatically remove the right of withdrawal.",
             },
             {
               titulo: "10. Data protection and confidentiality",
               texto:
-                "Personal data will be processed to manage the contractual relationship, coordinate inspections, handle issues and comply with applicable legal obligations. Processing will follow applicable data protection law and the privacy information provided to the client. The provider will keep information accessed during service delivery confidential, except where disclosure is legally required or validly authorised.",
+                "Personal data will be processed to manage the account, contractual relationship, key custody, communications and applicable legal obligations. The provider will keep information learned during service delivery confidential and restrict access to people who need it for the agreed purpose. Further information about data processing is available in the Privacy Policy.",
             },
             {
               titulo: "11. Acceptance and client rights",
               texto:
-                "Acceptance of the agreement must be recorded through the designated procedure. The client may request clarification about the service, fee, extras or cancellation and may exercise rights granted by applicable law. No provision of this document is intended to exclude non-waivable statutory rights.",
+                "Acceptance of the agreement must be recorded through the designated procedure. The client will receive or be able to consult the specific terms identifying the property, service, monthly fee, taxes and start date. No provision of this document is intended to exclude non-waivable consumer rights.",
             },
           ],
           firma: "Client signature",
@@ -250,7 +250,6 @@ export default function GenerarPDFContrato({
         y += 4;
       };
 
-      // Título del documento.
       doc.setFont("helvetica", "bold");
       doc.setFontSize(18);
 
@@ -262,7 +261,6 @@ export default function GenerarPDFContrato({
       doc.text(tituloPDF, margenIzquierdo, y);
       y += tituloPDF.length * 8 + 7;
 
-      // Datos del cliente.
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
 
@@ -286,7 +284,6 @@ export default function GenerarPDFContrato({
 
       y += 4;
 
-      // Detalles del servicio contratado.
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
 
@@ -326,7 +323,6 @@ export default function GenerarPDFContrato({
 
       y += 5;
 
-      // Condiciones contractuales.
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
 
@@ -340,7 +336,6 @@ export default function GenerarPDFContrato({
         agregarSeccion(seccion.titulo, seccion.texto);
       });
 
-      // Firma del cliente, manteniendo la firma existente si está guardada.
       y += 2;
       asegurarEspacio(45);
 
@@ -416,7 +411,6 @@ export default function GenerarPDFContrato({
         4
       );
 
-      // Numeración de páginas.
       const totalPaginas = doc.internal.getNumberOfPages();
 
       for (let pagina = 1; pagina <= totalPaginas; pagina += 1) {
@@ -432,7 +426,6 @@ export default function GenerarPDFContrato({
         );
       }
 
-      // Guardar el PDF en el almacenamiento existente.
       const pdfBlob = doc.output("blob");
       const fileName = `contrato_${contrato.id}.pdf`;
 
@@ -454,7 +447,6 @@ export default function GenerarPDFContrato({
         return;
       }
 
-      // Guardar la ruta del archivo, no una URL pública.
       const { error: updateError } = await supabase
         .from("contratos")
         .update({
@@ -471,7 +463,6 @@ export default function GenerarPDFContrato({
         );
       }
 
-      // Crear una URL firmada temporal para acceder al documento.
       const { data: signedData, error: signedError } =
         await supabase.storage
           .from("contratos")
