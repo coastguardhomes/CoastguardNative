@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
@@ -217,20 +218,23 @@ export default function EditarContrato() {
     }
 
     // 4️⃣ Regenerar inspecciones automáticas.
-    try {
-      await supabase.functions.invoke(
-        "crear_inspecciones_programadas",
-        {
-          body: {
-            contratoId,
-          },
-        }
-      );
-    } catch (e) {
-      console.error(
-        "Error regenerando inspecciones:",
-        e
-      );
+    // La custodia de llaves no incluye inspecciones.
+    if (form.modalidad !== "custodia_llaves") {
+      try {
+        await supabase.functions.invoke(
+          "crear_inspecciones_programadas",
+          {
+            body: {
+              contratoId,
+            },
+          }
+        );
+      } catch (e) {
+        console.error(
+          "Error regenerando inspecciones:",
+          e
+        );
+      }
     }
 
     // 5️⃣ Enviar email automático al cliente.
