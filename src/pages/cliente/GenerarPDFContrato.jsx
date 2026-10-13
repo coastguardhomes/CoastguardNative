@@ -67,12 +67,12 @@ export default function GenerarPDFContrato({
             {
               titulo: "3. Duración y renovación",
               texto:
-                "El contrato tiene duración indefinida y se renueva mes a mes desde la fecha de inicio indicada en las condiciones particulares. No existe una permanencia mínima anual ni un plazo inicial obligatorio de doce meses.",
+                "El contrato tiene una duración inicial de doce (12) meses y se renueva por períodos anuales. La facturación y el pago de la suscripción son mensuales. La duración anual no implica una permanencia mínima anual: el cliente puede solicitar la cancelación en cualquier momento, con un mes de preaviso y conforme a las condiciones del contrato, sin penalización por permanencia anual.",
             },
             {
               titulo: "4. Cancelación y preaviso",
               texto:
-                "El cliente puede cancelar la suscripción en cualquier momento, comunicándolo por un medio que permita acreditar la solicitud con un mes de preaviso. El servicio se mantendrá durante el preaviso y finalizará en la fecha efectiva confirmada por el prestador. No se aplicarán penalizaciones por permanencia anual ni se cobrarán cuotas correspondientes a períodos posteriores a la fecha efectiva de finalización. Se abonarán las cantidades válidamente devengadas hasta esa fecha.",
+                "El cliente puede solicitar la cancelación en cualquier momento, comunicándolo por un medio que permita acreditar la solicitud con un mes de preaviso. El servicio se mantendrá durante el preaviso y finalizará en la fecha efectiva de baja comunicada por el prestador. No se aplicarán penalizaciones por permanencia anual ni se cobrarán cuotas correspondientes a períodos posteriores a la fecha efectiva de finalización. Se abonarán las cantidades válidamente devengadas hasta esa fecha.",
             },
             {
               titulo: "5. Custodia de llaves y acceso a la vivienda",
@@ -131,12 +131,12 @@ export default function GenerarPDFContrato({
             {
               titulo: "3. Term and renewal",
               texto:
-                "The agreement has an indefinite term and renews monthly from the start date stated in the specific terms. There is no minimum annual commitment or mandatory initial twelve-month term.",
+                "The agreement has an initial term of twelve (12) months and renews for successive annual periods. Subscription fees are billed and paid monthly. The annual term does not create a minimum annual commitment: the client may request cancellation at any time by giving one month's notice under the agreement, without an annual commitment penalty.",
             },
             {
               titulo: "4. Cancellation and notice",
               texto:
-                "The client may cancel the subscription at any time by giving one month's notice through a channel that allows the request to be evidenced. The service will remain active during the notice period and will end on the effective date confirmed by the provider. No annual commitment penalty will apply, and fees will not be charged for periods after the effective end date. Amounts validly accrued up to that date remain payable.",
+                "The client may request cancellation at any time by giving one month's notice through a channel that allows the request to be evidenced. The service will remain active during the notice period and will end on the effective cancellation date communicated by the provider. No annual commitment penalty will apply, and fees will not be charged for periods after the effective end date. Amounts validly accrued up to that date remain payable.",
             },
             {
               titulo: "5. Key custody and access to the property",
