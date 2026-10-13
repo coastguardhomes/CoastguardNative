@@ -279,12 +279,14 @@ export default function DocumentosLegales() {
           <h2 style={estilos.subtitulo}>3. Precio y facturación</h2>
 
           <p>
-            La suscripción se factura y se abona mensualmente. No existe una
-            permanencia contractual mínima de doce meses ni una obligación
-            de mantener la suscripción durante un año. El cliente podrá
-            solicitar la cancelación en cualquier momento, respetando el
-            preaviso de un (1) mes establecido en este contrato, sin perjuicio
-            de los derechos legales que le correspondan.
+            El contrato tiene una duración inicial de doce (12) meses y se
+            renueva por períodos anuales. La suscripción se factura y se abona
+            mensualmente. La duración anual del contrato no implica una
+            permanencia mínima anual ni obliga al cliente a mantener la
+            suscripción durante todo el año. El cliente podrá solicitar la
+            cancelación en cualquier momento, con un (1) mes de preaviso,
+            conforme a las condiciones de este contrato y sin penalización
+            por permanencia anual.
           </p>
 
           <p>
@@ -314,10 +316,13 @@ export default function DocumentosLegales() {
           </h2>
 
           <p>
-            La suscripción tiene una periodicidad mensual y no está sujeta
-            a una permanencia anual. Se mantendrá activa mientras el cliente
-            no solicite su cancelación y se cumplan las condiciones de la
-            contratación.
+            El contrato tiene una duración inicial de doce (12) meses y se
+            renueva por períodos anuales. La cuota de la suscripción se paga
+            mensualmente y no existe una permanencia mínima anual. El cliente
+            puede solicitar la cancelación en cualquier momento, sin tener
+            que esperar al vencimiento del período anual, respetando el
+            preaviso de un (1) mes y las condiciones establecidas en este
+            contrato.
           </p>
 
           <p>
