@@ -19,6 +19,7 @@ export default function EditarContrato() {
 
   const [tecnicos, setTecnicos] = useState([]);
   const [mensaje, setMensaje] = useState("");
+  const [procesando, setProcesando] = useState(false);
 
   const modalidades = [
     {
@@ -28,18 +29,63 @@ export default function EditarContrato() {
       frecuencia: 30,
     },
     {
-      id: "premium",
-      nombre: "Premium",
+      id: "standard",
+      nombre: "Standard",
       precio: 59,
       frecuencia: 30,
     },
     {
-      id: "plus",
-      nombre: "Plus",
+      id: "premium",
+      nombre: "Premium",
       precio: 79,
       frecuencia: 30,
     },
+    {
+      id: "custodia_llaves",
+      nombre: "Custodia de llaves",
+      precio: 15,
+      frecuencia: null,
+    },
   ];
+
+  // La duración del contrato es de 12 meses.
+  // La frecuencia de visitas nunca determina la fecha final.
+  function calcularFechaFin(fechaInicio, meses = 12) {
+    if (!fechaInicio) return null;
+
+    const partes = fechaInicio.split("-").map(Number);
+
+    if (
+      partes.length !== 3 ||
+      partes.some((numero) => !Number.isFinite(numero))
+    ) {
+      return null;
+    }
+
+    const [anio, mes, dia] = partes;
+
+    if (
+      anio < 1 ||
+      mes < 1 ||
+      mes > 12 ||
+      dia < 1 ||
+      dia > new Date(anio, mes, 0).getDate()
+    ) {
+      return null;
+    }
+
+    const indiceMes = mes - 1 + meses;
+    const anioFinal = anio + Math.floor(indiceMes / 12);
+    const mesFinal = indiceMes % 12;
+    const ultimoDia = new Date(
+      anioFinal,
+      mesFinal + 1,
+      0
+    ).getDate();
+    const diaFinal = Math.min(dia, ultimoDia);
+
+    return `${anioFinal}-${String(mesFinal + 1).padStart(2, "0")}-${String(diaFinal).padStart(2, "0")}`;
+  }
 
   useEffect(() => {
     cargarContrato();
@@ -56,6 +102,7 @@ export default function EditarContrato() {
       .single();
 
     if (error) {
+      console.error("Error cargando contrato:", error);
       setMensaje("Error cargando contrato");
       return;
     }
@@ -63,9 +110,12 @@ export default function EditarContrato() {
     if (data) {
       setForm({
         fecha_inicio: data.fecha_inicio || "",
-        precio: data.precio || "",
+        precio: data.precio ?? "",
         notas: data.notas || "",
-        frecuencia: data.frecuencia || "",
+        frecuencia:
+          data.modalidad === "custodia_llaves"
+            ? ""
+            : data.frecuencia ?? "",
         tecnico_id: data.tecnico_id || "",
         modalidad: data.modalidad || "",
       });
@@ -73,188 +123,192 @@ export default function EditarContrato() {
   }
 
   async function cargarTecnicos() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("tecnicos")
       .select("id, nombre");
+
+    if (error) {
+      console.error("Error cargando técnicos:", error);
+    }
 
     setTecnicos(data || []);
   }
 
   function seleccionarModalidad(modalidadId) {
-    const mod = modalidades.find(
-      (m) => m.id === modalidadId
+    const modalidadSeleccionada = modalidades.find(
+      (modalidad) => modalidad.id === modalidadId
     );
 
-    setForm({
-      ...form,
+    setForm((prev) => ({
+      ...prev,
       modalidad: modalidadId,
-      precio: mod
-        ? mod.precio
-        : form.precio,
-      frecuencia: mod
-        ? mod.frecuencia
-        : form.frecuencia,
-    });
+      precio: modalidadSeleccionada
+        ? modalidadSeleccionada.precio
+        : prev.precio,
+      frecuencia:
+        modalidadId === "custodia_llaves"
+          ? ""
+          : modalidadSeleccionada
+            ? modalidadSeleccionada.frecuencia
+            : prev.frecuencia,
+    }));
   }
 
   async function guardarCambios() {
+    if (procesando) return;
+
+    setMensaje("");
+
     if (!form.fecha_inicio) {
-      return setMensaje(
-        "La fecha de inicio es obligatoria"
-      );
-    }
-
-    if (!form.precio) {
-      return setMensaje(
-        "El precio es obligatorio"
-      );
-    }
-
-    if (!form.frecuencia) {
-      return setMensaje(
-        "La frecuencia es obligatoria"
-      );
-    }
-
-    if (!form.modalidad) {
-      return setMensaje(
-        "Selecciona una modalidad"
-      );
-    }
-
-    if (!form.tecnico_id) {
-      return setMensaje(
-        "Selecciona un técnico"
-      );
-    }
-
-    // 1️⃣ Actualizar contrato
-    const { error } = await supabase
-      .from("contratos")
-      .update({
-        fecha_inicio: form.fecha_inicio,
-        precio: form.precio,
-        notas: form.notas,
-        frecuencia: form.frecuencia,
-        tecnico_id: String(form.tecnico_id),
-        modalidad: form.modalidad,
-      })
-      .eq("id", id);
-
-    if (error) {
-      setMensaje("Error guardando cambios");
+      setMensaje("La fecha de inicio es obligatoria");
       return;
     }
 
-    // 2️⃣ Recalcular fecha_fin
-    const fechaInicio = new Date(
-      form.fecha_inicio
-    );
+    const precio = Number(form.precio);
 
-    const fechaFin = new Date(
-      fechaInicio.getTime() +
-        form.frecuencia *
-          24 *
-          60 *
-          60 *
-          1000
-    )
-      .toISOString()
-      .split("T")[0];
+    if (
+      form.precio === "" ||
+      !Number.isFinite(precio) ||
+      precio <= 0
+    ) {
+      setMensaje("Introduce un precio válido");
+      return;
+    }
 
-    const { error: fechaFinError } =
-      await supabase
+    if (!form.modalidad) {
+      setMensaje("Selecciona una modalidad");
+      return;
+    }
+
+    if (!form.tecnico_id) {
+      setMensaje("Selecciona un técnico");
+      return;
+    }
+
+    const esCustodia = form.modalidad === "custodia_llaves";
+
+    if (
+      !esCustodia &&
+      (
+        form.frecuencia === "" ||
+        !Number.isFinite(Number(form.frecuencia)) ||
+        Number(form.frecuencia) <= 0
+      )
+    ) {
+      setMensaje(
+        "Indica una frecuencia de visitas válida para esta modalidad"
+      );
+      return;
+    }
+
+    const fechaFin = calcularFechaFin(form.fecha_inicio, 12);
+
+    if (!fechaFin) {
+      setMensaje("No se pudo calcular la fecha final del contrato");
+      return;
+    }
+
+    setProcesando(true);
+
+    try {
+      // Actualizar el contrato manteniendo su duración anual.
+      // El pago es mensual y no implica permanencia mínima anual.
+      const { error } = await supabase
         .from("contratos")
         .update({
+          fecha_inicio: form.fecha_inicio,
           fecha_fin: fechaFin,
+          duracion_meses: 12,
+          precio,
+          notas: form.notas,
+          frecuencia: esCustodia
+            ? null
+            : Number(form.frecuencia),
+          tecnico_id: String(form.tecnico_id),
+          modalidad: form.modalidad,
         })
         .eq("id", id);
 
-    if (fechaFinError) {
-      console.error(
-        "Error actualizando fecha_fin:",
-        fechaFinError
-      );
-    }
-
-    const contratoId = Number(id);
-
-    // 3️⃣ Regenerar PDF actualizado.
-    //
-    // La Edge Function se encarga de actualizar pdf_url.
-    // No sobrescribimos pdf_url desde aquí con una URL
-    // temporal o con un data URI.
-    try {
-      const {
-        data: pdfData,
-        error: pdfError,
-      } = await supabase.functions.invoke(
-        "contrato-pdf",
-        {
-          body: {
-            contratoId,
-            contrato_id: contratoId,
-            id: contratoId,
-          },
-        }
-      );
-
-      if (pdfError) {
-        console.error(
-          "Error regenerando PDF:",
-          pdfError
-        );
-      } else {
-        console.log(
-          "PDF regenerado correctamente:",
-          pdfData
-        );
+      if (error) {
+        console.error("Error guardando contrato:", error);
+        setMensaje("Error guardando cambios");
+        return;
       }
-    } catch (e) {
-      console.error(
-        "Error regenerando PDF:",
-        e
-      );
-    }
 
-    // 4️⃣ Regenerar inspecciones automáticas.
-    // La custodia de llaves no incluye inspecciones.
-    if (form.modalidad !== "custodia_llaves") {
+      const contratoId = Number(id);
+
+      // Regenerar el PDF mediante la función ya desplegada.
+      // No se modifica pdf_url desde este archivo.
       try {
-        await supabase.functions.invoke(
-          "crear_inspecciones_programadas",
-          {
+        const { data: pdfData, error: pdfError } =
+          await supabase.functions.invoke("contrato-pdf", {
+            body: {
+              contratoId,
+              contrato_id: contratoId,
+              id: contratoId,
+            },
+          });
+
+        if (pdfError) {
+          console.error("Error regenerando PDF:", pdfError);
+        } else {
+          console.log("PDF regenerado correctamente:", pdfData);
+        }
+      } catch (errorPDF) {
+        console.error("Error regenerando PDF:", errorPDF);
+      }
+
+      // La custodia de llaves no incluye visitas ni inspecciones.
+      // Para el resto de modalidades se conserva el flujo existente.
+      if (!esCustodia) {
+        try {
+          const { error: inspeccionesError } =
+            await supabase.functions.invoke(
+              "crear_inspecciones_programadas",
+              {
+                body: {
+                  contratoId,
+                },
+              }
+            );
+
+          if (inspeccionesError) {
+            console.error(
+              "Error regenerando inspecciones:",
+              inspeccionesError
+            );
+          }
+        } catch (errorInspecciones) {
+          console.error(
+            "Error regenerando inspecciones:",
+            errorInspecciones
+          );
+        }
+      }
+
+      // Mantener el envío de correo existente.
+      try {
+        const { error: emailError } =
+          await supabase.functions.invoke("enviar-email", {
             body: {
               contratoId,
             },
-          }
-        );
-      } catch (e) {
-        console.error(
-          "Error regenerando inspecciones:",
-          e
-        );
-      }
-    }
+          });
 
-    // 5️⃣ Enviar email automático al cliente.
-    try {
-      await supabase.functions.invoke(
-        "enviar-email",
-        {
-          body: {
-            contratoId,
-          },
+        if (emailError) {
+          console.error("Error enviando email:", emailError);
         }
-      );
-    } catch (e) {
-      console.error(
-        "Error enviando email:",
-        e
-      );
-    }
+      } catch (errorEmail) {
+        console.error("Error enviando email:", errorEmail);
+      }
 
-    navigate("/contratos");
+      navigate("/contratos");
+    } catch (error) {
+      console.error("Error inesperado guardando contrato:", error);
+      setMensaje("Se produjo un error inesperado al guardar el contrato");
+    } finally {
+      setProcesando(false);
+    }
   }
 
   const inputStyle = {
@@ -262,12 +316,13 @@ export default function EditarContrato() {
     width: "100%",
     marginBottom: "15px",
     borderRadius: "10px",
-    border:
-      "1px solid rgba(255,255,255,0.2)",
-    background:
-      "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.2)",
+    background: "rgba(255,255,255,0.08)",
     color: "#fff",
+    boxSizing: "border-box",
   };
+
+  const esCustodia = form.modalidad === "custodia_llaves";
 
   return (
     <Menu>
@@ -278,6 +333,7 @@ export default function EditarContrato() {
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
+          boxSizing: "border-box",
         }}
       >
         <h1
@@ -286,8 +342,7 @@ export default function EditarContrato() {
             marginBottom: "25px",
             fontSize: "28px",
             fontWeight: "700",
-            textShadow:
-              "0 0 8px rgba(0,153,255,0.6)",
+            textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
           Editar Contrato #{id}
@@ -295,6 +350,7 @@ export default function EditarContrato() {
 
         {mensaje && (
           <p
+            role="status"
             style={{
               marginBottom: "15px",
               color: "#4db8ff",
@@ -307,110 +363,130 @@ export default function EditarContrato() {
 
         <div
           style={{
-            background:
-              "rgba(255,255,255,0.05)",
+            background: "rgba(255,255,255,0.05)",
             padding: "20px",
             borderRadius: "14px",
-            border:
-              "1px solid rgba(255,255,255,0.1)",
-            boxShadow:
-              "0 0 12px rgba(0,153,255,0.2)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
           <label>Modalidad:</label>
 
           <select
             value={form.modalidad || ""}
-            onChange={(e) =>
-              seleccionarModalidad(
-                e.target.value
-              )
-            }
+            onChange={(e) => seleccionarModalidad(e.target.value)}
             style={inputStyle}
           >
-            <option value="">
-              Selecciona modalidad
-            </option>
+            <option value="">Selecciona modalidad</option>
 
-            {modalidades.map((m) => (
-              <option
-                key={m.id}
-                value={m.id}
-              >
-                {m.nombre} — {m.precio}€
+            {modalidades.map((modalidad) => (
+              <option key={modalidad.id} value={modalidad.id}>
+                {modalidad.nombre} — {modalidad.precio}€
               </option>
             ))}
           </select>
 
-          <label>Fecha inicio:</label>
+          <label>Fecha de inicio:</label>
 
           <input
             type="date"
             value={form.fecha_inicio || ""}
             onChange={(e) =>
-              setForm({
-                ...form,
-                fecha_inicio:
-                  e.target.value,
-              })
+              setForm((prev) => ({
+                ...prev,
+                fecha_inicio: e.target.value,
+              }))
             }
             style={inputStyle}
           />
 
-          <label>Precio (€):</label>
+          <div
+            style={{
+              padding: "12px",
+              marginBottom: "18px",
+              borderRadius: "8px",
+              background: "rgba(77,184,255,0.08)",
+              border: "1px solid rgba(77,184,255,0.25)",
+              color: "#b8dfff",
+              lineHeight: "1.6",
+              fontSize: "14px",
+            }}
+          >
+            El contrato tiene duración y renovación anual, con facturación
+            mensual. No existe permanencia mínima anual: el cliente puede
+            solicitar la cancelación en cualquier momento con un mes de
+            preaviso, conforme al contrato marco.
+          </div>
+
+          <label>Precio base (€):</label>
 
           <input
             type="number"
-            value={form.precio || ""}
+            min="0.01"
+            step="0.01"
+            value={form.precio ?? ""}
             onChange={(e) =>
-              setForm({
-                ...form,
+              setForm((prev) => ({
+                ...prev,
                 precio: e.target.value,
-              })
+              }))
             }
             style={inputStyle}
           />
 
-          <label>Frecuencia (días):</label>
+          {!esCustodia && (
+            <>
+              <label>Frecuencia de visitas (días):</label>
 
-          <input
-            type="number"
-            value={form.frecuencia || ""}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                frecuencia:
-                  e.target.value,
-              })
-            }
-            style={inputStyle}
-          />
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={form.frecuencia ?? ""}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    frecuencia: e.target.value,
+                  }))
+                }
+                style={inputStyle}
+              />
+            </>
+          )}
 
-          <label>Técnico:</label>
+          {esCustodia && (
+            <p
+              style={{
+                marginTop: 0,
+                marginBottom: "15px",
+                color: "#9fb3c8",
+                fontSize: "14px",
+                lineHeight: "1.6",
+              }}
+            >
+              La custodia de llaves no incluye visitas ni inspecciones
+              de la vivienda. Cualquier servicio adicional requiere
+              contratación expresa.
+            </p>
+          )}
+
+          <label>Técnico responsable:</label>
 
           <select
             value={form.tecnico_id || ""}
             onChange={(e) =>
-              setForm({
-                ...form,
-                tecnico_id:
-                  String(
-                    e.target.value
-                  ),
-              })
+              setForm((prev) => ({
+                ...prev,
+                tecnico_id: e.target.value,
+              }))
             }
             style={inputStyle}
           >
-            <option value="">
-              Selecciona técnico
-            </option>
+            <option value="">Selecciona técnico</option>
 
-            {tecnicos.map((t) => (
-              <option
-                key={t.id}
-                value={t.id}
-              >
-                {t.nombre}
+            {tecnicos.map((tecnico) => (
+              <option key={tecnico.id} value={tecnico.id}>
+                {tecnico.nombre}
               </option>
             ))}
           </select>
@@ -420,10 +496,10 @@ export default function EditarContrato() {
           <textarea
             value={form.notas || ""}
             onChange={(e) =>
-              setForm({
-                ...form,
+              setForm((prev) => ({
+                ...prev,
                 notas: e.target.value,
-              })
+              }))
             }
             style={{
               ...inputStyle,
@@ -432,7 +508,9 @@ export default function EditarContrato() {
           />
 
           <button
+            type="button"
             onClick={guardarCambios}
+            disabled={procesando}
             style={{
               marginTop: "20px",
               padding: "14px",
@@ -443,12 +521,12 @@ export default function EditarContrato() {
               border: "none",
               fontWeight: "700",
               fontSize: "17px",
-              cursor: "pointer",
-              boxShadow:
-                "0 0 10px rgba(0,153,255,0.4)",
+              cursor: procesando ? "wait" : "pointer",
+              boxShadow: "0 0 10px rgba(0,153,255,0.4)",
+              opacity: procesando ? 0.6 : 1,
             }}
           >
-            Guardar cambios
+            {procesando ? "Guardando..." : "Guardar cambios"}
           </button>
         </div>
       </div>
