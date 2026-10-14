@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
@@ -18,13 +17,11 @@ const TEXTO_DORADO_BRILLO = {
   textShadow: "0 0 12px rgba(224, 176, 52, 0.6)"
 };
 
-const BUCKET_FOTOS = "facturas";
-const CARPETA_FOTOS = "inspecciones";
+const BUCKET_FOTOS = "extras";
+const CARPETA_FOTOS = "fotos";
 
 function obtenerReferenciaFoto(foto) {
-  if (typeof foto === "string") {
-    return foto.trim();
-  }
+  if (typeof foto === "string") return foto.trim();
 
   if (foto && typeof foto === "object") {
     return (
@@ -43,92 +40,72 @@ function obtenerReferenciaFoto(foto) {
 
 function obtenerBucketYReferencia(valor) {
   const referencia = obtenerReferenciaFoto(valor);
-
-  if (!referencia) {
-    return null;
-  }
+  if (!referencia) return null;
 
   if (
     referencia.startsWith("data:") ||
     referencia.startsWith("blob:")
   ) {
-    return {
-      bucket: null,
-      referencia
-    };
+    return { bucket: null, referencia };
   }
 
-  /*
-   * Conservamos la compatibilidad con fotografías antiguas
-   * que estén guardadas como URL de Supabase Storage.
-   */
   const coincidencia = referencia.match(
     /\/storage\/v1\/object\/(?:public|sign|authenticated)\/([^/]+)\/(.+?)(?:\?.*)?$/i
   );
 
   if (coincidencia) {
-    let bucket;
-    let ruta;
-
     try {
-      bucket = decodeURIComponent(coincidencia[1]);
-
-      ruta = coincidencia[2]
-        .split("/")
-        .map((segmento) => decodeURIComponent(segmento))
-        .join("/");
+      return {
+        bucket: decodeURIComponent(coincidencia[1]),
+        referencia: coincidencia[2]
+          .split("/")
+          .map((segmento) => decodeURIComponent(segmento))
+          .join("/")
+      };
     } catch {
       return null;
     }
-
-    return {
-      bucket,
-      referencia: ruta
-    };
   }
 
-  /*
-   * Las rutas nuevas existentes se guardan en el bucket
-   * facturas dentro de inspecciones/.
-   */
   let ruta = referencia.replace(/^\/+/, "");
 
-  if (ruta.startsWith(`${BUCKET_FOTOS}/`)) {
-    ruta = ruta.slice(`${BUCKET_FOTOS}/`.length);
-
-    return {
-      bucket: BUCKET_FOTOS,
-      referencia: ruta
-    };
+  // Referencias antiguas que incluyen el nombre del bucket.
+  for (const bucket of ["facturas", "extras"]) {
+    if (ruta.startsWith(`${bucket}/`)) {
+      return {
+        bucket,
+        referencia: ruta.slice(bucket.length + 1)
+      };
+    }
   }
 
-  /*
-   * Compatibilidad con rutas antiguas del bucket extras.
-   */
-  if (ruta.startsWith("extras/")) {
-    ruta = ruta.slice("extras/".length);
-
-    return {
-      bucket: "extras",
-      referencia: ruta
-    };
+  // Las fotos nuevas se guardan en extras/fotos/.
+  if (ruta.startsWith("fotos/")) {
+    return { bucket: "extras", referencia: ruta };
   }
 
-  if (ruta.startsWith(`${CARPETA_FOTOS}/`)) {
-    return {
-      bucket: BUCKET_FOTOS,
-      referencia: ruta
-    };
+  // Compatibilidad con rutas antiguas de inspecciones.
+  if (ruta.startsWith("inspecciones/")) {
+    return { bucket: "facturas", referencia: ruta };
   }
 
-  /*
-   * Las referencias antiguas sin bucket explícito se
-   * intentan resolver en extras, como hacía el archivo original.
-   */
-  return {
-    bucket: "extras",
-    referencia: ruta
-  };
+  // Las referencias antiguas sin bucket se resuelven en extras.
+  return { bucket: "extras", referencia: ruta };
+}
+
+function normalizarFotos(valor) {
+  if (Array.isArray(valor)) return valor;
+
+  if (typeof valor !== "string" || !valor.trim()) {
+    return [];
+  }
+
+  try {
+    const resultado = JSON.parse(valor);
+    return Array.isArray(resultado) ? resultado : [valor];
+  } catch {
+    return [valor];
+  }
 }
 
 export default function TecnicoInspeccionExtra() {
@@ -137,45 +114,28 @@ export default function TecnicoInspeccionExtra() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const [extraData, setExtraData] = useState(null);
   const [facturaData, setFacturaData] = useState(null);
-
   const [clientes, setClientes] = useState([]);
   const [viviendas, setViviendas] = useState([]);
-
   const [clienteId, setClienteId] = useState("");
   const [viviendaId, setViviendaId] = useState("");
-
   const [descripcion, setDescripcion] = useState("");
   const [materiales, setMateriales] = useState("");
   const [tiempo, setTiempo] = useState("");
-
   const [alerta, setAlerta] = useState(false);
   const [fotos, setFotos] = useState([]);
   const [fotosUrlsFirmadas, setFotosUrlsFirmadas] = useState([]);
-
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
   const cargarClientes = async () => {
-    const {
-      data,
-      error: clientesError
-    } = await supabase
+    const { data, error: consultaError } = await supabase
       .from("clientes")
       .select("id, nombre, direccion, email")
       .order("nombre");
 
-    if (clientesError) {
-      console.error(
-        "Error cargando clientes:",
-        clientesError
-      );
-
-      throw clientesError;
-    }
-
+    if (consultaError) throw consultaError;
     setClientes(data || []);
   };
 
@@ -183,27 +143,15 @@ export default function TecnicoInspeccionExtra() {
     setViviendas([]);
     setViviendaId("");
 
-    if (!nuevoClienteId) {
-      return [];
-    }
+    if (!nuevoClienteId) return [];
 
-    const {
-      data,
-      error: viviendasError
-    } = await supabase
+    const { data, error: consultaError } = await supabase
       .from("viviendas")
       .select("id, direccion, tecnico_id, cliente_id")
       .eq("cliente_id", nuevoClienteId)
       .order("direccion");
 
-    if (viviendasError) {
-      console.error(
-        "Error cargando viviendas:",
-        viviendasError
-      );
-
-      throw viviendasError;
-    }
+    if (consultaError) throw consultaError;
 
     setViviendas(data || []);
 
@@ -225,26 +173,13 @@ export default function TecnicoInspeccionExtra() {
         error: userError
       } = await supabase.auth.getUser();
 
-      if (userError) {
-        throw userError;
-      }
-
-      if (!user) {
-        throw new Error(
-          "No hay una sesión autenticada de técnico."
-        );
-      }
+      if (userError) throw userError;
+      if (!user) throw new Error("No hay una sesión autenticada.");
 
       await cargarClientes();
 
-      /*
-       * Conservamos la búsqueda de la factura asociada.
-       * No modificamos sus importes ni sus datos administrativos.
-       */
-      let factura = null;
-
       const {
-        data: facturaEncontrada,
+        data: factura,
         error: facturaError
       } = await supabase
         .from("facturas")
@@ -252,145 +187,61 @@ export default function TecnicoInspeccionExtra() {
         .eq("id", id)
         .maybeSingle();
 
-      if (facturaError) {
-        console.warn(
-          "No se pudo consultar la factura:",
-          facturaError
-        );
-      } else {
-        factura = facturaEncontrada || null;
-      }
+      if (facturaError) throw facturaError;
+      setFacturaData(factura || null);
 
-      setFacturaData(factura);
-
-      let extraEncontrado = null;
+      let extra = null;
 
       if (factura?.id) {
         const {
           data: extrasPorFactura,
-          error: extrasPorFacturaError
+          error: extrasError
         } = await supabase
           .from("extras")
           .select("*")
           .eq("factura_id", factura.id)
-          .order("creado_en", {
-            ascending: false
-          });
+          .order("creado_en", { ascending: false });
 
-        if (extrasPorFacturaError) {
-          throw extrasPorFacturaError;
-        }
-
-        if (
-          extrasPorFactura &&
-          extrasPorFactura.length > 0
-        ) {
-          extraEncontrado = extrasPorFactura[0];
-        }
+        if (extrasError) throw extrasError;
+        if (extrasPorFactura?.length) extra = extrasPorFactura[0];
       }
 
-      if (extraEncontrado) {
-        setExtraData(extraEncontrado);
+      setExtraData(extra);
 
-        const clienteSeleccionado =
-          extraEncontrado.cliente_id
-            ? String(extraEncontrado.cliente_id)
-            : "";
+      const clienteSeleccionado =
+        extra?.cliente_id || factura?.cliente_id || "";
 
-        setClienteId(clienteSeleccionado);
+      setClienteId(
+        clienteSeleccionado ? String(clienteSeleccionado) : ""
+      );
 
-        /*
-         * Primero cargamos las viviendas y después restauramos
-         * la vivienda asociada al extra existente.
-         */
-        await cargarViviendas(
-          extraEncontrado.cliente_id
-        );
-
-        setViviendaId(
-          extraEncontrado.vivienda_id
-            ? String(extraEncontrado.vivienda_id)
-            : ""
-        );
-
-        setDescripcion(
-          extraEncontrado.descripcion ||
-            extraEncontrado.concepto ||
-            factura?.descripcion ||
-            factura?.concepto ||
-            ""
-        );
-
-        setMateriales(
-          extraEncontrado.materiales || ""
-        );
-
-        setTiempo(
-          extraEncontrado.tiempo_empleado || ""
-        );
-
-        setAlerta(
-          Boolean(extraEncontrado.alerta)
-        );
-
-        if (Array.isArray(extraEncontrado.fotos)) {
-          setFotos(extraEncontrado.fotos);
-        } else if (
-          typeof extraEncontrado.fotos === "string"
-        ) {
-          try {
-            const parsed = JSON.parse(
-              extraEncontrado.fotos
-            );
-
-            if (Array.isArray(parsed)) {
-              setFotos(parsed);
-            } else if (
-              extraEncontrado.fotos.trim()
-            ) {
-              setFotos([extraEncontrado.fotos]);
-            }
-          } catch {
-            if (extraEncontrado.fotos.trim()) {
-              setFotos([extraEncontrado.fotos]);
-            }
-          }
-        } else {
-          setFotos([]);
-        }
-
-        return;
+      if (clienteSeleccionado) {
+        await cargarViviendas(clienteSeleccionado);
       }
 
-      setExtraData(null);
-      setFotos([]);
+      const viviendaSeleccionada =
+        extra?.vivienda_id || factura?.vivienda_id || "";
 
-      if (factura?.cliente_id) {
-        setClienteId(String(factura.cliente_id));
-
-        await cargarViviendas(
-          factura.cliente_id
-        );
-      }
-
-      if (factura?.vivienda_id) {
-        setViviendaId(String(factura.vivienda_id));
-      }
+      setViviendaId(
+        viviendaSeleccionada ? String(viviendaSeleccionada) : ""
+      );
 
       setDescripcion(
+        extra?.descripcion ||
+        extra?.concepto ||
         factura?.descripcion ||
-          factura?.concepto ||
-          ""
-      );
-    } catch (err) {
-      console.error(
-        "Error al cargar el trabajo extra:",
-        err
+        factura?.concepto ||
+        ""
       );
 
+      setMateriales(extra?.materiales || "");
+      setTiempo(extra?.tiempo_empleado || "");
+      setAlerta(Boolean(extra?.alerta));
+      setFotos(normalizarFotos(extra?.fotos));
+    } catch (err) {
+      console.error("Error cargando el trabajo extra:", err);
       setError(
-        err?.message ||
-          "Error al cargar los datos del trabajo extra."
+        err?.message || "No se pudieron cargar los datos del extra."
       );
     } finally {
       setLoading(false);
@@ -398,44 +249,21 @@ export default function TecnicoInspeccionExtra() {
   };
 
   useEffect(() => {
-    let cancelado = false;
-
-    async function cargar() {
-      await cargarDetalleExtra();
-
-      if (cancelado) {
-        return;
-      }
-    }
-
-    cargar();
-
-    return () => {
-      cancelado = true;
-    };
+    cargarDetalleExtra();
   }, [id]);
 
-  /*
-   * Genera enlaces temporales para visualizar las fotografías.
-   * No utiliza getPublicUrl().
-   */
   useEffect(() => {
     let cancelado = false;
 
-    async function resolverFotos() {
+    const resolverFotos = async () => {
       setFotosUrlsFirmadas([]);
 
-      if (!Array.isArray(fotos) || fotos.length === 0) {
-        return;
-      }
+      if (!Array.isArray(fotos) || fotos.length === 0) return;
 
       const urls = await Promise.all(
         fotos.map(async (foto, index) => {
           const referencia = obtenerBucketYReferencia(foto);
-
-          if (!referencia) {
-            return null;
-          }
+          if (!referencia) return null;
 
           if (
             referencia.referencia.startsWith("data:") ||
@@ -444,39 +272,25 @@ export default function TecnicoInspeccionExtra() {
             return referencia.referencia;
           }
 
-          if (!referencia.bucket) {
-            return null;
-          }
+          if (!referencia.bucket) return null;
 
           try {
-            const url = await resolverUrlPdfSegura(
-              referencia.referencia,
-              referencia.bucket,
-              3600
-            );
-
-            if (!url) {
-              console.error(
-                `No se pudo generar el enlace temporal de la foto ${index + 1}.`
-              );
-            }
-
-            return url || null;
+            return (
+              await resolverUrlPdfSegura(
+                referencia.referencia,
+                referencia.bucket,
+                3600
+              )
+            ) || null;
           } catch (err) {
-            console.error(
-              `Error resolviendo la foto ${index + 1}:`,
-              err
-            );
-
+            console.error(`Error resolviendo la foto ${index + 1}:`, err);
             return null;
           }
         })
       );
 
-      if (!cancelado) {
-        setFotosUrlsFirmadas(urls);
-      }
-    }
+      if (!cancelado) setFotosUrlsFirmadas(urls);
+    };
 
     resolverFotos();
 
@@ -487,41 +301,26 @@ export default function TecnicoInspeccionExtra() {
 
   const manejarCambioCliente = async (e) => {
     const nuevoClienteId = e.target.value;
-
     setClienteId(nuevoClienteId);
     setViviendaId("");
     setViviendas([]);
     setError("");
 
-    if (!nuevoClienteId) {
-      return;
-    }
+    if (!nuevoClienteId) return;
 
     try {
       setSaving(true);
-
       await cargarViviendas(nuevoClienteId);
     } catch (err) {
-      console.error(
-        "Error cargando viviendas:",
-        err
-      );
-
-      setError(
-        err?.message ||
-          "No se pudieron cargar las viviendas."
-      );
+      setError(err?.message || "No se pudieron cargar las viviendas.");
     } finally {
       setSaving(false);
     }
   };
 
   const manejarSubidaFotos = async (e) => {
-    const files = e.target.files;
-
-    if (!files || files.length === 0) {
-      return;
-    }
+    const archivos = Array.from(e.target.files || []);
+    if (!archivos.length) return;
 
     try {
       setSaving(true);
@@ -530,79 +329,43 @@ export default function TecnicoInspeccionExtra() {
 
       const nuevasFotos = [...fotos];
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        if (!file.type.startsWith("image/")) {
+      for (const archivo of archivos) {
+        if (!archivo.type.startsWith("image/")) {
           throw new Error(
-            `El archivo "${file.name}" no es una imagen válida.`
+            `El archivo "${archivo.name}" no es una imagen válida.`
           );
         }
 
-        const cleanFileName = file.name.replace(
+        const nombreLimpio = archivo.name.replace(
           /[^a-zA-Z0-9._-]/g,
           "_"
         );
 
-        const fileName =
-          `${Date.now()}_${Math.floor(
-            Math.random() * 1000
-          )}_${cleanFileName}`;
+        const nombreArchivo =
+          `${Date.now()}_${Math.floor(Math.random() * 100000)}_${nombreLimpio}`;
 
-        /*
-         * Conservamos temporalmente el bucket y la ruta actuales
-         * para no romper las políticas existentes. El cambio a un
-         * bucket privado específico requiere preparar antes sus
-         * políticas de lectura y subida para los extras.
-         */
-        const storagePath =
-          `${CARPETA_FOTOS}/${fileName}`;
+        const ruta = `${CARPETA_FOTOS}/${nombreArchivo}`;
 
-        const {
-          data: uploadData,
-          error: uploadError
-        } = await supabase.storage
+        const { data, error: uploadError } = await supabase.storage
           .from(BUCKET_FOTOS)
-          .upload(storagePath, file, {
+          .upload(ruta, archivo, {
             cacheControl: "3600",
             upsert: false,
-            contentType: file.type
+            contentType: archivo.type
           });
 
-        if (uploadError) {
-          console.error(
-            "Error al subir imagen:",
-            uploadError
-          );
+        if (uploadError) throw uploadError;
 
-          throw new Error(
-            uploadError.message ||
-              "Error al subir la imagen."
-          );
-        }
-
-        /*
-         * Guardamos la ruta, no una URL pública ni una URL firmada
-         * que caducará.
-         */
-        nuevasFotos.push(
-          uploadData?.path || storagePath
-        );
+        // Guardamos solo la ruta; nunca una URL firmada que caduque.
+        nuevasFotos.push(data?.path || ruta);
       }
 
       setFotos(nuevasFotos);
-      setMensaje("¡Fotos subidas con éxito!");
+      setMensaje("Fotografías subidas correctamente.");
     } catch (err) {
-      console.error(
-        "Error detallado al subir fotos:",
-        err
-      );
-
+      console.error("Error subiendo fotografías:", err);
       setError(
-        `No se pudieron subir las fotos (${
-          err?.message ||
-          "Error de red o permisos"
-        }).`
+        `No se pudieron subir las fotos: ${err?.message || "Error de permisos o conexión"}.`
       );
     } finally {
       setSaving(false);
@@ -612,7 +375,6 @@ export default function TecnicoInspeccionExtra() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setError("");
     setMensaje("");
 
@@ -627,68 +389,46 @@ export default function TecnicoInspeccionExtra() {
     }
 
     const vivienda = viviendas.find(
-      (v) =>
-        String(v.id) === String(viviendaId)
+      (v) => String(v.id) === String(viviendaId)
     );
 
     if (!vivienda) {
-      setError(
-        "No se pudo localizar la vivienda seleccionada."
-      );
+      setError("No se pudo localizar la vivienda seleccionada.");
       return;
     }
 
-    if (
-      String(vivienda.cliente_id) !==
-      String(clienteId)
-    ) {
-      setError(
-        "La vivienda seleccionada no pertenece al cliente seleccionado."
-      );
+    if (String(vivienda.cliente_id) !== String(clienteId)) {
+      setError("La vivienda no pertenece al cliente seleccionado.");
       return;
     }
 
     const cliente = clientes.find(
-      (c) =>
-        String(c.id) === String(clienteId)
+      (c) => String(c.id) === String(clienteId)
     );
 
     if (!cliente) {
-      setError(
-        "No se pudo localizar el cliente seleccionado."
-      );
+      setError("No se pudo localizar el cliente seleccionado.");
       return;
     }
 
     try {
       setSaving(true);
 
-      /*
-       * El técnico registra únicamente la inspección.
-       * No modifica la tabla facturas ni sus importes,
-       * precios, IVA, totales o estado administrativo.
-       */
+      const extraPayload = {
+        descripcion: descripcion || extraData?.descripcion || "Trabajo extra",
+        materiales: materiales || null,
+        tiempo_empleado: tiempo || null,
+        fotos,
+        estado_tecnico: "completado",
+        alerta
+      };
+
+      if (alerta) extraPayload.alerta_vista = false;
+
       if (extraData?.id) {
-        const extraPayload = {
-          descripcion:
-            descripcion ||
-            extraData.descripcion ||
-            "Trabajo extra",
-
-          materiales: materiales || null,
-          tiempo_empleado: tiempo || null,
-          fotos,
-          estado_tecnico: "completado",
-          alerta
-        };
-
-        if (alerta) {
-          extraPayload.alerta_vista = false;
-        }
-
         const {
           data: extraActualizado,
-          error: extraUpdateError
+          error: actualizarExtraError
         } = await supabase
           .from("extras")
           .update(extraPayload)
@@ -696,159 +436,155 @@ export default function TecnicoInspeccionExtra() {
           .select("*")
           .maybeSingle();
 
-        if (extraUpdateError) {
-          throw extraUpdateError;
-        }
+        if (actualizarExtraError) throw actualizarExtraError;
 
         if (!extraActualizado) {
           throw new Error(
-            "El extra no se ha podido actualizar. Comprueba que el técnico tenga permiso para completar la inspección."
+            "No se pudo actualizar el extra. Comprueba los permisos del técnico."
           );
         }
 
         setExtraData(extraActualizado);
 
-        alert(
-          "Inspección actualizada correctamente y enviada al administrador."
-        );
+        /*
+         * El panel del técnico filtra por facturas.estado_tecnico.
+         * Actualizamos únicamente ese campo; no tocamos importes,
+         * IVA, totales, estado de pago ni datos administrativos.
+         */
+        const facturaId = extraActualizado.factura_id || facturaData?.id;
 
+        if (facturaId) {
+          const {
+            error: actualizarFacturaError
+          } = await supabase
+            .from("facturas")
+            .update({ estado_tecnico: "completado" })
+            .eq("id", facturaId);
+
+          if (actualizarFacturaError) {
+            throw new Error(
+              "El extra se guardó, pero no se pudo actualizar el estado técnico de la factura. " +
+              actualizarFacturaError.message
+            );
+          }
+        }
+
+        alert("Inspección actualizada y enviada al administrador.");
         navigate("/tecnico");
         return;
       }
 
-      /*
-       * Nuevo extra: el precio lo establece el administrador.
-       */
-      const extraPayload = {
+      const nuevoExtraPayload = {
+        ...extraPayload,
         cliente_id: clienteId,
         vivienda_id: viviendaId,
         tecnico_id: vivienda.tecnico_id,
         cliente_email: cliente.email || null,
-
-        descripcion:
-          descripcion || "Trabajo extra",
-
-        materiales: materiales || null,
-        tiempo_empleado: tiempo || null,
-
         estado: "pendiente",
-        estado_tecnico: "completado",
         estado_admin: "pendiente",
-
-        direccion:
-          vivienda.direccion ||
-          cliente.direccion ||
-          null,
-
-        fotos,
-        alerta,
+        direccion: vivienda.direccion || cliente.direccion || null,
         creado_en: new Date().toISOString()
       };
 
       if (facturaData?.id) {
-        extraPayload.factura_id = facturaData.id;
-      }
-
-      if (alerta) {
-        extraPayload.alerta_vista = false;
+        nuevoExtraPayload.factura_id = facturaData.id;
       }
 
       const {
         data: nuevoExtra,
-        error: errorCrearExtra
+        error: crearError
       } = await supabase
         .from("extras")
-        .insert(extraPayload)
+        .insert(nuevoExtraPayload)
         .select("*")
         .maybeSingle();
 
-      if (errorCrearExtra) {
-        throw errorCrearExtra;
-      }
-
+      if (crearError) throw crearError;
       if (!nuevoExtra) {
-        throw new Error(
-          "No se ha podido recuperar el registro del extra creado."
-        );
+        throw new Error("No se pudo recuperar el extra creado.");
       }
 
       setExtraData(nuevoExtra);
 
-      alert(
-        "Extra creado correctamente y enviado al administrador para su valoración."
-      );
+      if (facturaData?.id) {
+        const { error: facturaUpdateError } = await supabase
+          .from("facturas")
+          .update({ estado_tecnico: "completado" })
+          .eq("id", facturaData.id);
 
+        if (facturaUpdateError) {
+          throw new Error(
+            "El extra se creó, pero no se pudo actualizar el estado técnico de la factura. " +
+            facturaUpdateError.message
+          );
+        }
+      }
+
+      alert("Extra creado y enviado al administrador para su valoración.");
       navigate("/tecnico");
     } catch (err) {
-      console.error(
-        "Error guardando la inspección:",
-        err
-      );
-
+      console.error("Error guardando la inspección:", err);
       setError(
         "Error al guardar la inspección: " +
-          (err?.message || "Error desconocido")
+        (err?.message || "Error desconocido")
       );
     } finally {
       setSaving(false);
     }
   };
 
+  const caja = {
+    background: "rgba(11, 19, 32, 0.9)",
+    padding: "14px",
+    borderRadius: "12px",
+    border: BORDE_DORADO_FINO
+  };
+
   if (loading) {
     return (
-      <div
-        style={{
-          backgroundColor: FONDO_PRINCIPAL,
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          fontFamily: "Inter, sans-serif"
-        }}
-      >
-        <h3 style={TEXTO_DORADO_BRILLO}>
-          Cargando datos del trabajo...
-        </h3>
+      <div style={{
+        backgroundColor: FONDO_PRINCIPAL,
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        fontFamily: "Inter, sans-serif"
+      }}>
+        <h3 style={TEXTO_DORADO_BRILLO}>Cargando datos del trabajo...</h3>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        backgroundColor: FONDO_PRINCIPAL,
-        minHeight: "100vh",
-        padding: "16px",
+    <div style={{
+      backgroundColor: FONDO_PRINCIPAL,
+      minHeight: "100vh",
+      padding: "16px",
+      display: "flex",
+      justifyContent: "center",
+      fontFamily: "Inter, sans-serif",
+      boxSizing: "border-box"
+    }}>
+      <div style={{
+        width: "100%",
+        maxWidth: "480px",
+        background: FONDO_TARJETA,
+        border: BORDE_DORADO_FINO,
+        borderRadius: "16px",
+        padding: "20px",
         display: "flex",
-        justifyContent: "center",
-        fontFamily: "Inter, sans-serif",
+        flexDirection: "column",
+        gap: "16px",
+        boxShadow: SOMBRA_LUXURY,
         boxSizing: "border-box"
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "480px",
-          background: FONDO_TARJETA,
-          border: BORDE_DORADO_FINO,
-          borderRadius: "16px",
-          padding: "20px",
+      }}>
+        <div style={{
           display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-          boxShadow: SOMBRA_LUXURY,
-          boxSizing: "border-box"
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            borderBottom: BORDE_DORADO_FINO,
-            paddingBottom: "14px"
-          }}
-        >
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderBottom: BORDE_DORADO_FINO,
+          paddingBottom: "14px"
+        }}>
           <button
             type="button"
             onClick={() => navigate("/tecnico")}
@@ -866,74 +602,57 @@ export default function TecnicoInspeccionExtra() {
             ← Volver
           </button>
 
-          <h2
-            style={{
-              ...TEXTO_DORADO_BRILLO,
-              fontSize: "18px",
-              fontWeight: "900",
-              margin: 0,
-              textTransform: "uppercase"
-            }}
-          >
+          <h2 style={{
+            ...TEXTO_DORADO_BRILLO,
+            fontSize: "18px",
+            fontWeight: "900",
+            margin: 0,
+            textTransform: "uppercase"
+          }}>
             Inspección de Extra
           </h2>
         </div>
 
         {mensaje && (
-          <div
-            style={{
-              backgroundColor: "rgba(16, 185, 129, 0.15)",
-              border: "1px solid rgba(16, 185, 129, 0.4)",
-              padding: "12px",
-              borderRadius: "10px",
-              fontSize: "12px",
-              fontWeight: "700",
-              color: "#34d399",
-              textAlign: "center"
-            }}
-          >
+          <div style={{
+            backgroundColor: "rgba(16,185,129,0.15)",
+            border: "1px solid rgba(16,185,129,0.4)",
+            padding: "12px",
+            borderRadius: "10px",
+            color: "#34d399",
+            fontSize: "12px",
+            fontWeight: "700",
+            textAlign: "center"
+          }}>
             {mensaje}
           </div>
         )}
 
         {error && (
-          <div
-            style={{
-              backgroundColor: "rgba(239, 68, 68, 0.15)",
-              border: "1px solid rgba(239, 68, 68, 0.4)",
-              padding: "12px",
-              borderRadius: "10px",
-              fontSize: "12px",
-              fontWeight: "700",
-              color: "#ef4444",
-              textAlign: "center"
-            }}
-          >
+          <div style={{
+            backgroundColor: "rgba(239,68,68,0.15)",
+            border: "1px solid rgba(239,68,68,0.4)",
+            padding: "12px",
+            borderRadius: "10px",
+            color: "#ef4444",
+            fontSize: "12px",
+            fontWeight: "700",
+            textAlign: "center"
+          }}>
             {error}
           </div>
         )}
 
-        <div
-          style={{
-            background: "rgba(11, 19, 32, 0.9)",
-            padding: "14px",
-            borderRadius: "12px",
-            border: BORDE_DORADO_FINO
-          }}
-        >
-          <label
-            style={{
-              display: "block",
-              fontSize: "12px",
-              color: COLOR_DORADO,
-              fontWeight: "700",
-              textTransform: "uppercase",
-              marginBottom: "7px"
-            }}
-          >
+        <div style={caja}>
+          <label style={{
+            display: "block",
+            fontSize: "12px",
+            color: COLOR_DORADO,
+            fontWeight: "700",
+            marginBottom: "7px"
+          }}>
             Cliente
           </label>
-
           <select
             value={clienteId}
             onChange={manejarCambioCliente}
@@ -949,50 +668,29 @@ export default function TecnicoInspeccionExtra() {
               boxSizing: "border-box"
             }}
           >
-            <option value="">
-              -- Selecciona cliente --
-            </option>
-
+            <option value="">-- Selecciona cliente --</option>
             {clientes.map((cliente) => (
-              <option
-                key={cliente.id}
-                value={cliente.id}
-              >
+              <option key={cliente.id} value={cliente.id}>
                 {cliente.nombre}
-                {cliente.direccion
-                  ? ` — ${cliente.direccion}`
-                  : ""}
+                {cliente.direccion ? ` — ${cliente.direccion}` : ""}
               </option>
             ))}
           </select>
         </div>
 
-        <div
-          style={{
-            background: "rgba(11, 19, 32, 0.9)",
-            padding: "14px",
-            borderRadius: "12px",
-            border: BORDE_DORADO_FINO
-          }}
-        >
-          <label
-            style={{
-              display: "block",
-              fontSize: "12px",
-              color: COLOR_DORADO,
-              fontWeight: "700",
-              textTransform: "uppercase",
-              marginBottom: "7px"
-            }}
-          >
+        <div style={caja}>
+          <label style={{
+            display: "block",
+            fontSize: "12px",
+            color: COLOR_DORADO,
+            fontWeight: "700",
+            marginBottom: "7px"
+          }}>
             Vivienda
           </label>
-
           <select
             value={viviendaId}
-            onChange={(e) =>
-              setViviendaId(e.target.value)
-            }
+            onChange={(e) => setViviendaId(e.target.value)}
             disabled={!clienteId || saving}
             style={{
               width: "100%",
@@ -1010,176 +708,77 @@ export default function TecnicoInspeccionExtra() {
                 ? "-- Selecciona primero un cliente --"
                 : "-- Selecciona vivienda --"}
             </option>
-
             {viviendas.map((vivienda) => (
-              <option
-                key={vivienda.id}
-                value={vivienda.id}
-              >
-                {vivienda.direccion ||
-                  `Vivienda #${vivienda.id}`}
+              <option key={vivienda.id} value={vivienda.id}>
+                {vivienda.direccion || `Vivienda #${vivienda.id}`}
               </option>
             ))}
           </select>
-
           {clienteId && viviendas.length === 0 && (
-            <p
-              style={{
-                color: "#f59e0b",
-                fontSize: "12px",
-                marginBottom: 0
-              }}
-            >
+            <p style={{ color: "#f59e0b", fontSize: "12px" }}>
               No hay viviendas disponibles para este cliente.
             </p>
           )}
         </div>
 
-        <div
-          style={{
-            background: "rgba(11, 19, 32, 0.9)",
-            padding: "14px",
-            borderRadius: "12px",
-            border: BORDE_DORADO_FINO
-          }}
-        >
-          <p
-            style={{
-              fontSize: "12px",
-              margin: "4px 0",
-              color: "#ccc"
-            }}
-          >
-            <strong style={{ color: COLOR_DORADO }}>
-              Extra:
-            </strong>{" "}
-            {extraData?.descripcion ||
-              extraData?.concepto ||
-              descripcion ||
-              "Nuevo trabajo extra"}
+        <div style={caja}>
+          <p style={{ color: "#ccc", fontSize: "12px" }}>
+            <strong style={{ color: COLOR_DORADO }}>Extra:</strong>{" "}
+            {extraData?.descripcion || descripcion || "Nuevo trabajo extra"}
           </p>
-
           {facturaData?.id && (
-            <p
-              style={{
-                fontSize: "12px",
-                margin: "4px 0",
-                color: "#ccc"
-              }}
-            >
-              <strong style={{ color: COLOR_DORADO }}>
-                Factura:
-              </strong>{" "}
+            <p style={{ color: "#ccc", fontSize: "12px" }}>
+              <strong style={{ color: COLOR_DORADO }}>Factura:</strong>{" "}
               #{facturaData.id}
             </p>
           )}
-
           {extraData?.id && (
-            <p
-              style={{
-                fontSize: "11px",
-                margin: "6px 0 0",
-                color: "#777"
-              }}
-            >
+            <p style={{ color: "#777", fontSize: "11px" }}>
               ID extra: {extraData.id}
-            </p>
-          )}
-
-          {!extraData && (
-            <p
-              style={{
-                fontSize: "11px",
-                margin: "6px 0 0",
-                color: "#34d399"
-              }}
-            >
-              Nuevo extra: se creará al guardar.
             </p>
           )}
         </div>
 
-        <div
-          style={{
-            background: "rgba(11, 19, 32, 0.9)",
-            padding: "14px",
-            borderRadius: "12px",
-            border: BORDE_DORADO_FINO
-          }}
-        >
-          <p
-            style={{
-              fontSize: "12px",
-              color: COLOR_DORADO,
-              fontWeight: "700",
-              textTransform: "uppercase",
-              margin: "0 0 7px"
-            }}
-          >
-            Valoración económica
+        <div style={caja}>
+          <p style={{
+            fontSize: "12px",
+            color: COLOR_DORADO,
+            fontWeight: "700",
+            margin: "0 0 7px"
+          }}>
+            VALORACIÓN ECONÓMICA
           </p>
-
-          <p
-            style={{
-              color: "#ccc",
-              fontSize: "13px",
-              margin: 0,
-              lineHeight: 1.5
-            }}
-          >
-            El precio, el IVA y el total de la factura
-            son gestionados por el administrador.
-            El técnico únicamente registra los datos
+          <p style={{ color: "#ccc", fontSize: "13px", lineHeight: 1.5 }}>
+            El precio, el IVA y el total de la factura los gestiona el
+            administrador. El técnico registra únicamente los datos
             de la inspección.
           </p>
-
           {extraData?.precio !== null &&
             extraData?.precio !== undefined && (
-              <p
-                style={{
-                  color: "#888",
-                  fontSize: "12px",
-                  margin: "8px 0 0"
-                }}
-              >
+              <p style={{ color: "#888", fontSize: "12px" }}>
                 Precio registrado:{" "}
-                {Number(extraData.precio).toLocaleString(
-                  "es-ES",
-                  {
-                    style: "currency",
-                    currency: "EUR"
-                  }
-                )}
+                {Number(extraData.precio).toLocaleString("es-ES", {
+                  style: "currency",
+                  currency: "EUR"
+                })}
               </p>
             )}
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: "10px"
-          }}
-        >
-          <label
-            style={{
-              flex: 1,
-              textAlign: "center",
-              background:
-                "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
-              color: "#fff",
-              padding: "12px",
-              borderRadius: "12px",
-              fontWeight: "900",
-              fontSize: "12px",
-              cursor: "pointer",
-              border: BORDE_DORADO_FINO,
-              boxShadow:
-                "0 4px 15px rgba(245, 158, 11, 0.3)",
-              textTransform: "uppercase"
-            }}
-          >
+        <div style={{ display: "flex", gap: "10px" }}>
+          <label style={{
+            flex: 1,
+            textAlign: "center",
+            background: "linear-gradient(135deg,#f59e0b 0%,#b45309 100%)",
+            color: "#fff",
+            padding: "12px",
+            borderRadius: "12px",
+            fontWeight: "900",
+            fontSize: "12px",
+            cursor: "pointer",
+            border: BORDE_DORADO_FINO
+          }}>
             📸 Hacer Foto
-
             <input
               type="file"
               accept="image/*"
@@ -1190,26 +789,19 @@ export default function TecnicoInspeccionExtra() {
             />
           </label>
 
-          <label
-            style={{
-              flex: 1,
-              textAlign: "center",
-              background:
-                "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)",
-              color: "#fff",
-              padding: "12px",
-              borderRadius: "12px",
-              fontWeight: "900",
-              fontSize: "12px",
-              cursor: "pointer",
-              border: BORDE_DORADO_FINO,
-              boxShadow:
-                "0 4px 15px rgba(56, 189, 248, 0.3)",
-              textTransform: "uppercase"
-            }}
-          >
+          <label style={{
+            flex: 1,
+            textAlign: "center",
+            background: "linear-gradient(135deg,#38bdf8 0%,#1e3a8a 100%)",
+            color: "#fff",
+            padding: "12px",
+            borderRadius: "12px",
+            fontWeight: "900",
+            fontSize: "12px",
+            cursor: "pointer",
+            border: BORDE_DORADO_FINO
+          }}>
             🖼️ Galería
-
             <input
               type="file"
               accept="image/*"
@@ -1222,41 +814,13 @@ export default function TecnicoInspeccionExtra() {
         </div>
 
         {fotos.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              flexWrap: "wrap"
-            }}
-          >
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             {fotos.map((foto, index) => {
               const url = fotosUrlsFirmadas[index];
 
-              if (!url) {
-                return (
-                  <div
-                    key={index}
-                    style={{
-                      width: "60px",
-                      height: "60px",
-                      borderRadius: "8px",
-                      border: BORDE_DORADO_FINO,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#94a3b8",
-                      fontSize: "10px",
-                      textAlign: "center"
-                    }}
-                  >
-                    Cargando...
-                  </div>
-                );
-              }
-
-              return (
+              return url ? (
                 <img
-                  key={index}
+                  key={`${index}-${obtenerReferenciaFoto(foto)}`}
                   src={url}
                   alt={`Evidencia ${index + 1}`}
                   style={{
@@ -1267,6 +831,23 @@ export default function TecnicoInspeccionExtra() {
                     border: BORDE_DORADO_FINO
                   }}
                 />
+              ) : (
+                <div
+                  key={`${index}-${obtenerReferenciaFoto(foto)}`}
+                  style={{
+                    width: "60px",
+                    height: "60px",
+                    borderRadius: "8px",
+                    border: BORDE_DORADO_FINO,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#94a3b8",
+                    fontSize: "10px"
+                  }}
+                >
+                  Cargando...
+                </div>
               );
             })}
           </div>
@@ -1274,228 +855,127 @@ export default function TecnicoInspeccionExtra() {
 
         <form
           onSubmit={handleSubmit}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "14px"
-          }}
+          style={{ display: "flex", flexDirection: "column", gap: "14px" }}
         >
-          <div
-            style={{
-              background: "rgba(11, 19, 32, 0.9)",
-              padding: "12px 14px",
-              borderRadius: "12px",
-              border: BORDE_DORADO_FINO,
+          <div style={caja}>
+            <label style={{
               display: "flex",
-              alignItems: "center"
-            }}
-          >
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                cursor: "pointer",
-                width: "100%"
-              }}
-            >
+              alignItems: "center",
+              cursor: "pointer",
+              color: "#ef4444",
+              fontSize: "13px",
+              fontWeight: "800"
+            }}>
               <input
                 type="checkbox"
                 checked={alerta}
-                onChange={(e) =>
-                  setAlerta(e.target.checked)
-                }
+                onChange={(e) => setAlerta(e.target.checked)}
                 style={{
                   width: "20px",
                   height: "20px",
                   marginRight: "12px",
-                  cursor: "pointer",
                   accentColor: "#ef4444"
                 }}
               />
-
-              <span
-                style={{
-                  fontSize: "13px",
-                  color: "#ef4444",
-                  fontWeight: "800",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.3px"
-                }}
-              >
-                ⚠️ Marcar como ALERTA / Urgencia importante
-              </span>
+              ⚠️ Marcar como ALERTA / Urgencia importante
             </label>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px"
-            }}
-          >
-            <label
-              style={{
-                fontSize: "12px",
-                color: COLOR_DORADO,
-                fontWeight: "700",
-                textTransform: "uppercase"
-              }}
-            >
-              Descripción del trabajo realizado:
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label style={{
+              fontSize: "12px",
+              color: COLOR_DORADO,
+              fontWeight: "700"
+            }}>
+              Descripción del trabajo realizado
             </label>
-
             <textarea
+              rows="4"
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              placeholder="Detalla qué se ha reparado o revisado..."
+              required
               style={{
-                backgroundColor: "rgba(11, 19, 32, 0.8)",
+                backgroundColor: "rgba(11,19,32,0.8)",
                 border: BORDE_DORADO_FINO,
                 borderRadius: "12px",
                 padding: "12px",
                 color: "#fff",
                 fontSize: "13px",
                 resize: "vertical",
-                outline: "none",
                 boxSizing: "border-box"
               }}
-              rows="4"
-              value={descripcion}
-              onChange={(e) =>
-                setDescripcion(e.target.value)
-              }
-              placeholder="Detalla qué se ha reparado o revisado..."
-              required
             />
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px"
-            }}
-          >
-            <label
-              style={{
-                fontSize: "12px",
-                color: COLOR_DORADO,
-                fontWeight: "700",
-                textTransform: "uppercase"
-              }}
-            >
-              Materiales usados:
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label style={{
+              fontSize: "12px",
+              color: COLOR_DORADO,
+              fontWeight: "700"
+            }}>
+              Materiales usados
             </label>
-
             <input
               type="text"
-              style={{
-                backgroundColor: "rgba(11, 19, 32, 0.8)",
-                border: BORDE_DORADO_FINO,
-                borderRadius: "12px",
-                padding: "12px",
-                color: "#fff",
-                fontSize: "13px",
-                outline: "none",
-                boxSizing: "border-box"
-              }}
               value={materiales}
-              onChange={(e) =>
-                setMateriales(e.target.value)
-              }
+              onChange={(e) => setMateriales(e.target.value)}
               placeholder="Ej: Tubo de PVC, silicona, tornillos..."
-            />
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px"
-            }}
-          >
-            <label
               style={{
-                fontSize: "12px",
-                color: COLOR_DORADO,
-                fontWeight: "700",
-                textTransform: "uppercase"
-              }}
-            >
-              Tiempo empleado:
-            </label>
-
-            <input
-              type="text"
-              style={{
-                backgroundColor: "rgba(11, 19, 32, 0.8)",
+                backgroundColor: "rgba(11,19,32,0.8)",
                 border: BORDE_DORADO_FINO,
                 borderRadius: "12px",
                 padding: "12px",
                 color: "#fff",
                 fontSize: "13px",
-                outline: "none",
                 boxSizing: "border-box"
               }}
+            />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label style={{
+              fontSize: "12px",
+              color: COLOR_DORADO,
+              fontWeight: "700"
+            }}>
+              Tiempo empleado
+            </label>
+            <input
+              type="text"
               value={tiempo}
-              onChange={(e) =>
-                setTiempo(e.target.value)
-              }
+              onChange={(e) => setTiempo(e.target.value)}
               placeholder="Ej: 2 horas"
+              style={{
+                backgroundColor: "rgba(11,19,32,0.8)",
+                border: BORDE_DORADO_FINO,
+                borderRadius: "12px",
+                padding: "12px",
+                color: "#fff",
+                fontSize: "13px",
+                boxSizing: "border-box"
+              }}
             />
           </div>
 
           <button
             type="submit"
-            disabled={
-              saving ||
-              !clienteId ||
-              !viviendaId
-            }
+            disabled={saving || !clienteId || !viviendaId}
             style={{
-              background:
-                saving ||
-                !clienteId ||
-                !viviendaId
-                  ? "rgba(255,255,255,0.08)"
-                  : "linear-gradient(135deg, #10b981 0%, #047857 100%)",
-
-              color:
-                saving ||
-                !clienteId ||
-                !viviendaId
-                  ? "#64748b"
-                  : "#fff",
-
-              border:
-                saving ||
-                !clienteId ||
-                !viviendaId
-                  ? BORDE_DORADO_FINO
-                  : "1px solid rgba(16, 185, 129, 0.6)",
-
+              background: saving || !clienteId || !viviendaId
+                ? "rgba(255,255,255,0.08)"
+                : "linear-gradient(135deg,#10b981 0%,#047857 100%)",
+              color: saving || !clienteId || !viviendaId ? "#64748b" : "#fff",
+              border: BORDE_DORADO_FINO,
               padding: "14px",
               borderRadius: "16px",
               fontSize: "14px",
               fontWeight: "900",
-
-              cursor:
-                saving ||
-                !clienteId ||
-                !viviendaId
-                  ? "not-allowed"
-                  : "pointer",
-
+              cursor: saving || !clienteId || !viviendaId
+                ? "not-allowed"
+                : "pointer",
               marginTop: "10px",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-
-              boxShadow:
-                saving ||
-                !clienteId ||
-                !viviendaId
-                  ? "none"
-                  : "0 4px 15px rgba(16, 185, 129, 0.3)",
-
-              transition: "all 0.2s ease"
+              textTransform: "uppercase"
             }}
           >
             {saving
