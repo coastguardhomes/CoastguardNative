@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
@@ -9,10 +10,11 @@ const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
 const FONDO_TARJETA = "linear-gradient(145deg, #0b1320 0%, #04070d 100%)";
 const BORDE_DORADO_FINO = "1px solid rgba(224, 176, 52, 0.4)";
-const SOMBRA_LUXURY = "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
+const SOMBRA_LUXURY =
+  "0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(224, 176, 52, 0.12)";
 const TEXTO_DORADO_BRILLO = {
   color: COLOR_DORADO,
-  textShadow: "0 0 12px rgba(224, 176, 52, 0.6)"
+  textShadow: "0 0 12px rgba(224, 176, 52, 0.6)",
 };
 
 export default function ClienteInspeccionesLista() {
@@ -26,7 +28,10 @@ export default function ClienteInspeccionesLista() {
 
   useEffect(() => {
     async function cargarTodo() {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
@@ -38,35 +43,38 @@ export default function ClienteInspeccionesLista() {
           .eq("usuario_id", user.id)
           .maybeSingle();
 
+        // Compatibilidad con perfiles que usan user_id.
         if (!clienteData) {
-          const { data: clienteById } =
-            await supabase
-              .from("clientes")
-              .select("id")
-              .eq("id", user.id)
-              .maybeSingle();
+          const { data: clienteByUserId } = await supabase
+            .from("clientes")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          clienteData = clienteByUserId;
+        }
+
+        // Mantener la búsqueda existente por id como último recurso.
+        if (!clienteData) {
+          const { data: clienteById } = await supabase
+            .from("clientes")
+            .select("id")
+            .eq("id", user.id)
+            .maybeSingle();
 
           clienteData = clienteById;
         }
 
         if (!clienteData) {
-          setErrorMsg(
-            t("errorPerfilClienteAsociado")
-          );
+          setErrorMsg(t("errorPerfilClienteAsociado"));
           setLoading(false);
           return;
         }
 
-        const clienteId =
-          clienteData.id;
+        const clienteId = clienteData.id;
 
-        // IMPORTANTE:
-        // El cliente SOLO recibe inspecciones
-        // que administración haya publicado.
-        const [
-          resInspecciones,
-          resExtras
-        ] = await Promise.all([
+        // El cliente solo debe recibir inspecciones publicadas.
+        const [resInspecciones, resExtras] = await Promise.all([
           supabase
             .from("inspecciones")
             .select("*")
@@ -76,51 +84,45 @@ export default function ClienteInspeccionesLista() {
           supabase
             .from("extras")
             .select("*")
-            .eq("cliente_id", clienteId)
+            .eq("cliente_id", clienteId),
         ]);
 
-        const listaInspecciones =
-          (resInspecciones.data || [])
-            .map((item) => ({
-              ...item,
-              tipo: "inspeccion",
-              fechaOrden: new Date(
-                item.created_at ||
-                item.fecha ||
-                0
-              ),
-            }));
+        if (resInspecciones.error) {
+          console.error(
+            "Error al cargar las inspecciones del cliente:",
+            resInspecciones.error
+          );
+        }
 
-        const listaExtras =
-          (resExtras.data || [])
-            .map((item) => ({
-              ...item,
-              tipo: "extra",
-              fechaOrden: new Date(
-                item.created_at || 0
-              ),
-            }));
+        if (resExtras.error) {
+          console.error(
+            "Error al cargar los servicios extra del cliente:",
+            resExtras.error
+          );
+        }
 
-        const combinados = [
-          ...listaInspecciones,
-          ...listaExtras
-        ].sort(
-          (a, b) =>
-            b.fechaOrden - a.fechaOrden
+        const listaInspecciones = (resInspecciones.data || []).map(
+          (item) => ({
+            ...item,
+            tipo: "inspeccion",
+            fechaOrden: new Date(item.created_at || item.fecha || 0),
+          })
+        );
+
+        const listaExtras = (resExtras.data || []).map((item) => ({
+          ...item,
+          tipo: "extra",
+          fechaOrden: new Date(item.created_at || 0),
+        }));
+
+        const combinados = [...listaInspecciones, ...listaExtras].sort(
+          (a, b) => b.fechaOrden - a.fechaOrden
         );
 
         setElementos(combinados);
-
       } catch (err) {
-        console.error(
-          "Error:",
-          err
-        );
-
-        setErrorMsg(
-          t("errorCargarDatos")
-        );
-
+        console.error("Error al cargar el listado del cliente:", err);
+        setErrorMsg(t("errorCargarDatos"));
       } finally {
         setLoading(false);
       }
@@ -139,17 +141,10 @@ export default function ClienteInspeccionesLista() {
             alignItems: "center",
             height: "80vh",
             color: COLOR_DORADO,
-            background:
-              FONDO_PRINCIPAL,
+            background: FONDO_PRINCIPAL,
           }}
         >
-          <h3
-            style={
-              TEXTO_DORADO_BRILLO
-            }
-          >
-            {t("cargandoListado")}
-          </h3>
+          <h3 style={TEXTO_DORADO_BRILLO}>{t("cargandoListado")}</h3>
         </div>
       </Menu>
     );
@@ -160,8 +155,7 @@ export default function ClienteInspeccionesLista() {
       <div
         style={{
           padding: "16px",
-          background:
-            FONDO_PRINCIPAL,
+          background: FONDO_PRINCIPAL,
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter",
@@ -178,9 +172,7 @@ export default function ClienteInspeccionesLista() {
             textTransform: "uppercase",
           }}
         >
-          {t(
-            "misInspeccionesInformesTitulo"
-          )}
+          {t("misInspeccionesInformesTitulo")}
         </h1>
 
         {errorMsg && (
@@ -204,9 +196,7 @@ export default function ClienteInspeccionesLista() {
               marginTop: "40px",
             }}
           >
-            {t(
-              "noHayInspeccionesInformes"
-            )}
+            {t("noHayInspeccionesInformes")}
           </div>
         ) : (
           <div
@@ -217,8 +207,7 @@ export default function ClienteInspeccionesLista() {
             }}
           >
             {elementos.map((item) => {
-              const esExtra =
-                item.tipo === "extra";
+              const esExtra = item.tipo === "extra";
 
               const textoCrudo =
                 item.observaciones ||
@@ -228,80 +217,48 @@ export default function ClienteInspeccionesLista() {
                 item.nota ||
                 "";
 
-              const descripcionLimpia =
-                textoCrudo
-                  ? textoCrudo.replace(
-                      /Factura\s*[^:]*:\s*/i,
-                      ""
-                    )
-                  : t(
-                      "informeDisponible"
-                    );
+              const descripcionLimpia = textoCrudo
+                ? textoCrudo.replace(/Factura\s*[^:]*:\s*/i, "")
+                : t("informeDisponible");
 
-              const tituloItem =
-                esExtra
-                  ? t(
-                      "servicioExtraTrabajo"
-                    )
-                  : item.titulo ||
-                    item.nombre ||
-                    t(
-                      "inspeccionLabel"
-                    );
+              const tituloItem = esExtra
+                ? t("servicioExtraTrabajo")
+                : item.titulo || item.nombre || t("inspeccionLabel");
 
-              const fechaFormateada =
-                item.created_at
-                  ? new Date(
-                      item.created_at
-                    ).toLocaleDateString()
-                  : item.fecha
-                  ? new Date(
-                      item.fecha
-                    ).toLocaleDateString()
+              const fechaFormateada = item.created_at
+                ? new Date(item.created_at).toLocaleDateString()
+                : item.fecha
+                  ? new Date(item.fecha).toLocaleDateString()
                   : "Reciente";
 
               return (
                 <div
-                  key={item.id}
-                  onClick={() =>
-                    navigate(
-                      `/cliente/inspeccion/${item.id}`
-                    )
-                  }
+                  key={`${item.tipo}-${item.id}`}
+                  onClick={() => navigate(`/cliente/inspeccion/${item.id}`)}
                   style={{
-                    background:
-                      FONDO_TARJETA,
-                    border:
-                      BORDE_DORADO_FINO,
-                    borderRadius:
-                      "16px",
+                    background: FONDO_TARJETA,
+                    border: BORDE_DORADO_FINO,
+                    borderRadius: "16px",
                     padding: "16px",
                     cursor: "pointer",
-                    boxShadow:
-                      SOMBRA_LUXURY,
+                    boxShadow: SOMBRA_LUXURY,
                     display: "flex",
-                    flexDirection:
-                      "column",
+                    flexDirection: "column",
                     gap: "8px",
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
-                      justifyContent:
-                        "space-between",
-                      alignItems:
-                        "center",
+                      justifyContent: "space-between",
+                      alignItems: "center",
                     }}
                   >
                     <span
                       style={{
-                        fontSize:
-                          "14px",
-                        fontWeight:
-                          "800",
-                        color:
-                          "#fff",
+                        fontSize: "14px",
+                        fontWeight: "800",
+                        color: "#fff",
                       }}
                     >
                       {tituloItem}
@@ -309,97 +266,59 @@ export default function ClienteInspeccionesLista() {
 
                     <span
                       style={{
-                        fontSize:
-                          "10px",
-                        fontWeight:
-                          "800",
-                        padding:
-                          "4px 10px",
-                        borderRadius:
-                          "10px",
-                        background:
-                          esExtra
-                            ? "rgba(224, 176, 52, 0.2)"
-                            : "rgba(16, 185, 129, 0.15)",
-                        color:
-                          esExtra
-                            ? COLOR_DORADO
-                            : "#34d399",
-                        border:
-                          esExtra
-                            ? BORDE_DORADO_FINO
-                            : "1px solid rgba(16, 185, 129, 0.4)",
+                        fontSize: "10px",
+                        fontWeight: "800",
+                        padding: "4px 10px",
+                        borderRadius: "10px",
+                        background: esExtra
+                          ? "rgba(224, 176, 52, 0.2)"
+                          : "rgba(16, 185, 129, 0.15)",
+                        color: esExtra ? COLOR_DORADO : "#34d399",
+                        border: esExtra
+                          ? BORDE_DORADO_FINO
+                          : "1px solid rgba(16, 185, 129, 0.4)",
                       }}
                     >
                       {esExtra
-                        ? t(
-                            "extraBadge"
-                          )
-                        : item.estado ||
-                          t(
-                            "estadoAprobado"
-                          )}
+                        ? t("extraBadge")
+                        : item.estado || t("estadoAprobado")}
                     </span>
                   </div>
 
                   <div
                     style={{
-                      fontSize:
-                        "12px",
-                      color:
-                        "#94a3b8",
+                      fontSize: "12px",
+                      color: "#94a3b8",
                     }}
                   >
-                    <strong
-                      style={{
-                        color:
-                          "#cbd5e1",
-                      }}
-                    >
-                      {t(
-                        "detalleLabel"
-                      )}
+                    <strong style={{ color: "#cbd5e1" }}>
+                      {t("detalleLabel")}
                     </strong>{" "}
-                    {descripcionLimpia.substring(
-                      0,
-                      70
-                    )}
+                    {descripcionLimpia.substring(0, 70)}
                     ...
                   </div>
 
                   <div
                     style={{
                       display: "flex",
-                      justifyContent:
-                        "space-between",
-                      alignItems:
-                        "center",
-                      marginTop:
-                        "4px",
-                      fontSize:
-                        "11px",
-                      color:
-                        "#64748b",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginTop: "4px",
+                      fontSize: "11px",
+                      color: "#64748b",
                     }}
                   >
                     <span>
-                      {t("fecha")}:{" "}
-                      {
-                        fechaFormateada
-                      }
+                      {t("fecha")}: {fechaFormateada}
                     </span>
 
                     <span
                       style={{
-                        color:
-                          COLOR_DORADO,
-                        fontWeight:
-                          "700",
+                        color: COLOR_DORADO,
+                        fontWeight: "700",
                       }}
                     >
-                      {t(
-                        "verDetalleFlecha"
-                      )}
+                      {t("verDetalleFlecha")}
                     </span>
                   </div>
                 </div>
