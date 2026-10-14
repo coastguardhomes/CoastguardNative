@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -95,9 +94,9 @@ export default function VerFactura() {
   };
 
   /*
-   * Determina el bucket de cada fotografía.
-   * Las fotografías de extras se guardan por defecto en "extras".
-   * Si la referencia identifica otro bucket, se respeta.
+   * Las fotografías de un extra pertenecen exclusivamente
+   * al bucket "extras", salvo que la propia referencia
+   * indique expresamente otro bucket.
    */
   const obtenerReferenciaFoto = (foto) => {
     if (!foto) return null;
@@ -247,6 +246,11 @@ export default function VerFactura() {
 
       let inspeccionData = null;
 
+      /*
+       * La inspección relacionada se consulta únicamente
+       * para mostrar información descriptiva del trabajo.
+       * Sus fotografías NO se utilizan para el extra.
+       */
       if (extraPublicado.inspeccion_id) {
         const {
           data: inspeccionRelacionada,
@@ -267,48 +271,13 @@ export default function VerFactura() {
         }
       }
 
-      let fotos = parsearFotosExtra(extraPublicado.fotos);
-
-      if (fotos.length === 0 && inspeccionData?.id) {
-        fotos = parsearFotosExtra(inspeccionData.fotos);
-      }
-
       /*
-       * La tabla correcta es fotos_inspeccion.
-       * Se mantiene como alternativa si las fotos no están
-       * guardadas directamente en extras.fotos o inspecciones.fotos.
+       * IMPORTANTE:
+       * Las fotos se obtienen exclusivamente de extras.fotos.
+       * No recurrir a inspecciones.fotos ni a fotos_inspeccion,
+       * porque pertenecen a las inspecciones normales.
        */
-      if (fotos.length === 0 && inspeccionData?.id) {
-        const {
-          data: fotosInspeccion,
-          error: fotosError
-        } = await supabase
-          .from('fotos_inspeccion')
-          .select('*')
-          .eq('inspeccion_id', inspeccionData.id);
-
-        if (fotosError) {
-          console.error(
-            'Error cargando fotografías de inspección:',
-            fotosError
-          );
-        } else if (fotosInspeccion?.length) {
-          fotos = fotosInspeccion.map((foto) => ({
-            ...foto,
-            bucket:
-              foto.bucket ||
-              foto.bucket_id ||
-              'fotos',
-            url:
-              foto.url ||
-              foto.url_foto ||
-              foto.url_storage_o_path ||
-              foto.archivo ||
-              foto.path ||
-              foto.ruta
-          }));
-        }
-      }
+      const fotos = parsearFotosExtra(extraPublicado.fotos);
 
       setFotosExtra(fotos);
 
