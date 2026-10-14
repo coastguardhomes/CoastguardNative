@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
@@ -79,6 +80,18 @@ export default function ClienteDashboard() {
           .eq("usuario_id", user.id)
           .maybeSingle();
 
+        // Compatibilidad con clientes vinculados mediante user_id.
+        if (!clienteData) {
+          const { data: clienteByUserId } = await supabase
+            .from("clientes")
+            .select("*")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          clienteData = clienteByUserId;
+        }
+
+        // Compatibilidad con registros cuyo id coincide con el usuario.
         if (!clienteData) {
           const { data: clienteById } = await supabase
             .from("clientes")
@@ -113,7 +126,7 @@ export default function ClienteDashboard() {
             .select("id, created_at")
             .eq("cliente_id", clienteId)
             .eq("alerta", true)
-            .eq("alerta_vista", false)
+            .or("alerta_vista.is.null,alerta_vista.eq.false")
             .order("created_at", { ascending: false })
             .limit(1),
 
@@ -122,7 +135,7 @@ export default function ClienteDashboard() {
             .select("*", { count: "exact", head: true })
             .eq("cliente_id", clienteId)
             .eq("alerta", true)
-            .eq("alerta_vista", false),
+            .or("alerta_vista.is.null,alerta_vista.eq.false"),
 
           supabase
             .from("viviendas")
@@ -130,12 +143,8 @@ export default function ClienteDashboard() {
             .eq("cliente_id", clienteId),
 
           /*
-           * IMPORTANTE:
            * Solo mostramos extras que administración haya
            * publicado realmente al cliente.
-           *
-           * Nunca mostramos aquí extras pendientes,
-           * en proceso o todavía no aprobados.
            */
           supabase
             .from("extras")
@@ -145,6 +154,41 @@ export default function ClienteDashboard() {
             .neq("visto", true)
             .order("created_at", { ascending: false }),
         ]);
+
+        if (resInspecciones.error) {
+          console.error(
+            "Error al cargar las inspecciones del cliente:",
+            resInspecciones.error
+          );
+        }
+
+        if (resAlertasInsp.error) {
+          console.error(
+            "Error al cargar alertas de inspección:",
+            resAlertasInsp.error
+          );
+        }
+
+        if (resAlertasFacturas.error) {
+          console.error(
+            "Error al cargar alertas de facturas:",
+            resAlertasFacturas.error
+          );
+        }
+
+        if (resViviendas.error) {
+          console.error(
+            "Error al cargar las viviendas:",
+            resViviendas.error
+          );
+        }
+
+        if (resExtras.error) {
+          console.error(
+            "Error al cargar los trabajos extra:",
+            resExtras.error
+          );
+        }
 
         setNumInspecciones(resInspecciones.count || 0);
 
@@ -158,26 +202,32 @@ export default function ClienteDashboard() {
         );
 
         setNumViviendas(resViviendas.count || 0);
-
         setNuevosExtras(resExtras.data || []);
 
         const queryParams = new URLSearchParams(
           window.location.search
         );
 
-        const facturaIdParam =
-          queryParams.get("factura");
+        const facturaIdParam = queryParams.get("factura");
 
         if (
           queryParams.get("pagado") === "true" &&
           facturaIdParam
         ) {
-          const { data: facturaData } = await supabase
-            .from("facturas")
-            .select("*")
-            .eq("id", facturaIdParam)
-            .eq("cliente_id", clienteId)
-            .maybeSingle();
+          const { data: facturaData, error: facturaError } =
+            await supabase
+              .from("facturas")
+              .select("*")
+              .eq("id", facturaIdParam)
+              .eq("cliente_id", clienteId)
+              .maybeSingle();
+
+          if (facturaError) {
+            console.error(
+              "Error al comprobar el pago:",
+              facturaError
+            );
+          }
 
           if (
             facturaData &&
@@ -198,10 +248,7 @@ export default function ClienteDashboard() {
           );
         }
       } catch (err) {
-        console.error(
-          "Error en dashboard:",
-          err
-        );
+        console.error("Error en dashboard:", err);
       } finally {
         setLoading(false);
       }
@@ -221,28 +268,37 @@ export default function ClienteDashboard() {
         alerta_vista: true,
       };
 
-      await supabase
+      const { error: errorExtra } = await supabase
         .from("extras")
         .update(updateExtra)
         .eq("id", extra.id);
+
+      if (errorExtra) {
+        throw errorExtra;
+      }
 
       /*
        * Si el extra está relacionado con una factura,
        * también marcamos el aviso de esa factura como visto.
        */
       if (extra.factura_id) {
-        await supabase
+        const { error: errorFactura } = await supabase
           .from("facturas")
           .update({
             alerta_vista: true,
           })
           .eq("id", extra.factura_id);
+
+        if (errorFactura) {
+          console.error(
+            "No se pudo marcar la alerta de la factura como vista:",
+            errorFactura
+          );
+        }
       }
 
       setNuevosExtras((prev) =>
-        prev.filter(
-          (item) => item.id !== extra.id
-        )
+        prev.filter((item) => item.id !== extra.id)
       );
     } catch (err) {
       console.error(
@@ -251,23 +307,14 @@ export default function ClienteDashboard() {
       );
     }
 
-    /*
-     * Vamos a Facturas, no directamente a ninguna pantalla
-     * de técnico.
-     */
     navigate("/cliente/facturas");
   };
 
   /*
    * El botón 🗑️ NO BORRA el registro.
-   *
    * Solo elimina el aviso del Dashboard.
-   * El extra, factura, fotos y datos permanecen en Supabase.
    */
-  const manejarEliminarAvisoExtra = async (
-    e,
-    extra
-  ) => {
+  const manejarEliminarAvisoExtra = async (e, extra) => {
     e.stopPropagation();
 
     if (
@@ -292,13 +339,12 @@ export default function ClienteDashboard() {
       }
 
       if (extra.factura_id) {
-        const { error: facturaError } =
-          await supabase
-            .from("facturas")
-            .update({
-              alerta_vista: true,
-            })
-            .eq("id", extra.factura_id);
+        const { error: facturaError } = await supabase
+          .from("facturas")
+          .update({
+            alerta_vista: true,
+          })
+          .eq("id", extra.factura_id);
 
         if (facturaError) {
           console.error(
@@ -309,9 +355,7 @@ export default function ClienteDashboard() {
       }
 
       setNuevosExtras((prev) =>
-        prev.filter(
-          (item) => item.id !== extra.id
-        )
+        prev.filter((item) => item.id !== extra.id)
       );
     } catch (err) {
       console.error(
@@ -322,22 +366,15 @@ export default function ClienteDashboard() {
   };
 
   /*
-   * La tarjeta de alertas es solo un acceso directo.
-   *
-   * Si existe una alerta de inspección pendiente,
+   * Si hay una alerta de inspección pendiente,
    * vamos directamente a esa inspección.
-   *
-   * Si NO existe ninguna alerta de inspección,
-   * NO hacemos nada.
    */
   const manejarClickAlertas = () => {
     if (!alertaInspeccionId) {
       return;
     }
 
-    navigate(
-      `/cliente/inspeccion/${alertaInspeccionId}`
-    );
+    navigate(`/cliente/inspeccion/${alertaInspeccionId}`);
   };
 
   const estiloTarjetaDato = {
@@ -413,12 +450,10 @@ export default function ClienteDashboard() {
             <div
               style={{
                 padding: "4px",
-                background:
-                  "rgba(224, 176, 52, 0.15)",
+                background: "rgba(224, 176, 52, 0.15)",
                 borderRadius: "12px",
                 border: BORDE_DORADO_FINO,
-                boxShadow:
-                  "0 0 10px rgba(224, 176, 52, 0.3)",
+                boxShadow: "0 0 10px rgba(224, 176, 52, 0.3)",
               }}
             >
               <img
@@ -464,12 +499,10 @@ export default function ClienteDashboard() {
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              background:
-                "rgba(16, 185, 129, 0.15)",
+              background: "rgba(16, 185, 129, 0.15)",
               padding: "6px 10px",
               borderRadius: "20px",
-              border:
-                "1px solid rgba(16, 185, 129, 0.4)",
+              border: "1px solid rgba(16, 185, 129, 0.4)",
             }}
           >
             <div
@@ -496,8 +529,7 @@ export default function ClienteDashboard() {
         {pagoExitoso && (
           <div
             style={{
-              background:
-                "rgba(52, 211, 153, 0.15)",
+              background: "rgba(52, 211, 153, 0.15)",
               border: "1px solid #34d399",
               padding: "16px",
               borderRadius: "16px",
@@ -537,8 +569,7 @@ export default function ClienteDashboard() {
               border: BORDE_DORADO_INTENSO,
               borderRadius: "20px",
               padding: "18px",
-              boxShadow:
-                "0 10px 30px rgba(224, 176, 52, 0.25)",
+              boxShadow: "0 10px 30px rgba(224, 176, 52, 0.25)",
             }}
           >
             <div
@@ -554,8 +585,7 @@ export default function ClienteDashboard() {
                   width: "32px",
                   height: "32px",
                   borderRadius: "10px",
-                  background:
-                    "rgba(224, 176, 52, 0.25)",
+                  background: "rgba(224, 176, 52, 0.25)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -584,8 +614,7 @@ export default function ClienteDashboard() {
                     margin: 0,
                   }}
                 >
-                  {t("tienes")}{" "}
-                  {nuevosExtras.length}{" "}
+                  {t("tienes")} {nuevosExtras.length}{" "}
                   {t("trabajosRegistrados")}
                 </p>
               </div>
@@ -608,21 +637,16 @@ export default function ClienteDashboard() {
                   }}
                 >
                   <div
-                    onClick={() =>
-                      manejarVerFactura(extra)
-                    }
+                    onClick={() => manejarVerFactura(extra)}
                     style={{
                       flex: 1,
-                      background:
-                        DEGRADADO_AZUL_BOTON,
-                      border:
-                        BORDE_DORADO_FINO,
+                      background: DEGRADADO_AZUL_BOTON,
+                      border: BORDE_DORADO_FINO,
                       borderRadius: "12px",
                       padding: "14px",
                       cursor: "pointer",
                       display: "flex",
-                      justifyContent:
-                        "space-between",
+                      justifyContent: "space-between",
                       alignItems: "center",
                     }}
                   >
@@ -634,9 +658,7 @@ export default function ClienteDashboard() {
                           color: "#fff",
                         }}
                       >
-                        {t(
-                          "trabajoExtraFactura"
-                        )}
+                        {t("trabajoExtraFactura")}
                       </div>
 
                       <div
@@ -648,9 +670,7 @@ export default function ClienteDashboard() {
                       >
                         {extra.descripcion ||
                           extra.observaciones ||
-                          t(
-                            "verDetallesFotosFacturas"
-                          )}
+                          t("verDetallesFotosFacturas")}
                       </div>
                     </div>
 
@@ -667,16 +687,11 @@ export default function ClienteDashboard() {
 
                   <button
                     onClick={(e) =>
-                      manejarEliminarAvisoExtra(
-                        e,
-                        extra
-                      )
+                      manejarEliminarAvisoExtra(e, extra)
                     }
                     style={{
-                      background:
-                        "rgba(239, 68, 68, 0.15)",
-                      border:
-                        "1px solid rgba(239, 68, 68, 0.4)",
+                      background: "rgba(239, 68, 68, 0.15)",
+                      border: "1px solid rgba(239, 68, 68, 0.4)",
                       borderRadius: "12px",
                       padding: "0 14px",
                       cursor: "pointer",
@@ -697,17 +712,14 @@ export default function ClienteDashboard() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns:
-              "repeat(3, 1fr)",
+            gridTemplateColumns: "repeat(3, 1fr)",
             gap: "10px",
             marginBottom: "20px",
           }}
         >
           <div
             style={estiloTarjetaDato}
-            onClick={() =>
-              navigate("/cliente/inspecciones")
-            }
+            onClick={() => navigate("/cliente/inspecciones")}
           >
             <span
               style={{
@@ -739,10 +751,7 @@ export default function ClienteDashboard() {
               style={{
                 fontSize: "10px",
                 fontWeight: "800",
-                color:
-                  numAlertas > 0
-                    ? "#ef4444"
-                    : "#94a3b8",
+                color: numAlertas > 0 ? "#ef4444" : "#94a3b8",
                 textTransform: "uppercase",
               }}
             >
@@ -753,10 +762,7 @@ export default function ClienteDashboard() {
               style={{
                 fontSize: "26px",
                 fontWeight: "900",
-                color:
-                  numAlertas > 0
-                    ? "#ef4444"
-                    : COLOR_DORADO,
+                color: numAlertas > 0 ? "#ef4444" : COLOR_DORADO,
               }}
             >
               {numAlertas}
@@ -765,9 +771,7 @@ export default function ClienteDashboard() {
 
           <div
             style={estiloTarjetaDato}
-            onClick={() =>
-              navigate("/cliente/contratos")
-            }
+            onClick={() => navigate("/cliente/contratos")}
           >
             <span
               style={{
@@ -819,10 +823,7 @@ export default function ClienteDashboard() {
               height: 180,
             }}
           >
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-            >
+            <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={datosGrafico}
                 margin={{
@@ -851,8 +852,7 @@ export default function ClienteDashboard() {
                 <Tooltip
                   contentStyle={{
                     background: "#070b14",
-                    border:
-                      BORDE_DORADO_FINO,
+                    border: BORDE_DORADO_FINO,
                     borderRadius: "12px",
                     color: COLOR_DORADO,
                   }}
@@ -884,8 +884,7 @@ export default function ClienteDashboard() {
             style={{
               width: "100%",
               maxWidth: "420px",
-              background:
-                DEGRADADO_AZUL_BOTON,
+              background: DEGRADADO_AZUL_BOTON,
               border: BORDE_DORADO_INTENSO,
               borderRadius: "30px",
               padding: "14px",
@@ -905,9 +904,7 @@ export default function ClienteDashboard() {
                 fontSize: "11px",
               }}
             >
-              {t(
-                "configuracionSeguridadNotificaciones"
-              )}
+              {t("configuracionSeguridadNotificaciones")}
             </span>
           </Link>
         </div>
