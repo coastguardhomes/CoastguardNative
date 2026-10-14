@@ -11,17 +11,10 @@ import {
 } from "react-router-dom";
 
 import Menu from "../../layouts/Menu";
-
 import { supabase } from "../../lib/supabase";
-
 import { resolverUrlPdfSegura } from "../../lib/urlPdf";
-
 import { useAuth } from "../../context/AuthContext";
-
-import {
-  cargarFotosInspeccion,
-} from "../../lib/cargarFotosInspeccion";
-
+import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
 import { useLanguage } from "../../context/LanguageContext";
 
 const COLOR_DORADO = "#e0b034";
@@ -70,10 +63,6 @@ export default function ClienteInspeccionVer() {
     }
   }, [id, user]);
 
-  /*
-   * Genera un enlace temporal para el PDF.
-   * Se conserva inspeccion.pdf_url como dato de origen.
-   */
   useEffect(() => {
     let cancelado = false;
 
@@ -114,9 +103,9 @@ export default function ClienteInspeccionVer() {
   }, [inspeccion?.pdf_url]);
 
   /*
-   * Genera URLs temporales para las fotografías.
    * Las inspecciones normales usan "fotos".
-   * Las fotos de extras se almacenan en "facturas".
+   * Las fotos nuevas de extras usan "extras".
+   * Se mantienen las rutas antiguas de "facturas".
    */
   useEffect(() => {
     let cancelado = false;
@@ -127,8 +116,6 @@ export default function ClienteInspeccionVer() {
       if (!Array.isArray(fotos) || fotos.length === 0) {
         return;
       }
-
-      const bucket = esExtra ? "facturas" : "fotos";
 
       const urls = await Promise.all(
         fotos.map(async (foto, index) => {
@@ -160,6 +147,7 @@ export default function ClienteInspeccionVer() {
 
           try {
             let referencia = rawUrl;
+            let bucket = esExtra ? "extras" : "fotos";
 
             if (
               !referencia.startsWith("http://") &&
@@ -167,10 +155,20 @@ export default function ClienteInspeccionVer() {
             ) {
               referencia = referencia.replace(/^\/+/, "");
 
-              const prefijo = bucket + "/";
-
-              if (referencia.startsWith(prefijo)) {
-                referencia = referencia.slice(prefijo.length);
+              if (esExtra) {
+                if (referencia.startsWith("facturas/")) {
+                  bucket = "facturas";
+                  referencia = referencia.slice("facturas/".length);
+                } else if (referencia.startsWith("extras/")) {
+                  bucket = "extras";
+                  referencia = referencia.slice("extras/".length);
+                } else if (referencia.startsWith("inspecciones/")) {
+                  bucket = "facturas";
+                } else {
+                  bucket = "extras";
+                }
+              } else if (referencia.startsWith("fotos/")) {
+                referencia = referencia.slice("fotos/".length);
               }
             }
 
@@ -283,7 +281,7 @@ export default function ClienteInspeccionVer() {
       setClienteId(clienteIdActual);
 
       /*
-       * 1. INSPECCIÓN NORMAL.
+       * 1. Inspección normal.
        * Solo se muestran inspecciones finalizadas
        * que pertenecen al cliente autenticado.
        */
@@ -299,7 +297,7 @@ export default function ClienteInspeccionVer() {
       let fotosEncontradas = [];
 
       /*
-       * 2. EXTRA ENVIADO AL CLIENTE.
+       * 2. Extra enviado al cliente.
        */
       if (!insp) {
         const { data: extra } = await supabase
@@ -379,10 +377,6 @@ export default function ClienteInspeccionVer() {
             }
           }
 
-          /*
-           * Si existe una factura relacionada,
-           * se marca como vista su alerta.
-           */
           if (extra.factura_id) {
             const { error: errorAvisoFactura } = await supabase
               .from("facturas")
@@ -401,7 +395,7 @@ export default function ClienteInspeccionVer() {
       }
 
       /*
-       * 3. FOTOS DE INSPECCIÓN NORMAL.
+       * 3. Fotos de inspección normal.
        */
       if (insp && !esExtraActual) {
         if (insp.fotos) {
@@ -441,11 +435,6 @@ export default function ClienteInspeccionVer() {
             fotosEncontradas = fotosData;
           }
         }
-
-        /*
-         * Las alertas de inspecciones normales no se marcan
-         * como vistas desde esta pantalla.
-         */
       }
 
       if (!insp) {
@@ -460,9 +449,6 @@ export default function ClienteInspeccionVer() {
       setInspeccion(insp);
       setFotos(fotosEncontradas || []);
 
-      /*
-       * La vivienda solo se carga para inspecciones normales.
-       */
       if (!esExtraActual && insp.vivienda_id) {
         const { data: viv, error: errorVivienda } =
           await supabase
@@ -497,8 +483,6 @@ export default function ClienteInspeccionVer() {
   /*
    * Quitar aviso de un extra sin borrar el informe,
    * las fotografías, el PDF ni la factura.
-   * Las alertas de inspecciones normales no se pueden
-   * resolver desde el panel del cliente.
    */
   async function borrarInforme() {
     if (!esExtra) {
@@ -892,11 +876,6 @@ export default function ClienteInspeccionVer() {
               </a>
             )}
 
-            {/*
-             * Este botón solo existe para extras.
-             * Las alertas de inspecciones normales solo pueden
-             * ser resueltas por el administrador.
-             */}
             {esExtra && (
               <button
                 onClick={borrarInforme}
