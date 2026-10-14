@@ -3,6 +3,7 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
 import { useParams, useNavigate } from "react-router-dom";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -58,6 +59,7 @@ export default function TecnicoChecklist() {
   });
 
   const [items, setItems] = useState([]);
+  const [fotos, setFotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
   const [observaciones, setObservaciones] = useState("");
@@ -69,6 +71,15 @@ export default function TecnicoChecklist() {
       .replace(/\u2028|\u2029/g, "\n")
       .replace(/[^\x00-\x7F]/g, "")
       .trim();
+  }
+
+  async function actualizarFotosInspeccion() {
+    try {
+      const urls = await cargarFotosInspeccion(id);
+      setFotos(Array.isArray(urls) ? urls : []);
+    } catch (error) {
+      console.error("Error cargando las fotos del checklist:", error);
+    }
   }
 
   useEffect(() => {
@@ -257,6 +268,31 @@ export default function TecnicoChecklist() {
     };
   }, [id, autorizado, inspeccion]);
 
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarFotos() {
+      if (!autorizado || !inspeccion || !id) return;
+
+      try {
+        const urls = await cargarFotosInspeccion(id);
+
+        if (!cancelado) {
+          setFotos(Array.isArray(urls) ? urls : []);
+        }
+      } catch (error) {
+        console.error("Error cargando fotos del técnico:", error);
+        if (!cancelado) setFotos([]);
+      }
+    }
+
+    cargarFotos();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [id, autorizado, inspeccion]);
+
   async function validarPermisoActual() {
     if (!autorizado || !inspeccion || !tecnico) {
       throw new Error("No tienes permiso para modificar esta inspección.");
@@ -354,7 +390,6 @@ export default function TecnicoChecklist() {
         type: "image/jpeg",
       });
 
-      // Prefijo compatible con las políticas de Storage para inspecciones.
       nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
 
       const { error: storageError } = await supabase.storage
@@ -393,6 +428,7 @@ export default function TecnicoChecklist() {
         throw new Error("Error BD fotos: " + insertError.message);
       }
 
+      await actualizarFotosInspeccion();
       setMensaje("Foto guardada correctamente");
     } catch (error) {
       console.error("Error procesando o subiendo foto:", error);
@@ -458,8 +494,6 @@ export default function TecnicoChecklist() {
         items.length > 0 &&
         items.every((item) => item.completado === true);
 
-      // El técnico solo actualiza los datos de su inspección.
-      // Los campos administrativos quedan fuera de esta actualización.
       const { data, error } = await supabase
         .from("inspecciones")
         .update({
@@ -685,6 +719,93 @@ export default function TecnicoChecklist() {
             🖼️ Galería
           </button>
         </div>
+
+        {/* Fotografías de esta inspección */}
+        <section
+          aria-label="Fotografías de la inspección"
+          style={{
+            background: FONDO_TARJETA,
+            border: BORDE_DORADO_FINO,
+            borderRadius: "16px",
+            padding: "16px",
+            marginBottom: "20px",
+            boxShadow: SOMBRA_LUXURY,
+          }}
+        >
+          <h2
+            style={{
+              color: COLOR_DORADO,
+              fontSize: "16px",
+              margin: "0 0 12px",
+            }}
+          >
+            Fotografías ({fotos.length})
+          </h2>
+
+          {fotos.length === 0 ? (
+            <p style={{ color: "#cbd5e1", fontSize: "14px", margin: 0 }}>
+              Todavía no hay fotografías disponibles para esta inspección.
+            </p>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+                gap: "12px",
+              }}
+            >
+              {fotos.map((url, index) => (
+                <a
+                  key={`${url}-${index}`}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Abrir fotografía ${index + 1}`}
+                  style={{
+                    display: "block",
+                    borderRadius: "10px",
+                    overflow: "hidden",
+                    border: BORDE_DORADO_FINO,
+                    background: "#030509",
+                  }}
+                >
+                  <img
+                    src={url}
+                    alt={`Fotografía de la inspección ${index + 1}`}
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      height: "130px",
+                      objectFit: "cover",
+                    }}
+                  />
+                </a>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={actualizarFotosInspeccion}
+            disabled={subiendoFoto}
+            style={{
+              marginTop: "12px",
+              padding: "9px 12px",
+              borderRadius: "8px",
+              border: BORDE_DORADO_FINO,
+              background: "rgba(11, 19, 32, 0.9)",
+              color: COLOR_DORADO,
+              fontWeight: "700",
+              cursor: subiendoFoto ? "not-allowed" : "pointer",
+            }}
+          >
+            Actualizar fotografías
+          </button>
+        </section>
 
         <div
           style={{
