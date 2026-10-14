@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
@@ -112,7 +111,9 @@ export default function TecnicoChecklist() {
         if (errorInspeccion) throw errorInspeccion;
 
         if (!insp) {
-          throw new Error("No se encontró la inspección o no tienes permiso para verla.");
+          throw new Error(
+            "No se encontró la inspección o no tienes permiso para verla."
+          );
         }
 
         if (String(insp.tecnico_id) !== String(tecnicoActual.id)) {
@@ -353,7 +354,8 @@ export default function TecnicoChecklist() {
         type: "image/jpeg",
       });
 
-      nombreArchivo = `checklist_${id}_${Date.now()}.jpg`;
+      // Prefijo compatible con las políticas de Storage para inspecciones.
+      nombreArchivo = `inspeccion_${id}_${Date.now()}.jpg`;
 
       const { error: storageError } = await supabase.storage
         .from("fotos")
@@ -478,7 +480,9 @@ export default function TecnicoChecklist() {
         throw new Error("No se pudo confirmar el guardado de la inspección.");
       }
 
-      setMensaje("Checklist guardado y enviado a administración para revisión.");
+      setMensaje(
+        "Checklist guardado y enviado a administración para revisión."
+      );
 
       setTimeout(() => {
         navigate("/tecnico");
