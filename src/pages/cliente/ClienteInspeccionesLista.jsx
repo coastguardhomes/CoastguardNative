@@ -37,43 +37,60 @@ export default function ClienteInspeccionesLista() {
         setLoading(true);
         setErrorMsg(null);
 
-        let { data: clienteData } = await supabase
+        let { data: clienteData, error: errorCliente } = await supabase
           .from("clientes")
           .select("id")
           .eq("usuario_id", user.id)
           .maybeSingle();
 
+        if (errorCliente) {
+          throw errorCliente;
+        }
+
         // Compatibilidad con perfiles que usan user_id.
         if (!clienteData) {
-          const { data: clienteByUserId } = await supabase
+          const { data: clienteByUserId, error } = await supabase
             .from("clientes")
             .select("id")
             .eq("user_id", user.id)
             .maybeSingle();
 
+          if (error) {
+            throw error;
+          }
+
           clienteData = clienteByUserId;
         }
 
-        // Mantener la búsqueda existente por id como último recurso.
+        // Último recurso para registros vinculados mediante id.
         if (!clienteData) {
-          const { data: clienteById } = await supabase
+          const { data: clienteById, error } = await supabase
             .from("clientes")
             .select("id")
             .eq("id", user.id)
             .maybeSingle();
+
+          if (error) {
+            throw error;
+          }
 
           clienteData = clienteById;
         }
 
         if (!clienteData) {
           setErrorMsg(t("errorPerfilClienteAsociado"));
-          setLoading(false);
           return;
         }
 
         const clienteId = clienteData.id;
 
-        // El cliente solo debe recibir inspecciones publicadas.
+        /*
+         * Las inspecciones normales solo se muestran cuando
+         * su estado indica que han sido finalizadas/publicadas.
+         *
+         * Los extras solo se muestran después de que administración
+         * los haya enviado expresamente al cliente.
+         */
         const [resInspecciones, resExtras] = await Promise.all([
           supabase
             .from("inspecciones")
@@ -84,7 +101,8 @@ export default function ClienteInspeccionesLista() {
           supabase
             .from("extras")
             .select("*")
-            .eq("cliente_id", clienteId),
+            .eq("cliente_id", clienteId)
+            .eq("estado", "enviado_cliente"),
         ]);
 
         if (resInspecciones.error) {
@@ -295,7 +313,7 @@ export default function ClienteInspeccionesLista() {
                       {t("detalleLabel")}
                     </strong>{" "}
                     {descripcionLimpia.substring(0, 70)}
-                    ...
+                    {descripcionLimpia.length > 70 ? "..." : ""}
                   </div>
 
                   <div
