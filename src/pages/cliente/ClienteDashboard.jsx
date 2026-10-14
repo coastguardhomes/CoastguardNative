@@ -143,15 +143,16 @@ export default function ClienteDashboard() {
             .eq("cliente_id", clienteId),
 
           /*
-           * Solo mostramos extras que administración haya
-           * publicado realmente al cliente.
+           * Solo mostramos extras publicados realmente al cliente
+           * que todavía no se hayan marcado como vistos.
+           * Incluimos NULL porque también significa que no se han visto.
            */
           supabase
             .from("extras")
             .select("*")
             .eq("cliente_id", clienteId)
             .eq("estado", "enviado_cliente")
-            .neq("visto", true)
+            .or("visto.is.null,visto.eq.false")
             .order("created_at", { ascending: false }),
         ]);
 
