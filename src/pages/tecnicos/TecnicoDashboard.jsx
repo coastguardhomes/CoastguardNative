@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -36,15 +37,7 @@ export default function TecnicoDashboard() {
       setLoading(true);
       setDebugLog("Conectando a Supabase...");
 
-      // 1. INSPECCIONES
-      // Las inspecciones normales desaparecen del panel
-      // cuando el técnico las devuelve a administración.
-      //
-      // El flujo real de la app guarda:
-      // estado = "completada_tecnico"
-      //
-      // Mantenemos también los estados antiguos para no romper
-      // inspecciones creadas con versiones anteriores.
+      // 1. INSPECCIONES NORMALES
       const { data: inspData, error: inspError } = await supabase
         .from('inspecciones')
         .select('*')
@@ -52,7 +45,9 @@ export default function TecnicoDashboard() {
         .not('estado', 'eq', 'finalizada')
         .not('estado', 'eq', 'aprobada')
         .not('estado', 'eq', 'completada_admin')
-        .or('estado_tecnico.is.null,estado_tecnico.not.in.(completada,completado,finalizada)')
+        .or(
+          'estado_tecnico.is.null,estado_tecnico.not.in.(completada,completado,finalizada)'
+        )
         .order('fecha', { ascending: false });
 
       if (inspError) {
@@ -64,72 +59,141 @@ export default function TecnicoDashboard() {
       const viviendaIds = [
         ...new Set(
           rawLista
-            .map((i) => i.vivienda_id)
+            .map((inspeccion) => inspeccion.vivienda_id)
             .filter(Boolean)
         )
       ];
 
-      let viviendasMap = {};
+      const viviendasMap = {};
 
       if (viviendaIds.length > 0) {
-        const { data: vivData } = await supabase
+        const { data: vivData, error: vivError } = await supabase
           .from('viviendas')
           .select('id, direccion')
           .in('id', viviendaIds);
 
+        if (vivError) {
+          console.error("Error al consultar viviendas:", vivError);
+        }
+
         if (vivData) {
-          vivData.forEach((v) => {
-            viviendasMap[v.id] = v.direccion;
+          vivData.forEach((vivienda) => {
+            viviendasMap[vivienda.id] = vivienda.direccion;
           });
         }
       }
 
-      const inspeccionesLista = rawLista.map((insp) => ({
-        ...insp,
+      const inspeccionesLista = rawLista.map((inspeccion) => ({
+        ...inspeccion,
         direccion:
-          viviendasMap[insp.vivienda_id] ||
-          insp.direccion ||
-          `Vivienda #${insp.vivienda_id || 'Sin asignar'}`,
+          viviendasMap[inspeccion.vivienda_id] ||
+          inspeccion.direccion ||
+          `Vivienda #${inspeccion.vivienda_id || 'Sin asignar'}`,
       }));
 
       setInspeccionesDiarias(inspeccionesLista);
 
-      // 2. EXTRAS / FACTURAS
-      // Solo mostramos al técnico extras que ya están pagados.
-      // Las facturas de contrato NO son trabajos extra y se excluyen.
+      // 2. EXTRAS PAGADOS
+      // Se excluyen las facturas de contratos y se comprueba también
+      // el estado del extra relacionado, no solo el de la factura.
       const { data: extrasData, error: extrasError } = await supabase
         .from('facturas')
         .select('*')
-        .in('estado', [
-          'pagada',
-          'pagado'
-        ])
+        .in('estado', ['pagada', 'pagado'])
         .is('contrato_id', null)
-        .or('estado_tecnico.is.null,estado_tecnico.neq.completado')
         .order('id', { ascending: false });
 
       if (extrasError) {
         console.error("Error facturas/extras:", extrasError);
       }
 
-      const listaExtras = extrasData || [];
+      // Consultar el estado técnico de los extras relacionados.
+      // Si RLS bloquea esta consulta, se conserva el filtrado por factura.
+      const {
+        data: trabajosExtraData,
+        error: trabajosExtraError
+      } = await supabase
+        .from('extras')
+        .select('factura_id, estado_tecnico')
+        .not('factura_id', 'is', null);
+
+      if (trabajosExtraError) {
+        console.error(
+          "No se pudieron consultar los estados de extras:",
+          trabajosExtraError
+        );
+      }
+
+      const normalizarEstado = (estado) =>
+        String(estado || '').trim().toLowerCase();
+
+      const estadosCompletados = new Set([
+        'completado',
+        'completada',
+        'completados',
+        'completadas',
+        'finalizado',
+        'finalizada',
+        'finalizados',
+        'finalizadas',
+        'completada_tecnico',
+        'completado_tecnico',
+        'finalizada_tecnico',
+        'finalizado_tecnico',
+      ]);
+
+      const facturasExtraCompletadas = new Set(
+        (trabajosExtraData || [])
+          .filter((trabajo) =>
+            estadosCompletados.has(
+              normalizarEstado(trabajo.estado_tecnico)
+            )
+          )
+          .map((trabajo) => String(trabajo.factura_id))
+      );
+
+      const listaExtras = (extrasData || []).filter((factura) => {
+        const estadoFactura = normalizarEstado(factura.estado_tecnico);
+
+        const facturaCompletada =
+          estadosCompletados.has(estadoFactura) ||
+          facturasExtraCompletadas.has(String(factura.id));
+
+        return !facturaCompletada;
+      });
 
       setExtrasPendientes(listaExtras);
 
       // 3. CONTADORES
-      const { count: countViviendas } = await supabase
-        .from('viviendas')
-        .select('*', {
-          count: 'exact',
-          head: true
-        });
+      const { count: countViviendas, error: viviendasCountError } =
+        await supabase
+          .from('viviendas')
+          .select('*', {
+            count: 'exact',
+            head: true
+          });
 
-      const { count: countIncidencias } = await supabase
-        .from('incidencias')
-        .select('*', {
-          count: 'exact',
-          head: true
-        });
+      if (viviendasCountError) {
+        console.error(
+          "Error al contar viviendas:",
+          viviendasCountError
+        );
+      }
+
+      const { count: countIncidencias, error: incidenciasCountError } =
+        await supabase
+          .from('incidencias')
+          .select('*', {
+            count: 'exact',
+            head: true
+          });
+
+      if (incidenciasCountError) {
+        console.error(
+          "Error al contar incidencias:",
+          incidenciasCountError
+        );
+      }
 
       setStats({
         inspeccionesSemana: inspeccionesLista.length,
@@ -141,8 +205,8 @@ export default function TecnicoDashboard() {
       setDebugLog("¡Datos cargados!");
 
     } catch (error) {
-      console.error(error);
-      setDebugLog("Error general: " + error.message);
+      console.error("Error al cargar el Dashboard:", error);
+      setDebugLog("Error general: " + (error?.message || 'Error desconocido'));
     } finally {
       setLoading(false);
     }
@@ -425,12 +489,10 @@ export default function TecnicoDashboard() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    backgroundColor:
-                      'rgba(11, 19, 32, 0.9)',
+                    backgroundColor: 'rgba(11, 19, 32, 0.9)',
                     padding: '12px',
                     borderRadius: '10px',
-                    border:
-                      '1px solid rgba(56, 189, 248, 0.3)'
+                    border: '1px solid rgba(56, 189, 248, 0.3)'
                   }}
                 >
                   <div>
@@ -536,8 +598,7 @@ export default function TecnicoDashboard() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    backgroundColor:
-                      'rgba(11, 19, 32, 0.9)',
+                    backgroundColor: 'rgba(11, 19, 32, 0.9)',
                     padding: '12px',
                     borderRadius: '10px',
                     border: BORDE_DORADO_FINO
@@ -590,7 +651,6 @@ export default function TecnicoDashboard() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );
