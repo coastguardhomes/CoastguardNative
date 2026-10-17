@@ -1180,19 +1180,35 @@ const estilos = {
     boxShadow: SOMBRA_LUXURY,
     display: 'flex',
     flexDirection: 'column',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    minWidth: 0,
+    maxWidth: '100%'
   },
 
   textoBlanco: {
     fontSize: '13px',
     color: '#fff',
-    margin: '4px 0'
+    margin: '4px 0',
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+    lineHeight: 1.5
   },
 
   textoSecundario: {
     fontSize: '13px',
     color: '#cbd5e1',
-    margin: '4px 0'
+    margin: '4px 0',
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+    lineHeight: 1.5
   },
 
   fila: {
@@ -1230,7 +1246,10 @@ const estilos = {
     background: 'rgba(11, 19, 32, 0.7)',
     padding: '12px',
     borderRadius: '10px',
-    border: BORDE_DORADO_FINO
+    border: BORDE_DORADO_FINO,
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box'
   },
 
   descripcionTitulo: {
@@ -1245,7 +1264,12 @@ const estilos = {
     fontSize: '13px',
     color: '#fff',
     margin: 0,
+    minWidth: 0,
+    maxWidth: '100%',
+    boxSizing: 'border-box',
     whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
     lineHeight: '1.4'
   },
 
@@ -1287,7 +1311,9 @@ const estilos = {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '10px',
-    gap: '8px'
+    gap: '8px',
+    minWidth: 0,
+    flexWrap: 'wrap'
   },
 
   tituloExtra: {
