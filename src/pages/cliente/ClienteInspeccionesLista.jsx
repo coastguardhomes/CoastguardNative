@@ -17,6 +17,14 @@ const TEXTO_DORADO_BRILLO = {
   textShadow: "0 0 12px rgba(224, 176, 52, 0.6)",
 };
 
+const ESTILO_TEXTO_AJUSTABLE = {
+  minWidth: 0,
+  maxWidth: "100%",
+  boxSizing: "border-box",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+};
+
 export default function ClienteInspeccionesLista() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -160,6 +168,8 @@ export default function ClienteInspeccionesLista() {
             height: "80vh",
             color: COLOR_DORADO,
             background: FONDO_PRINCIPAL,
+            minWidth: 0,
+            boxSizing: "border-box",
           }}
         >
           <h3 style={TEXTO_DORADO_BRILLO}>{t("cargandoListado")}</h3>
@@ -179,6 +189,8 @@ export default function ClienteInspeccionesLista() {
           fontFamily: "Inter",
           paddingBottom: "110px",
           boxSizing: "border-box",
+          minWidth: 0,
+          overflowWrap: "anywhere",
         }}
       >
         <h1
@@ -188,6 +200,7 @@ export default function ClienteInspeccionesLista() {
             ...TEXTO_DORADO_BRILLO,
             marginBottom: "20px",
             textTransform: "uppercase",
+            ...ESTILO_TEXTO_AJUSTABLE,
           }}
         >
           {t("misInspeccionesInformesTitulo")}
@@ -199,6 +212,7 @@ export default function ClienteInspeccionesLista() {
               color: "#ef4444",
               marginBottom: "15px",
               fontSize: "12px",
+              ...ESTILO_TEXTO_AJUSTABLE,
             }}
           >
             {errorMsg}
@@ -212,6 +226,7 @@ export default function ClienteInspeccionesLista() {
               fontSize: "13px",
               textAlign: "center",
               marginTop: "40px",
+              ...ESTILO_TEXTO_AJUSTABLE,
             }}
           >
             {t("noHayInspeccionesInformes")}
@@ -222,6 +237,7 @@ export default function ClienteInspeccionesLista() {
               display: "flex",
               flexDirection: "column",
               gap: "12px",
+              minWidth: 0,
             }}
           >
             {elementos.map((item) => {
@@ -263,13 +279,20 @@ export default function ClienteInspeccionesLista() {
                     display: "flex",
                     flexDirection: "column",
                     gap: "8px",
+                    minWidth: 0,
+                    maxWidth: "100%",
+                    boxSizing: "border-box",
+                    overflowWrap: "anywhere",
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      alignItems: "center",
+                      alignItems: "flex-start",
+                      flexWrap: "wrap",
+                      gap: "8px",
+                      minWidth: 0,
                     }}
                   >
                     <span
@@ -277,6 +300,8 @@ export default function ClienteInspeccionesLista() {
                         fontSize: "14px",
                         fontWeight: "800",
                         color: "#fff",
+                        flex: "1 1 140px",
+                        ...ESTILO_TEXTO_AJUSTABLE,
                       }}
                     >
                       {tituloItem}
@@ -295,6 +320,12 @@ export default function ClienteInspeccionesLista() {
                         border: esExtra
                           ? BORDE_DORADO_FINO
                           : "1px solid rgba(16, 185, 129, 0.4)",
+                        maxWidth: "100%",
+                        boxSizing: "border-box",
+                        whiteSpace: "normal",
+                        overflowWrap: "anywhere",
+                        wordBreak: "break-word",
+                        flexShrink: 1,
                       }}
                     >
                       {esExtra
@@ -307,6 +338,13 @@ export default function ClienteInspeccionesLista() {
                     style={{
                       fontSize: "12px",
                       color: "#94a3b8",
+                      minWidth: 0,
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
+                      overflowWrap: "anywhere",
+                      wordBreak: "break-word",
+                      whiteSpace: "pre-wrap",
+                      lineHeight: 1.5,
                     }}
                   >
                     <strong style={{ color: "#cbd5e1" }}>
@@ -320,13 +358,21 @@ export default function ClienteInspeccionesLista() {
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      alignItems: "center",
+                      alignItems: "flex-start",
+                      flexWrap: "wrap",
+                      gap: "8px",
                       marginTop: "4px",
                       fontSize: "11px",
                       color: "#64748b",
+                      minWidth: 0,
                     }}
                   >
-                    <span>
+                    <span
+                      style={{
+                        ...ESTILO_TEXTO_AJUSTABLE,
+                        flex: "1 1 120px",
+                      }}
+                    >
                       {t("fecha")}: {fechaFormateada}
                     </span>
 
@@ -334,6 +380,7 @@ export default function ClienteInspeccionesLista() {
                       style={{
                         color: COLOR_DORADO,
                         fontWeight: "700",
+                        ...ESTILO_TEXTO_AJUSTABLE,
                       }}
                     >
                       {t("verDetalleFlecha")}
