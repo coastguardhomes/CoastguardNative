@@ -425,6 +425,7 @@ export default function ClienteDashboard() {
           color: "#fff",
           paddingBottom: "110px",
           boxSizing: "border-box",
+          minWidth: 0,
         }}
       >
         <div
@@ -446,6 +447,7 @@ export default function ClienteDashboard() {
               display: "flex",
               alignItems: "center",
               gap: "14px",
+              minWidth: 0,
             }}
           >
             <div
@@ -455,6 +457,7 @@ export default function ClienteDashboard() {
                 borderRadius: "12px",
                 border: BORDE_DORADO_FINO,
                 boxShadow: "0 0 10px rgba(224, 176, 52, 0.3)",
+                flexShrink: 0,
               }}
             >
               <img
@@ -468,7 +471,7 @@ export default function ClienteDashboard() {
               />
             </div>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <span
                 style={{
                   fontSize: "10px",
@@ -504,6 +507,7 @@ export default function ClienteDashboard() {
               padding: "6px 10px",
               borderRadius: "20px",
               border: "1px solid rgba(16, 185, 129, 0.4)",
+              flexShrink: 0,
             }}
           >
             <div
@@ -571,6 +575,8 @@ export default function ClienteDashboard() {
               borderRadius: "20px",
               padding: "18px",
               boxShadow: "0 10px 30px rgba(224, 176, 52, 0.25)",
+              minWidth: 0,
+              boxSizing: "border-box",
             }}
           >
             <div
@@ -591,12 +597,13 @@ export default function ClienteDashboard() {
                   alignItems: "center",
                   justifyContent: "center",
                   border: BORDE_DORADO_FINO,
+                  flexShrink: 0,
                 }}
               >
                 📥
               </div>
 
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <h3
                   style={{
                     fontSize: "13px",
@@ -626,6 +633,7 @@ export default function ClienteDashboard() {
                 display: "flex",
                 flexDirection: "column",
                 gap: "10px",
+                minWidth: 0,
               }}
             >
               {nuevosExtras.map((extra) => (
@@ -635,12 +643,17 @@ export default function ClienteDashboard() {
                     display: "flex",
                     gap: "8px",
                     alignItems: "stretch",
+                    minWidth: 0,
+                    width: "100%",
                   }}
                 >
                   <div
                     onClick={() => manejarVerFactura(extra)}
                     style={{
-                      flex: 1,
+                      flex: "1 1 0",
+                      minWidth: 0,
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
                       background: DEGRADADO_AZUL_BOTON,
                       border: BORDE_DORADO_FINO,
                       borderRadius: "12px",
@@ -648,15 +661,23 @@ export default function ClienteDashboard() {
                       cursor: "pointer",
                       display: "flex",
                       justifyContent: "space-between",
-                      alignItems: "center",
+                      alignItems: "flex-start",
+                      gap: "10px",
                     }}
                   >
-                    <div>
+                    <div
+                      style={{
+                        flex: "1 1 0",
+                        minWidth: 0,
+                        overflowWrap: "anywhere",
+                      }}
+                    >
                       <div
                         style={{
                           fontSize: "13px",
                           fontWeight: "800",
                           color: "#fff",
+                          overflowWrap: "anywhere",
                         }}
                       >
                         {t("trabajoExtraFactura")}
@@ -667,6 +688,13 @@ export default function ClienteDashboard() {
                           fontSize: "11px",
                           color: "#e2e8f0",
                           marginTop: "2px",
+                          minWidth: 0,
+                          maxWidth: "100%",
+                          boxSizing: "border-box",
+                          whiteSpace: "pre-wrap",
+                          overflowWrap: "anywhere",
+                          wordBreak: "break-word",
+                          lineHeight: 1.5,
                         }}
                       >
                         {extra.descripcion ||
@@ -680,6 +708,8 @@ export default function ClienteDashboard() {
                         fontSize: "11px",
                         fontWeight: "900",
                         color: COLOR_DORADO,
+                        flexShrink: 0,
+                        whiteSpace: "nowrap",
                       }}
                     >
                       {t("verFactura")}
@@ -699,6 +729,7 @@ export default function ClienteDashboard() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
+                      flexShrink: 0,
                     }}
                     title="Quitar aviso"
                   >
@@ -713,7 +744,7 @@ export default function ClienteDashboard() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
             gap: "10px",
             marginBottom: "20px",
           }}
