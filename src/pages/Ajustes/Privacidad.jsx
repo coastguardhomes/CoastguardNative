@@ -1,3 +1,4 @@
+
 import React from "react";
 import Menu from "../../layouts/Menu";
 
@@ -51,19 +52,31 @@ export default function Privacidad() {
 
         <div style={cardStyle}>
           <p style={{ fontSize: "16px", opacity: 0.8 }}>
-            Información sobre cómo CoastGuard Homes Services trata y protege
-            tus datos personales al utilizar la aplicación y los servicios
-            contratados.
+            Esta página ofrece información general sobre el tratamiento
+            de datos personales por CoastGuard Homes Services en relación
+            con la aplicación y los servicios contratados. No sustituye
+            a la política de privacidad completa, que debe identificar
+            al responsable, las finalidades y bases jurídicas del
+            tratamiento, los destinatarios, los plazos de conservación
+            y las vías para ejercer tus derechos.
           </p>
 
           <div style={{ marginTop: "20px" }}>
             <div style={itemStyle}>
               <p style={titleStyle}>📄 Datos personales</p>
               <p>
-                Se podrán tratar los datos necesarios para gestionar tu
-                cuenta, contacto, vivienda, contratos, servicios solicitados,
-                facturación, pagos y comunicaciones relacionadas con
-                CoastGuard Homes Services.
+                Se tratarán únicamente los datos personales adecuados,
+                pertinentes y necesarios para las finalidades
+                correspondientes, como gestionar tu cuenta, atender
+                consultas, administrar la vivienda, prestar los servicios
+                solicitados, gestionar contratos, facturación, pagos y
+                comunicaciones relacionadas con CoastGuard Homes Services.
+              </p>
+              <p>
+                La base jurídica del tratamiento dependerá de la finalidad
+                concreta y podrá incluir la ejecución del contrato, el
+                cumplimiento de obligaciones legales, el interés legítimo
+                cuando proceda o el consentimiento cuando sea necesario.
               </p>
             </div>
 
@@ -72,9 +85,13 @@ export default function Privacidad() {
               <p>
                 Cuando contrates la custodia de llaves, se utilizará la
                 información necesaria para identificar la vivienda y
-                gestionar la recepción, custodia, control y devolución de
-                las llaves. La custodia de llaves, por sí sola, no incluye
-                visitas ni inspecciones de la vivienda.
+                gestionar la recepción, custodia, control y devolución
+                de las llaves.
+              </p>
+              <p>
+                La custodia de llaves, por sí sola, no incluye visitas
+                ni inspecciones de la vivienda. Estos servicios solo
+                se prestarán cuando correspondan a un servicio contratado.
               </p>
             </div>
 
@@ -82,62 +99,116 @@ export default function Privacidad() {
               <p style={titleStyle}>🏠 Visitas e inspecciones</p>
               <p>
                 Si contratas un servicio que incluya visitas, inspecciones
-                o informes, podrán tratarse las observaciones, fotografías
-                y demás datos necesarios para prestar y documentar ese
-                servicio. Estos datos no se presuponen incluidos en la
-                custodia de llaves y se limitarán a la finalidad contratada.
+                o informes, podrán tratarse los datos necesarios para
+                prestarlo y documentarlo, incluidas observaciones,
+                fotografías e informes cuando sean pertinentes.
+              </p>
+              <p>
+                La recogida de estos datos se limitará a la finalidad
+                del servicio contratado. Las fotografías y demás
+                información no deberán utilizarse para finalidades
+                incompatibles con aquellas para las que se recogieron,
+                salvo que exista una base jurídica válida.
               </p>
             </div>
 
             <div style={itemStyle}>
-              <p style={titleStyle}>🔒 Seguridad</p>
+              <p style={titleStyle}>🔒 Seguridad y acceso</p>
               <p>
-                CoastGuard Homes Services debe aplicar medidas técnicas y
-                organizativas adecuadas para proteger los datos y limitar
-                el acceso a la información según las funciones y permisos
-                correspondientes. Ningún sistema puede garantizar un riesgo
-                cero.
+                Se deben aplicar medidas técnicas y organizativas
+                adecuadas para proteger los datos personales frente
+                al acceso no autorizado, la pérdida, la alteración
+                o la divulgación indebida.
+              </p>
+              <p>
+                El acceso a la información debe limitarse a las personas
+                y proveedores que lo necesiten para sus funciones
+                legítimas. Estas medidas reducen los riesgos, pero
+                ningún sistema puede garantizar una seguridad absoluta.
               </p>
             </div>
 
             <div style={itemStyle}>
               <p style={titleStyle}>💳 Pagos y facturación</p>
               <p>
-                Los datos necesarios para gestionar suscripciones, pagos y
-                facturas se utilizarán para administrar la relación
-                contractual y cumplir las obligaciones legales aplicables.
-                Los proveedores que intervengan tratarán los datos conforme
-                a sus funciones y condiciones.
+                Los datos necesarios para gestionar contratos,
+                suscripciones, pagos y facturas podrán tratarse para
+                ejecutar la relación contractual y cumplir las
+                obligaciones contables, fiscales y demás obligaciones
+                legales aplicables.
+              </p>
+              <p>
+                Cuando intervengan proveedores de pagos u otros
+                proveedores tecnológicos, el tratamiento de datos
+                deberá ajustarse a sus funciones, a las condiciones
+                aplicables y a las garantías exigidas por la normativa.
+                La información completa sobre dichos proveedores
+                y posibles transferencias internacionales debe figurar
+                en la política de privacidad correspondiente.
               </p>
             </div>
 
             <div style={itemStyle}>
-              <p style={titleStyle}>🗑️ Eliminación de datos</p>
+              <p style={titleStyle}>🗄️ Conservación de datos</p>
               <p>
-                Puedes solicitar la supresión de tus datos escribiendo al
-                correo de contacto. La eliminación estará sujeta a las
-                obligaciones legales de conservación y a los datos que
-                deban mantenerse para gestionar responsabilidades o
-                reclamaciones pendientes.
+                Los datos personales se conservarán durante el tiempo
+                necesario para cumplir las finalidades para las que
+                se recogieron y, cuando corresponda, durante los plazos
+                exigidos por la legislación aplicable.
+              </p>
+              <p>
+                Cuando dejen de ser necesarios, se suprimirán o
+                se mantendrán debidamente bloqueados cuando proceda,
+                de acuerdo con la normativa. Los plazos concretos
+                deben determinarse según cada categoría de datos
+                y su finalidad.
+              </p>
+            </div>
+
+            <div style={itemStyle}>
+              <p style={titleStyle}>🗑️ Supresión y cierre de cuenta</p>
+              <p>
+                Puedes solicitar la supresión de tus datos personales
+                y, cuando exista esa funcionalidad, solicitar el cierre
+                de tu cuenta. La solicitud se evaluará conforme a la
+                normativa aplicable.
+              </p>
+              <p>
+                La supresión no implica eliminar datos que deban
+                conservarse por una obligación legal o que sean
+                necesarios para formular, ejercer o defender
+                reclamaciones. Cuando corresponda, esos datos se
+                conservarán únicamente durante el plazo aplicable
+                y con las restricciones legalmente exigidas.
               </p>
             </div>
 
             <div style={itemStyle}>
               <p style={titleStyle}>⚖️ Tus derechos</p>
               <p>
-                Puedes solicitar el acceso, rectificación, supresión,
-                limitación u oposición al tratamiento y, cuando proceda,
-                la portabilidad de tus datos o retirar el consentimiento
-                otorgado. Para ejercer tus derechos, contacta con la
-                responsable del tratamiento.
+                Puedes ejercer los derechos de acceso, rectificación,
+                supresión, oposición, limitación del tratamiento y,
+                cuando proceda, portabilidad de tus datos. También
+                puedes retirar el consentimiento cuando el tratamiento
+                se base en él, sin que ello afecte a la licitud del
+                tratamiento realizado previamente.
+              </p>
+              <p>
+                Para ejercer tus derechos, escribe al correo de contacto.
+                Es posible que sea necesario verificar tu identidad
+                para proteger tus datos. También tienes derecho a
+                presentar una reclamación ante la Agencia Española
+                de Protección de Datos si consideras que el tratamiento
+                no se ajusta a la normativa.
               </p>
             </div>
 
             <div style={itemStyle}>
               <p style={titleStyle}>📧 Contacto</p>
               <p>
-                Para consultas sobre privacidad o para ejercer tus derechos,
-                escribe a{" "}
+                Para consultas relacionadas con la privacidad o para
+                ejercer tus derechos, puedes escribir a:
+                {" "}
                 <a
                   href={`mailto:${email}`}
                   style={{ color: "#4db8ff" }}
@@ -145,6 +216,12 @@ export default function Privacidad() {
                   {email}
                 </a>
                 .
+              </p>
+              <p>
+                La información completa de privacidad debe incluir
+                también la identidad y los datos de contacto del
+                responsable del tratamiento, así como los restantes
+                datos exigidos por la normativa de protección de datos.
               </p>
             </div>
           </div>
