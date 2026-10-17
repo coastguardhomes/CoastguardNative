@@ -570,6 +570,9 @@ export default function ClienteInspeccionVer() {
           color: "#fff",
           fontFamily: "Inter, sans-serif",
           paddingBottom: "80px",
+          minWidth: 0,
+          boxSizing: "border-box",
+          overflowWrap: "anywhere",
         }}
       >
         <Link
@@ -580,6 +583,9 @@ export default function ClienteInspeccionVer() {
             fontWeight: "700",
             display: "inline-block",
             marginBottom: "20px",
+            maxWidth: "100%",
+            overflowWrap: "anywhere",
+            wordBreak: "break-word",
           }}
         >
           ← {t("volverMisInformes") || "Volver a mis informes"}
@@ -595,6 +601,10 @@ export default function ClienteInspeccionVer() {
               borderRadius: "12px",
               textAlign: "center",
               marginBottom: "20px",
+              minWidth: 0,
+              boxSizing: "border-box",
+              overflowWrap: "anywhere",
+              wordBreak: "break-word",
             }}
           >
             {errorMsg}
@@ -615,15 +625,28 @@ export default function ClienteInspeccionVer() {
                 alignItems: "center",
                 gap: "12px",
                 boxShadow: SOMBRA_LUXURY,
+                minWidth: 0,
+                boxSizing: "border-box",
+                flexWrap: "wrap",
               }}
             >
-              <div>
+              <div
+                style={{
+                  minWidth: 0,
+                  flex: "1 1 180px",
+                  overflowWrap: "anywhere",
+                  wordBreak: "break-word",
+                }}
+              >
                 <h2
                   style={{
                     ...TEXTO_DORADO_BRILLO,
                     fontSize: "18px",
                     margin: 0,
                     fontWeight: "900",
+                    maxWidth: "100%",
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
                   }}
                 >
                   {esExtra
@@ -637,6 +660,8 @@ export default function ClienteInspeccionVer() {
                     fontSize: "12px",
                     color: "#94a3b8",
                     fontWeight: "600",
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
                   }}
                 >
                   {t("fecha") || "Fecha"}:{" "}
@@ -656,6 +681,11 @@ export default function ClienteInspeccionVer() {
                   fontSize: "11px",
                   fontWeight: "900",
                   textTransform: "uppercase",
+                  maxWidth: "100%",
+                  boxSizing: "border-box",
+                  whiteSpace: "normal",
+                  overflowWrap: "anywhere",
+                  wordBreak: "break-word",
                 }}
               >
                 {inspeccion.estado}
@@ -669,6 +699,8 @@ export default function ClienteInspeccionVer() {
                 borderRadius: "16px",
                 border: BORDE_DORADO_FINO,
                 marginBottom: "20px",
+                minWidth: 0,
+                boxSizing: "border-box",
               }}
             >
               <h4
@@ -689,6 +721,12 @@ export default function ClienteInspeccionVer() {
                   fontSize: "15px",
                   fontWeight: "700",
                   color: "#fff",
+                  minWidth: 0,
+                  maxWidth: "100%",
+                  boxSizing: "border-box",
+                  overflowWrap: "anywhere",
+                  wordBreak: "break-word",
+                  whiteSpace: "pre-wrap",
                 }}
               >
                 {vivienda?.direccion ||
@@ -702,6 +740,11 @@ export default function ClienteInspeccionVer() {
                     margin: "5px 0 0",
                     color: "#94a3b8",
                     fontSize: "13px",
+                    minWidth: 0,
+                    maxWidth: "100%",
+                    boxSizing: "border-box",
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
                   }}
                 >
                   {vivienda.ciudad}
@@ -716,6 +759,8 @@ export default function ClienteInspeccionVer() {
                 borderRadius: "16px",
                 border: BORDE_DORADO_FINO,
                 marginBottom: "20px",
+                minWidth: 0,
+                boxSizing: "border-box",
               }}
             >
               <h4
@@ -738,6 +783,11 @@ export default function ClienteInspeccionVer() {
                   color: "#e2e8f0",
                   whiteSpace: "pre-wrap",
                   lineHeight: "1.5",
+                  minWidth: 0,
+                  maxWidth: "100%",
+                  boxSizing: "border-box",
+                  overflowWrap: "anywhere",
+                  wordBreak: "break-word",
                 }}
               >
                 {inspeccion.notas_tecnico ||
@@ -751,6 +801,12 @@ export default function ClienteInspeccionVer() {
                     margin: "12px 0 0",
                     fontSize: "13px",
                     color: "#cbd5e1",
+                    minWidth: 0,
+                    maxWidth: "100%",
+                    boxSizing: "border-box",
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-wrap",
                   }}
                 >
                   <strong style={{ color: COLOR_DORADO }}>
@@ -766,6 +822,12 @@ export default function ClienteInspeccionVer() {
                     margin: "6px 0 0",
                     fontSize: "13px",
                     color: "#cbd5e1",
+                    minWidth: 0,
+                    maxWidth: "100%",
+                    boxSizing: "border-box",
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-wrap",
                   }}
                 >
                   <strong style={{ color: COLOR_DORADO }}>
@@ -783,6 +845,8 @@ export default function ClienteInspeccionVer() {
                 borderRadius: "16px",
                 border: BORDE_DORADO_FINO,
                 marginBottom: "20px",
+                minWidth: 0,
+                boxSizing: "border-box",
               }}
             >
               <h4
@@ -815,6 +879,7 @@ export default function ClienteInspeccionVer() {
                     gridTemplateColumns:
                       "repeat(auto-fill, minmax(100px, 1fr))",
                     gap: "10px",
+                    minWidth: 0,
                   }}
                 >
                   {fotos.map((foto, idx) => {
@@ -833,6 +898,7 @@ export default function ClienteInspeccionVer() {
                           borderRadius: "12px",
                           overflow: "hidden",
                           border: BORDE_DORADO_FINO,
+                          minWidth: 0,
                         }}
                       >
                         <img
@@ -868,6 +934,10 @@ export default function ClienteInspeccionVer() {
                   fontWeight: "900",
                   textDecoration: "none",
                   marginBottom: "16px",
+                  maxWidth: "100%",
+                  boxSizing: "border-box",
+                  overflowWrap: "anywhere",
+                  wordBreak: "break-word",
                 }}
               >
                 {esExtra
@@ -890,6 +960,8 @@ export default function ClienteInspeccionVer() {
                   fontSize: "14px",
                   cursor: "pointer",
                   marginBottom: "12px",
+                  maxWidth: "100%",
+                  boxSizing: "border-box",
                 }}
               >
                 🗑️ {t("borrarEsteInforme") || "Quitar aviso"}
@@ -914,6 +986,7 @@ export default function ClienteInspeccionVer() {
               justifyContent: "center",
               alignItems: "center",
               padding: "20px",
+              boxSizing: "border-box",
             }}
           >
             <div
