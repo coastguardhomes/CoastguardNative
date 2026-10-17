@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -6,6 +5,8 @@ import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
 const VERSION_CONTRATO = "CONTRATO_SERVICIOS_V1_2026-10-11";
+const VERSION_CONSENTIMIENTO_INICIO =
+  "CONSENTIMIENTO_INICIO_ANTICIPADO_V1_2026-10-18";
 
 export default function ClienteFirmaDibujar({
   contratoId: propContratoId,
@@ -21,6 +22,8 @@ export default function ClienteFirmaDibujar({
   const [guardando, setGuardando] = useState(false);
   const [hayFirma, setHayFirma] = useState(false);
   const [aceptaContrato, setAceptaContrato] = useState(false);
+  const [solicitaInicioAnticipado, setSolicitaInicioAnticipado] =
+    useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -132,8 +135,6 @@ export default function ClienteFirmaDibujar({
       const canvas = canvasRef.current;
       const firmaBase64 = canvas.toDataURL("image/png");
 
-      // El servidor comprueba la sesión y los permisos,
-      // guarda la firma y registra la aceptación contractual.
       const {
         data: funcData,
         error: funcError
@@ -143,7 +144,10 @@ export default function ClienteFirmaDibujar({
           contrato_id: numericId,
           firmaBase64,
           aceptaContrato: true,
-          versionContrato: VERSION_CONTRATO
+          versionContrato: VERSION_CONTRATO,
+          solicitaInicioAnticipado,
+          versionConsentimientoInicio:
+            VERSION_CONSENTIMIENTO_INICIO
         }
       });
 
@@ -282,6 +286,54 @@ export default function ClienteFirmaDibujar({
             condiciones del contrato que voy a firmar.
             Confirmo que he podido revisar el documento
             contractual antes de firmar.
+          </label>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "10px",
+            margin: "16px 0",
+            padding: "14px",
+            border: "1px solid rgba(255,193,7,0.45)",
+            borderRadius: "10px",
+            background: "rgba(255,193,7,0.07)"
+          }}
+        >
+          <input
+            id="consentimiento-inicio-anticipado"
+            type="checkbox"
+            checked={solicitaInicioAnticipado}
+            onChange={(e) =>
+              setSolicitaInicioAnticipado(e.target.checked)
+            }
+            disabled={guardando}
+            style={{
+              width: "20px",
+              height: "20px",
+              flexShrink: 0,
+              marginTop: "2px",
+              accentColor: "#4db8ff"
+            }}
+          />
+
+          <label
+            htmlFor="consentimiento-inicio-anticipado"
+            style={{
+              color: "#ffffff",
+              fontSize: "14px",
+              lineHeight: 1.5,
+              cursor: guardando ? "default" : "pointer"
+            }}
+          >
+            Solicito expresamente que el servicio comience
+            antes de que finalice el plazo de desistimiento
+            de 14 días y entiendo que, si desisto, podré tener
+            que abonar la parte proporcional del servicio
+            prestado cuando legalmente corresponda. Esta
+            solicitud es opcional y no condiciona la firma
+            del contrato.
           </label>
         </div>
 
