@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
@@ -12,7 +13,6 @@ function obtenerRutaStorage(valor) {
   const texto = valor.trim();
   if (!texto) return null;
 
-  // Las rutas internas de Storage se conservan tal cual.
   if (!/^https?:\/\//i.test(texto) && !/^data:/i.test(texto)) {
     return texto.replace(/^\/+/, "");
   }
@@ -106,13 +106,14 @@ export default function Checklist() {
           .maybeSingle();
 
         if (inspError) throw inspError;
-
         if (cancelado) return;
 
         setInspeccion(insp);
 
         if (!insp) {
-          setMensaje("No se encontró la inspección o no tienes permiso para verla.");
+          setMensaje(
+            "No se encontró la inspección o no tienes permiso para verla."
+          );
           return;
         }
 
@@ -157,7 +158,6 @@ export default function Checklist() {
           .eq("inspeccion_id", id);
 
         if (checklistError) throw checklistError;
-
         if (!cancelado) setItems(checklist || []);
       } catch (error) {
         console.error("Error cargando datos de inspección:", error);
@@ -191,9 +191,7 @@ export default function Checklist() {
   async function marcarItem(itemId, valor) {
     const { error } = await supabase
       .from("checklist_inspeccion")
-      .update({
-        completado: valor,
-      })
+      .update({ completado: valor })
       .eq("id", itemId);
 
     if (error) {
@@ -205,10 +203,7 @@ export default function Checklist() {
     setItems((actuales) =>
       actuales.map((item) =>
         item.id === itemId
-          ? {
-              ...item,
-              completado: valor,
-            }
+          ? { ...item, completado: valor }
           : item
       )
     );
@@ -218,84 +213,128 @@ export default function Checklist() {
 
   async function subirFoto(e) {
     const input = e.target;
-    const archivo = input.files?.[0];
+    const archivos = Array.from(input.files || []);
 
-    if (!archivo || subiendoFoto || finalizando) return;
+    if (!archivos.length || subiendoFoto || finalizando) return;
 
-    if (!archivo.type.startsWith("image/")) {
-      setMensaje("Selecciona un archivo de imagen válido.");
+    const archivosInvalidos = archivos.filter(
+      (archivo) => !archivo.type.startsWith("image/")
+    );
+
+    if (archivosInvalidos.length > 0) {
+      setMensaje(
+        "Todos los archivos seleccionados deben ser imágenes. No se ha iniciado la subida."
+      );
       input.value = "";
       return;
     }
 
-    let nombre = null;
-
     try {
       setSubiendoFoto(true);
-      setMensaje("Subiendo foto...");
+      setMensaje(`Subiendo ${archivos.length} foto(s)...`);
 
-      const extensionOriginal =
-        archivo.name?.split(".").pop()?.toLowerCase() || "jpg";
+      // Se suben secuencialmente para reducir errores de conexión.
+      const nuevasFotos = [];
+      const nuevasFotosVisibles = [];
+      const erroresSubida = [];
 
-      const extension = /^[a-z0-9]{1,10}$/.test(extensionOriginal)
-        ? extensionOriginal
-        : "jpg";
+      for (let i = 0; i < archivos.length; i += 1) {
+        const archivo = archivos[i];
 
-      nombre = `inspecciones/${id}/foto_${Date.now()}.${extension}`;
+        const extensionOriginal =
+          archivo.name?.split(".").pop()?.toLowerCase() || "jpg";
 
-      const { error: uploadError } = await supabase.storage
-        .from(BUCKET_FOTOS)
-        .upload(nombre, archivo, {
-          contentType: archivo.type,
-          upsert: false,
-        });
+        const extension = /^[a-z0-9]{1,10}$/.test(extensionOriginal)
+          ? extensionOriginal
+          : "jpg";
 
-      if (uploadError) throw uploadError;
+        const nombre =
+          `inspecciones/${id}/foto_${Date.now()}_${i}_${Math.random()
+            .toString(36)
+            .slice(2, 8)}.${extension}`;
 
-      // Comprobar que la foto se puede leer antes de registrarla.
-      const urlFirmada = await resolverUrlFoto(nombre);
+        try {
+          const { error: uploadError } = await supabase.storage
+            .from(BUCKET_FOTOS)
+            .upload(nombre, archivo, {
+              contentType: archivo.type,
+              upsert: false,
+            });
 
-      if (!urlFirmada) {
-        const { error: errorLimpieza } = await supabase.storage
-          .from(BUCKET_FOTOS)
-          .remove([nombre]);
+          if (uploadError) throw uploadError;
 
-        if (errorLimpieza) {
+          // Verificar que la foto privada se puede mostrar.
+          const urlFirmada = await resolverUrlFoto(nombre);
+
+          if (!urlFirmada) {
+            const { error: errorLimpieza } = await supabase.storage
+              .from(BUCKET_FOTOS)
+              .remove([nombre]);
+
+            if (errorLimpieza) {
+              console.error(
+                "No se pudo limpiar la foto subida:",
+                errorLimpieza
+              );
+            }
+
+            throw new Error(
+              "Se subió el archivo, pero no se pudo generar una URL segura para mostrarlo."
+            );
+          }
+
+          nuevasFotos.push(nombre);
+
+          nuevasFotosVisibles.push({
+            id: `${nombre}-${fotos.length + nuevasFotos.length}`,
+            valor: nombre,
+            url: urlFirmada,
+          });
+        } catch (errorArchivo) {
           console.error(
-            "No se pudo limpiar la foto subida:",
-            errorLimpieza
+            `Error subiendo ${archivo.name}:`,
+            errorArchivo
+          );
+
+          erroresSubida.push(
+            `${archivo.name}: ${
+              errorArchivo.message || "error desconocido"
+            }`
           );
         }
-
-        nombre = null;
-        throw new Error(
-          "La foto se subió, pero no se pudo generar una URL segura para mostrarla."
-        );
       }
 
-      // Se conserva el formato del campo fotos_url, pero guardando
-      // la ruta interna de Storage y no una URL pública.
-      setFotos((actuales) => [...actuales, nombre]);
-      setFotosVisibles((actuales) => [
-        ...actuales,
-        {
-          id: `${nombre}-${actuales.length}`,
-          valor: nombre,
-          url: urlFirmada,
-        },
-      ]);
+      if (nuevasFotos.length > 0) {
+        // Incorporar el lote completo sin sobrescribir fotos anteriores.
+        setFotos((actuales) => [...actuales, ...nuevasFotos]);
 
-      setMensaje("Foto subida correctamente.");
-      input.value = "";
+        setFotosVisibles((actuales) => [
+          ...actuales,
+          ...nuevasFotosVisibles,
+        ]);
+      }
+
+      if (erroresSubida.length > 0) {
+        setMensaje(
+          `Subidas correctas: ${nuevasFotos.length} de ${archivos.length}. ` +
+            `Errores: ${erroresSubida.join(" | ")}`
+        );
+      } else {
+        setMensaje(
+          `Se han subido correctamente las ${nuevasFotos.length} foto(s). ` +
+            "Pulsa «Finalizar y Enviar al Admin» para guardar la inspección."
+        );
+      }
     } catch (error) {
-      console.error("Error subiendo foto:", error);
+      console.error("Error preparando la subida de fotos:", error);
 
       setMensaje(
-        "Error subiendo la foto: " +
+        "Error subiendo fotos: " +
           (error.message || "Error desconocido")
       );
     } finally {
       setSubiendoFoto(false);
+      input.value = "";
     }
   }
 
@@ -354,12 +393,7 @@ export default function Checklist() {
 
   return (
     <Menu>
-      <div
-        style={{
-          padding: 20,
-          color: "#fff",
-        }}
-      >
+      <div style={{ padding: 20, color: "#fff" }}>
         <h2>Checklist Técnico</h2>
 
         {mensaje && (
@@ -380,11 +414,9 @@ export default function Checklist() {
             <p>
               <b>Cliente:</b> {cliente.nombre}
             </p>
-
             <p>
               <b>Email:</b> {cliente.email}
             </p>
-
             <p>
               <b>Teléfono:</b> {cliente.telefono}
             </p>
@@ -394,12 +426,8 @@ export default function Checklist() {
         <h3>Checklist</h3>
 
         {items.map((item) => (
-          <div
-            key={item.id}
-            style={{ marginBottom: 10 }}
-          >
+          <div key={item.id} style={{ marginBottom: 10 }}>
             <span>{item.item}</span>
-
             <input
               type="checkbox"
               checked={!!item.completado}
@@ -412,9 +440,7 @@ export default function Checklist() {
           </div>
         ))}
 
-        <label htmlFor="observaciones">
-          Observaciones:
-        </label>
+        <label htmlFor="observaciones">Observaciones:</label>
 
         <textarea
           id="observaciones"
@@ -430,13 +456,14 @@ export default function Checklist() {
         />
 
         <label htmlFor="foto-inspeccion">
-          Fotos:
+          Fotos (puedes seleccionar varias a la vez):
         </label>
 
         <input
           id="foto-inspeccion"
           type="file"
           accept="image/*"
+          multiple
           onChange={subirFoto}
           disabled={subiendoFoto || finalizando}
           style={{
