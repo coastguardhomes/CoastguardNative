@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -94,9 +95,15 @@ export default function VerFactura() {
   };
 
   /*
-   * Las fotografías de un extra pertenecen exclusivamente
-   * al bucket "extras", salvo que la propia referencia
-   * indique expresamente otro bucket.
+   * Las fotografías del extra pertenecen al bucket privado
+   * "extras", salvo que la referencia indique expresamente
+   * otro bucket.
+   *
+   * Las rutas actuales tienen el formato:
+   * fotos/nombre-del-archivo.jpg
+   *
+   * En ese caso, "fotos" es una carpeta dentro de "extras",
+   * NO un bucket independiente.
    */
   const obtenerReferenciaFoto = (foto) => {
     if (!foto) return null;
@@ -138,8 +145,13 @@ export default function VerFactura() {
 
     valor = valor.replace(/^\/+/, '');
 
-    // Compatibilidad con rutas antiguas que incluyen el bucket.
-    const prefijosBucket = ['extras', 'facturas', 'fotos'];
+    /*
+     * Solo quitamos el prefijo cuando coincide con el nombre
+     * de un bucket real incluido explícitamente en la ruta.
+     *
+     * No incluir "fotos": es una carpeta de "extras".
+     */
+    const prefijosBucket = ['extras', 'facturas'];
 
     for (const prefijo of prefijosBucket) {
       if (valor.startsWith(`${prefijo}/`)) {
@@ -272,7 +284,6 @@ export default function VerFactura() {
       }
 
       /*
-       * IMPORTANTE:
        * Las fotos se obtienen exclusivamente de extras.fotos.
        * No recurrir a inspecciones.fotos ni a fotos_inspeccion,
        * porque pertenecen a las inspecciones normales.
