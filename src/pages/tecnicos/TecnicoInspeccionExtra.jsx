@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
@@ -79,7 +80,7 @@ function obtenerBucketYReferencia(valor) {
     }
   }
 
-  // Las fotos nuevas se guardan en extras/fotos/.
+  // Las fotos nuevas se guardan dentro de extras/fotos/.
   if (ruta.startsWith("fotos/")) {
     return { bucket: "extras", referencia: ruta };
   }
@@ -89,7 +90,7 @@ function obtenerBucketYReferencia(valor) {
     return { bucket: "facturas", referencia: ruta };
   }
 
-  // Las referencias antiguas sin bucket se resuelven en extras.
+  // Referencias antiguas sin bucket.
   return { bucket: "extras", referencia: ruta };
 }
 
@@ -126,6 +127,8 @@ export default function TecnicoInspeccionExtra() {
   const [alerta, setAlerta] = useState(false);
   const [fotos, setFotos] = useState([]);
   const [fotosUrlsFirmadas, setFotosUrlsFirmadas] = useState([]);
+  const [previsualizacionesLocales, setPrevisualizacionesLocales] =
+    useState({});
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
@@ -174,7 +177,9 @@ export default function TecnicoInspeccionExtra() {
       } = await supabase.auth.getUser();
 
       if (userError) throw userError;
-      if (!user) throw new Error("No hay una sesión autenticada.");
+      if (!user) {
+        throw new Error("No hay una sesión autenticada.");
+      }
 
       await cargarClientes();
 
@@ -203,7 +208,9 @@ export default function TecnicoInspeccionExtra() {
           .order("creado_en", { ascending: false });
 
         if (extrasError) throw extrasError;
-        if (extrasPorFactura?.length) extra = extrasPorFactura[0];
+        if (extrasPorFactura?.length) {
+          extra = extrasPorFactura[0];
+        }
       }
 
       setExtraData(extra);
@@ -252,6 +259,8 @@ export default function TecnicoInspeccionExtra() {
     cargarDetalleExtra();
   }, [id]);
 
+  // Las rutas guardadas en la base de datos se convierten en URLs
+  // firmadas para mostrar imágenes del bucket privado.
   useEffect(() => {
     let cancelado = false;
 
@@ -292,7 +301,9 @@ export default function TecnicoInspeccionExtra() {
         })
       );
 
-      if (!cancelado) setFotosUrlsFirmadas(urls);
+      if (!cancelado) {
+        setFotosUrlsFirmadas(urls);
+      }
     };
 
     resolverFotos();
@@ -301,6 +312,17 @@ export default function TecnicoInspeccionExtra() {
       cancelado = true;
     };
   }, [fotos]);
+
+  // Liberar las vistas previas temporales cuando se desmonta la pantalla.
+  useEffect(() => {
+    return () => {
+      Object.values(previsualizacionesLocales).forEach((url) => {
+        if (typeof url === "string" && url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, [previsualizacionesLocales]);
 
   const manejarCambioCliente = async (e) => {
     const nuevoClienteId = e.target.value;
@@ -333,6 +355,7 @@ export default function TecnicoInspeccionExtra() {
       setMensaje("");
 
       const nuevasFotos = [...fotos];
+      const nuevasPrevisualizaciones = {};
 
       for (const archivo of archivos) {
         if (!archivo.type.startsWith("image/")) {
@@ -361,16 +384,65 @@ export default function TecnicoInspeccionExtra() {
 
         if (uploadError) throw uploadError;
 
-        // Guardamos solo la ruta; nunca una URL firmada que caduque.
-        nuevasFotos.push(data?.path || ruta);
+        // Se guarda la ruta permanente, nunca una URL firmada temporal.
+        const rutaGuardada = data?.path || ruta;
+        nuevasFotos.push(rutaGuardada);
+
+        // Vista previa local: funciona incluso antes de que exista
+        // el registro del extra al que la política privada vincula la foto.
+        nuevasPrevisualizaciones[rutaGuardada] =
+          URL.createObjectURL(archivo);
       }
 
+      // Si el extra ya existe, guardar las rutas inmediatamente.
+      // No esperar al botón final para persistir la evidencia fotográfica.
+      if (extraData?.id) {
+        const {
+          data: extraConFotos,
+          error: guardarFotosError
+        } = await supabase
+          .from("extras")
+          .update({ fotos: nuevasFotos })
+          .eq("id", extraData.id)
+          .select("id, fotos")
+          .maybeSingle();
+
+        if (guardarFotosError) throw guardarFotosError;
+
+        if (!extraConFotos) {
+          throw new Error(
+            "Las fotos se subieron, pero no se pudieron guardar en el extra. Comprueba los permisos del técnico."
+          );
+        }
+
+        setExtraData((actual) =>
+          actual
+            ? {
+                ...actual,
+                fotos: extraConFotos.fotos || nuevasFotos
+              }
+            : actual
+        );
+      }
+
+      setPrevisualizacionesLocales((actuales) => ({
+        ...actuales,
+        ...nuevasPrevisualizaciones
+      }));
+
       setFotos(nuevasFotos);
-      setMensaje("Fotografías subidas correctamente.");
+
+      setMensaje(
+        extraData?.id
+          ? "Fotografías subidas y guardadas correctamente."
+          : "Fotografías subidas. Pulsa «Completar inspección y enviar» para guardarlas en el nuevo extra."
+      );
     } catch (err) {
       console.error("Error subiendo fotografías:", err);
       setError(
-        `No se pudieron subir las fotos: ${err?.message || "Error de permisos o conexión"}.`
+        `No se pudieron subir las fotos: ${
+          err?.message || "Error de permisos o conexión"
+        }.`
       );
     } finally {
       setSaving(false);
@@ -429,7 +501,9 @@ export default function TecnicoInspeccionExtra() {
         alerta
       };
 
-      if (alerta) extraPayload.alerta_vista = false;
+      if (alerta) {
+        extraPayload.alerta_vista = false;
+      }
 
       if (extraData?.id) {
         const {
@@ -453,9 +527,8 @@ export default function TecnicoInspeccionExtra() {
         setExtraData(extraActualizado);
 
         /*
-         * El panel del técnico filtra por facturas.estado_tecnico.
-         * Actualizamos únicamente ese campo; no tocamos importes,
-         * IVA, totales, estado de pago ni datos administrativos.
+         * Actualizamos únicamente el estado técnico de la factura.
+         * No tocamos importes, IVA, totales ni estado de pago.
          */
         const facturaId =
           extraActualizado.factura_id || facturaData?.id;
@@ -507,6 +580,7 @@ export default function TecnicoInspeccionExtra() {
         .maybeSingle();
 
       if (crearError) throw crearError;
+
       if (!nuevoExtra) {
         throw new Error("No se pudo recuperar el extra creado.");
       }
@@ -875,11 +949,15 @@ export default function TecnicoInspeccionExtra() {
             }}
           >
             {fotos.map((foto, index) => {
-              const url = fotosUrlsFirmadas[index];
+              const referenciaFoto = obtenerReferenciaFoto(foto);
+              const url =
+                fotosUrlsFirmadas[index] ||
+                previsualizacionesLocales[referenciaFoto] ||
+                null;
 
               return url ? (
                 <img
-                  key={`${index}-${obtenerReferenciaFoto(foto)}`}
+                  key={`${index}-${referenciaFoto}`}
                   src={url}
                   alt={`Evidencia ${index + 1}`}
                   style={{
@@ -892,7 +970,7 @@ export default function TecnicoInspeccionExtra() {
                 />
               ) : (
                 <div
-                  key={`${index}-${obtenerReferenciaFoto(foto)}`}
+                  key={`${index}-${referenciaFoto}`}
                   style={{
                     width: "60px",
                     height: "60px",
