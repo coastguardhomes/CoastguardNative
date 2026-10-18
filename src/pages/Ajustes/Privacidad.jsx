@@ -151,17 +151,33 @@ export default function Privacidad() {
             <div style={itemStyle}>
               <p style={titleStyle}>🗄️ Conservación de datos</p>
               <p>
-                Los datos personales se conservarán durante el tiempo
-                necesario para cumplir las finalidades para las que
-                se recogieron y, cuando corresponda, durante los plazos
-                exigidos por la legislación aplicable.
+                Las fotografías de las inspecciones se conservarán
+                durante un máximo de 60 días naturales desde su
+                almacenamiento. Está previsto que un proceso automático
+                elimine periódicamente las fotografías que superen
+                ese plazo, incluidas las fotografías antiguas que
+                hayan quedado sin vincular a una inspección.
               </p>
               <p>
-                Cuando dejen de ser necesarios, se suprimirán o
-                se mantendrán debidamente bloqueados cuando proceda,
-                de acuerdo con la normativa. Los plazos concretos
-                deben determinarse según cada categoría de datos
-                y su finalidad.
+                Este plazo de 60 días se refiere a las fotografías
+                de inspección y no establece el plazo de conservación
+                de contratos, firmas, facturas ni documentos fiscales,
+                que se conservarán durante los plazos que resulten
+                necesarios o legalmente exigibles.
+              </p>
+              <p>
+                Los informes, observaciones y demás registros de
+                inspección que no sean fotografías se conservarán
+                únicamente durante el tiempo necesario para prestar
+                el servicio, gestionar la relación contractual
+                y atender las obligaciones legales o posibles
+                reclamaciones. Sus plazos deberán revisarse según
+                la finalidad de cada dato.
+              </p>
+              <p>
+                Cuando los datos dejen de ser necesarios, se
+                suprimirán o, cuando proceda legalmente, se mantendrán
+                bloqueados durante el plazo correspondiente.
               </p>
             </div>
 
