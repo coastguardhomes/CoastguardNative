@@ -5,8 +5,17 @@ import "./PoliticaPrivacidad.css";
 
 export default function PoliticaPrivacidad() {
   const navigate = useNavigate();
-
   const email = "coastguardhomes@gmail.com";
+
+  const titulo = {
+    color: "#00356b",
+    marginTop: "24px",
+    marginBottom: "10px",
+  };
+
+  const parrafo = {
+    marginBottom: "14px",
+  };
 
   return (
     <div
@@ -17,6 +26,7 @@ export default function PoliticaPrivacidad() {
         margin: "0 auto",
         color: "#333",
         lineHeight: "1.6",
+        overflowWrap: "anywhere",
       }}
     >
       <button
@@ -45,36 +55,41 @@ export default function PoliticaPrivacidad() {
         POLÍTICA DE PRIVACIDAD
       </h1>
 
-      <p>
-        <strong>Última actualización:</strong> 13 de octubre de 2026.
+      <p style={parrafo}>
+        <strong>Última actualización:</strong> 18 de octubre de 2026.
       </p>
 
-      <p>
+      <p style={parrafo}>
         Esta Política de Privacidad informa sobre el tratamiento de datos
-        personales realizado por CoastGuard Homes Services en relación con
-        la aplicación CoastGuard Homes y la gestión de los servicios
-        contratados por sus clientes. La aplicación está destinada a
-        consultar y gestionar la información relacionada con la relación
-        contractual y los servicios efectivamente contratados.
+        personales realizado por Roxana Collazo Alonso, bajo el nombre
+        comercial CoastGuard Homes Services, en relación con la aplicación
+        CoastGuard Homes y con la gestión de los servicios contratados por
+        sus clientes.
       </p>
 
-      <p>
-        Esta política se refiere a la aplicación y a los tratamientos de
-        datos vinculados a los servicios contratados. El sitio web
-        independiente de CoastGuard Homes constituye un medio distinto
-        y no queda regulado de forma general por esta política cuando
-        realice tratamientos propios; en ese caso, deberá facilitarse la
-        información de privacidad que corresponda a dicho sitio web.
+      <p style={parrafo}>
+        La aplicación es una herramienta para que los clientes puedan
+        consultar y gestionar información relacionada con los servicios
+        que hayan contratado. Su disponibilidad no significa que todos
+        los servicios o funciones estén incluidos en cada contrato.
       </p>
 
-      <p>
-        El tratamiento se regirá por el Reglamento (UE) 2016/679, General
-        de Protección de Datos (RGPD), la Ley Orgánica 3/2018, de Protección
-        de Datos Personales y garantía de los derechos digitales (LOPDGDD),
-        y las demás disposiciones aplicables.
+      <p style={parrafo}>
+        Esta política se refiere a la aplicación y a los tratamientos
+        relacionados con los servicios contratados. El sitio web
+        independiente de CoastGuard Homes es un medio distinto y deberá
+        facilitar su propia información de privacidad para los tratamientos
+        que realice por separado.
       </p>
 
-      <h3>1. RESPONSABLE DEL TRATAMIENTO</h3>
+      <p style={parrafo}>
+        El tratamiento de los datos se rige por el Reglamento (UE) 2016/679,
+        General de Protección de Datos (RGPD), la Ley Orgánica 3/2018,
+        de Protección de Datos Personales y garantía de los derechos
+        digitales (LOPDGDD), y las demás disposiciones que resulten aplicables.
+      </p>
+
+      <h3 style={titulo}>1. RESPONSABLE DEL TRATAMIENTO</h3>
 
       <ul>
         <li>
@@ -83,9 +98,6 @@ export default function PoliticaPrivacidad() {
         </li>
         <li>
           <strong>Nombre comercial:</strong> CoastGuard Homes Services.
-        </li>
-        <li>
-          <strong>NIE/NIF:</strong> Z1968154A.
         </li>
         <li>
           <strong>Domicilio profesional:</strong> Calle Casicas de Arriba,
@@ -97,132 +109,121 @@ export default function PoliticaPrivacidad() {
         </li>
       </ul>
 
-      <p>
+      <p style={parrafo}>
         Para realizar consultas sobre privacidad o ejercer los derechos
         descritos en esta política, puedes contactar con la responsable
         mediante el correo electrónico indicado.
       </p>
 
-      <h3>2. CATEGORÍAS DE DATOS PERSONALES</h3>
+      <h3 style={titulo}>2. CATEGORÍAS DE DATOS PERSONALES</h3>
 
-      <p>
-        Los datos tratados dependerán de las funciones utilizadas, de la
-        relación contractual y de los servicios que el cliente haya
-        solicitado. Podrán incluir:
+      <p style={parrafo}>
+        Dependiendo de la cuenta, de las funciones utilizadas y de los
+        servicios contratados, podrán tratarse las siguientes categorías
+        de datos:
       </p>
 
       <ul>
         <li>
           <strong>Identificación y contacto:</strong> nombre, apellidos,
-          correo electrónico, teléfono, dirección y otros datos de contacto
-          facilitados por el interesado.
+          correo electrónico, teléfono, dirección y demás datos de contacto
+          facilitados.
         </li>
         <li>
           <strong>Cuenta y autenticación:</strong> identificador de usuario,
-          información necesaria para administrar la cuenta y registros
-          técnicos relacionados con el acceso y la autenticación.
+          datos necesarios para administrar la cuenta y registros técnicos
+          relacionados con el acceso.
         </li>
         <li>
           <strong>Relación contractual:</strong> solicitudes, presupuestos,
-          contratos, servicios solicitados, comunicaciones, renovaciones,
-          cancelaciones y datos necesarios para gestionar la relación con
-          el cliente.
+          contratos, servicios contratados, aceptaciones, renovaciones,
+          cancelaciones, comunicaciones y reclamaciones.
         </li>
         <li>
           <strong>Datos del inmueble:</strong> dirección de la vivienda y
-          otra información necesaria para prestar los servicios
-          efectivamente contratados.
+          otra información necesaria para prestar el servicio contratado.
         </li>
         <li>
-          <strong>Custodia de llaves:</strong> información necesaria para
+          <strong>Custodia de llaves:</strong> datos necesarios para
           identificar, recibir, controlar, custodiar y devolver las llaves,
-          cuando se contrate este servicio.
+          cuando se contrate esta modalidad.
         </li>
         <li>
-          <strong>Visitas e inspecciones:</strong> cuando el cliente
-          contrate un servicio que las incluya, podrán tratarse los datos
-          necesarios para organizar la visita, registrar las observaciones
-          pertinentes y documentar el servicio realizado.
+          <strong>Visitas e inspecciones:</strong> información necesaria
+          para organizar y documentar las visitas o inspecciones que
+          se hayan contratado.
         </li>
         <li>
-          <strong>Fotografías e informes:</strong> cuando resulten
-          necesarios para una inspección u otro servicio contratado,
-          podrán generarse fotografías, observaciones o informes
-          relacionados con el inmueble. Se limitarán a la finalidad del
-          servicio y se evitará captar datos personales innecesarios.
+          <strong>Fotografías e informes:</strong> imágenes, observaciones
+          e informes relacionados con el inmueble cuando sean necesarios
+          para documentar una inspección u otro servicio contratado.
         </li>
         <li>
-          <strong>Facturación y pagos:</strong> información necesaria para
-          emitir facturas, gestionar pagos y suscripciones y cumplir las
-          obligaciones fiscales y contables. Los datos de tarjeta serán
-          tratados por el proveedor de pagos que intervenga en la
-          operación, conforme a sus funciones.
+          <strong>Pagos y facturación:</strong> datos necesarios para
+          gestionar cobros, suscripciones, facturas y obligaciones fiscales
+          y contables. Los datos de tarjeta serán tratados por el proveedor
+          de pagos que intervenga en la operación, conforme a sus funciones.
         </li>
         <li>
-          <strong>Comunicaciones:</strong> mensajes, solicitudes, avisos,
-          consultas, reclamaciones y comunicaciones relacionadas con el
-          servicio.
+          <strong>Comunicaciones:</strong> consultas, avisos, mensajes,
+          solicitudes y reclamaciones relacionadas con la cuenta o el servicio.
         </li>
         <li>
-          <strong>Seguridad y funcionamiento:</strong> registros técnicos
-          necesarios para gestionar accesos, proteger las cuentas, prevenir
-          usos indebidos y resolver incidencias.
+          <strong>Seguridad:</strong> registros técnicos necesarios para
+          proteger las cuentas, controlar los accesos y resolver incidencias.
         </li>
       </ul>
 
-      <p>
+      <p style={parrafo}>
         La custodia de llaves, por sí sola, no implica visitas a la vivienda,
-        inspecciones periódicas, fotografías ni informes sobre su estado.
-        Estos datos solo se tratarán cuando sean necesarios para otro
-        servicio efectivamente contratado o para una finalidad legítima
-        debidamente informada.
+        inspecciones, fotografías ni informes sobre su estado. Estos
+        tratamientos solo se realizarán cuando correspondan a otro servicio
+        contratado o a una finalidad legítima debidamente informada.
       </p>
 
-      <p>
-        Se procurará recoger únicamente datos adecuados, pertinentes y
-        limitados a lo necesario. No deben introducirse contraseñas,
-        datos completos de tarjetas bancarias ni información personal
-        innecesaria en campos de observaciones, mensajes o documentos.
+      <p style={parrafo}>
+        Se procurará recoger únicamente los datos adecuados y necesarios
+        para cada finalidad. No deben introducirse contraseñas, datos
+        completos de tarjetas bancarias ni información personal innecesaria
+        en campos de observaciones, mensajes o documentos.
       </p>
 
-      <h3>3. FINALIDADES DEL TRATAMIENTO</h3>
+      <h3 style={titulo}>3. FINALIDADES DEL TRATAMIENTO</h3>
 
-      <p>Los datos personales podrán utilizarse para:</p>
+      <p style={parrafo}>Los datos podrán utilizarse para:</p>
 
       <ul>
         <li>Crear, administrar y proteger las cuentas de usuario.</li>
         <li>
-          Responder consultas y gestionar solicitudes de información y
-          medidas precontractuales.
+          Atender consultas y gestionar solicitudes y medidas precontractuales.
         </li>
         <li>
           Formalizar, administrar y ejecutar los contratos de los servicios
-          contratados.
+          efectivamente contratados.
         </li>
         <li>
-          Gestionar la custodia de llaves, incluida su recepción, control
-          y devolución, cuando corresponda.
+          Gestionar la recepción, custodia, control y devolución de llaves,
+          cuando corresponda.
         </li>
         <li>
-          Organizar y documentar visitas, inspecciones, informes u otros
-          servicios cuando hayan sido contratados.
+          Organizar y documentar visitas, inspecciones, fotografías e
+          informes cuando estén incluidos en el servicio contratado.
         </li>
         <li>
-          Preparar presupuestos para servicios adicionales y ejecutarlos
-          únicamente después de la aceptación expresa del cliente cuando
-          dicha aceptación sea necesaria.
+          Preparar presupuestos para servicios adicionales y gestionar su
+          aceptación antes de ejecutarlos cuando sea necesario.
         </li>
         <li>
           Gestionar pagos, suscripciones, facturas y obligaciones fiscales
           y contables.
         </li>
         <li>
-          Tramitar comunicaciones contractuales, solicitudes de
-          cancelación, consultas y reclamaciones.
+          Tramitar comunicaciones, solicitudes de cancelación, consultas
+          y reclamaciones.
         </li>
         <li>
-          Proteger la aplicación, gestionar permisos de acceso y prevenir
-          accesos o usos no autorizados.
+          Proteger la aplicación, administrar permisos y prevenir accesos
+          o usos no autorizados.
         </li>
         <li>
           Cumplir obligaciones legales y formular, ejercer o defender
@@ -230,71 +231,58 @@ export default function PoliticaPrivacidad() {
         </li>
       </ul>
 
-      <p>
-        Los datos no se utilizarán para finalidades incompatibles con
-        aquellas para las que fueron recogidos. Si se pretende realizar
-        un tratamiento adicional que requiera información específica o una
-        nueva base jurídica, se facilitará la información exigida por la
-        normativa antes de llevarlo a cabo.
-      </p>
+      <h3 style={titulo}>4. BASE JURÍDICA DEL TRATAMIENTO</h3>
 
-      <h3>4. BASE JURÍDICA DEL TRATAMIENTO</h3>
-
-      <p>
-        Según la finalidad concreta, el tratamiento podrá basarse en:
+      <p style={parrafo}>
+        La base jurídica dependerá de la finalidad concreta:
       </p>
 
       <ul>
         <li>
-          <strong>Ejecución de un contrato o medidas precontractuales:</strong>{" "}
-          para gestionar solicitudes, elaborar presupuestos, formalizar
-          contratos y prestar los servicios solicitados.
+          <strong>Contrato y medidas precontractuales:</strong> para gestionar
+          solicitudes, formalizar contratos y prestar los servicios solicitados.
         </li>
         <li>
           <strong>Obligación legal:</strong> para cumplir las obligaciones
-          fiscales, contables y otras obligaciones impuestas por la
-          normativa aplicable.
+          fiscales, contables y demás deberes establecidos por la normativa.
         </li>
         <li>
-          <strong>Interés legítimo:</strong> cuando exista un interés
-          legítimo real, necesario y equilibrado, por ejemplo, para
-          proteger la seguridad de la aplicación o defender reclamaciones,
-          respetando los derechos y libertades de las personas afectadas.
+          <strong>Interés legítimo:</strong> cuando exista un interés legítimo
+          real, necesario y equilibrado, como proteger la seguridad de la
+          aplicación o defender reclamaciones.
         </li>
         <li>
-          <strong>Consentimiento:</strong> para los tratamientos que
-          requieran una autorización válida. El consentimiento podrá
-          retirarse en cualquier momento, sin que ello afecte a la licitud
-          del tratamiento efectuado antes de su retirada.
+          <strong>Consentimiento:</strong> cuando una operación concreta
+          requiera legalmente una autorización válida. El consentimiento
+          podrá retirarse en cualquier momento, sin afectar a la licitud
+          del tratamiento realizado antes de retirarlo.
         </li>
       </ul>
 
-      <p>
-        La aceptación de esta política no sustituye al consentimiento
-        específico que pueda ser necesario para determinados tratamientos.
-        Cuando el tratamiento se base en otra base jurídica válida, la
-        retirada del consentimiento no afectará a dicho tratamiento.
+      <p style={parrafo}>
+        La aceptación de esta política sirve para acreditar que se ha
+        facilitado la información de privacidad; no constituye por sí sola
+        un consentimiento para cualquier tratamiento ni sustituye las
+        autorizaciones específicas que puedan ser necesarias.
       </p>
 
-      <h3>5. CARÁCTER OBLIGATORIO DE LOS DATOS</h3>
+      <h3 style={titulo}>5. CARÁCTER OBLIGATORIO DE LOS DATOS</h3>
 
-      <p>
-        Los datos estrictamente necesarios para crear una cuenta, gestionar
-        una solicitud, formalizar un contrato o prestar un servicio deberán
-        facilitarse cuando sean imprescindibles para esas finalidades.
-        Si no se facilitan, puede resultar imposible completar el alta,
-        formalizar el contrato o prestar correctamente el servicio.
+      <p style={parrafo}>
+        Los datos imprescindibles para crear una cuenta, formalizar un
+        contrato o prestar un servicio deberán facilitarse cuando sean
+        necesarios para esas finalidades. Si no se facilitan, puede resultar
+        imposible completar el alta o prestar correctamente el servicio.
       </p>
 
-      <p>
-        Los datos adicionales que no sean necesarios deberán ser
-        opcionales. Se procurará identificar los campos obligatorios en
-        los formularios correspondientes.
+      <p style={parrafo}>
+        Los datos adicionales que no sean necesarios deberán ser opcionales
+        cuando la función correspondiente lo permita.
       </p>
 
-      <h3>6. CONSERVACIÓN DE LOS DATOS</h3>
+      <h3 style={titulo}>6. CONSERVACIÓN DE LOS DATOS</h3>
 
-      <p>
+      <p style={parrafo}>
         Los datos se conservarán durante el tiempo necesario para cumplir
         cada finalidad y, cuando corresponda, durante los plazos legales
         de conservación y prescripción de responsabilidades.
@@ -303,156 +291,182 @@ export default function PoliticaPrivacidad() {
       <ul>
         <li>
           <strong>Datos de cuenta:</strong> durante la vigencia de la cuenta
-          y el tiempo adicional necesario para gestionar obligaciones o
+          y el tiempo adicional necesario para atender obligaciones o
           reclamaciones pendientes.
         </li>
         <li>
-          <strong>Contratos y documentación contractual:</strong> durante
-          la relación contractual y los plazos adicionales necesarios para
-          cumplir obligaciones legales o atender posibles reclamaciones.
+          <strong>Contratos, aceptaciones y documentación contractual:</strong>{" "}
+          durante la relación contractual y los plazos posteriores necesarios
+          para cumplir obligaciones legales o atender posibles reclamaciones.
         </li>
         <li>
           <strong>Facturas y documentación contable:</strong> durante los
-          plazos de conservación exigidos por la normativa fiscal,
-          mercantil y contable aplicable.
+          plazos exigidos por la normativa fiscal, mercantil y contable
+          aplicable.
         </li>
         <li>
-          <strong>Datos de custodia de llaves:</strong> durante el tiempo
-          necesario para gestionar la custodia, la devolución y las
-          responsabilidades relacionadas, evitando su conservación
-          indefinida.
+          <strong>Datos de custodia de llaves:</strong> durante el período
+          de custodia y el tiempo posterior que resulte necesario para
+          documentar la devolución, gestionar incidencias y atender
+          responsabilidades. No se conservarán indefinidamente sin una
+          finalidad legítima.
         </li>
         <li>
-          <strong>Fotografías e informes:</strong> cuando se generen para
-          un servicio contratado, durante el tiempo necesario para
-          documentar y gestionar dicho servicio y atender las obligaciones
-          o reclamaciones que puedan corresponder.
+          <strong>Fotografías de inspecciones:</strong> el plazo previsto
+          de conservación es de un máximo de 60 días desde su creación o
+          registro. Se ha configurado un proceso automatizado de limpieza
+          para eliminar fotografías de inspección que superen ese plazo.
+          Si se produce un error técnico que impida completar una
+          eliminación, deberá revisarse la incidencia y completarse la
+          eliminación pendiente.
         </li>
         <li>
-          <strong>Comunicaciones y reclamaciones:</strong> durante el
-          tiempo necesario para atenderlas y gestionar las posibles
-          responsabilidades posteriores.
+          <strong>Informes y documentación de las inspecciones:</strong>{" "}
+          durante el tiempo necesario para gestionar el servicio, atender
+          las obligaciones aplicables y resolver posibles reclamaciones.
+          El plazo de 60 días indicado para las fotografías no debe
+          interpretarse automáticamente como el plazo de conservación
+          de todos los informes o documentos.
         </li>
         <li>
-          <strong>Registros de seguridad:</strong> durante un período
-          proporcionado y necesario para proteger el servicio, investigar
-          incidencias y cumplir las obligaciones aplicables.
+          <strong>Comunicaciones y reclamaciones:</strong> durante el tiempo
+          necesario para gestionarlas y atender las responsabilidades que
+          puedan derivarse.
+        </li>
+        <li>
+          <strong>Registros técnicos y de seguridad:</strong> durante un
+          período proporcionado a las necesidades de seguridad, investigación
+          de incidencias y cumplimiento de las obligaciones aplicables.
         </li>
       </ul>
 
-      <p>
-        Los períodos concretos deberán ajustarse a las necesidades reales
-        de cada tratamiento y a la normativa aplicable. Cuando los datos
-        dejen de ser necesarios, se suprimirán, anonimizarán o bloquearán
-        cuando legalmente corresponda. La solicitud de eliminación de una
-        cuenta no obliga a borrar información que deba conservarse por
-        una obligación legal o para atender responsabilidades pendientes.
+      <p style={parrafo}>
+        Cuando los datos dejen de ser necesarios, se suprimirán o se
+        anonimizarán y, cuando legalmente corresponda, se bloquearán durante
+        el período exigible. La eliminación de una cuenta no implica borrar
+        información que deba conservarse por obligación legal o para atender
+        responsabilidades pendientes.
       </p>
 
-      <h3>7. DESTINATARIOS Y PROVEEDORES</h3>
+      <p style={parrafo}>
+        El plazo de 60 días para las fotografías describe la política de
+        conservación configurada. La ejecución efectiva de las eliminaciones
+        debe comprobarse mediante los registros del proceso de limpieza.
+      </p>
 
-      <p>
-        Para gestionar la aplicación y los servicios pueden intervenir
-        proveedores tecnológicos, de pagos, facturación y comunicaciones,
-        dependiendo de las funciones efectivamente utilizadas.
+      <h3 style={titulo}>7. DESTINATARIOS Y PROVEEDORES</h3>
+
+      <p style={parrafo}>
+        Para prestar los servicios pueden intervenir proveedores tecnológicos,
+        de pagos, facturación y comunicaciones. Solo deberán acceder a los
+        datos necesarios para las funciones que tengan encomendadas.
       </p>
 
       <ul>
         <li>
-          <strong>Supabase:</strong> plataforma utilizada para los servicios
-          de infraestructura que correspondan, como base de datos,
-          autenticación, almacenamiento y servicios asociados.
+          <strong>Supabase:</strong> infraestructura de base de datos,
+          autenticación, almacenamiento y servicios asociados utilizados
+          por la aplicación.
         </li>
         <li>
-          <strong>Stripe:</strong> proveedor utilizado para gestionar los
-          pagos y las operaciones de suscripción que se realicen a través
-          de su plataforma.
+          <strong>Stripe:</strong> gestión de los pagos y las suscripciones
+          procesados mediante su plataforma.
         </li>
         <li>
-          <strong>FacturaDirecta:</strong> servicio utilizado para las
-          funciones de facturación y gestión administrativa o contable
-          que correspondan.
+          <strong>FacturaDirecta:</strong> funciones de facturación y
+          gestión administrativa o contable que se utilicen.
         </li>
         <li>
-          <strong>Resend:</strong> proveedor de infraestructura de correo
-          electrónico cuando se utilice para enviar comunicaciones
-          relacionadas con la aplicación o el servicio.
-        </li>
-        <li>
-          <strong>GitHub:</strong> plataforma utilizada para alojar y
-          gestionar el código fuente y los procesos de desarrollo. El
-          repositorio no debe utilizarse para almacenar datos personales
-          reales de clientes, credenciales ni secretos de producción.
+          <strong>Resend:</strong> envío de correos electrónicos cuando
+          se utilice para comunicaciones de la aplicación o del servicio.
         </li>
       </ul>
 
-      <p>
-        Cuando un proveedor trate datos personales por cuenta de la
-        responsable, deberán establecerse las condiciones contractuales y
-        las garantías exigidas por la normativa de protección de datos.
-        Algunos proveedores también pueden actuar como responsables
-        independientes para determinados tratamientos que realicen bajo
-        sus propias condiciones.
+      <p style={parrafo}>
+        Los proveedores que actúen como encargados del tratamiento deberán
+        estar sujetos a las condiciones contractuales y garantías exigidas
+        por el RGPD. Algunos proveedores pueden actuar como responsables
+        independientes para determinadas operaciones realizadas bajo sus
+        propias condiciones.
       </p>
 
-      <p>
-        Los datos podrán comunicarse a autoridades públicas, tribunales
-        u otros destinatarios cuando exista una obligación legal válida
-        o cuando resulte necesario para formular, ejercer o defender
+      <p style={parrafo}>
+        GitHub se utiliza para alojar y gestionar el código fuente y los
+        procesos de desarrollo. El repositorio no debe utilizarse para
+        almacenar datos personales reales de clientes, documentos
+        contractuales, credenciales ni secretos de producción.
+      </p>
+
+      <p style={parrafo}>
+        Los datos también podrán comunicarse a autoridades públicas,
+        tribunales u otros destinatarios cuando exista una obligación legal
+        válida o resulte necesario para formular, ejercer o defender
         reclamaciones.
       </p>
 
-      <p>
-        No se venderán datos personales a terceros. El acceso de los
-        proveedores y las comunicaciones de datos se limitarán a lo
-        necesario para la finalidad correspondiente.
+      <p style={parrafo}>
+        No se venderán datos personales a terceros. El acceso por parte
+        de proveedores se limitará a las finalidades correspondientes.
       </p>
 
-      <h3>8. TRANSFERENCIAS INTERNACIONALES</h3>
+      <h3 style={titulo}>8. TRANSFERENCIAS INTERNACIONALES</h3>
 
-      <p>
-        Algunos proveedores tecnológicos pueden tratar datos personales
-        desde países situados fuera del Espacio Económico Europeo.
-        Cuando se produzca una transferencia internacional, deberá contar
-        con un mecanismo válido conforme al RGPD, como una decisión de
-        adecuación, cláusulas contractuales tipo u otra garantía legalmente
-        reconocida, según corresponda.
+      <p style={parrafo}>
+        El proyecto de Supabase utilizado por la aplicación está configurado
+        en la región eu-west-2, correspondiente a Londres, Reino Unido.
+        La Comisión Europea mantiene una decisión de adecuación para las
+        transferencias de datos personales al Reino Unido dentro del ámbito
+        del RGPD.
       </p>
 
-      <p>
-        La ubicación efectiva del tratamiento y las garantías aplicables
-        deberán comprobarse para cada proveedor y servicio utilizado.
-        El uso de un proveedor tecnológico no significa, por sí solo,
-        que cualquier transferencia internacional esté autorizada.
+      <p style={parrafo}>
+        Otros proveedores pueden utilizar infraestructura, subencargados
+        o personal situado en países distintos del Espacio Económico Europeo.
+        La existencia de una transferencia internacional y el mecanismo
+        jurídico aplicable deberán comprobarse en las condiciones y
+        documentación vigentes de cada proveedor.
       </p>
 
-      <h3>9. DERECHOS DE LAS PERSONAS</h3>
+      <p style={parrafo}>
+        Cuando una transferencia internacional no esté amparada por una
+        decisión de adecuación, deberá utilizarse otra garantía válida
+        prevista por el RGPD, cuando corresponda, y facilitarse la
+        información exigida por la normativa.
+      </p>
 
-      <p>
-        Cuando se cumplan los requisitos legales, puedes ejercer los
-        siguientes derechos:
+      <p style={parrafo}>
+        Puedes solicitar información adicional sobre las garantías
+        aplicables a las transferencias relacionadas con tus datos
+        escribiendo a{" "}
+        <a href={`mailto:${email}`}>{email}</a>.
+      </p>
+
+      <h3 style={titulo}>9. DERECHOS DE LAS PERSONAS</h3>
+
+      <p style={parrafo}>
+        Puedes ejercer, cuando proceda legalmente, los siguientes derechos:
       </p>
 
       <ul>
         <li>
-          <strong>Acceso:</strong> conocer si se están tratando tus datos
-          personales y obtener acceso a ellos.
+          <strong>Acceso:</strong> conocer si se tratan tus datos personales
+          y obtener acceso a ellos.
         </li>
         <li>
           <strong>Rectificación:</strong> solicitar la corrección de datos
           inexactos o incompletos.
         </li>
         <li>
-          <strong>Supresión:</strong> solicitar la eliminación de los datos
-          cuando proceda legalmente.
+          <strong>Supresión:</strong> solicitar la eliminación de tus datos
+          cuando legalmente corresponda.
         </li>
         <li>
           <strong>Oposición:</strong> oponerte a determinados tratamientos
-          cuando concurran los requisitos previstos en la normativa.
+          en los supuestos previstos por la normativa.
         </li>
         <li>
           <strong>Limitación:</strong> solicitar la limitación del
-          tratamiento en los supuestos legalmente establecidos.
+          tratamiento en los casos legalmente establecidos.
         </li>
         <li>
           <strong>Portabilidad:</strong> recibir determinados datos en un
@@ -461,31 +475,30 @@ export default function PoliticaPrivacidad() {
         </li>
         <li>
           <strong>Retirada del consentimiento:</strong> retirar el
-          consentimiento cuando el tratamiento se base en él, sin afectar
-          a la licitud del tratamiento anterior a su retirada.
+          consentimiento cuando esa sea la base jurídica del tratamiento.
         </li>
       </ul>
 
-      <p>
+      <p style={parrafo}>
         Puedes ejercer tus derechos escribiendo a{" "}
         <a href={`mailto:${email}`}>{email}</a> e indicando claramente
         tu solicitud.
       </p>
 
-      <p>
-        Cuando existan dudas razonables sobre la identidad de la persona
-        solicitante, podrá solicitarse información adicional que resulte
+      <p style={parrafo}>
+        Si existen dudas razonables sobre la identidad de quien presenta
+        la solicitud, podrá solicitarse información adicional que sea
         necesaria y proporcionada para verificarla. No se exigirá
         sistemáticamente una copia del documento de identidad.
       </p>
 
-      <p>
-        Se responderá dentro de los plazos establecidos por la normativa
-        aplicable. El ejercicio de los derechos será gratuito, salvo en
-        los supuestos excepcionales previstos legalmente.
+      <p style={parrafo}>
+        Se responderá dentro de los plazos establecidos por la normativa.
+        El ejercicio de los derechos será gratuito, salvo en los supuestos
+        excepcionales previstos legalmente.
       </p>
 
-      <p>
+      <p style={parrafo}>
         También puedes presentar una reclamación ante la Agencia Española
         de Protección de Datos (AEPD):{" "}
         <a
@@ -494,113 +507,100 @@ export default function PoliticaPrivacidad() {
           rel="noopener noreferrer"
         >
           www.aepd.es
-        </a>
-        .
+        </a>.
       </p>
 
-      <h3>10. SEGURIDAD Y ACCESO A LA INFORMACIÓN</h3>
+      <h3 style={titulo}>10. SEGURIDAD Y ACCESO A LA INFORMACIÓN</h3>
 
-      <p>
-        La responsable deberá aplicar medidas técnicas y organizativas
-        adecuadas al riesgo para proteger los datos frente a destrucción,
-        pérdida, alteración, divulgación o acceso no autorizados.
+      <p style={parrafo}>
+        Se aplicarán medidas técnicas y organizativas adecuadas al riesgo
+        para proteger los datos frente a la pérdida, destrucción, alteración,
+        divulgación o acceso no autorizados.
       </p>
 
-      <p>
+      <p style={parrafo}>
         El acceso a la información deberá limitarse a las funciones y
         permisos de cada usuario. Los datos de clientes, contratos,
-        facturas y custodia de llaves deberán protegerse mediante controles
-        de acceso adecuados y revisiones de permisos.
+        facturas, fotografías e información sobre custodia de llaves
+        deberán protegerse mediante controles de acceso adecuados.
       </p>
 
-      <p>
-        Las credenciales, claves privadas y secretos de producción no deben
+      <p style={parrafo}>
+        Los documentos y archivos con datos personales deberán almacenarse
+        y compartirse mediante mecanismos de acceso restringido. Las
+        credenciales, claves privadas y secretos de producción no deben
         publicarse en el repositorio ni compartirse mediante comunicaciones
-        ordinarias. Los documentos y archivos que contengan datos personales
-        deberán almacenarse y compartirse mediante mecanismos adecuados
-        de acceso restringido.
+        ordinarias.
       </p>
 
-      <p>
-        Ninguna medida de seguridad puede garantizar un riesgo cero.
-        Si se produce una violación de seguridad de datos personales,
-        se gestionará conforme a las obligaciones legales aplicables,
-        incluidas las notificaciones que correspondan.
+      <p style={parrafo}>
+        Ninguna medida puede garantizar un riesgo cero. Si se produce una
+        violación de seguridad de datos personales, se gestionará conforme
+        a las obligaciones legales aplicables, incluidas las notificaciones
+        que correspondan.
       </p>
 
-      <h3>11. DATOS DEL INMUEBLE, LLAVES E INSPECCIONES</h3>
+      <h3 style={titulo}>11. DATOS DEL INMUEBLE, LLAVES E INSPECCIONES</h3>
 
-      <p>
+      <p style={parrafo}>
         La dirección de la vivienda y la información vinculada a ella se
         utilizarán para gestionar los servicios contratados y cumplir las
         obligaciones relacionadas con su prestación.
       </p>
 
-      <p>
+      <p style={parrafo}>
         Cuando se contrate exclusivamente la custodia de llaves, los datos
         se limitarán a los necesarios para gestionar la recepción,
-        conservación, control y devolución de las llaves. La custodia
-        por sí sola no incluye visitas ni inspecciones de la vivienda.
+        conservación, control y devolución de las llaves. La custodia por
+        sí sola no incluye visitas ni inspecciones de la vivienda.
       </p>
 
-      <p>
-        Si el cliente contrata una visita, inspección u otro servicio que
-        requiera acceder al inmueble, podrán tratarse los datos necesarios
-        para organizar y documentar esa actuación. Cuando resulte necesario
-        para el servicio contratado, podrán elaborarse fotografías,
-        observaciones o informes sobre el estado del inmueble.
+      <p style={parrafo}>
+        Cuando se contrate una visita o inspección, podrán tratarse los
+        datos necesarios para organizar y documentar esa actuación.
+        Las fotografías y observaciones deberán limitarse a la finalidad
+        del servicio y evitar, en la medida de lo posible, captar personas,
+        documentos u otros datos personales innecesarios.
       </p>
 
-      <p>
-        Las fotografías e informes deberán limitarse a la finalidad del
-        servicio y evitar, en la medida de lo posible, captar personas,
-        documentos, objetos u otros datos personales que no sean necesarios.
-        La información obtenida no se utilizará para finalidades
-        incompatibles con la prestación del servicio.
-      </p>
-
-      <p>
+      <p style={parrafo}>
         Los servicios adicionales que requieran presupuesto deberán contar
-        con presupuesto previo y aceptación expresa del cliente antes de
-        ejecutarse o cobrarse. La aceptación y la información contractual
-        aplicable determinarán el alcance del servicio solicitado.
+        con presupuesto previo y aceptación del cliente antes de ejecutarse
+        o cobrarse cuando así corresponda.
       </p>
 
-      <h3>12. DATOS DE MENORES</h3>
+      <h3 style={titulo}>12. DATOS DE MENORES</h3>
 
-      <p>
+      <p style={parrafo}>
         Los servicios están dirigidos a personas que puedan contratar o
         utilizar legalmente los servicios correspondientes. No se pretende
-        recoger deliberadamente datos de menores sin la base jurídica y
-        las garantías exigidas por la normativa aplicable.
+        recoger deliberadamente datos de menores sin la base jurídica
+        y las garantías exigidas por la normativa aplicable.
       </p>
 
-      <h3>13. DECISIONES AUTOMATIZADAS</h3>
+      <h3 style={titulo}>13. DECISIONES AUTOMATIZADAS</h3>
 
-      <p>
-        Si se incorporasen tratamientos que implicasen decisiones basadas
-        exclusivamente en procesos automatizados y que produjesen efectos
-        jurídicos o afectasen significativamente a las personas, se
-        someterían a los requisitos establecidos por el RGPD. Cuando
-        proceda, se facilitará la información exigida sobre la lógica
-        aplicada, la importancia y las consecuencias previstas, así como
-        sobre los derechos de la persona afectada.
+      <p style={parrafo}>
+        No se pretende adoptar decisiones basadas exclusivamente en
+        tratamientos automatizados que produzcan efectos jurídicos o
+        afecten significativamente a las personas. Si se incorporase
+        un tratamiento de ese tipo, se facilitaría la información exigida
+        por el RGPD y se aplicarían las garantías correspondientes.
       </p>
 
-      <h3>14. ACTUALIZACIONES DE ESTA POLÍTICA</h3>
+      <h3 style={titulo}>14. ACTUALIZACIONES DE ESTA POLÍTICA</h3>
 
-      <p>
+      <p style={parrafo}>
         Esta política podrá actualizarse cuando cambien los servicios,
-        los tratamientos de datos o la normativa aplicable. La versión
-        vigente será la publicada en la aplicación, junto con la fecha
-        de su última actualización.
+        los tratamientos de datos, los proveedores o la normativa aplicable.
+        La versión vigente será la publicada en la aplicación junto con
+        la fecha de su última actualización.
       </p>
 
-      <p>
-        Si se introduce un cambio que requiera información adicional,
-        una nueva base jurídica o la obtención de consentimiento, se
-        adoptarán las medidas exigidas por la normativa antes de realizar
-        el tratamiento correspondiente.
+      <p style={parrafo}>
+        Si un cambio requiere facilitar información adicional, obtener
+        un consentimiento específico o adoptar otra medida legal, se
+        realizará antes de iniciar el tratamiento correspondiente.
       </p>
     </div>
   );
