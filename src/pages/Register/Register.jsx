@@ -71,12 +71,11 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // No se afirma haber registrado la IP real del usuario.
-      const userIp = "IP_NO_REGISTRADA";
-
+      // Fecha común para dejar constancia de la aceptación de ambos documentos.
+      // No se registra una IP ficticia: la IP no se recoge en este formulario.
       const fechaAceptacion = new Date().toISOString();
 
-      // Versiones de los documentos legales actualizados.
+      // Mantener las versiones utilizadas actualmente por el registro.
       const versionPrivacidad = "v1.1";
       const versionContrato = "v1.1";
 
@@ -88,7 +87,6 @@ export default function Register() {
           data: {
             acepta_terminos: true,
             terminos_aceptados_at: fechaAceptacion,
-            ip_registro: userIp,
             version_terminos: versionContrato,
             idioma,
 
@@ -151,7 +149,6 @@ export default function Register() {
         idioma,
         acepta_privacidad: true,
         privacidad_aceptada_at: fechaAceptacion,
-        ip_registro: userIp,
         version_privacidad: versionPrivacidad,
       };
 
