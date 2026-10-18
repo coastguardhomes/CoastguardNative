@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -54,10 +55,7 @@ export default function ClienteContratoVer() {
           .maybeSingle();
 
       if (contratoError || !contratoData) {
-        console.error(
-          "Error cargando contrato:",
-          contratoError
-        );
+        console.error("Error cargando contrato:", contratoError);
         return;
       }
 
@@ -70,9 +68,7 @@ export default function ClienteContratoVer() {
           .eq("id", contratoData.cliente_id)
           .maybeSingle();
 
-        if (clienteData) {
-          setCliente(clienteData);
-        }
+        if (clienteData) setCliente(clienteData);
       }
     } catch (err) {
       console.error("Excepción en contrato:", err);
@@ -80,22 +76,16 @@ export default function ClienteContratoVer() {
   };
 
   // El cliente nunca marca el contrato como pagado.
-  // El webhook de Stripe es el responsable de actualizar el pago.
+  // El webhook de Stripe es responsable de actualizar el pago.
   const verificarYActualizarPago = async () => {
     try {
       await cargarContrato();
     } catch (err) {
-      console.error(
-        "Excepción al comprobar el estado del contrato:",
-        err
-      );
+      console.error("Excepción al comprobar el estado del contrato:", err);
     } finally {
       localStorage.removeItem("contrato_pago_id");
 
-      const queryParams = new URLSearchParams(
-        window.location.search
-      );
-
+      const queryParams = new URLSearchParams(window.location.search);
       const esRetornoStripe =
         queryParams.get("pagado") === "true" ||
         queryParams.get("result") === "success" ||
@@ -114,10 +104,7 @@ export default function ClienteContratoVer() {
   useEffect(() => {
     if (id) {
       setCargando(true);
-
-      verificarYActualizarPago().finally(() => {
-        setCargando(false);
-      });
+      verificarYActualizarPago().finally(() => setCargando(false));
     }
   }, [id, location.key]);
 
@@ -126,47 +113,30 @@ export default function ClienteContratoVer() {
     let activo = true;
 
     if (Capacitor.isNativePlatform()) {
-      App.addListener(
-        "appStateChange",
-        ({ isActive }) => {
-          if (isActive) {
-            verificarYActualizarPago();
-          }
-        }
-      ).then((listener) => {
-        if (activo) {
-          appStateListener = listener;
-        } else {
-          listener.remove();
-        }
+      App.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) verificarYActualizarPago();
+      }).then((listener) => {
+        if (activo) appStateListener = listener;
+        else listener.remove();
       });
     }
 
-    const handleFocus = () => {
-      verificarYActualizarPago();
-    };
-
+    const handleFocus = () => verificarYActualizarPago();
     window.addEventListener("focus", handleFocus);
 
     return () => {
       activo = false;
-
-      if (appStateListener) {
-        appStateListener.remove();
-      }
-
+      if (appStateListener) appStateListener.remove();
       window.removeEventListener("focus", handleFocus);
     };
   }, [id]);
 
-  const est = String(contrato?.estado || "")
-    .toLowerCase()
-    .trim();
+  const est = String(contrato?.estado || "").toLowerCase().trim();
 
   const tieneFirma = Boolean(
-    (contrato?.firma_cliente &&
+    (typeof contrato?.firma_cliente === "string" &&
       contrato.firma_cliente.trim() !== "") ||
-    (contrato?.firma_url &&
+    (typeof contrato?.firma_url === "string" &&
       contrato.firma_url.trim() !== "")
   );
 
@@ -204,10 +174,7 @@ export default function ClienteContratoVer() {
         .eq("id", id);
 
       if (error) {
-        alert(
-          (t("alertaErrorAdmin") || "Error: ") +
-            error.message
-        );
+        alert((t("alertaErrorAdmin") || "Error: ") + error.message);
       } else {
         try {
           await supabase.functions.invoke("contrato-pdf", {
@@ -228,23 +195,15 @@ export default function ClienteContratoVer() {
         await cargarContrato();
       }
     } catch (err) {
-      console.error(
-        "Error enviando contrato al admin:",
-        err
-      );
-
-      alert(
-        "Error al enviar: " +
-          (err.message || "Error desconocido")
-      );
+      console.error("Error enviando contrato al admin:", err);
+      alert("Error al enviar: " + (err.message || "Error desconocido"));
     } finally {
       setEnviando(false);
     }
   };
 
   const manejarPagoStripe = async () => {
-    // Stripe debe cobrar el total fiscal guardado en el contrato.
-    // No se calcula ni se añade IVA desde esta pantalla.
+    // Se utiliza el total fiscal guardado en el contrato.
     const totalGuardado = Number(contrato?.precio_total);
 
     if (
@@ -263,45 +222,29 @@ export default function ClienteContratoVer() {
     try {
       localStorage.setItem("contrato_pago_id", id);
 
-      const amountInCents = Math.round(
-        totalGuardado * 100
-      );
+      const amountInCents = Math.round(totalGuardado * 100);
+      const customerEmail = cliente?.email || contrato?.cliente_email || "";
+      const clientId = contrato?.cliente_id || cliente?.id || null;
 
-      const customerEmail =
-        cliente?.email ||
-        contrato?.cliente_email ||
-        "";
-
-      const clientId =
-        contrato?.cliente_id ||
-        cliente?.id ||
-        null;
-
-      const { data, error } =
-        await supabase.functions.invoke(
-          "create-checkout-session",
-          {
-            body: {
-              amount: amountInCents,
-              customerEmail: customerEmail,
-              clientId: clientId,
-              contractId: Number(id),
-              originUrl: window.location.origin
-            }
+      const { data, error } = await supabase.functions.invoke(
+        "create-checkout-session",
+        {
+          body: {
+            amount: amountInCents,
+            customerEmail,
+            clientId,
+            contractId: Number(id),
+            originUrl: window.location.origin
           }
-        );
+        }
+      );
 
       if (error) {
         let errorMsg = error.message;
-
         try {
           const body = await error.context?.json();
-
-          if (body?.error) {
-            errorMsg = body.error;
-          }
+          if (body?.error) errorMsg = body.error;
         } catch (e) {}
-
         throw new Error(errorMsg);
       }
 
@@ -312,29 +255,18 @@ export default function ClienteContratoVer() {
           window.location.href = data.url;
         }
       } else {
-        throw new Error(
-          "No se ha recibido la URL de redirección de Stripe."
-        );
+        throw new Error("No se ha recibido la URL de redirección de Stripe.");
       }
     } catch (err) {
-      console.error(
-        "Error al iniciar pago con Stripe:",
-        err
-      );
-
+      console.error("Error al iniciar pago con Stripe:", err);
       localStorage.removeItem("contrato_pago_id");
-
-      alert(
-        "Error de Stripe: " +
-          (err.message || "Error desconocido")
-      );
+      alert("Error de Stripe: " + (err.message || "Error desconocido"));
     } finally {
       setPagandoStripe(false);
     }
   };
 
-  // Abre el PDF. Si está en el bucket privado "contratos",
-  // genera un enlace temporal para poder consultarlo.
+  // Abre el PDF almacenado en el bucket privado "contratos".
   const manejarAbrirPDF = async (url) => {
     if (!url || typeof url !== "string" || !url.trim()) {
       alert(
@@ -348,8 +280,6 @@ export default function ClienteContratoVer() {
       const valorPDF = url.trim();
       let urlPDF = valorPDF;
 
-      // Si pdf_url contiene una URL de Supabase Storage,
-      // extraemos la ruta del archivo para renovar el enlace.
       if (/^https?:\/\//i.test(valorPDF)) {
         let parsedURL;
 
@@ -360,7 +290,6 @@ export default function ClienteContratoVer() {
         }
 
         const pathname = parsedURL.pathname;
-
         const patronesStorage = [
           /\/storage\/v1\/object\/(?:sign|public|authenticated)\/contratos\/(.+)$/,
           /\/storage\/v1\/object\/contratos\/(.+)$/
@@ -370,7 +299,6 @@ export default function ClienteContratoVer() {
 
         for (const patron of patronesStorage) {
           const coincidencia = pathname.match(patron);
-
           if (coincidencia?.[1]) {
             rutaArchivo = coincidencia[1];
             break;
@@ -378,19 +306,13 @@ export default function ClienteContratoVer() {
         }
 
         if (rutaArchivo) {
-          // Elimina parámetros o fragmentos porque se necesita
-          // la ruta del objeto, no el token antiguo.
-          rutaArchivo = decodeURIComponent(
-            rutaArchivo.split("?")[0]
-          );
+          rutaArchivo = decodeURIComponent(rutaArchivo.split("?")[0]);
 
           const { data, error } = await supabase.storage
             .from("contratos")
             .createSignedUrl(rutaArchivo, 3600);
 
-          if (error) {
-            throw error;
-          }
+          if (error) throw error;
 
           if (!data?.signedUrl) {
             throw new Error(
@@ -401,25 +323,19 @@ export default function ClienteContratoVer() {
           urlPDF = data.signedUrl;
         }
       } else {
-        // También admite rutas guardadas directamente en pdf_url.
-        let rutaArchivo = valorPDF
+        const rutaArchivo = valorPDF
           .replace(/^\/+/, "")
           .replace(/^contratos\//, "");
 
-        // No aceptar una ruta vacía.
         if (!rutaArchivo) {
-          throw new Error(
-            "La ruta del PDF está vacía."
-          );
+          throw new Error("La ruta del PDF está vacía.");
         }
 
         const { data, error } = await supabase.storage
           .from("contratos")
           .createSignedUrl(rutaArchivo, 3600);
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         if (!data?.signedUrl) {
           throw new Error(
@@ -431,24 +347,18 @@ export default function ClienteContratoVer() {
       }
 
       if (Capacitor.isNativePlatform()) {
-        // En Android/iOS abre el PDF fuera del WebView
-        // para evitar la pantalla negra del visor integrado.
         await Browser.open({ url: urlPDF });
       } else {
-        // En navegador normal abre una pestaña nueva.
         const nuevaVentana = window.open(
           urlPDF,
           "_blank",
           "noopener,noreferrer"
         );
 
-        if (!nuevaVentana) {
-          window.location.href = urlPDF;
-        }
+        if (!nuevaVentana) window.location.href = urlPDF;
       }
     } catch (err) {
       console.error("Error abriendo el PDF del contrato:", err);
-
       alert(
         "No se ha podido abrir el PDF del contrato. " +
           (err?.message || "Comprueba tu conexión e inténtalo de nuevo.")
@@ -470,9 +380,7 @@ export default function ClienteContratoVer() {
             fontFamily: "Inter, sans-serif"
           }}
         >
-          <h3 style={TEXTO_DORADO}>
-            {t("clienteContratoCargando")}
-          </h3>
+          <h3 style={TEXTO_DORADO}>{t("clienteContratoCargando")}</h3>
         </div>
       </Menu>
     );
@@ -490,13 +398,8 @@ export default function ClienteContratoVer() {
             fontFamily: "Inter, sans-serif"
           }}
         >
-          <h2 style={TEXTO_DORADO}>
-            No se ha podido cargar el contrato.
-          </h2>
-          <button
-            onClick={() => navigate(-1)}
-            style={botonEstilo}
-          >
+          <h2 style={TEXTO_DORADO}>No se ha podido cargar el contrato.</h2>
+          <button onClick={() => navigate(-1)} style={botonEstilo}>
             Volver
           </button>
         </div>
@@ -509,9 +412,7 @@ export default function ClienteContratoVer() {
   const totalGuardado = Number(contrato.precio_total);
 
   const formatoEuro = (valor) =>
-    Number.isFinite(valor)
-      ? `${valor.toFixed(2)} €`
-      : "—";
+    Number.isFinite(valor) ? `${valor.toFixed(2)} €` : "—";
 
   return (
     <Menu>
@@ -561,19 +462,15 @@ export default function ClienteContratoVer() {
 
           <p style={{ margin: "6px 0" }}>
             <strong>{t("nombre")}:</strong>{" "}
-            {cliente?.nombre ||
-              contrato?.cliente_nombre ||
-              "—"}
+            {cliente?.nombre || contrato?.cliente_nombre || "—"}
           </p>
 
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("direccion")}:</strong>{" "}
-            {cliente?.direccion || "—"}
+            <strong>{t("direccion")}:</strong> {cliente?.direccion || "—"}
           </p>
 
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("telefono")}:</strong>{" "}
-            {cliente?.telefono || "—"}
+            <strong>{t("telefono")}:</strong> {cliente?.telefono || "—"}
           </p>
         </div>
 
@@ -600,10 +497,12 @@ export default function ClienteContratoVer() {
 
           <p style={{ margin: "6px 0" }}>
             <strong>{t("tipoServicio")}:</strong>{" "}
-            {contrato.frecuencia || 30} {t("dias")}
+            {contrato.modalidad === "custodia_llaves"
+              ? "Custodia de llaves sin visitas"
+              : `${contrato.frecuencia || 30} ${t("dias")}`}
           </p>
 
-          {/* Importes fiscales: se muestran los valores guardados. */}
+          {/* Se muestran los importes fiscales guardados. */}
           <div
             style={{
               marginTop: "16px",
@@ -615,15 +514,12 @@ export default function ClienteContratoVer() {
             }}
           >
             <p style={{ margin: "6px 0" }}>
-              <strong>Precio base mensual:</strong>{" "}
-              {formatoEuro(precioBase)}
+              <strong>Precio base mensual:</strong> {formatoEuro(precioBase)}
             </p>
 
             <p style={{ margin: "6px 0" }}>
               <strong>IVA (21%):</strong>{" "}
-              {contrato.iva != null
-                ? formatoEuro(ivaGuardado)
-                : "No registrado"}
+              {contrato.iva != null ? formatoEuro(ivaGuardado) : "No registrado"}
             </p>
 
             <div
@@ -650,8 +546,7 @@ export default function ClienteContratoVer() {
           </div>
 
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("fechaInicio")}:</strong>{" "}
-            {contrato.fecha_inicio || "—"}
+            <strong>{t("fechaInicio")}:</strong> {contrato.fecha_inicio || "—"}
           </p>
 
           <p style={{ margin: "6px 0 16px 0" }}>
@@ -666,17 +561,12 @@ export default function ClienteContratoVer() {
                 ? "✅ Activo / Pagado"
                 : esFirmado
                 ? `✅ ${t("firmado") || "Firmado"}`
-                : `⏳ ${
-                    t("pendienteFirma") ||
-                    "Pendiente de firma"
-                  }`}
+                : `⏳ ${t("pendienteFirma") || "Pendiente de firma"}`}
             </span>
           </p>
 
           <button
-            onClick={() =>
-              manejarAbrirPDF(contrato?.pdf_url)
-            }
+            onClick={() => manejarAbrirPDF(contrato?.pdf_url)}
             style={{
               ...botonEstilo,
               background: "rgba(10, 15, 26, 0.8)",
@@ -686,22 +576,19 @@ export default function ClienteContratoVer() {
           >
             📄{" "}
             {esFirmado
-              ? t("verContratoFirmadoPdf") ||
-                "Ver contrato firmado (PDF)"
-              : t("verContratoAntesFirmar") ||
-                "Ver contrato antes de firmar"}
+              ? t("verContratoFirmadoPdf") || "Ver contrato firmado (PDF)"
+              : t("verContratoAntesFirmar") || "Ver contrato antes de firmar"}
           </button>
 
-          <button
-            onClick={() => navigate(`/cliente/firma/${id}`)}
-            style={botonEstilo}
-          >
-            ✍️{" "}
-            {esFirmado
-              ? "Cambiar / Volver a Firmar"
-              : t("firmaDelCliente") ||
-                "Firma del Cliente"}
-          </button>
+          {/* No se permite volver a firmar si el contrato ya está firmado. */}
+          {!esFirmado && (
+            <button
+              onClick={() => navigate(`/cliente/firma/${id}`)}
+              style={botonEstilo}
+            >
+              ✍️ {t("firmaDelCliente") || "Firma del Cliente"}
+            </button>
+          )}
 
           {!yaPagado &&
             contrato.precio_total != null &&
@@ -714,8 +601,7 @@ export default function ClienteContratoVer() {
                   ...botonEstilo,
                   background:
                     "linear-gradient(135deg, #635bff 0%, #4338ca 100%)",
-                  border:
-                    "1px solid rgba(99, 91, 255, 0.5)"
+                  border: "1px solid rgba(99, 91, 255, 0.5)"
                 }}
               >
                 {pagandoStripe
@@ -742,9 +628,7 @@ export default function ClienteContratoVer() {
                 ? "#ffffff"
                 : "#888",
               cursor:
-                esFirmado && !yaEnviadoAdmin
-                  ? "pointer"
-                  : "not-allowed"
+                esFirmado && !yaEnviadoAdmin ? "pointer" : "not-allowed"
             }}
           >
             {enviando
