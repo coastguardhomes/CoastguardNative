@@ -9,7 +9,6 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [idioma, setIdioma] = useState("es");
   const [aceptaPrivacidad, setAceptaPrivacidad] = useState(false);
-  const [aceptaContrato, setAceptaContrato] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -61,9 +60,9 @@ export default function Register() {
       return;
     }
 
-    if (!aceptaPrivacidad || !aceptaContrato) {
+    if (!aceptaPrivacidad) {
       setErrorMsg(
-        "Debes aceptar por separado la Política de Privacidad y el Contrato Marco de Servicios"
+        "Debes confirmar que has leído la Política de Privacidad."
       );
       return;
     }
@@ -71,13 +70,11 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // Fecha común para dejar constancia de la aceptación de ambos documentos.
-      // No se registra una IP ficticia: la IP no se recoge en este formulario.
+      // Se registra la fecha de la acción de alta.
+      // La evidencia definitiva deberá complementarse con un registro
+      // de servidor en Supabase; no se inventa ni se recoge una IP aquí.
       const fechaAceptacion = new Date().toISOString();
-
-      // Mantener las versiones utilizadas actualmente por el registro.
       const versionPrivacidad = "v1.1";
-      const versionContrato = "v1.1";
 
       const { data, error } = await supabase.auth.signUp({
         email: emailNormalizado,
@@ -85,18 +82,10 @@ export default function Register() {
         options: {
           emailRedirectTo: "coastguard://auth/callback",
           data: {
-            acepta_terminos: true,
-            terminos_aceptados_at: fechaAceptacion,
-            version_terminos: versionContrato,
-            idioma,
-
             acepta_privacidad: true,
             privacidad_aceptada_at: fechaAceptacion,
             version_privacidad: versionPrivacidad,
-
-            acepta_contrato_marco: true,
-            contrato_marco_aceptado_at: fechaAceptacion,
-            version_contrato_marco: versionContrato,
+            idioma,
           },
         },
       });
@@ -110,12 +99,12 @@ export default function Register() {
 
       if (!user) {
         setErrorMsg(
-          "Error inesperado creando usuario (sin datos de usuario)"
+          "Error inesperado creando usuario (sin datos de usuario)."
         );
         return;
       }
 
-      // Se conserva la creación del perfil.
+      // Se conserva la creación del perfil para no alterar el flujo existente.
       const { error: perfilError } = await supabase
         .from("profiles")
         .insert({
@@ -127,7 +116,7 @@ export default function Register() {
         console.error("Error creando perfil:", perfilError);
       }
 
-      // Se busca si el cliente ya existe.
+      // Se busca si el cliente ya existe para evitar crear una ficha duplicada.
       const {
         data: clienteExistente,
         error: clienteBusquedaError,
@@ -198,8 +187,6 @@ export default function Register() {
       setLoading(false);
     }
   };
-
-  const aceptaTodo = aceptaPrivacidad && aceptaContrato;
 
   const estiloEnlace = {
     color: "#4db8ff",
@@ -275,7 +262,6 @@ export default function Register() {
               borderRadius: "8px",
               color: "#4dff88",
               marginBottom: "15px",
-              textAlign: "center",
             }}
           >
             {mensaje}
@@ -361,7 +347,7 @@ export default function Register() {
 
         <div
           style={{
-            marginBottom: "14px",
+            marginBottom: "20px",
             display: "flex",
             alignItems: "flex-start",
             gap: "10px",
@@ -405,65 +391,35 @@ export default function Register() {
           </label>
         </div>
 
-        <div
+        <p
           style={{
+            color: "#9fb3c8",
+            fontSize: "12px",
+            lineHeight: "1.5",
             marginBottom: "20px",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: "10px",
-            textAlign: "left",
           }}
         >
-          <input
-            type="checkbox"
-            id="aceptaContrato"
-            checked={aceptaContrato}
-            onChange={(e) => setAceptaContrato(e.target.checked)}
-            required
-            style={{
-              marginTop: "4px",
-              cursor: "pointer",
-              width: "18px",
-              height: "18px",
-              flexShrink: 0,
-            }}
-          />
-
-          <label
-            htmlFor="aceptaContrato"
-            style={{
-              fontSize: "12px",
-              lineHeight: "1.5",
-              color: "#9fb3c8",
-              cursor: "pointer",
-            }}
-          >
-            He leído y acepto el{" "}
-            <a
-              href="/documentos-legales#contrato"
-              onClick={abrirDocumento("contrato")}
-              style={estiloEnlace}
-            >
-              Contrato Marco de Servicios
-            </a>
-            .
-          </label>
-        </div>
+          La creación de la cuenta no sustituye la aceptación ni la firma
+          del contrato concreto de los servicios que contrates. Ese contrato
+          se mostrará para su revisión y firma en el proceso correspondiente.
+        </p>
 
         <button
           type="button"
           onClick={handleRegister}
-          disabled={loading || !aceptaTodo}
+          disabled={loading || !aceptaPrivacidad}
           style={{
             width: "100%",
             padding: "12px",
-            background: !aceptaTodo || loading ? "#2a324b" : "#0077cc",
+            background:
+              !aceptaPrivacidad || loading ? "#2a324b" : "#0077cc",
             color: "#fff",
             border: "none",
             borderRadius: "8px",
             fontSize: "16px",
-            cursor: !aceptaTodo || loading ? "not-allowed" : "pointer",
-            opacity: !aceptaTodo || loading ? "0.4" : "1",
+            cursor:
+              !aceptaPrivacidad || loading ? "not-allowed" : "pointer",
+            opacity: !aceptaPrivacidad || loading ? "0.4" : "1",
             transition: "background 0.2s, opacity 0.2s",
           }}
         >
