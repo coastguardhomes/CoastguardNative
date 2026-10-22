@@ -492,60 +492,6 @@ export default function VerFactura() {
     }
   };
 
-  const marcarComoPagada = async () => {
-    try {
-      setProcesando(true);
-
-      if (!factura) {
-        throw new Error('No se ha cargado la factura.');
-      }
-
-      const { data, error } =
-        await supabase.functions.invoke('factura-pdf', {
-          body: {
-            facturaId: Number(factura.id),
-            pagoConfirmado: true
-          }
-        });
-
-      if (error) {
-        let mensaje = error.message;
-
-        try {
-          const body = await error.context?.json();
-
-          if (body?.error) {
-            mensaje = body.error;
-          }
-        } catch {}
-
-        throw new Error(mensaje);
-      }
-
-      if (!data?.ok) {
-        throw new Error(
-          data?.error || 'No se pudo confirmar el pago.'
-        );
-      }
-
-      await cargarDatosSeguros();
-
-      alert(
-        data?.facturadirecta?.numero
-          ? `Pago confirmado. Factura oficial ${data.facturadirecta.numero} creada y procesada.`
-          : 'Pago confirmado y factura oficial procesada correctamente.'
-      );
-    } catch (err) {
-      console.error('Error confirmando pago:', err);
-
-      alert(
-        'Error al confirmar el pago: ' + (err.message || '')
-      );
-    } finally {
-      setProcesando(false);
-    }
-  };
-
   /*
    * Administración aprueba y publica la inspección extra
    * cuando el técnico la ha completado y la factura está pagada.
@@ -928,14 +874,6 @@ export default function VerFactura() {
                 style={estilos.botonAzul}
               >
                 ✉️ Enviar Aviso de Pago (Stripe)
-              </button>
-
-              <button
-                onClick={marcarComoPagada}
-                disabled={procesando}
-                style={estilos.botonVerde}
-              >
-                💳 Confirmar pago y emitir factura
               </button>
             </div>
           )}
