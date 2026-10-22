@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -203,6 +202,13 @@ export default function ClienteContratoVer() {
   };
 
   const manejarPagoStripe = async () => {
+    // La firma debe preceder siempre al pago de la suscripción.
+    // El servidor también comprueba esta condición.
+    if (!esFirmado) {
+      alert("Debes firmar el contrato antes de pagar la suscripción.");
+      return;
+    }
+
     // Se utiliza el total fiscal guardado en el contrato.
     const totalGuardado = Number(contrato?.precio_total);
 
@@ -214,6 +220,11 @@ export default function ClienteContratoVer() {
       alert(
         "Este contrato no tiene un total mensual con IVA válido guardado. Contacta con el administrador antes de pagar."
       );
+      return;
+    }
+
+    if (yaPagado) {
+      alert("Este contrato ya figura pagado o activo.");
       return;
     }
 
@@ -591,6 +602,7 @@ export default function ClienteContratoVer() {
           )}
 
           {!yaPagado &&
+            esFirmado &&
             contrato.precio_total != null &&
             Number.isFinite(totalGuardado) &&
             totalGuardado > 0 && (
