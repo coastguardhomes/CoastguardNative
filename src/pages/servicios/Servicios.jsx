@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -17,15 +18,6 @@ const SERVICIOS_DISPONIBLES = [
 const IVA = 0.21;
 const redondear = (n) => Math.round(n * 100) / 100;
 
-async function pdfDisponible(url) {
-  try {
-    const res = await fetch(url, { method: "HEAD" });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 export default function Servicios() {
   const navigate = useNavigate();
 
@@ -38,18 +30,21 @@ export default function Servicios() {
   const [seleccionados, setSeleccionados] = useState([]);
   const [precios, setPrecios] = useState({});
 
-  const [enviarEmail, setEnviarEmail] = useState(true);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
+    let cancelado = false;
+
     async function cargarClientes() {
       const { data, error } = await supabase
         .from("clientes")
         .select("id, nombre, direccion, email")
         .order("nombre");
+
+      if (cancelado) return;
 
       if (error) {
         console.error("Error cargando clientes:", error);
@@ -62,13 +57,21 @@ export default function Servicios() {
     }
 
     cargarClientes();
+
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   useEffect(() => {
+    let cancelado = false;
+
     if (!clienteId) {
       setViviendas([]);
       setViviendaId("");
-      return;
+      return () => {
+        cancelado = true;
+      };
     }
 
     async function cargarViviendasCliente() {
@@ -82,6 +85,8 @@ export default function Servicios() {
         .eq("cliente_id", clienteId)
         .eq("activa", true)
         .order("id", { ascending: false });
+
+      if (cancelado) return;
 
       if (error) {
         console.error("Error cargando viviendas:", error);
@@ -98,6 +103,10 @@ export default function Servicios() {
     }
 
     cargarViviendasCliente();
+
+    return () => {
+      cancelado = true;
+    };
   }, [clienteId]);
 
   const toggleServicio = (nombre) => {
@@ -109,15 +118,10 @@ export default function Servicios() {
   };
 
   /*
-   * IMPORTANTE:
-   *
-   * Aquí solamente se incluyen los servicios que el administrador
-   * haya seleccionado.
-   *
-   * La vivienda NO añade ninguna tarifa.
-   * No se utilizan metros cuadrados, habitaciones, piscina,
-   * jardín, garaje, sótano ni ningún otro dato de la vivienda
-   * para calcular el precio del extra.
+   * Solo se incluyen los servicios seleccionados.
+   * La vivienda no añade ninguna tarifa.
+   * Las características de la vivienda no intervienen
+   * en el cálculo del precio.
    */
   const lineas = seleccionados.map((nombre) => {
     const serv = SERVICIOS_DISPONIBLES.find(
@@ -134,8 +138,8 @@ export default function Servicios() {
   });
 
   /*
-   * La base, IVA y total corresponden EXCLUSIVAMENTE
-   * a los extras seleccionados.
+   * La base, el IVA y el total corresponden exclusivamente
+   * a los servicios extras seleccionados.
    */
   const base = redondear(
     lineas.reduce(
@@ -200,7 +204,7 @@ export default function Servicios() {
 
     const sinPrecio = lineas.find(
       (linea) =>
-        !linea.precio ||
+        !Number.isFinite(linea.precio) ||
         linea.precio <= 0
     );
 
@@ -213,7 +217,7 @@ export default function Servicios() {
 
     const viviendaSeleccionada =
       viviendas.find(
-        (v) => v.id == viviendaId
+        (v) => String(v.id) === String(viviendaId)
       );
 
     if (!viviendaSeleccionada) {
@@ -224,10 +228,9 @@ export default function Servicios() {
     }
 
     /*
-     * La vivienda debe tener técnico porque el extra
-     * tiene que llegar al técnico asignado.
-     *
-     * Esto NO afecta al precio.
+     * El extra debe tener técnico asignado para poder
+     * llegar al técnico correspondiente.
+     * Esto no afecta al precio.
      */
     if (!viviendaSeleccionada.tecnico_id) {
       setError(
@@ -236,34 +239,30 @@ export default function Servicios() {
       return;
     }
 
+    const cliente = clientes.find(
+      (c) => String(c.id) === String(clienteId)
+    );
+
+    if (!cliente) {
+      setError("No se encontró el cliente seleccionado.");
+      return;
+    }
+
     setGuardando(true);
 
     try {
-      const numero =
-        await siguienteNumero();
+      const numero = await siguienteNumero();
 
-      const descripcionServicios =
-        lineas
-          .map((linea) => linea.nombre)
-          .join(", ");
+      const descripcionServicios = lineas
+        .map((linea) => linea.nombre)
+        .join(", ");
 
       const direccionTexto =
-        viviendaSeleccionada.direccion ||
-        null;
-
-      const cliente =
-        clientes.find(
-          (c) => c.id == clienteId
-        );
+        viviendaSeleccionada.direccion || null;
 
       /*
-       * FACTURA
-       *
-       * El importe procede ÚNICAMENTE de los
-       * servicios extras seleccionados.
-       *
-       * vivienda_id solamente relaciona la factura
-       * con la vivienda. NO interviene en el cálculo.
+       * Se crea un registro interno del cobro pendiente.
+       * No se genera una factura fiscal en esta pantalla.
        */
       const {
         data: factura,
@@ -273,31 +272,24 @@ export default function Servicios() {
         .insert({
           numero,
           cliente_id: clienteId,
-          vivienda_id:
-            viviendaSeleccionada.id,
-          fecha: new Date()
-            .toISOString()
-            .slice(0, 10),
+          vivienda_id: viviendaSeleccionada.id,
+          fecha: new Date().toISOString().slice(0, 10),
           base,
           iva,
           total,
-          descripcion:
-            descripcionServicios,
+          descripcion: descripcionServicios,
           estado: "pendiente"
         })
         .select()
         .single();
 
       if (errorFactura) {
-        throw new Error(
-          errorFactura.message
-        );
+        throw new Error(errorFactura.message);
       }
 
       /*
-       * LÍNEAS DE FACTURA
-       *
-       * Solo contienen los servicios extras.
+       * Las líneas reflejan exclusivamente los servicios
+       * seleccionados y sus importes.
        */
       const {
         error: errorLineas
@@ -314,22 +306,24 @@ export default function Servicios() {
         );
 
       if (errorLineas) {
+        console.error(
+          "Error guardando líneas del cobro:",
+          errorLineas
+        );
+
         throw new Error(
-          errorLineas.message
+          `Se creó el registro de cobro ${factura.numero}, pero falló el desglose: ${errorLineas.message}`
         );
       }
 
       /*
-       * EXTRA
+       * El extra queda relacionado con:
+       * - el cliente;
+       * - la vivienda;
+       * - el registro de cobro;
+       * - el técnico asignado.
        *
-       * La vivienda solamente se utiliza para:
-       *
-       * - relacionar el extra con la vivienda;
-       * - conocer la dirección;
-       * - conocer el técnico asignado.
-       *
-       * NO se utiliza ningún dato de superficie,
-       * habitaciones, piscina, jardín, etc.
+       * No se genera ni se envía aquí una factura fiscal.
        */
       const {
         data: extraCreado,
@@ -338,31 +332,22 @@ export default function Servicios() {
         .from("extras")
         .insert({
           cliente_id: clienteId,
-          cliente_email:
-            cliente?.email || null,
+          cliente_email: cliente.email || null,
 
           factura_id: factura.id,
-          vivienda_id:
-            viviendaSeleccionada.id,
-          tecnico_id:
-            viviendaSeleccionada.tecnico_id,
+          vivienda_id: viviendaSeleccionada.id,
+          tecnico_id: viviendaSeleccionada.tecnico_id,
 
           direccion: direccionTexto,
-          descripcion:
-            descripcionServicios,
+          descripcion: descripcionServicios,
 
-          /*
-           * El precio del extra es exactamente
-           * el total de los servicios seleccionados.
-           */
           precio: total,
 
           estado: "pendiente",
           estado_tecnico: null,
           estado_admin: "pendiente",
 
-          creado_en:
-            new Date().toISOString()
+          creado_en: new Date().toISOString()
         })
         .select()
         .single();
@@ -374,7 +359,7 @@ export default function Servicios() {
         );
 
         throw new Error(
-          `La factura se creó, pero no se pudo crear el extra asignado al técnico: ${errorExtra.message}`
+          `Se registró el cobro, pero no se pudo crear el extra asignado al técnico: ${errorExtra.message}`
         );
       }
 
@@ -383,82 +368,21 @@ export default function Servicios() {
         extraCreado
       );
 
-      let avisoPdf = "";
-
       /*
-       * PDF
-       *
-       * Se mantiene el flujo existente.
+       * IMPORTANTE:
+       * No invocamos factura-pdf ni enviar-email aquí.
+       * El aviso de pago se gestiona desde la ficha del cobro
+       * al generar el enlace de Stripe.
+       * La factura fiscal de FacturaDirecta debe emitirse
+       * después de que Stripe confirme el pago.
        */
-      const {
-        data: pdfData,
-        error: errorPdf
-      } = await supabase.functions.invoke(
-        "factura-pdf",
-        {
-          body: {
-            facturaId: factura.id
-          }
-        }
-      );
-
-      if (
-        errorPdf &&
-        !factura?.pdf_url
-      ) {
-        avisoPdf =
-          " Error generando PDF.";
-      }
-
-      if (
-        (!errorPdf ||
-          factura?.pdf_url) &&
-        pdfData?.url &&
-        (await pdfDisponible(
-          pdfData.url
-        ))
-      ) {
-        await supabase
-          .from("facturas")
-          .update({
-            pdf_url: pdfData.url
-          })
-          .eq("id", factura.id);
-
-        if (
-          enviarEmail &&
-          cliente?.email
-        ) {
-          const {
-            error: errorEmail
-          } =
-            await supabase.functions.invoke(
-              "enviar-email",
-              {
-                body: {
-                  email:
-                    cliente.email,
-                  pdfUrl:
-                    pdfData.url
-                }
-              }
-            );
-
-          avisoPdf = errorEmail
-            ? " Error al enviar email."
-            : ` Factura enviada a ${cliente.email}.`;
-        }
-      }
-
       setSeleccionados([]);
       setPrecios({});
       setViviendaId("");
 
       setMensaje(
-        `Factura ${factura.numero} creada con éxito (${total} €). Pendiente de pago. El extra ha quedado asignado al técnico.${avisoPdf}`
+        `Servicio extra ${factura.numero} registrado (${total.toFixed(2)} €), pendiente de pago. El extra ha quedado asignado al técnico. No se ha enviado ninguna factura fiscal. Genera el enlace de Stripe desde la ficha del cobro para enviar únicamente el aviso de pago.`
       );
-
-      setGuardando(false);
     } catch (e) {
       console.error(
         "Error en el proceso de servicio:",
@@ -468,26 +392,28 @@ export default function Servicios() {
       setError(
         `Error en el proceso: ${e.message}`
       );
-
+    } finally {
       setGuardando(false);
     }
   };
 
   const viviendaSeleccionada =
     viviendas.find(
-      (v) => v.id == viviendaId
+      (v) => String(v.id) === String(viviendaId)
     );
 
   return (
     <Menu>
       <div style={estilos.pagina}>
         <h1 style={estilos.titulo}>
-          Emitir Servicio y Facturar
+          Registrar Servicio Extra
         </h1>
 
         <p style={estilos.subtitulo}>
           Selecciona un cliente, una vivienda y los
-          servicios adicionales que quieras facturar.
+          servicios adicionales que quieras registrar para
+          su cobro. La factura fiscal se emitirá después
+          de que el pago esté confirmado.
         </p>
 
         {mensaje && (
@@ -515,13 +441,11 @@ export default function Servicios() {
             style={estilos.select}
             value={clienteId}
             onChange={(e) => {
-              setClienteId(
-                e.target.value
-              );
+              setClienteId(e.target.value);
               setMensaje("");
               setError("");
             }}
-            disabled={cargando}
+            disabled={cargando || guardando}
           >
             <option value="">
               {cargando
@@ -541,6 +465,13 @@ export default function Servicios() {
               </option>
             ))}
           </select>
+
+          {!cargando && clientes.length === 0 && (
+            <p style={estilos.aviso}>
+              No hay clientes disponibles. Crea uno primero
+              en el módulo de Clientes.
+            </p>
+          )}
         </div>
 
         {clienteId && (
@@ -555,10 +486,9 @@ export default function Servicios() {
                 marginBottom: 12
               }}
             >
-              La vivienda solo identifica dónde se
-              realizará el extra y qué técnico tiene
-              asignado. Sus características no generan
-              ningún cobro.
+              La vivienda identifica dónde se realizará
+              el extra y qué técnico tiene asignado. Sus
+              características no generan ningún cobro.
             </p>
 
             <label style={estilos.etiqueta}>
@@ -568,10 +498,9 @@ export default function Servicios() {
             <select
               style={estilos.select}
               value={viviendaId}
+              disabled={guardando}
               onChange={(e) => {
-                setViviendaId(
-                  e.target.value
-                );
+                setViviendaId(e.target.value);
                 setMensaje("");
                 setError("");
               }}
@@ -615,7 +544,7 @@ export default function Servicios() {
                 }}
               >
                 {viviendaSeleccionada.tecnico_id
-                  ? "✓ Vivienda con técnico asignado. El extra se enviará a ese técnico."
+                  ? "✓ Vivienda con técnico asignado. El extra quedará asignado a ese técnico."
                   : "⚠️ Esta vivienda no tiene técnico asignado."}
               </div>
             )}
@@ -627,71 +556,54 @@ export default function Servicios() {
             Servicios Disponibles
           </h2>
 
-          {SERVICIOS_DISPONIBLES.map(
-            (servicio) => {
-              const activo =
-                seleccionados.includes(
-                  servicio.nombre
-                );
+          {SERVICIOS_DISPONIBLES.map((servicio) => {
+            const activo = seleccionados.includes(
+              servicio.nombre
+            );
 
-              return (
-                <div
-                  key={servicio.nombre}
-                  style={{
-                    marginBottom: 12
-                  }}
-                >
-                  <label
-                    style={estilos.check}
-                  >
-                    <input
-                      type="checkbox"
-                      style={
-                        estilos.checkbox
-                      }
-                      checked={activo}
-                      onChange={() =>
-                        toggleServicio(
-                          servicio.nombre
-                        )
-                      }
-                    />
+            return (
+              <div
+                key={servicio.nombre}
+                style={{ marginBottom: 12 }}
+              >
+                <label style={estilos.check}>
+                  <input
+                    type="checkbox"
+                    style={estilos.checkbox}
+                    checked={activo}
+                    disabled={guardando}
+                    onChange={() =>
+                      toggleServicio(servicio.nombre)
+                    }
+                  />
 
-                    {servicio.nombre}{" "}
-                    {servicio.precio
-                      ? `(${servicio.precio} €)`
-                      : ""}
-                  </label>
+                  {servicio.nombre}{" "}
+                  {servicio.precio !== null
+                    ? `(${servicio.precio} €)`
+                    : "(Precio personalizado)"}
+                </label>
 
-                  {activo &&
-                    servicio.precio ===
-                      null && (
-                      <input
-                        type="number"
-                        placeholder="Introduce el precio"
-                        min="0"
-                        step="0.01"
-                        style={
-                          estilos.input
-                        }
-                        value={
-                          precios[
-                            servicio.nombre
-                          ] || ""
-                        }
-                        onChange={(e) =>
-                          setPrecios({
-                            ...precios,
-                            [servicio.nombre]:
-                              e.target.value
-                          })
-                        }
-                      />
-                    )}
-                </div>
-              );
-            }
-          )}
+                {activo && servicio.precio === null && (
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="Introduce el precio"
+                    min="0"
+                    step="0.01"
+                    style={estilos.input}
+                    disabled={guardando}
+                    value={precios[servicio.nombre] || ""}
+                    onChange={(e) =>
+                      setPrecios({
+                        ...precios,
+                        [servicio.nombre]: e.target.value
+                      })
+                    }
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {seleccionados.length > 0 && (
@@ -701,23 +613,13 @@ export default function Servicios() {
             </h2>
 
             <div style={estilos.fila}>
-              <span>
-                Servicios extras:
-              </span>
-
-              <span>
-                {base} €
-              </span>
+              <span>Base imponible:</span>
+              <span>{base.toFixed(2)} €</span>
             </div>
 
             <div style={estilos.fila}>
-              <span>
-                IVA (21%):
-              </span>
-
-              <span>
-                {iva} €
-              </span>
+              <span>IVA (21%):</span>
+              <span>{iva.toFixed(2)} €</span>
             </div>
 
             <div
@@ -732,62 +634,37 @@ export default function Servicios() {
                 paddingTop: 8
               }}
             >
-              <span>
-                Total a Pagar:
-              </span>
-
-              <span>
-                {total} €
-              </span>
+              <span>Total a pagar:</span>
+              <span>{total.toFixed(2)} €</span>
             </div>
 
-            <div
-              style={{
-                marginTop: 16
-              }}
-            >
-              <label style={estilos.check}>
-                <input
-                  type="checkbox"
-                  style={
-                    estilos.checkbox
-                  }
-                  checked={enviarEmail}
-                  onChange={(e) =>
-                    setEnviarEmail(
-                      e.target.checked
-                    )
-                  }
-                />
-
-                Enviar factura por email
-                automáticamente al cliente
-              </label>
-            </div>
+            <p style={estilos.aviso}>
+              Este formulario registra el cobro pendiente,
+              pero no emite ni envía una factura fiscal.
+              El aviso de pago se envía desde la ficha del
+              cobro al generar el enlace de Stripe.
+              FacturaDirecta emitirá la factura oficial
+              después de confirmar el pago.
+            </p>
           </div>
         )}
 
         <button
-          onClick={
-            crearServicioyFactura
-          }
-          disabled={guardando}
+          onClick={crearServicioyFactura}
+          disabled={guardando || cargando}
           style={{
             ...estilos.boton,
-            opacity: guardando
-              ? 0.6
-              : 1
+            opacity: guardando || cargando ? 0.6 : 1
           }}
         >
           {guardando
             ? "Procesando..."
-            : "Emitir Servicio y Facturar"}
+            : "Registrar Servicio Extra"}
         </button>
 
         <button
-          onClick={() =>
-            navigate("/facturas")
-          }
+          onClick={() => navigate("/facturas")}
+          disabled={guardando}
           style={estilos.botonSec}
         >
           Ir al listado de Facturas
@@ -822,17 +699,13 @@ const estilos = {
   },
 
   tarjeta: {
-    background:
-      "rgba(255, 255, 255, 0.04)",
+    background: "rgba(255, 255, 255, 0.04)",
     backdropFilter: "blur(12px)",
-    WebkitBackdropFilter:
-      "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
     padding: 20,
     borderRadius: 16,
-    border:
-      "1px solid rgba(255, 255, 255, 0.08)",
-    boxShadow:
-      "0 10px 30px rgba(0, 0, 0, 0.4)",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
+    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4)",
     marginBottom: 16
   },
 
@@ -858,16 +731,13 @@ const estilos = {
     width: "100%",
     padding: "13px 14px",
     borderRadius: 10,
-    border:
-      "1px solid rgba(255, 255, 255, 0.12)",
+    border: "1px solid rgba(255, 255, 255, 0.12)",
     background: "#132033",
     color: "#fff",
     fontSize: 15,
     outline: "none",
-    boxShadow:
-      "inset 0 2px 4px rgba(0,0,0,0.2)",
-    transition:
-      "border-color 0.2s"
+    boxShadow: "inset 0 2px 4px rgba(0,0,0,0.2)",
+    transition: "border-color 0.2s"
   },
 
   check: {
@@ -890,23 +760,20 @@ const estilos = {
   input: {
     padding: "11px 14px",
     width: "100%",
+    boxSizing: "border-box",
     borderRadius: 10,
-    border:
-      "1px solid rgba(255, 255, 255, 0.15)",
-    background:
-      "rgba(255, 255, 255, 0.06)",
+    border: "1px solid rgba(255, 255, 255, 0.15)",
+    background: "rgba(255, 255, 255, 0.06)",
     color: "#fff",
     marginTop: 10,
     fontSize: 15,
     outline: "none",
-    boxShadow:
-      "inset 0 2px 4px rgba(0,0,0,0.2)"
+    boxShadow: "inset 0 2px 4px rgba(0,0,0,0.2)"
   },
 
   fila: {
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
     padding: "8px 0",
     fontSize: 15,
@@ -924,36 +791,29 @@ const estilos = {
     fontWeight: 700,
     fontSize: 16,
     cursor: "pointer",
-    boxShadow:
-      "0 6px 20px rgba(77, 184, 255, 0.35)",
-    transition:
-      "transform 0.1s ease, filter 0.2s"
+    boxShadow: "0 6px 20px rgba(77, 184, 255, 0.35)",
+    transition: "transform 0.1s ease, filter 0.2s"
   },
 
   botonSec: {
     width: "100%",
     marginTop: 12,
     padding: 14,
-    background:
-      "rgba(255, 255, 255, 0.03)",
+    background: "rgba(255, 255, 255, 0.03)",
     color: "#4db8ff",
     borderRadius: 12,
-    border:
-      "1px solid rgba(77, 184, 255, 0.3)",
+    border: "1px solid rgba(77, 184, 255, 0.3)",
     fontWeight: 600,
     fontSize: 15,
     cursor: "pointer",
-    transition:
-      "background 0.2s"
+    transition: "background 0.2s"
   },
 
   ok: {
     marginBottom: 16,
     color: "#4ade80",
-    background:
-      "rgba(74, 222, 128, 0.12)",
-    border:
-      "1px solid rgba(74, 222, 128, 0.3)",
+    background: "rgba(74, 222, 128, 0.12)",
+    border: "1px solid rgba(74, 222, 128, 0.3)",
     borderRadius: 12,
     padding: 14,
     fontSize: 14,
@@ -963,13 +823,18 @@ const estilos = {
   error: {
     marginBottom: 16,
     color: "#ff6b6b",
-    background:
-      "rgba(255, 107, 107, 0.12)",
-    border:
-      "1px solid rgba(255, 107, 107, 0.3)",
+    background: "rgba(255, 107, 107, 0.12)",
+    border: "1px solid rgba(255, 107, 107, 0.3)",
     borderRadius: 12,
     padding: 14,
     fontSize: 14,
     lineHeight: 1.4
+  },
+
+  aviso: {
+    marginTop: 16,
+    color: "#ffc861",
+    fontSize: 13.5,
+    lineHeight: 1.5
   }
 };
