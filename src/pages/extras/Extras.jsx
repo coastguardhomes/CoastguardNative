@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -17,15 +18,6 @@ const EXTRAS = [
 
 const redondear = (n) => Math.round(n * 100) / 100;
 
-async function pdfDisponible(url) {
-  try {
-    const res = await fetch(url, { method: "HEAD" });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 export default function Extras() {
   const navigate = useNavigate();
 
@@ -37,7 +29,6 @@ export default function Extras() {
 
   const [seleccionados, setSeleccionados] = useState([]);
   const [precios, setPrecios] = useState({});
-  const [enviarEmail, setEnviarEmail] = useState(true);
 
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
@@ -195,7 +186,7 @@ export default function Extras() {
     setError("");
 
     if (!clienteId) {
-      setError("Selecciona el cliente al que se factura.");
+      setError("Selecciona el cliente del servicio extra.");
       return;
     }
 
@@ -246,17 +237,8 @@ export default function Extras() {
     try {
       const numero = await siguienteNumero();
 
-      /*
-       * IMPORTANTE:
-       * El bloque de creación de la factura mantiene el mismo cálculo
-       * que el flujo actual:
-       *
-       * base = totalBase
-       * iva  = 21%
-       * total = base + IVA
-       *
-       * No se utiliza la vivienda para modificar el precio.
-       */
+      // Se crea un registro interno del cobro pendiente en Coastguard.
+      // Esto no debe crear ni enviar todavía una factura fiscal.
       const { data: factura, error: errorFactura } = await supabase
         .from("facturas")
         .insert({
@@ -277,9 +259,6 @@ export default function Extras() {
         throw new Error(errorFactura.message);
       }
 
-      /*
-       * Se mantiene la creación de las líneas de factura.
-       */
       const { error: errorLineas } = await supabase
         .from("facturas_lineas")
         .insert(
@@ -296,23 +275,13 @@ export default function Extras() {
         console.error("Error guardando líneas:", errorLineas);
 
         setMensaje(
-          `Factura ${factura.numero} creada, pero falló el desglose: ${errorLineas.message}`
+          `Se creó el registro de cobro ${factura.numero}, pero falló el desglose: ${errorLineas.message}`
         );
 
         setGuardando(false);
         return;
       }
 
-      /*
-       * NUEVO:
-       * Creamos el registro de extras asociado a la factura.
-       *
-       * No se calcula aquí ningún precio adicional:
-       * el precio del extra es exactamente la suma de los servicios
-       * seleccionados.
-       *
-       * El técnico se obtiene de la vivienda.
-       */
       const descripcionExtra = lineas
         .map((l) => l.nombre)
         .join(", ");
@@ -337,87 +306,31 @@ export default function Extras() {
       if (errorExtra) {
         console.error("Error creando extra:", errorExtra);
 
-        /*
-         * No tocamos ni borramos la factura ya creada.
-         * Esto evita alterar el flujo de facturación que ya funciona.
-         */
         setMensaje(
-          `Factura ${factura.numero} creada correctamente, pero no se pudo crear el extra: ${errorExtra.message}`
+          `Se creó el registro de cobro ${factura.numero}, pero no se pudo crear el extra: ${errorExtra.message}`
         );
 
         setGuardando(false);
         return;
       }
 
-      let avisoPdf = "";
-
-      /*
-       * Flujo actual del PDF y email.
-       * No se modifica.
-       */
-      try {
-        const { data: pdfData, error: errorPdf } =
-          await supabase.functions.invoke("factura-pdf", {
-            body: { facturaId: factura.id }
-          });
-
-        if (!errorPdf && pdfData?.pdf_url) {
-          const disponible = await pdfDisponible(pdfData.pdf_url);
-
-          if (disponible) {
-            await supabase
-              .from("facturas")
-              .update({ pdf_url: pdfData.pdf_url })
-              .eq("id", factura.id);
-
-            if (enviarEmail && cliente?.email) {
-              const { error: errorEmail } =
-                await supabase.functions.invoke("enviar-email", {
-                  body: {
-                    facturaId: factura.id,
-                    id: factura.id,
-                    tipo: "factura"
-                  }
-                });
-
-              if (errorEmail) {
-                console.error("Error enviando email:", errorEmail);
-                avisoPdf +=
-                  " (Factura creada, pero no se pudo enviar el email).";
-              } else {
-                avisoPdf += ` Enviada a ${cliente.email}.`;
-              }
-            } else if (enviarEmail) {
-              avisoPdf +=
-                " (El cliente no tiene email registrado).";
-            }
-          } else {
-            avisoPdf =
-              " Factura creada correctamente (PDF pendiente de procesamiento).";
-          }
-        } else {
-          avisoPdf = " Factura creada correctamente.";
-        }
-      } catch (pdfErr) {
-        console.warn(
-          "Aviso menor: La Edge Function del PDF no respondió:",
-          pdfErr
-        );
-
-        avisoPdf = " Factura creada correctamente.";
-      }
+      // No se llama a factura-pdf ni a enviar-email desde esta pantalla.
+      // El aviso se envía desde la ficha de factura al generar el enlace de Stripe.
+      // La factura fiscal de FacturaDirecta se emite después del pago confirmado.
+      const avisoPdf =
+        " No se ha emitido ni enviado una factura fiscal. Genera el enlace de Stripe desde la ficha de factura para enviar solo el aviso de pago. FacturaDirecta emitirá la factura oficial tras confirmarse el pago.";
 
       setSeleccionados([]);
       setPrecios({});
 
       setMensaje(
-        `¡Factura ${factura.numero} creada correctamente!${avisoPdf}`
+        `¡Servicio extra registrado! Registro interno de cobro ${factura.numero} creado.${avisoPdf}`
       );
 
       setGuardando(false);
     } catch (e) {
       console.error("Error creando factura:", e);
-      setError(`No se pudo crear la factura: ${e.message}`);
+      setError(`No se pudo registrar el servicio extra: ${e.message}`);
       setGuardando(false);
     }
   };
@@ -427,11 +340,11 @@ export default function Extras() {
   return (
     <Menu>
       <div style={estilos.pagina}>
-        <h1 style={estilos.titulo}>Emitir Servicio y Facturar</h1>
+        <h1 style={estilos.titulo}>Registrar Servicio Extra</h1>
 
         <p style={estilos.subtitulo}>
-          Selecciona los servicios adicionales o de custodia para generar la
-          factura correspondiente.
+          Selecciona los servicios adicionales o de custodia para crear el
+          registro de cobro. La factura fiscal se emitirá tras confirmar el pago.
         </p>
 
         {mensaje && <p style={estilos.ok}>{mensaje}</p>}
@@ -557,18 +470,12 @@ export default function Extras() {
             destacado
           />
 
-          <label style={{ ...estilos.check, marginTop: 14 }}>
-            <input
-              type="checkbox"
-              checked={enviarEmail}
-              onChange={(e) => setEnviarEmail(e.target.checked)}
-              style={estilos.checkbox}
-            />
-
-            <span style={{ fontSize: 14.5 }}>
-              Enviar factura por email automáticamente al cliente
-            </span>
-          </label>
+          <p style={estilos.aviso}>
+            Aquí solo se crea el registro interno del cobro. El aviso de pago se
+            envía desde la ficha de factura al generar el enlace de Stripe; la
+            factura fiscal de FacturaDirecta se emite únicamente tras confirmarse
+            el pago.
+          </p>
         </div>
 
         <button
@@ -579,7 +486,7 @@ export default function Extras() {
             opacity: guardando ? 0.6 : 1
           }}
         >
-          {guardando ? "Procesando..." : "Emitir Servicio y Facturar"}
+          {guardando ? "Procesando..." : "Registrar Servicio Extra"}
         </button>
 
         <button
