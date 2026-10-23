@@ -1,3 +1,4 @@
+
 import React, {
   useEffect,
   useState,
@@ -339,56 +340,70 @@ export default function VerInspeccion() {
 
   async function eliminarInspeccion() {
     const confirmar = window.confirm(
-      "¿Seguro que deseas eliminar esta inspección?"
+      "¿Seguro que deseas eliminar esta inspección? Se eliminarán también los registros asociados y se intentarán retirar sus fotografías."
     );
 
     if (!confirmar) return;
 
-    const { error: checklistError } = await supabase
-      .from("checklist_inspeccion")
-      .delete()
-      .eq("inspeccion_id", id);
+    try {
+      const { data, error: invokeError } =
+        await supabase.functions.invoke(
+          "eliminarInspeccionCompleta",
+          {
+            body: { inspeccion_id: id },
+          }
+        );
 
-    if (checklistError) {
+      if (invokeError) {
+        console.error(
+          "Error eliminando inspección:",
+          invokeError
+        );
+
+        alert(
+          "No se ha podido completar la eliminación. La inspección puede seguir existiendo. Detalle: " +
+            (invokeError.message ||
+              "error de comunicación con Supabase")
+        );
+
+        return;
+      }
+
+      if (!data || data.ok !== true) {
+        console.error(
+          "Respuesta inesperada al eliminar inspección:",
+          data
+        );
+
+        alert(
+          data?.error ||
+            "Supabase no ha confirmado la eliminación. No se continuará."
+        );
+
+        return;
+      }
+
+      if (data.limpiezaStoragePendiente) {
+        alert(
+          "La inspección se ha eliminado, pero algunas fotografías podrían seguir almacenadas. Es necesario revisar la limpieza de Storage."
+        );
+      } else {
+        alert(
+          "Inspección y fotografías asociadas eliminadas correctamente."
+        );
+      }
+
+      navigate("/inspecciones");
+    } catch (error) {
       console.error(
-        "Error eliminando checklist:",
-        checklistError
-      );
-    }
-
-    const { error: fotosError } = await supabase
-      .from("fotos_inspeccion")
-      .delete()
-      .eq("inspeccion_id", id);
-
-    if (fotosError) {
-      console.error(
-        "Error eliminando fotos:",
-        fotosError
-      );
-    }
-
-    const { error } = await supabase
-      .from("inspecciones")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      console.error(
-        "Error eliminando inspección:",
+        "Error inesperado eliminando inspección:",
         error
       );
 
       alert(
-        "Error eliminando inspección: " +
-          error.message
+        "Error inesperado al eliminar la inspección. Comprueba el estado antes de volver a intentarlo."
       );
-
-      return;
     }
-
-    alert("Inspección eliminada correctamente");
-    navigate("/inspecciones");
   }
 
   if (loading) {
