@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -167,10 +168,12 @@ export default function ClienteContratoVer() {
     setEnviando(true);
 
     try {
-      const { error } = await supabase
-        .from("contratos")
-        .update({ estado: "enviado_al_admin" })
-        .eq("id", id);
+      // La función de Supabase comprueba la titularidad del contrato
+      // y su firma antes de permitir cambiar el estado.
+      const { error } = await supabase.rpc(
+        "cliente_enviar_contrato_admin",
+        { p_contrato_id: Number(id) }
+      );
 
       if (error) {
         alert((t("alertaErrorAdmin") || "Error: ") + error.message);
