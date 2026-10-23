@@ -70,10 +70,8 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // Se registra la fecha de la acción de alta.
-      // La evidencia definitiva deberá complementarse con un registro
-      // de servidor en Supabase; no se inventa ni se recoge una IP aquí.
-      const fechaAceptacion = new Date().toISOString();
+      // La fecha probatoria de aceptación la genera el trigger de Supabase
+      // con la fecha de alta del servidor, no con una hora enviada por el navegador.
       const versionPrivacidad = "v1.1";
 
       const { data, error } = await supabase.auth.signUp({
@@ -83,7 +81,6 @@ export default function Register() {
           emailRedirectTo: "coastguard://auth/callback",
           data: {
             acepta_privacidad: true,
-            privacidad_aceptada_at: fechaAceptacion,
             version_privacidad: versionPrivacidad,
             idioma,
           },
@@ -104,71 +101,10 @@ export default function Register() {
         return;
       }
 
-      // Se conserva la creación del perfil para no alterar el flujo existente.
-      const { error: perfilError } = await supabase
-        .from("profiles")
-        .insert({
-          id: user.id,
-          rol: "cliente",
-        });
-
-      if (perfilError) {
-        console.error("Error creando perfil:", perfilError);
-      }
-
-      // Se busca si el cliente ya existe para evitar crear una ficha duplicada.
-      const {
-        data: clienteExistente,
-        error: clienteBusquedaError,
-      } = await supabase
-        .from("clientes")
-        .select("id")
-        .eq("email", user.email)
-        .maybeSingle();
-
-      if (clienteBusquedaError) {
-        console.error(
-          "Error buscando cliente existente:",
-          clienteBusquedaError
-        );
-      }
-
-      const datosLegalesCliente = {
-        email: user.email,
-        idioma,
-        acepta_privacidad: true,
-        privacidad_aceptada_at: fechaAceptacion,
-        version_privacidad: versionPrivacidad,
-      };
-
-      if (!clienteBusquedaError && !clienteExistente) {
-        const { error: crearClienteError } = await supabase
-          .from("clientes")
-          .insert({
-            id: user.id,
-            user_id: user.id,
-            ...datosLegalesCliente,
-          });
-
-        if (crearClienteError) {
-          console.error(
-            "Error creando cliente:",
-            crearClienteError
-          );
-        }
-      } else if (!clienteBusquedaError && clienteExistente) {
-        const { error: actualizarClienteError } = await supabase
-          .from("clientes")
-          .update(datosLegalesCliente)
-          .eq("id", clienteExistente.id);
-
-        if (actualizarClienteError) {
-          console.error(
-            "Error actualizando cliente:",
-            actualizarClienteError
-          );
-        }
-      }
+      // Los triggers de Supabase crean el perfil, vinculan o crean la ficha
+      // de cliente y guardan la evidencia legal. No se repiten escrituras desde
+      // el navegador, que pueden fallar por RLS antes de confirmar el correo.
+      // Si una operación esencial falla, el trigger aborta el alta y signUp devuelve error.
 
       changeLanguage(idioma);
       localStorage.setItem("app_idioma", idioma);
