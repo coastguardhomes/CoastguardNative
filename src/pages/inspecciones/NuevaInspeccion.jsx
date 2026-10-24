@@ -3,6 +3,19 @@ import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
+function contratoFirmado(contrato) {
+  return Boolean(
+    contrato &&
+    (
+      (typeof contrato.firma_url === "string" && contrato.firma_url.trim() !== "") ||
+      (typeof contrato.firma_cliente === "string" && contrato.firma_cliente.trim() !== "") ||
+      (typeof contrato.firma === "string" && contrato.firma.trim() !== "") ||
+      contrato.firmado_en != null ||
+      contrato.fecha_firma != null
+    )
+  );
+}
+
 export default function NuevaInspeccion() {
   const navigate = useNavigate();
 
@@ -45,7 +58,7 @@ export default function NuevaInspeccion() {
     cargarDatos();
   }, []);
 
-  // CARGAR CONTRATOS SEGÚN VIVIENDA
+  // CARGAR SOLO CONTRATOS ACTIVOS, PAGADOS Y FIRMADOS
   useEffect(() => {
     async function cargarContratos() {
       if (!form.vivienda_id) {
@@ -55,11 +68,22 @@ export default function NuevaInspeccion() {
 
       const { data, error } = await supabase
         .from("contratos")
-        .select("id, modalidad, precio, fecha_inicio, estado, tecnico_id")
-        .eq("vivienda_id", form.vivienda_id);
+        .select(
+          "id, cliente_id, vivienda_id, modalidad, precio, fecha_inicio, estado, pagado, firma_url, firma_cliente, firma, firmado_en, fecha_firma, tecnico_id"
+        )
+        .eq("vivienda_id", form.vivienda_id)
+        .eq("estado", "activo")
+        .eq("pagado", true);
 
-      if (!error) setContratos(data || []);
-      else console.error("Error cargando contratos:", error);
+      if (!error) {
+        setContratos((data || []).filter(contratoFirmado));
+      } else {
+        setContratos([]);
+        console.error("Error cargando contratos:", error);
+        setMensaje(
+          "No se pudieron cargar los contratos de esta vivienda. Inténtalo de nuevo."
+        );
+      }
     }
 
     cargarContratos();
@@ -70,7 +94,9 @@ export default function NuevaInspeccion() {
     setMensaje("");
 
     try {
-      const vivienda = viviendas.find((v) => String(v.id) === String(form.vivienda_id));
+      const vivienda = viviendas.find(
+        (v) => String(v.id) === String(form.vivienda_id)
+      );
 
       if (!vivienda) {
         setMensaje("Selecciona una vivienda válida.");
@@ -82,18 +108,62 @@ export default function NuevaInspeccion() {
         return;
       }
 
-      if (!form.contrato_id) {
-        setMensaje("Selecciona un contrato.");
+      if (String(vivienda.cliente_id) !== String(form.cliente_id)) {
+        setMensaje(
+          "El cliente seleccionado no coincide con el cliente asociado a la vivienda."
+        );
         return;
       }
 
-      const { data: contratoData } = await supabase
+      if (!form.contrato_id) {
+        setMensaje("Selecciona un contrato activo, firmado y pagado.");
+        return;
+      }
+
+      const { data: contratoData, error: contratoError } = await supabase
         .from("contratos")
-        .select("id, tecnico_id")
-        .eq("id", form.contrato_id)
+        .select(
+          "id, cliente_id, vivienda_id, estado, pagado, firma_url, firma_cliente, firma, firmado_en, fecha_firma, tecnico_id"
+        )
+        .eq("id", Number(form.contrato_id))
         .maybeSingle();
 
-      const tecnicoFinal = form.tecnico_id || contratoData?.tecnico_id || null;
+      if (contratoError) {
+        console.error("Error comprobando el contrato:", contratoError);
+        setMensaje(
+          "No se pudo comprobar el contrato. No se ha creado la inspección."
+        );
+        return;
+      }
+
+      if (!contratoData) {
+        setMensaje("No se ha encontrado el contrato seleccionado.");
+        return;
+      }
+
+      if (
+        String(contratoData.estado || "").trim().toLowerCase() !== "activo" ||
+        contratoData.pagado !== true ||
+        !contratoFirmado(contratoData)
+      ) {
+        setMensaje(
+          "No se puede crear la inspección hasta que el contrato esté firmado, activo y pagado."
+        );
+        return;
+      }
+
+      if (
+        String(contratoData.cliente_id) !== String(vivienda.cliente_id) ||
+        Number(contratoData.vivienda_id) !== Number(vivienda.id)
+      ) {
+        setMensaje(
+          "La vivienda y el cliente deben coincidir con el contrato seleccionado."
+        );
+        return;
+      }
+
+      const tecnicoFinal =
+        form.tecnico_id || contratoData.tecnico_id || null;
 
       if (!tecnicoFinal) {
         setMensaje("Selecciona un técnico.");
@@ -129,7 +199,9 @@ export default function NuevaInspeccion() {
       }
 
       if (!insp) {
-        setMensaje("Error: No se pudo obtener el ID de la inspección creada.");
+        setMensaje(
+          "Error: No se pudo obtener el ID de la inspección creada."
+        );
         return;
       }
 
@@ -159,7 +231,7 @@ export default function NuevaInspeccion() {
         "Piscina: nivel de agua correcto y bomba operativa",
         "Ausencia de plagas (insectos, hormigas o roedores)",
         "Limpieza ligera y ausencia de basura interior",
-        "Estado general del mobiliario y cristales sin roturas"
+        "Estado general del mobiliario y cristales sin roturas",
       ];
 
       const checklistItems = plantillaCompleta.map((texto) => ({
@@ -168,7 +240,9 @@ export default function NuevaInspeccion() {
         completado: false,
       }));
 
-      await supabase.from("checklist_inspeccion").insert(checklistItems);
+      await supabase
+        .from("checklist_inspeccion")
+        .insert(checklistItems);
 
       setMensaje("Inspección creada correctamente.");
       navigate(`/inspecciones/${insp.id}`);
@@ -180,33 +254,69 @@ export default function NuevaInspeccion() {
 
   return (
     <Menu>
-      <div style={{ padding: "20px", background: "#0a0f1a", minHeight: "100vh", color: "#fff" }}>
-        <h1 style={{ color: "#4db8ff", marginBottom: "25px", fontSize: "28px", fontWeight: "700" }}>
+      <div
+        style={{
+          padding: "20px",
+          background: "#0a0f1a",
+          minHeight: "100vh",
+          color: "#fff",
+        }}
+      >
+        <h1
+          style={{
+            color: "#4db8ff",
+            marginBottom: "25px",
+            fontSize: "28px",
+            fontWeight: "700",
+          }}
+        >
           Nueva Inspección
         </h1>
 
-        {mensaje && <p style={{ marginBottom: "15px", color: "#ff6b6b", fontWeight: "600" }}>{mensaje}</p>}
+        {mensaje && (
+          <p
+            style={{
+              marginBottom: "15px",
+              color: "#ff6b6b",
+              fontWeight: "600",
+            }}
+          >
+            {mensaje}
+          </p>
+        )}
 
-        <div style={{ background: "rgba(255,255,255,0.05)", padding: "20px", borderRadius: "14px" }}>
-
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            padding: "20px",
+            borderRadius: "14px",
+          }}
+        >
           {/* SELECT VIVIENDA */}
           <label>Vivienda</label>
           <select
             value={form.vivienda_id}
             onChange={(e) => {
               const viviendaId = e.target.value;
-              const viviendaSel = viviendas.find(v => String(v.id) === viviendaId);
-              setForm({
-                ...form,
+              const viviendaSel = viviendas.find(
+                (v) => String(v.id) === viviendaId
+              );
+
+              setForm((prev) => ({
+                ...prev,
                 vivienda_id: viviendaId,
                 cliente_id: viviendaSel?.cliente_id || "",
-              });
+                contrato_id: "",
+                tecnico_id: "",
+              }));
             }}
             style={selectStyle}
           >
             <option value="">Selecciona una vivienda</option>
             {viviendas.map((v) => (
-              <option key={v.id} value={v.id}>{v.direccion}</option>
+              <option key={v.id} value={v.id}>
+                {v.direccion}
+              </option>
             ))}
           </select>
 
@@ -214,12 +324,16 @@ export default function NuevaInspeccion() {
           <label>Cliente</label>
           <select
             value={form.cliente_id}
-            onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, cliente_id: e.target.value })
+            }
             style={selectStyle}
           >
             <option value="">Selecciona un cliente</option>
             {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
             ))}
           </select>
 
@@ -227,7 +341,9 @@ export default function NuevaInspeccion() {
           <label>Contrato</label>
           <select
             value={form.contrato_id}
-            onChange={(e) => setForm({ ...form, contrato_id: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, contrato_id: e.target.value })
+            }
             style={selectStyle}
           >
             <option value="">Selecciona un contrato</option>
@@ -238,16 +354,33 @@ export default function NuevaInspeccion() {
             ))}
           </select>
 
+          {form.vivienda_id && contratos.length === 0 && (
+            <p
+              style={{
+                marginTop: "8px",
+                color: "#ffcc80",
+                fontSize: "14px",
+              }}
+            >
+              No hay ningún contrato activo, firmado y pagado para esta
+              vivienda. Primero debe completarse la firma y el pago.
+            </p>
+          )}
+
           {/* SELECT TÉCNICO */}
           <label>Técnico</label>
           <select
             value={form.tecnico_id}
-            onChange={(e) => setForm({ ...form, tecnico_id: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, tecnico_id: e.target.value })
+            }
             style={selectStyle}
           >
             <option value="">Selecciona un técnico</option>
             {tecnicos.map((t) => (
-              <option key={t.id} value={t.id}>{t.nombre}</option>
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
             ))}
           </select>
 
@@ -256,7 +389,9 @@ export default function NuevaInspeccion() {
           <input
             type="date"
             value={form.fecha}
-            onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, fecha: e.target.value })
+            }
             style={selectStyle}
           />
 
@@ -264,7 +399,9 @@ export default function NuevaInspeccion() {
           <label>Notas</label>
           <textarea
             value={form.notas}
-            onChange={(e) => setForm({ ...form, notas: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, notas: e.target.value })
+            }
             style={{ ...selectStyle, minHeight: "100px" }}
           />
 
