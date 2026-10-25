@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -41,30 +42,13 @@ export default function Idioma() {
       errorInesperado:
         "The language preference could not be confirmed as saved to your profile.",
     },
-    fr: {
-      descripcion:
-        "Choisissez la langue que vous souhaitez utiliser dans l’application :",
-      guardando: "Enregistrement de la préférence linguistique...",
-      guardado: "Préférence linguistique enregistrée.",
-      sinSesion:
-        "La langue a changé sur cet appareil, mais la session n’a pas pu être vérifiée.",
-      errorGuardar:
-        "La langue a changé sur cet écran, mais son enregistrement dans votre profil n’a pas pu être confirmé. Veuillez réessayer.",
-      errorSinCliente:
-        "La langue a changé sur cet appareil, mais aucun profil client n’a été trouvé pour ce compte.",
-      errorInesperado:
-        "L’enregistrement de la préférence linguistique dans votre profil n’a pas pu être confirmé.",
-    },
   };
 
-  const idiomaActual = ["es", "en", "fr"].includes(language)
-    ? language
-    : "es";
-
+  const idiomaActual = language === "en" ? "en" : "es";
   const copy = textos[idiomaActual];
 
   const handleSelectLanguage = async (newLang) => {
-    if (!["es", "en", "fr"].includes(newLang) || guardando) {
+    if (!["es", "en"].includes(newLang) || guardando) {
       return;
     }
 
@@ -172,7 +156,7 @@ export default function Idioma() {
             gap: "5px",
           }}
         >
-          ← {t("volver") || "Volver"}
+          ← {t("volver") || (idiomaActual === "en" ? "Back" : "Volver")}
         </button>
 
         <h1
@@ -184,7 +168,9 @@ export default function Idioma() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          🌐 {t("cambiarIdioma") || "Seleccionar idioma"}
+          🌐{" "}
+          {t("cambiarIdioma") ||
+            (idiomaActual === "en" ? "Select language" : "Seleccionar idioma")}
         </h1>
 
         <div style={cardStyle}>
@@ -218,21 +204,8 @@ export default function Idioma() {
             🇬🇧 English {idiomaActual === "en" && "✓"}
           </button>
 
-          <button
-            type="button"
-            disabled={guardando}
-            aria-pressed={idiomaActual === "fr"}
-            onClick={() => handleSelectLanguage("fr")}
-            style={btnStyle(idiomaActual === "fr")}
-          >
-            🇫🇷 Français {idiomaActual === "fr" && "✓"}
-          </button>
-
           {guardando && (
-            <p
-              role="status"
-              style={{ fontSize: "14px" }}
-            >
+            <p role="status" style={{ fontSize: "14px" }}>
               {copy.guardando}
             </p>
           )}
