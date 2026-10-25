@@ -1,11 +1,65 @@
+// src/pages/inspecciones/VerPDFInspeccion.jsx
+
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 import Menu from "../../layouts/Menu";
+import { useLanguage } from "../../context/LanguageContext";
 
 const BUCKET_PDFS = "pdfs";
 const BUCKET_LEGACY = "pdf_inspecciones";
+
+const textos = {
+  es: {
+    titulo: "PDF de la inspección",
+    cargando: "Cargando PDF…",
+    errorConsulta:
+      "No se pudo consultar la inspección. Comprueba tus permisos e inténtalo de nuevo.",
+    noEncontrada: "No se encontró la inspección solicitada.",
+    noPdf:
+      "No se encontró un PDF para esta inspección. Comprueba que el informe se haya generado y guardado correctamente.",
+    errorCarga: "Se produjo un error al cargar el PDF.",
+    faltaId: "Falta el identificador de la inspección.",
+    ninguno: "No hay ningún PDF disponible.",
+    tituloIframe: "Informe PDF de la inspección",
+    abrirDescargar: "Abrir o descargar PDF",
+    volverInspeccion: "← Volver a la inspección",
+    volverListado: "Volver al listado de inspecciones",
+  },
+  en: {
+    titulo: "Inspection PDF",
+    cargando: "Loading PDF…",
+    errorConsulta:
+      "The inspection could not be retrieved. Check your permissions and try again.",
+    noEncontrada: "The requested inspection could not be found.",
+    noPdf:
+      "No PDF was found for this inspection. Check that the report was generated and saved correctly.",
+    errorCarga: "An error occurred while loading the PDF.",
+    faltaId: "The inspection ID is missing.",
+    ninguno: "No PDF is available.",
+    tituloIframe: "Inspection PDF report",
+    abrirDescargar: "Open or download PDF",
+    volverInspeccion: "← Back to inspection",
+    volverListado: "Back to inspections list",
+  },
+  fr: {
+    titulo: "PDF de l’inspection",
+    cargando: "Chargement du PDF…",
+    errorConsulta:
+      "Impossible de consulter l’inspection. Vérifiez vos autorisations et réessayez.",
+    noEncontrada: "L’inspection demandée est introuvable.",
+    noPdf:
+      "Aucun PDF n’a été trouvé pour cette inspection. Vérifiez que le rapport a bien été généré et enregistré.",
+    errorCarga: "Une erreur s’est produite lors du chargement du PDF.",
+    faltaId: "L’identifiant de l’inspection est manquant.",
+    ninguno: "Aucun PDF n’est disponible.",
+    tituloIframe: "Rapport PDF de l’inspection",
+    abrirDescargar: "Ouvrir ou télécharger le PDF",
+    volverInspeccion: "← Retour à l’inspection",
+    volverListado: "Retour à la liste des inspections",
+  },
+};
 
 async function obtenerUrlPdf(valor) {
   if (!valor || typeof valor !== "string") return null;
@@ -83,6 +137,9 @@ async function buscarPdfAntiguo(id) {
 export default function VerPDFInspeccion() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { language } = useLanguage();
+
+  const t = textos[language] || textos.es;
 
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -106,14 +163,11 @@ export default function VerPDFInspeccion() {
 
         if (error) {
           console.error("Error consultando la inspección:", error);
-
-          throw new Error(
-            "No se pudo consultar la inspección. Comprueba tus permisos e inténtalo de nuevo."
-          );
+          throw new Error(t.errorConsulta);
         }
 
         if (!inspeccion) {
-          throw new Error("No se encontró la inspección solicitada.");
+          throw new Error(t.noEncontrada);
         }
 
         let url = await obtenerUrlPdf(inspeccion.pdf_url);
@@ -128,10 +182,7 @@ export default function VerPDFInspeccion() {
         if (url) {
           setPdfUrl(url);
         } else {
-          setMensaje(
-            "No se encontró un PDF para esta inspección. " +
-              "Comprueba que el informe se haya generado y guardado correctamente."
-          );
+          setMensaje(t.noPdf);
         }
       } catch (error) {
         if (cancelado) return;
@@ -139,7 +190,7 @@ export default function VerPDFInspeccion() {
         console.error("Error cargando PDF de inspección:", error);
 
         setMensaje(
-          error?.message || "Se produjo un error al cargar el PDF."
+          error?.message || t.errorCarga
         );
       } finally {
         if (!cancelado) {
@@ -151,14 +202,14 @@ export default function VerPDFInspeccion() {
     if (id) {
       cargarPDF();
     } else {
-      setMensaje("Falta el identificador de la inspección.");
+      setMensaje(t.faltaId);
       setLoading(false);
     }
 
     return () => {
       cancelado = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   return (
     <Menu>
@@ -180,11 +231,11 @@ export default function VerPDFInspeccion() {
             textAlign: "center",
           }}
         >
-          PDF de la inspección {id ? `#${id}` : ""}
+          {t.titulo} {id ? `#${id}` : ""}
         </h1>
 
         {loading ? (
-          <p style={{ textAlign: "center" }}>Cargando PDF…</p>
+          <p style={{ textAlign: "center" }}>{t.cargando}</p>
         ) : !pdfUrl ? (
           <div>
             <p
@@ -195,7 +246,7 @@ export default function VerPDFInspeccion() {
                 lineHeight: 1.6,
               }}
             >
-              {mensaje || "No hay ningún PDF disponible."}
+              {mensaje || t.ninguno}
             </p>
           </div>
         ) : (
@@ -210,7 +261,7 @@ export default function VerPDFInspeccion() {
           >
             <iframe
               src={pdfUrl}
-              title="Informe PDF de la inspección"
+              title={t.tituloIframe}
               style={{
                 width: "100%",
                 height: "70vh",
@@ -236,7 +287,7 @@ export default function VerPDFInspeccion() {
                 textDecoration: "none",
               }}
             >
-              Abrir o descargar PDF
+              {t.abrirDescargar}
             </a>
           </div>
         )}
@@ -255,12 +306,12 @@ export default function VerPDFInspeccion() {
             cursor: "pointer",
           }}
         >
-          ← Volver a la inspección
+          {t.volverInspeccion}
         </button>
 
         <div style={{ marginTop: "16px", textAlign: "center" }}>
           <Link to="/inspecciones" style={{ color: "#9fb3c8" }}>
-            Volver al listado de inspecciones
+            {t.volverListado}
           </Link>
         </div>
       </div>
