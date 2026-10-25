@@ -17,6 +17,7 @@ export default function ClienteConfiguracion() {
   const navigate = useNavigate();
   const es = language !== "en";
 
+  const [actual, setActual] = useState("");
   const [nueva, setNueva] = useState("");
   const [confirmacion, setConfirmacion] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -26,17 +27,23 @@ export default function ClienteConfiguracion() {
   const texto = {
     titulo: es ? "Seguridad de la cuenta" : "Account Security",
     cambiar: es ? "Cambiar contraseña" : "Change password",
+    actual: es ? "Contraseña actual" : "Current password",
     nueva: es ? "Nueva contraseña" : "New password",
-    confirmar: es ? "Confirmar nueva contraseña" : "Confirm new password",
+    confirmar: es
+      ? "Confirmar nueva contraseña"
+      : "Confirm new password",
     faltan: es
-      ? "Completa los dos campos."
-      : "Complete both fields.",
+      ? "Completa los tres campos."
+      : "Complete all three fields.",
     minimo: es
-      ? "La contraseña debe tener al menos 8 caracteres."
-      : "The password must contain at least 8 characters.",
+      ? "La nueva contraseña debe tener al menos 8 caracteres."
+      : "The new password must contain at least 8 characters.",
     noCoinciden: es
-      ? "Las contraseñas no coinciden."
-      : "The passwords do not match.",
+      ? "Las nuevas contraseñas no coinciden."
+      : "The new passwords do not match.",
+    igual: es
+      ? "La nueva contraseña debe ser diferente de la actual."
+      : "The new password must be different from the current one.",
     sesion: es
       ? "Tu sesión ha caducado. Inicia sesión de nuevo."
       : "Your session has expired. Please sign in again.",
@@ -50,12 +57,45 @@ export default function ClienteConfiguracion() {
     volver: t("volver"),
   };
 
+  const obtenerMensajeError = (err) => {
+    const mensaje = String(err?.message || "").toLowerCase();
+    const codigo = String(err?.code || "").toLowerCase();
+
+    if (
+      mensaje.includes("current password") ||
+      codigo === "current_password_mismatch"
+    ) {
+      return es
+        ? "La contraseña actual es incorrecta o no se ha podido verificar."
+        : "The current password is incorrect or could not be verified.";
+    }
+
+    if (
+      mensaje.includes("weak password") ||
+      mensaje.includes("easy to guess") ||
+      mensaje.includes("password should be")
+    ) {
+      return es
+        ? "La nueva contraseña es demasiado débil o fácil de adivinar. Elige otra más segura."
+        : "The new password is too weak or easy to guess. Choose a stronger one.";
+    }
+
+    if (
+      mensaje.includes("same password") ||
+      mensaje.includes("different from the old password")
+    ) {
+      return texto.igual;
+    }
+
+    return err?.message || texto.error;
+  };
+
   const handleCambiar = async (e) => {
     e.preventDefault();
     setError("");
     setExito("");
 
-    if (!nueva || !confirmacion) {
+    if (!actual || !nueva || !confirmacion) {
       setError(texto.faltan);
       return;
     }
@@ -70,10 +110,14 @@ export default function ClienteConfiguracion() {
       return;
     }
 
+    if (actual === nueva) {
+      setError(texto.igual);
+      return;
+    }
+
     setCargando(true);
 
     try {
-      // Comprobar que la sesión actual sigue siendo válida.
       const { data: usuarioData, error: usuarioError } =
         await supabase.auth.getUser();
 
@@ -81,9 +125,13 @@ export default function ClienteConfiguracion() {
         throw new Error("NO_VALID_SESSION");
       }
 
-      // Actualizar la contraseña usando la sesión existente.
+      // Supabase verifica la contraseña actual y cambia la nueva
+      // en una sola operación.
       const { data: actualizacion, error: errorActualizacion } =
-        await supabase.auth.updateUser({ password: nueva });
+        await supabase.auth.updateUser({
+          password: nueva,
+          currentPassword: actual,
+        });
 
       if (errorActualizacion) {
         throw errorActualizacion;
@@ -97,34 +145,36 @@ export default function ClienteConfiguracion() {
         );
       }
 
-      // No limpiar los campos hasta confirmar el cambio.
+      // Solo se limpian los campos después de confirmar el cambio.
+      setActual("");
       setNueva("");
       setConfirmacion("");
       setExito(texto.cerrando);
 
-      // Cerrar la sesión y comprobar el resultado.
       const { error: errorCierre } = await supabase.auth.signOut({
         scope: "local",
       });
 
       if (errorCierre) {
-        throw new Error(
+        console.error("Error al cerrar sesión:", errorCierre);
+        setExito("");
+        setError(
           es
-            ? "La contraseña se ha actualizado, pero no se pudo cerrar la sesión. Cierra sesión manualmente."
-            : "The password was updated, but sign-out failed. Please sign out manually."
+            ? "La contraseña se ha cambiado correctamente, pero no se pudo cerrar la sesión automáticamente. Cierra sesión manualmente."
+            : "The password was changed successfully, but automatic sign-out failed. Please sign out manually."
         );
+        return;
       }
 
-      // Navegación completa para evitar que la ruta protegida
-      // o el contexto de autenticación devuelvan al área del cliente.
+      // Recargar la aplicación en la página de inicio de sesión.
       window.location.replace("/login");
     } catch (err) {
       console.error("Error al cambiar la contraseña:", err);
 
-      if (err.message === "NO_VALID_SESSION") {
+      if (err?.message === "NO_VALID_SESSION") {
         setError(texto.sesion);
       } else {
-        setError(err.message || texto.error);
+        setError(obtenerMensajeError(err));
       }
     } finally {
       setCargando(false);
@@ -246,7 +296,24 @@ export default function ClienteConfiguracion() {
           </h2>
 
           <form onSubmit={handleCambiar}>
-            <label htmlFor="password-new" style={estiloEtiqueta}>
+            <label htmlFor="password-current" style={estiloEtiqueta}>
+              {texto.actual}
+            </label>
+            <input
+              id="password-current"
+              type="password"
+              autoComplete="current-password"
+              value={actual}
+              onChange={(e) => setActual(e.target.value)}
+              style={estiloCampo}
+              required
+              disabled={cargando}
+            />
+
+            <label
+              htmlFor="password-new"
+              style={{ ...estiloEtiqueta, marginTop: "18px" }}
+            >
               {texto.nueva}
             </label>
             <input
