@@ -1,13 +1,13 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { HashRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
-import { LanguageProvider } from './context/LanguageContext.jsx';
 
 import './styles/global.css';
 
-// --- ESCUDO ATRAPA-ERRORES DE REACT (EVITA PANTALLAS EN BLANCO) ---
+// --- ESCUDO ATRAPA-ERRORES DE REACT ---
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -39,7 +39,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// --- CAPTURA GLOBAL DE ERRORES (BARRA ROJA) ---
+// --- CAPTURA GLOBAL DE ERRORES ---
 window.onerror = function (msg, url, line, col, error) {
   const div = document.createElement("div");
   div.style.position = "fixed";
@@ -55,18 +55,15 @@ window.onerror = function (msg, url, line, col, error) {
   div.innerText = "ERROR GLOBAL: " + msg + "\n" + url + ":" + line;
   document.body.appendChild(div);
 };
-// --- FIN DEL CAPTURADOR ---
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <LanguageProvider>
-        <HashRouter>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </HashRouter>
-      </LanguageProvider>
+      <HashRouter>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </HashRouter>
     </ErrorBoundary>
   </React.StrictMode>
 );
