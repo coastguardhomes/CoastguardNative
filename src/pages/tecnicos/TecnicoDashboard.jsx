@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
+import { useLanguage } from '../../context/LanguageContext';
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -13,8 +13,93 @@ const TEXTO_DORADO_BRILLO = {
   textShadow: "0 0 12px rgba(224, 176, 52, 0.6)"
 };
 
+const TEXTOS = {
+  es: {
+    technician: 'TÉCNICO',
+    dashboard: 'Panel de Operaciones',
+    logout: 'Salir',
+    networkStatus: 'Estado de Red:',
+    starting: 'Iniciando carga...',
+    connecting: 'Conectando a Supabase...',
+    loaded: '¡Datos cargados!',
+    generalError: 'Error general: ',
+    unknownError: 'Error desconocido',
+    inspections: 'Inspecciones',
+    alerts: 'Alertas',
+    homes: 'Viviendas',
+    extrasPending: 'Tienes {count} extras pendientes',
+    noExtras: 'No hay servicios extras pendientes.',
+    assignedExtras: 'Trabajos Extras Asignados',
+    invoice: 'Factura #',
+    noConcept: 'Sin concepto',
+    doExtra: 'Hacer Extra →',
+    assignedInspections: 'Inspecciones Asignadas',
+    loadingAssignments: 'Cargando asignaciones...',
+    noAssignments: 'No hay inspecciones pendientes asignadas.',
+    inspection: 'Inspección #',
+    checklist: 'Checklist →',
+    unassigned: 'Vivienda sin asignar'
+  },
+  en: {
+    technician: 'TECHNICIAN',
+    dashboard: 'Operations Dashboard',
+    logout: 'Log out',
+    networkStatus: 'Network status:',
+    starting: 'Starting...',
+    connecting: 'Connecting to Supabase...',
+    loaded: 'Data loaded!',
+    generalError: 'General error: ',
+    unknownError: 'Unknown error',
+    inspections: 'Inspections',
+    alerts: 'Alerts',
+    homes: 'Properties',
+    extrasPending: 'You have {count} pending extra services',
+    noExtras: 'No pending extra services.',
+    assignedExtras: 'Assigned Extra Services',
+    invoice: 'Invoice #',
+    noConcept: 'No description',
+    doExtra: 'Perform extra →',
+    assignedInspections: 'Assigned Inspections',
+    loadingAssignments: 'Loading assignments...',
+    noAssignments: 'No pending inspections assigned.',
+    inspection: 'Inspection #',
+    checklist: 'Checklist →',
+    unassigned: 'Unassigned property'
+  },
+  fr: {
+    technician: 'TECHNICIEN',
+    dashboard: 'Tableau de bord des opérations',
+    logout: 'Déconnexion',
+    networkStatus: 'État du réseau :',
+    starting: 'Chargement en cours...',
+    connecting: 'Connexion à Supabase...',
+    loaded: 'Données chargées !',
+    generalError: 'Erreur générale : ',
+    unknownError: 'Erreur inconnue',
+    inspections: 'Inspections',
+    alerts: 'Alertes',
+    homes: 'Logements',
+    extrasPending: 'Vous avez {count} prestations supplémentaires en attente',
+    noExtras: 'Aucune prestation supplémentaire en attente.',
+    assignedExtras: 'Prestations supplémentaires attribuées',
+    invoice: 'Facture n°',
+    noConcept: 'Sans description',
+    doExtra: 'Effectuer la prestation →',
+    assignedInspections: 'Inspections attribuées',
+    loadingAssignments: 'Chargement des affectations...',
+    noAssignments: 'Aucune inspection en attente attribuée.',
+    inspection: 'Inspection n°',
+    checklist: 'Liste de contrôle →',
+    unassigned: 'Logement non attribué'
+  }
+};
+
 export default function TecnicoDashboard() {
   const navigate = useNavigate();
+  const { language } = useLanguage();
+
+  const idioma = TEXTOS[language] ? language : 'es';
+  const t = (key) => TEXTOS[idioma][key] || TEXTOS.es[key] || key;
 
   const [stats, setStats] = useState({
     inspeccionesSemana: 0,
@@ -26,7 +111,7 @@ export default function TecnicoDashboard() {
   const [inspeccionesDiarias, setInspeccionesDiarias] = useState([]);
   const [extrasPendientes, setExtrasPendientes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [debugLog, setDebugLog] = useState('Iniciando carga...');
+  const [debugLog, setDebugLog] = useState('starting');
 
   useEffect(() => {
     cargarDatosDashboard();
@@ -35,7 +120,7 @@ export default function TecnicoDashboard() {
   const cargarDatosDashboard = async () => {
     try {
       setLoading(true);
-      setDebugLog("Conectando a Supabase...");
+      setDebugLog('connecting');
 
       // 1. INSPECCIONES NORMALES
       const { data: inspData, error: inspError } = await supabase
@@ -88,14 +173,13 @@ export default function TecnicoDashboard() {
         direccion:
           viviendasMap[inspeccion.vivienda_id] ||
           inspeccion.direccion ||
-          `Vivienda #${inspeccion.vivienda_id || 'Sin asignar'}`,
+          `${t('unassigned')} #${inspeccion.vivienda_id || ''}`,
       }));
 
       setInspeccionesDiarias(inspeccionesLista);
 
       // 2. EXTRAS PAGADOS
-      // Se excluyen las facturas de contratos y se comprueba también
-      // el estado del extra relacionado, no solo el de la factura.
+      // Se mantienen las consultas y los filtros originales.
       const { data: extrasData, error: extrasError } = await supabase
         .from('facturas')
         .select('*')
@@ -107,8 +191,6 @@ export default function TecnicoDashboard() {
         console.error("Error facturas/extras:", extrasError);
       }
 
-      // Consultar el estado técnico de los extras relacionados.
-      // Si RLS bloquea esta consulta, se conserva el filtrado por factura.
       const {
         data: trabajosExtraData,
         error: trabajosExtraError
@@ -202,11 +284,13 @@ export default function TecnicoDashboard() {
         extrasPendientesCount: listaExtras.length,
       });
 
-      setDebugLog("¡Datos cargados!");
+      setDebugLog('loaded');
 
     } catch (error) {
       console.error("Error al cargar el Dashboard:", error);
-      setDebugLog("Error general: " + (error?.message || 'Error desconocido'));
+      setDebugLog(
+        t('generalError') + (error?.message || t('unknownError'))
+      );
     } finally {
       setLoading(false);
     }
@@ -218,6 +302,11 @@ export default function TecnicoDashboard() {
       replace: true
     });
   };
+
+  const debugLogVisible =
+    ['starting', 'connecting', 'loaded'].includes(debugLog)
+      ? t(debugLog)
+      : debugLog;
 
   return (
     <div
@@ -264,7 +353,7 @@ export default function TecnicoDashboard() {
                 marginBottom: '4px'
               }}
             >
-              ⛵ COASTGUARD <span style={{ color: '#888' }}>| TÉCNICO</span>
+              ⛵ COASTGUARD <span style={{ color: '#888' }}>| {t('technician')}</span>
             </div>
 
             <h2
@@ -275,7 +364,7 @@ export default function TecnicoDashboard() {
                 margin: 0
               }}
             >
-              Panel de Operaciones
+              {t('dashboard')}
             </h2>
           </div>
 
@@ -292,7 +381,7 @@ export default function TecnicoDashboard() {
               cursor: 'pointer'
             }}
           >
-            🚪 Salir
+            🚪 {t('logout')}
           </button>
         </div>
 
@@ -312,9 +401,9 @@ export default function TecnicoDashboard() {
               fontWeight: 'bold'
             }}
           >
-            Estado de Red:
+            {t('networkStatus')}
           </span>{' '}
-          {debugLog}
+          {debugLogVisible}
         </div>
 
         <div
@@ -334,7 +423,6 @@ export default function TecnicoDashboard() {
             }}
           >
             <div style={{ fontSize: '18px' }}>📋</div>
-
             <div
               style={{
                 fontSize: '16px',
@@ -344,14 +432,13 @@ export default function TecnicoDashboard() {
             >
               {stats.inspeccionesSemana}
             </div>
-
             <div
               style={{
                 fontSize: '10px',
                 color: COLOR_DORADO
               }}
             >
-              Inspecciones
+              {t('inspections')}
             </div>
           </div>
 
@@ -359,15 +446,13 @@ export default function TecnicoDashboard() {
             style={{
               background:
                 'linear-gradient(145deg, #1f0b0b 0%, #0d070a 100%)',
-              border:
-                '1px solid rgba(239, 68, 68, 0.4)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
               borderRadius: '12px',
               padding: '12px 6px',
               textAlign: 'center'
             }}
           >
             <div style={{ fontSize: '18px' }}>⚠️</div>
-
             <div
               style={{
                 fontSize: '16px',
@@ -377,14 +462,13 @@ export default function TecnicoDashboard() {
             >
               {stats.alertasDetectadas}
             </div>
-
             <div
               style={{
                 fontSize: '10px',
                 color: '#ef4444'
               }}
             >
-              Alertas
+              {t('alerts')}
             </div>
           </div>
 
@@ -398,7 +482,6 @@ export default function TecnicoDashboard() {
             }}
           >
             <div style={{ fontSize: '18px' }}>🏠</div>
-
             <div
               style={{
                 fontSize: '16px',
@@ -408,14 +491,13 @@ export default function TecnicoDashboard() {
             >
               {stats.viviendasAsignadas}
             </div>
-
             <div
               style={{
                 fontSize: '10px',
                 color: COLOR_DORADO
               }}
             >
-              Viviendas
+              {t('homes')}
             </div>
           </div>
         </div>
@@ -424,8 +506,7 @@ export default function TecnicoDashboard() {
           <div
             style={{
               backgroundColor: 'rgba(56, 189, 248, 0.1)',
-              border:
-                '1px solid rgba(56, 189, 248, 0.4)',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
               borderRadius: '12px',
               padding: '12px 14px'
             }}
@@ -436,7 +517,10 @@ export default function TecnicoDashboard() {
                 fontWeight: 'bold'
               }}
             >
-              ⚡ Tienes {stats.extrasPendientesCount} extras pendientes
+              ⚡ {t('extrasPending').replace(
+                '{count}',
+                stats.extrasPendientesCount
+              )}
             </span>
           </div>
         ) : (
@@ -449,7 +533,7 @@ export default function TecnicoDashboard() {
               color: '#888'
             }}
           >
-            ⚡ No hay servicios extras pendientes.
+            ⚡ {t('noExtras')}
           </div>
         )}
 
@@ -457,8 +541,7 @@ export default function TecnicoDashboard() {
           <div
             style={{
               background: FONDO_TARJETA,
-              border:
-                '1px solid rgba(56, 189, 248, 0.4)',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
               borderRadius: '14px',
               padding: '14px'
             }}
@@ -470,7 +553,7 @@ export default function TecnicoDashboard() {
                 marginBottom: '10px'
               }}
             >
-              🛠️ Trabajos Extras Asignados
+              🛠️ {t('assignedExtras')}
             </h3>
 
             <div
@@ -503,9 +586,8 @@ export default function TecnicoDashboard() {
                         fontSize: '12px'
                       }}
                     >
-                      Factura #
-                      {extra.codigo ||
-                        String(extra.id).substring(0, 8)}
+                      {t('invoice')}
+                      {extra.codigo || String(extra.id).substring(0, 8)}
                     </div>
 
                     <div
@@ -518,7 +600,7 @@ export default function TecnicoDashboard() {
                       📝{' '}
                       {extra.concepto ||
                         extra.descripcion ||
-                        'Sin concepto'}
+                        t('noConcept')}
                     </div>
                   </div>
 
@@ -537,7 +619,7 @@ export default function TecnicoDashboard() {
                       navigate(`/tecnico/extra/${extra.id}`)
                     }
                   >
-                    Hacer Extra →
+                    {t('doExtra')}
                   </button>
                 </div>
               ))}
@@ -560,7 +642,7 @@ export default function TecnicoDashboard() {
               marginBottom: '10px'
             }}
           >
-            Inspecciones Asignadas
+            {t('assignedInspections')}
           </h3>
 
           {loading ? (
@@ -570,7 +652,7 @@ export default function TecnicoDashboard() {
                 textAlign: 'center'
               }}
             >
-              Cargando asignaciones...
+              {t('loadingAssignments')}
             </p>
           ) : inspeccionesDiarias.length === 0 ? (
             <p
@@ -579,7 +661,7 @@ export default function TecnicoDashboard() {
                 textAlign: 'center'
               }}
             >
-              No hay inspecciones pendientes asignadas.
+              {t('noAssignments')}
             </p>
           ) : (
             <div
@@ -612,7 +694,7 @@ export default function TecnicoDashboard() {
                         fontSize: '12px'
                       }}
                     >
-                      Inspección #
+                      {t('inspection')}
                       {String(insp.id).substring(0, 8)}
                     </div>
 
@@ -644,7 +726,7 @@ export default function TecnicoDashboard() {
                       )
                     }
                   >
-                    Checklist →
+                    {t('checklist')}
                   </button>
                 </div>
               ))}
