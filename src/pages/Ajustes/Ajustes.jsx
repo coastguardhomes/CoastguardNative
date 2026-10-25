@@ -14,9 +14,10 @@ const TEXTOS = {
     sesion: "Sesión activa",
     cerrarSesion: "🚪 Cerrar sesión",
     guardado: "Idioma actualizado y guardado correctamente.",
-    guardadoLocal: "El idioma ha cambiado en este dispositivo, pero no se ha podido confirmar el guardado en tu perfil.",
+    guardadoLocal:
+      "El idioma ha cambiado en este dispositivo, pero no se ha podido confirmar el guardado en tu perfil.",
     error: "No se ha podido guardar el idioma en tu perfil. Inténtalo de nuevo.",
-    idiomas: { es: "🇪🇸 Español", en: "🇬🇧 Inglés", fr: "🇫🇷 Francés" },
+    idiomas: { es: "🇪🇸 Español", en: "🇬🇧 Inglés" },
   },
   en: {
     titulo: "⚙️ Settings",
@@ -25,20 +26,10 @@ const TEXTOS = {
     sesion: "Active session",
     cerrarSesion: "🚪 Log out",
     guardado: "Language preference updated and saved successfully.",
-    guardadoLocal: "The language changed on this device, but saving it to your profile could not be confirmed.",
+    guardadoLocal:
+      "The language changed on this device, but saving it to your profile could not be confirmed.",
     error: "The language could not be saved to your profile. Please try again.",
-    idiomas: { es: "🇪🇸 Spanish", en: "🇬🇧 English", fr: "🇫🇷 French" },
-  },
-  fr: {
-    titulo: "⚙️ Paramètres",
-    descripcion: "Paramètres généraux de votre compte et préférences linguistiques.",
-    idioma: "🌐 Langue de l’application",
-    sesion: "Session active",
-    cerrarSesion: "🚪 Se déconnecter",
-    guardado: "La préférence linguistique a été mise à jour et enregistrée.",
-    guardadoLocal: "La langue a changé sur cet appareil, mais l’enregistrement dans votre profil n’a pas pu être confirmé.",
-    error: "Impossible d’enregistrer la langue dans votre profil. Veuillez réessayer.",
-    idiomas: { es: "🇪🇸 Espagnol", en: "🇬🇧 Anglais", fr: "🇫🇷 Français" },
+    idiomas: { es: "🇪🇸 Spanish", en: "🇬🇧 English" },
   },
 };
 
@@ -51,11 +42,11 @@ export default function Ajustes() {
   const [mensaje, setMensaje] = useState("");
   const [tipoMensaje, setTipoMensaje] = useState("");
 
-  const idioma = ["es", "en", "fr"].includes(language) ? language : "es";
+  const idioma = ["es", "en"].includes(language) ? language : "es";
   const texto = TEXTOS[idioma];
 
   const cambiarIdiomaManual = async (nuevoIdioma) => {
-    if (!["es", "en", "fr"].includes(nuevoIdioma) || guardando) return;
+    if (!["es", "en"].includes(nuevoIdioma) || guardando) return;
     if (nuevoIdioma === idioma) return;
 
     setMensaje("");
@@ -219,9 +210,6 @@ export default function Ajustes() {
               </option>
               <option value="en" style={{ background: "#030509" }}>
                 {texto.idiomas.en}
-              </option>
-              <option value="fr" style={{ background: "#030509" }}>
-                {texto.idiomas.fr}
               </option>
             </select>
           </div>
