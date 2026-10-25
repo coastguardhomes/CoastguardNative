@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -10,55 +9,106 @@ export default function Idioma() {
   const navigate = useNavigate();
   const { language, changeLanguage, t } = useLanguage();
   const { user } = useAuth();
+
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
+  const textos = {
+    es: {
+      descripcion: "Elige el idioma en el que deseas visualizar la aplicación:",
+      guardando: "Guardando preferencia de idioma...",
+      guardado: "Preferencia de idioma guardada.",
+      sinSesion:
+        "El idioma ha cambiado en este dispositivo, pero no se ha podido verificar la sesión.",
+      errorGuardar:
+        "El idioma ha cambiado en esta pantalla, pero no se ha podido confirmar que se guardara en el perfil. Vuelve a intentarlo.",
+      errorSinCliente:
+        "El idioma ha cambiado en este dispositivo, pero no se encontró un perfil de cliente asociado a esta cuenta.",
+      errorInesperado:
+        "No se ha podido confirmar el guardado del idioma en el perfil.",
+    },
+    en: {
+      descripcion: "Choose the language you want to use in the application:",
+      guardando: "Saving language preference...",
+      guardado: "Language preference saved.",
+      sinSesion:
+        "The language has changed on this device, but the session could not be verified.",
+      errorGuardar:
+        "The language has changed on this screen, but saving it to your profile could not be confirmed. Please try again.",
+      errorSinCliente:
+        "The language has changed on this device, but no client profile was found for this account.",
+      errorInesperado:
+        "The language preference could not be confirmed as saved to your profile.",
+    },
+    fr: {
+      descripcion:
+        "Choisissez la langue que vous souhaitez utiliser dans l’application :",
+      guardando: "Enregistrement de la préférence linguistique...",
+      guardado: "Préférence linguistique enregistrée.",
+      sinSesion:
+        "La langue a changé sur cet appareil, mais la session n’a pas pu être vérifiée.",
+      errorGuardar:
+        "La langue a changé sur cet écran, mais son enregistrement dans votre profil n’a pas pu être confirmé. Veuillez réessayer.",
+      errorSinCliente:
+        "La langue a changé sur cet appareil, mais aucun profil client n’a été trouvé pour ce compte.",
+      errorInesperado:
+        "L’enregistrement de la préférence linguistique dans votre profil n’a pas pu être confirmé.",
+    },
+  };
+
+  const idiomaActual = ["es", "en", "fr"].includes(language)
+    ? language
+    : "es";
+
+  const copy = textos[idiomaActual];
+
   const handleSelectLanguage = async (newLang) => {
-    if (!["es", "en", "fr"].includes(newLang) || guardando) return;
+    if (!["es", "en", "fr"].includes(newLang) || guardando) {
+      return;
+    }
 
     setError("");
     setMensaje("");
 
-    // Aplicar el idioma inmediatamente en la interfaz.
+    // Aplicar inmediatamente el idioma en esta instalación.
     changeLanguage(newLang);
     localStorage.setItem("app_idioma", newLang);
 
+    const mensajes = textos[newLang];
+
     if (!user?.id) {
-      setError(
-        "El idioma se ha cambiado en este dispositivo, pero no se ha podido verificar la sesión."
-      );
+      setError(mensajes.sinSesion);
       return;
     }
 
     setGuardando(true);
 
     try {
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from("clientes")
         .update({ idioma: newLang })
-        .or(`usuario_id.eq.${user.id},user_id.eq.${user.id}`);
+        .or(`usuario_id.eq.${user.id},user_id.eq.${user.id}`)
+        .select("id");
 
       if (updateError) {
-        console.error("Error guardando el idioma del cliente:", updateError);
-        setError(
-          "El idioma ha cambiado en esta pantalla, pero no se ha podido guardar en el perfil. Vuelve a intentarlo."
+        console.error(
+          "Error guardando el idioma del cliente:",
+          updateError
         );
+        setError(mensajes.errorGuardar);
         return;
       }
 
-      setMensaje(
-        newLang === "en"
-          ? "Language preference saved."
-          : newLang === "fr"
-            ? "Préférence linguistique enregistrée."
-            : "Preferencia de idioma guardada."
-      );
+      if (!data || data.length === 0) {
+        setError(mensajes.errorSinCliente);
+        return;
+      }
+
+      setMensaje(mensajes.guardado);
     } catch (err) {
       console.error("Error inesperado guardando el idioma:", err);
-      setError(
-        "No se ha podido confirmar el guardado del idioma en el perfil."
-      );
+      setError(mensajes.errorInesperado);
     } finally {
       setGuardando(false);
     }
@@ -108,6 +158,7 @@ export default function Idioma() {
         }}
       >
         <button
+          type="button"
           onClick={() => navigate(-1)}
           style={{
             background: "none",
@@ -144,47 +195,45 @@ export default function Idioma() {
               marginBottom: "20px",
             }}
           >
-            {language === "en"
-              ? "Choose the language you want to use in the application:"
-              : language === "fr"
-                ? "Choisissez la langue que vous souhaitez utiliser dans l’application :"
-                : "Elige el idioma en el que deseas visualizar la aplicación:"}
+            {copy.descripcion}
           </p>
 
           <button
             type="button"
             disabled={guardando}
+            aria-pressed={idiomaActual === "es"}
             onClick={() => handleSelectLanguage("es")}
-            style={btnStyle(language === "es")}
+            style={btnStyle(idiomaActual === "es")}
           >
-            🇪🇸 Español {language === "es" && "✓"}
+            🇪🇸 Español {idiomaActual === "es" && "✓"}
           </button>
 
           <button
             type="button"
             disabled={guardando}
+            aria-pressed={idiomaActual === "en"}
             onClick={() => handleSelectLanguage("en")}
-            style={btnStyle(language === "en")}
+            style={btnStyle(idiomaActual === "en")}
           >
-            🇬🇧 English {language === "en" && "✓"}
+            🇬🇧 English {idiomaActual === "en" && "✓"}
           </button>
 
           <button
             type="button"
             disabled={guardando}
+            aria-pressed={idiomaActual === "fr"}
             onClick={() => handleSelectLanguage("fr")}
-            style={btnStyle(language === "fr")}
+            style={btnStyle(idiomaActual === "fr")}
           >
-            🇫🇷 Français {language === "fr" && "✓"}
+            🇫🇷 Français {idiomaActual === "fr" && "✓"}
           </button>
 
           {guardando && (
-            <p role="status" style={{ fontSize: "14px" }}>
-              {language === "en"
-                ? "Saving language preference..."
-                : language === "fr"
-                  ? "Enregistrement de la préférence linguistique..."
-                  : "Guardando preferencia de idioma..."}
+            <p
+              role="status"
+              style={{ fontSize: "14px" }}
+            >
+              {copy.guardando}
             </p>
           )}
 
