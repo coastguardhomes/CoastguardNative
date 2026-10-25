@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -903,42 +903,6 @@ export default function ClienteDashboard() {
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          <Link
-            to="/cliente/configuracion"
-            style={{
-              width: "100%",
-              maxWidth: "420px",
-              background: DEGRADADO_AZUL_BOTON,
-              border: BORDE_DORADO_INTENSO,
-              borderRadius: "30px",
-              padding: "14px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "10px",
-              textDecoration: "none",
-            }}
-          >
-            <span>⚙️</span>
-
-            <span
-              style={{
-                fontWeight: "900",
-                color: "#ffffff",
-                fontSize: "11px",
-              }}
-            >
-              {t("configuracionSeguridadNotificaciones")}
-            </span>
-          </Link>
         </div>
       </div>
     </Menu>
