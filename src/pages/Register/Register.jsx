@@ -1,13 +1,104 @@
-
 import React, { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
+const TEXTOS = {
+  es: {
+    titulo: "Crear cuenta",
+    email: "Correo electrónico",
+    password: "Contraseña",
+    idioma: "Idioma preferido",
+    privacidad: "He leído la",
+    politica: "Política de Privacidad",
+    privacidadFinal:
+      "y confirmo que he sido informado sobre el tratamiento de mis datos personales.",
+    contratoInicio: "He leído y acepto el",
+    contrato: "Contrato Marco de Servicios",
+    contratoFinal: ".",
+    notaContrato:
+      "La aceptación del Contrato Marco no sustituye la revisión ni la firma del contrato concreto de los servicios que contrates. Ese contrato se mostrará para su revisión y firma en el proceso correspondiente.",
+    crear: "Registrarse",
+    creando: "Creando cuenta...",
+    volver: "Volver al inicio de sesión",
+    completar: "Debes completar todos los campos.",
+    contrasenaCorta: "La contraseña debe tener al menos 6 caracteres.",
+    aceptar:
+      "Debes aceptar por separado la Política de Privacidad y el Contrato Marco de Servicios.",
+    errorUsuario: "Error inesperado creando usuario (sin datos de usuario).",
+    registroExito:
+      "Cuenta creada correctamente. Se ha enviado un enlace de confirmación a tu correo.",
+    errorGenerico:
+      "Error de conexión con el servidor o credenciales inválidas",
+    errorRegistro: "No se ha podido completar el registro",
+  },
+  en: {
+    titulo: "Create account",
+    email: "Email address",
+    password: "Password",
+    idioma: "Preferred language",
+    privacidad: "I have read the",
+    politica: "Privacy Policy",
+    privacidadFinal:
+      "and confirm that I have been informed about how my personal data is processed.",
+    contratoInicio: "I have read and accept the",
+    contrato: "Framework Service Agreement",
+    contratoFinal: ".",
+    notaContrato:
+      "Accepting the Framework Service Agreement does not replace reviewing and signing the specific contract for the services you purchase. That contract will be presented for review and signature during the relevant process.",
+    crear: "Sign up",
+    creando: "Creating account...",
+    volver: "Back to sign in",
+    completar: "Please complete all fields.",
+    contrasenaCorta: "The password must contain at least 6 characters.",
+    aceptar:
+      "You must separately accept the Privacy Policy and the Framework Service Agreement.",
+    errorUsuario: "Unexpected error creating user (no user data returned).",
+    registroExito:
+      "Account created successfully. A confirmation link has been sent to your email.",
+    errorGenerico:
+      "Server connection error or invalid credentials",
+    errorRegistro: "Registration could not be completed",
+  },
+  fr: {
+    titulo: "Créer un compte",
+    email: "Adresse e-mail",
+    password: "Mot de passe",
+    idioma: "Langue préférée",
+    privacidad: "J’ai lu la",
+    politica: "Politique de confidentialité",
+    privacidadFinal:
+      "et confirme avoir été informé du traitement de mes données personnelles.",
+    contratoInicio: "J’ai lu et j’accepte le",
+    contrato: "Contrat-cadre de services",
+    contratoFinal: ".",
+    notaContrato:
+      "L’acceptation du contrat-cadre ne remplace pas la lecture ni la signature du contrat spécifique aux services souscrits. Ce contrat sera présenté pour examen et signature au cours de la procédure correspondante.",
+    crear: "S’inscrire",
+    creando: "Création du compte...",
+    volver: "Retour à la connexion",
+    completar: "Veuillez remplir tous les champs.",
+    contrasenaCorta:
+      "Le mot de passe doit contenir au moins 6 caractères.",
+    aceptar:
+      "Vous devez accepter séparément la Politique de confidentialité et le Contrat-cadre de services.",
+    errorUsuario:
+      "Erreur inattendue lors de la création du compte (aucune donnée utilisateur reçue).",
+    registroExito:
+      "Compte créé avec succès. Un lien de confirmation a été envoyé à votre adresse e-mail.",
+    errorGenerico:
+      "Erreur de connexion au serveur ou identifiants invalides",
+    errorRegistro: "L’inscription n’a pas pu être finalisée",
+  },
+};
+
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [idioma, setIdioma] = useState("es");
+  const [idioma, setIdioma] = useState(() => {
+    const guardado = localStorage.getItem("app_idioma");
+    return ["es", "en", "fr"].includes(guardado) ? guardado : "es";
+  });
   const [aceptaPrivacidad, setAceptaPrivacidad] = useState(false);
   const [aceptaContrato, setAceptaContrato] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -16,12 +107,13 @@ export default function Register() {
 
   const navigate = useNavigate();
   const { changeLanguage } = useLanguage();
+  const texto = TEXTOS[idioma];
 
   const handleError = (err, customPrefix = "") => {
     let msg = "";
 
     if (!err) {
-      msg = "Error desconocido";
+      msg = texto.errorGenerico;
     } else if (typeof err === "string") {
       msg = err;
     } else if (err.message) {
@@ -29,7 +121,6 @@ export default function Register() {
     } else {
       try {
         const stringified = JSON.stringify(err);
-
         if (stringified && stringified !== "{}" && stringified !== "[]") {
           msg = stringified;
         }
@@ -39,7 +130,7 @@ export default function Register() {
     }
 
     if (!msg || msg === "{}") {
-      msg = "Error de conexión con el servidor o credenciales inválidas";
+      msg = texto.errorGenerico;
     }
 
     setErrorMsg(customPrefix ? `${customPrefix}: ${msg}` : msg);
@@ -52,27 +143,23 @@ export default function Register() {
     const emailNormalizado = email.trim().toLowerCase();
 
     if (!emailNormalizado || !password) {
-      setErrorMsg("Debes completar todos los campos.");
+      setErrorMsg(texto.completar);
       return;
     }
 
     if (password.length < 6) {
-      setErrorMsg("La contraseña debe tener al menos 6 caracteres.");
+      setErrorMsg(texto.contrasenaCorta);
       return;
     }
 
     if (!aceptaPrivacidad || !aceptaContrato) {
-      setErrorMsg(
-        "Debes aceptar por separado la Política de Privacidad y el Contrato Marco de Servicios."
-      );
+      setErrorMsg(texto.aceptar);
       return;
     }
 
     setLoading(true);
 
     try {
-      // Las fechas probatorias deben generarse en el servidor.
-      // Se envían por separado las aceptaciones y versiones de los documentos.
       const versionPrivacidad = "v1.1";
       const versionContrato = "v1.1";
 
@@ -83,15 +170,12 @@ export default function Register() {
           emailRedirectTo: "coastguard://auth/callback",
           data: {
             idioma,
-
             acepta_privacidad: true,
             version_privacidad: versionPrivacidad,
-
             acepta_contrato_marco: true,
             contrato_marco_aceptado: true,
             contrato_marco_aceptado_at: null,
             version_contrato_marco: versionContrato,
-
             acepta_terminos: true,
             version_terminos: versionContrato,
           },
@@ -106,28 +190,23 @@ export default function Register() {
       const user = data?.user;
 
       if (!user) {
-        setErrorMsg(
-          "Error inesperado creando usuario (sin datos de usuario)."
-        );
+        setErrorMsg(texto.errorUsuario);
         return;
       }
 
-      // Se conservan los triggers de Supabase para crear el perfil,
-      // vincular o crear la ficha del cliente y guardar la evidencia legal.
-      // No se duplican escrituras desde el navegador.
+      // Supabase mantiene la responsabilidad de crear el perfil,
+      // vincular al cliente y guardar las evidencias legales.
       changeLanguage(idioma);
       localStorage.setItem("app_idioma", idioma);
 
-      setMensaje(
-        "Cuenta creada correctamente. Se ha enviado un enlace de confirmación a tu correo."
-      );
+      setMensaje(texto.registroExito);
 
       setTimeout(() => {
         navigate("/login", { replace: true });
       }, 2000);
     } catch (error) {
       console.error("Error durante el registro:", error);
-      handleError(error, "No se ha podido completar el registro");
+      handleError(error, texto.errorRegistro);
     } finally {
       setLoading(false);
     }
@@ -150,7 +229,7 @@ export default function Register() {
   return (
     <div
       style={{
-        height: "100%",
+        minHeight: "100vh",
         background: "#0a0f1a",
         padding: "20px",
         color: "#fff",
@@ -170,6 +249,41 @@ export default function Register() {
           boxShadow: "0 0 18px rgba(0,153,255,0.25)",
         }}
       >
+        <div style={{ marginBottom: "20px" }}>
+          <label
+            htmlFor="idioma-registro"
+            style={{
+              display: "block",
+              marginBottom: "6px",
+              fontSize: "13px",
+              color: "#9fb3c8",
+            }}
+          >
+            {texto.idioma}
+          </label>
+
+          <select
+            id="idioma-registro"
+            value={idioma}
+            disabled={loading}
+            onChange={(e) => setIdioma(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "#0a0f1a",
+              color: "#fff",
+              fontSize: "15px",
+              boxSizing: "border-box",
+            }}
+          >
+            <option value="es">🇪🇸 Español</option>
+            <option value="en">🇬🇧 English</option>
+            <option value="fr">🇫🇷 Français</option>
+          </select>
+        </div>
+
         <h2
           style={{
             textAlign: "center",
@@ -179,7 +293,7 @@ export default function Register() {
             fontWeight: "700",
           }}
         >
-          Crear cuenta
+          {texto.titulo}
         </h2>
 
         {errorMsg && (
@@ -203,6 +317,7 @@ export default function Register() {
         {mensaje && (
           <div
             role="status"
+            aria-live="polite"
             style={{
               background: "rgba(0,255,0,0.15)",
               padding: "10px",
@@ -218,7 +333,8 @@ export default function Register() {
 
         <input
           type="email"
-          placeholder="Email"
+          aria-label={texto.email}
+          placeholder={texto.email}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
@@ -238,7 +354,8 @@ export default function Register() {
 
         <input
           type="password"
-          placeholder="Contraseña"
+          aria-label={texto.password}
+          placeholder={texto.password}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
@@ -256,42 +373,6 @@ export default function Register() {
             boxSizing: "border-box",
           }}
         />
-
-        <div style={{ marginBottom: "20px" }}>
-          <label
-            htmlFor="idioma"
-            style={{
-              display: "block",
-              marginBottom: "6px",
-              fontSize: "13px",
-              color: "#9fb3c8",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-            }}
-          >
-            Idioma preferido / Preferred Language
-          </label>
-
-          <select
-            id="idioma"
-            value={idioma}
-            onChange={(e) => setIdioma(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              borderRadius: "8px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "#0a0f1a",
-              color: "#fff",
-              fontSize: "15px",
-              boxSizing: "border-box",
-            }}
-          >
-            <option value="es">🇪🇸 Español</option>
-            <option value="en">🇬🇧 English</option>
-            <option value="fr">🇫🇷 Français</option>
-          </select>
-        </div>
 
         <div
           style={{
@@ -326,16 +407,15 @@ export default function Register() {
               cursor: "pointer",
             }}
           >
-            He leído la{" "}
+            {texto.privacidad}{" "}
             <a
               href="/documentos-legales#privacidad"
               onClick={abrirDocumento("privacidad")}
               style={estiloEnlace}
             >
-              Política de Privacidad
+              {texto.politica}
             </a>{" "}
-            y confirmo que he sido informado sobre el tratamiento de mis datos
-            personales.
+            {texto.privacidadFinal}
           </label>
         </div>
 
@@ -372,15 +452,15 @@ export default function Register() {
               cursor: "pointer",
             }}
           >
-            He leído y acepto el{" "}
+            {texto.contratoInicio}{" "}
             <a
               href="/documentos-legales#contrato"
               onClick={abrirDocumento("contrato")}
               style={estiloEnlace}
             >
-              Contrato Marco de Servicios
+              {texto.contrato}
             </a>
-            .
+            {texto.contratoFinal}
           </label>
         </div>
 
@@ -392,9 +472,7 @@ export default function Register() {
             marginBottom: "20px",
           }}
         >
-          La aceptación del Contrato Marco no sustituye la revisión ni la firma
-          del contrato concreto de los servicios que contrates. Ese contrato
-          se mostrará para su revisión y firma en el proceso correspondiente.
+          {texto.notaContrato}
         </p>
 
         <button
@@ -404,17 +482,19 @@ export default function Register() {
           style={{
             width: "100%",
             padding: "12px",
-            background: !aceptaTodo || loading ? "#2a324b" : "#0077cc",
+            background:
+              !aceptaTodo || loading ? "#2a324b" : "#0077cc",
             color: "#fff",
             border: "none",
             borderRadius: "8px",
             fontSize: "16px",
-            cursor: !aceptaTodo || loading ? "not-allowed" : "pointer",
+            cursor:
+              !aceptaTodo || loading ? "not-allowed" : "pointer",
             opacity: !aceptaTodo || loading ? "0.4" : "1",
             transition: "background 0.2s, opacity 0.2s",
           }}
         >
-          {loading ? "Creando cuenta..." : "Registrarse"}
+          {loading ? texto.creando : texto.crear}
         </button>
 
         <button
@@ -433,7 +513,7 @@ export default function Register() {
             textDecoration: "underline",
           }}
         >
-          Volver al login
+          {texto.volver}
         </button>
       </div>
     </div>
