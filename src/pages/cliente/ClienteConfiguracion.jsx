@@ -2,23 +2,23 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../context/LanguageContext.jsx";
-import { supabase } from "../../lib/supabase.js";
+import { supabase } from "../../supabaseClient.js";
 import Menu from "../../layouts/Menu.jsx";
 import logoReal from "../../assets/logo.jpeg";
 
-const COLOR_DORADO = "#e0b034";
-const COLOR_BRILLO_DORADO = "rgba(224, 176, 52, 0.5)";
-const FONDO_TARJETA = "linear-gradient(145deg, #0d1626 0%, #05080f 100%)";
-const FONDO_PRINCIPAL = "#030509";
-const BORDE_DORADO = `1px solid ${COLOR_DORADO}`;
+const DORADO = "#e0b034";
+const BRILLO = "rgba(224, 176, 52, 0.5)";
+const FONDO = "#030509";
+const TARJETA = "linear-gradient(145deg, #0d1626 0%, #05080f 100%)";
+const BORDE = `1px solid ${DORADO}`;
 
 export default function ClienteConfiguracion() {
   const { language, t } = useLanguage();
   const navigate = useNavigate();
   const es = language !== "en";
 
-  const [contrasenaActual, setContrasenaActual] = useState("");
-  const [contrasenaNueva, setContrasenaNueva] = useState("");
+  const [actual, setActual] = useState("");
+  const [nueva, setNueva] = useState("");
   const [confirmacion, setConfirmacion] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
@@ -30,102 +30,128 @@ export default function ClienteConfiguracion() {
     actual: es ? "Contraseña actual" : "Current password",
     nueva: es ? "Nueva contraseña" : "New password",
     confirmar: es ? "Confirmar nueva contraseña" : "Confirm new password",
+    faltan: es ? "Completa los tres campos." : "Complete all three fields.",
     minimo: es
       ? "La nueva contraseña debe tener al menos 8 caracteres."
       : "The new password must contain at least 8 characters.",
     noCoinciden: es
       ? "Las nuevas contraseñas no coinciden."
       : "The new passwords do not match.",
-    faltan: es
-      ? "Completa los tres campos."
-      : "Complete all three fields.",
-    usuario: es
-      ? "No se ha encontrado una sesión iniciada. Vuelve a iniciar sesión."
-      : "No authenticated session was found. Please sign in again.",
-    credenciales: es
+    igual: es
+      ? "La nueva contraseña debe ser distinta de la actual."
+      : "The new password must differ from the current one.",
+    sesion: es
+      ? "No se ha encontrado una sesión válida. Inicia sesión de nuevo."
+      : "No valid session was found. Please sign in again.",
+    incorrecta: es
       ? "La contraseña actual no es correcta."
       : "The current password is incorrect.",
-    guardando: es ? "Actualizando..." : "Updating...",
-    exito: es
-      ? "La contraseña se ha cambiado correctamente."
-      : "Your password has been changed successfully.",
     error: es
-      ? "No se ha podido cambiar la contraseña. Inténtalo de nuevo."
-      : "The password could not be changed. Please try again.",
+      ? "No se ha podido cambiar la contraseña."
+      : "The password could not be changed.",
+    errorCierre: es
+      ? "La contraseña se ha cambiado, pero no se pudo cerrar la sesión automáticamente. Cierra sesión manualmente."
+      : "The password was changed, but automatic sign-out failed. Please sign out manually.",
+    guardando: es ? "Actualizando..." : "Updating...",
     volver: t("volver"),
   };
 
-  const handleCambiarContrasena = async (e) => {
+  const handleCambiar = async (e) => {
     e.preventDefault();
     setError("");
     setExito("");
 
-    if (!contrasenaActual || !contrasenaNueva || !confirmacion) {
+    if (!actual || !nueva || !confirmacion) {
       setError(texto.faltan);
       return;
     }
 
-    if (contrasenaNueva.length < 8) {
+    if (nueva.length < 8) {
       setError(texto.minimo);
       return;
     }
 
-    if (contrasenaNueva !== confirmacion) {
+    if (nueva !== confirmacion) {
       setError(texto.noCoinciden);
       return;
     }
 
-    if (contrasenaActual === contrasenaNueva) {
-      setError(
-        es
-          ? "La nueva contraseña debe ser diferente de la actual."
-          : "The new password must be different from the current one."
-      );
+    if (nueva === actual) {
+      setError(texto.igual);
       return;
     }
 
     setCargando(true);
 
     try {
-      // Comprobar la sesión y obtener el correo de la cuenta actual.
-      const { data: userData, error: userError } =
+      // Obtener el usuario que tiene la sesión abierta.
+      const { data: sesionData, error: sesionError } =
         await supabase.auth.getUser();
 
-      if (userError || !userData?.user?.email) {
-        throw new Error("NO_AUTHENTICATED_USER");
+      const email = sesionData?.user?.email;
+
+      if (sesionError || !email) {
+        throw new Error("NO_VALID_SESSION");
       }
 
-      // Verificar la contraseña actual sin cerrar la sesión de la cuenta.
+      // Verificar la contraseña actual antes de cambiarla.
       const { error: loginError } =
         await supabase.auth.signInWithPassword({
-          email: userData.user.email,
-          password: contrasenaActual,
+          email,
+          password: actual,
         });
 
       if (loginError) {
         throw new Error("CURRENT_PASSWORD_INVALID");
       }
 
-      // Actualizar la contraseña de la cuenta autenticada.
-      const { error: updateError } =
+      // Cambiar realmente la contraseña en Supabase Auth.
+      const { data: updateData, error: updateError } =
         await supabase.auth.updateUser({
-          password: contrasenaNueva,
+          password: nueva,
         });
 
       if (updateError) {
         throw updateError;
       }
 
-      setContrasenaActual("");
-      setContrasenaNueva("");
+      if (!updateData?.user) {
+        throw new Error(
+          es
+            ? "Supabase no confirmó la actualización. Comprueba el acceso antes de volver a intentarlo."
+            : "Supabase did not confirm the update. Check your access before trying again."
+        );
+      }
+
+      // La contraseña ya está actualizada: limpiar los campos sensibles.
+      setActual("");
+      setNueva("");
       setConfirmacion("");
-      setExito(texto.exito);
+      setExito(
+        es
+          ? "Contraseña actualizada. Cerrando sesión..."
+          : "Password updated. Signing out..."
+      );
+
+      // Cerrar únicamente la sesión de este dispositivo.
+      const { error: cierreError } = await supabase.auth.signOut({
+        scope: "local",
+      });
+
+      if (cierreError) {
+        setError(texto.errorCierre);
+        return;
+      }
+
+      // Ir al login sin dejar al usuario en configuración.
+      navigate("/login", { replace: true });
     } catch (err) {
-      if (err.message === "NO_AUTHENTICATED_USER") {
-        setError(texto.usuario);
+      if (err.message === "NO_VALID_SESSION") {
+        setError(texto.sesion);
       } else if (err.message === "CURRENT_PASSWORD_INVALID") {
-        setError(texto.credenciales);
+        setError(texto.incorrecta);
       } else {
+        console.error("Error cambiando la contraseña:", err);
         setError(err.message || texto.error);
       }
     } finally {
@@ -134,6 +160,7 @@ export default function ClienteConfiguracion() {
   };
 
   const estiloCampo = {
+    display: "block",
     width: "100%",
     boxSizing: "border-box",
     padding: "12px",
@@ -143,16 +170,22 @@ export default function ClienteConfiguracion() {
     background: "#080e18",
     color: "#fff",
     fontSize: "14px",
-    outlineColor: COLOR_DORADO,
+    outlineColor: DORADO,
+  };
+
+  const estiloEtiqueta = {
+    display: "block",
+    fontSize: "12px",
+    fontWeight: "700",
   };
 
   return (
     <Menu>
-      <div
+      <main
         style={{
           width: "100%",
           minHeight: "100vh",
-          background: FONDO_PRINCIPAL,
+          background: FONDO,
           padding: "15px",
           paddingBottom: "90px",
           boxSizing: "border-box",
@@ -164,7 +197,7 @@ export default function ClienteConfiguracion() {
         <header
           style={{
             background: "linear-gradient(180deg, #0d1626 0%, #05080f 100%)",
-            border: BORDE_DORADO,
+            border: BORDE,
             borderRadius: "16px",
             padding: "12px 16px",
             marginBottom: "20px",
@@ -175,21 +208,14 @@ export default function ClienteConfiguracion() {
             gap: "10px",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              minWidth: 0,
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <img
               src={logoReal}
               alt="CoastGuard Homes"
               style={{
                 height: "40px",
                 width: "auto",
-                filter: `drop-shadow(0 0 6px ${COLOR_BRILLO_DORADO})`,
+                filter: `drop-shadow(0 0 6px ${BRILLO})`,
               }}
             />
             <h1
@@ -198,10 +224,9 @@ export default function ClienteConfiguracion() {
                 fontWeight: "800",
                 margin: 0,
                 textTransform: "uppercase",
-                letterSpacing: "0.5px",
                 lineHeight: "1.3",
-                color: COLOR_DORADO,
-                textShadow: `0 0 8px ${COLOR_BRILLO_DORADO}`,
+                color: DORADO,
+                textShadow: `0 0 8px ${BRILLO}`,
               }}
             >
               {texto.titulo}
@@ -213,8 +238,8 @@ export default function ClienteConfiguracion() {
             onClick={() => navigate(-1)}
             style={{
               background: "transparent",
-              border: BORDE_DORADO,
-              color: COLOR_DORADO,
+              border: BORDE,
+              color: DORADO,
               borderRadius: "8px",
               padding: "6px 10px",
               fontSize: "11px",
@@ -229,8 +254,8 @@ export default function ClienteConfiguracion() {
 
         <section
           style={{
-            background: FONDO_TARJETA,
-            border: BORDE_DORADO,
+            background: TARJETA,
+            border: BORDE,
             borderRadius: "16px",
             padding: "20px 16px",
             boxShadow: "0 0 12px rgba(224, 176, 52, 0.15)",
@@ -248,41 +273,33 @@ export default function ClienteConfiguracion() {
             {texto.cambiar}
           </h2>
 
-          <form onSubmit={handleCambiarContrasena}>
-            <label
-              htmlFor="contrasena-actual"
-              style={{ display: "block", fontSize: "12px", fontWeight: "700" }}
-            >
+          <form onSubmit={handleCambiar}>
+            <label htmlFor="password-current" style={estiloEtiqueta}>
               {texto.actual}
             </label>
             <input
-              id="contrasena-actual"
+              id="password-current"
               type="password"
               autoComplete="current-password"
-              value={contrasenaActual}
-              onChange={(e) => setContrasenaActual(e.target.value)}
+              value={actual}
+              onChange={(e) => setActual(e.target.value)}
               style={estiloCampo}
               required
               disabled={cargando}
             />
 
             <label
-              htmlFor="contrasena-nueva"
-              style={{
-                display: "block",
-                marginTop: "18px",
-                fontSize: "12px",
-                fontWeight: "700",
-              }}
+              htmlFor="password-new"
+              style={{ ...estiloEtiqueta, marginTop: "18px" }}
             >
               {texto.nueva}
             </label>
             <input
-              id="contrasena-nueva"
+              id="password-new"
               type="password"
               autoComplete="new-password"
-              value={contrasenaNueva}
-              onChange={(e) => setContrasenaNueva(e.target.value)}
+              value={nueva}
+              onChange={(e) => setNueva(e.target.value)}
               style={estiloCampo}
               minLength={8}
               required
@@ -290,18 +307,13 @@ export default function ClienteConfiguracion() {
             />
 
             <label
-              htmlFor="confirmacion-contrasena"
-              style={{
-                display: "block",
-                marginTop: "18px",
-                fontSize: "12px",
-                fontWeight: "700",
-              }}
+              htmlFor="password-confirm"
+              style={{ ...estiloEtiqueta, marginTop: "18px" }}
             >
               {texto.confirmar}
             </label>
             <input
-              id="confirmacion-contrasena"
+              id="password-confirm"
               type="password"
               autoComplete="new-password"
               value={confirmacion}
@@ -365,7 +377,7 @@ export default function ClienteConfiguracion() {
             </button>
           </form>
         </section>
-      </div>
+      </main>
     </Menu>
   );
 }
