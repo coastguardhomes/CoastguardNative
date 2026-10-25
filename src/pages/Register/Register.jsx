@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { useNavigate } from "react-router-dom";
@@ -22,15 +23,17 @@ const TEXTOS = {
     creando: "Creando cuenta...",
     volver: "Volver al inicio de sesión",
     completar: "Debes completar todos los campos.",
-    contrasenaCorta: "La contraseña debe tener al menos 6 caracteres.",
+    contrasenaCorta:
+      "La contraseña debe tener al menos 6 caracteres.",
     aceptar:
       "Debes aceptar por separado la Política de Privacidad y el Contrato Marco de Servicios.",
-    errorUsuario: "Error inesperado creando usuario (sin datos de usuario).",
+    errorUsuario:
+      "Error inesperado creando usuario (sin datos de usuario).",
     registroExito:
       "Cuenta creada correctamente. Se ha enviado un enlace de confirmación a tu correo.",
     errorGenerico:
-      "Error de conexión con el servidor o credenciales inválidas",
-    errorRegistro: "No se ha podido completar el registro",
+      "Error de conexión con el servidor o credenciales inválidas.",
+    errorRegistro: "No se ha podido completar el registro.",
   },
   en: {
     titulo: "Create account",
@@ -50,55 +53,33 @@ const TEXTOS = {
     creando: "Creating account...",
     volver: "Back to sign in",
     completar: "Please complete all fields.",
-    contrasenaCorta: "The password must contain at least 6 characters.",
+    contrasenaCorta:
+      "The password must contain at least 6 characters.",
     aceptar:
       "You must separately accept the Privacy Policy and the Framework Service Agreement.",
-    errorUsuario: "Unexpected error creating user (no user data returned).",
+    errorUsuario:
+      "Unexpected error creating user (no user data returned).",
     registroExito:
       "Account created successfully. A confirmation link has been sent to your email.",
     errorGenerico:
-      "Server connection error or invalid credentials",
-    errorRegistro: "Registration could not be completed",
-  },
-  fr: {
-    titulo: "Créer un compte",
-    email: "Adresse e-mail",
-    password: "Mot de passe",
-    idioma: "Langue préférée",
-    privacidad: "J’ai lu la",
-    politica: "Politique de confidentialité",
-    privacidadFinal:
-      "et confirme avoir été informé du traitement de mes données personnelles.",
-    contratoInicio: "J’ai lu et j’accepte le",
-    contrato: "Contrat-cadre de services",
-    contratoFinal: ".",
-    notaContrato:
-      "L’acceptation du contrat-cadre ne remplace pas la lecture ni la signature du contrat spécifique aux services souscrits. Ce contrat sera présenté pour examen et signature au cours de la procédure correspondante.",
-    crear: "S’inscrire",
-    creando: "Création du compte...",
-    volver: "Retour à la connexion",
-    completar: "Veuillez remplir tous les champs.",
-    contrasenaCorta:
-      "Le mot de passe doit contenir au moins 6 caractères.",
-    aceptar:
-      "Vous devez accepter séparément la Politique de confidentialité et le Contrat-cadre de services.",
-    errorUsuario:
-      "Erreur inattendue lors de la création du compte (aucune donnée utilisateur reçue).",
-    registroExito:
-      "Compte créé avec succès. Un lien de confirmation a été envoyé à votre adresse e-mail.",
-    errorGenerico:
-      "Erreur de connexion au serveur ou identifiants invalides",
-    errorRegistro: "L’inscription n’a pas pu être finalisée",
+      "Server connection error or invalid credentials.",
+    errorRegistro: "Registration could not be completed.",
   },
 };
 
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [idioma, setIdioma] = useState(() => {
-    const guardado = localStorage.getItem("app_idioma");
-    return ["es", "en", "fr"].includes(guardado) ? guardado : "es";
+    const guardado =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("app_idioma")
+        : null;
+
+    return guardado === "en" ? "en" : "es";
   });
+
   const [aceptaPrivacidad, setAceptaPrivacidad] = useState(false);
   const [aceptaContrato, setAceptaContrato] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -121,11 +102,16 @@ export default function Register() {
     } else {
       try {
         const stringified = JSON.stringify(err);
-        if (stringified && stringified !== "{}" && stringified !== "[]") {
+
+        if (
+          stringified &&
+          stringified !== "{}" &&
+          stringified !== "[]"
+        ) {
           msg = stringified;
         }
       } catch {
-        // Se conserva el mensaje genérico si el error no se puede convertir.
+        // Se conserva el mensaje genérico si no puede convertirse.
       }
     }
 
@@ -194,8 +180,7 @@ export default function Register() {
         return;
       }
 
-      // Supabase mantiene la responsabilidad de crear el perfil,
-      // vincular al cliente y guardar las evidencias legales.
+      // Se mantiene el idioma elegido para el resto de la aplicación.
       changeLanguage(idioma);
       localStorage.setItem("app_idioma", idioma);
 
@@ -223,7 +208,21 @@ export default function Register() {
   const abrirDocumento = (documento) => (event) => {
     event.preventDefault();
     event.stopPropagation();
-    navigate(`/documentos-legales#${documento}`);
+
+    // El documento recibe el mismo idioma seleccionado en el registro.
+    navigate(
+      `/documentos-legales?idioma=${idioma}#${documento}`
+    );
+  };
+
+  const cambiarIdioma = (nuevoIdioma) => {
+    const idiomaValido = nuevoIdioma === "en" ? "en" : "es";
+
+    setIdioma(idiomaValido);
+    changeLanguage(idiomaValido);
+    localStorage.setItem("app_idioma", idiomaValido);
+    setErrorMsg("");
+    setMensaje("");
   };
 
   return (
@@ -266,7 +265,7 @@ export default function Register() {
             id="idioma-registro"
             value={idioma}
             disabled={loading}
-            onChange={(e) => setIdioma(e.target.value)}
+            onChange={(e) => cambiarIdioma(e.target.value)}
             style={{
               width: "100%",
               padding: "12px",
@@ -280,7 +279,6 @@ export default function Register() {
           >
             <option value="es">🇪🇸 Español</option>
             <option value="en">🇬🇧 English</option>
-            <option value="fr">🇫🇷 Français</option>
           </select>
         </div>
 
@@ -387,7 +385,9 @@ export default function Register() {
             type="checkbox"
             id="aceptaPrivacidad"
             checked={aceptaPrivacidad}
-            onChange={(e) => setAceptaPrivacidad(e.target.checked)}
+            onChange={(e) =>
+              setAceptaPrivacidad(e.target.checked)
+            }
             required
             style={{
               marginTop: "4px",
@@ -409,7 +409,7 @@ export default function Register() {
           >
             {texto.privacidad}{" "}
             <a
-              href="/documentos-legales#privacidad"
+              href={`/documentos-legales?idioma=${idioma}#privacidad`}
               onClick={abrirDocumento("privacidad")}
               style={estiloEnlace}
             >
@@ -432,7 +432,9 @@ export default function Register() {
             type="checkbox"
             id="aceptaContrato"
             checked={aceptaContrato}
-            onChange={(e) => setAceptaContrato(e.target.checked)}
+            onChange={(e) =>
+              setAceptaContrato(e.target.checked)
+            }
             required
             style={{
               marginTop: "4px",
@@ -454,7 +456,7 @@ export default function Register() {
           >
             {texto.contratoInicio}{" "}
             <a
-              href="/documentos-legales#contrato"
+              href={`/documentos-legales?idioma=${idioma}#contrato`}
               onClick={abrirDocumento("contrato")}
               style={estiloEnlace}
             >
