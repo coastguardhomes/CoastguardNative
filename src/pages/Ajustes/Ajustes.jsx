@@ -1,35 +1,119 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 import { supabase } from "../../supabaseClient";
+
+const TEXTOS = {
+  es: {
+    titulo: "⚙️ Ajustes",
+    descripcion: "Configuración general de tu cuenta y preferencias de idioma.",
+    idioma: "🌐 Idioma de la aplicación",
+    sesion: "Sesión activa",
+    cerrarSesion: "🚪 Cerrar sesión",
+    guardado: "Idioma actualizado y guardado correctamente.",
+    guardadoLocal: "El idioma ha cambiado en este dispositivo, pero no se ha podido confirmar el guardado en tu perfil.",
+    error: "No se ha podido guardar el idioma en tu perfil. Inténtalo de nuevo.",
+    idiomas: { es: "🇪🇸 Español", en: "🇬🇧 Inglés", fr: "🇫🇷 Francés" },
+  },
+  en: {
+    titulo: "⚙️ Settings",
+    descripcion: "General account settings and language preferences.",
+    idioma: "🌐 Application language",
+    sesion: "Active session",
+    cerrarSesion: "🚪 Log out",
+    guardado: "Language preference updated and saved successfully.",
+    guardadoLocal: "The language changed on this device, but saving it to your profile could not be confirmed.",
+    error: "The language could not be saved to your profile. Please try again.",
+    idiomas: { es: "🇪🇸 Spanish", en: "🇬🇧 English", fr: "🇫🇷 French" },
+  },
+  fr: {
+    titulo: "⚙️ Paramètres",
+    descripcion: "Paramètres généraux de votre compte et préférences linguistiques.",
+    idioma: "🌐 Langue de l’application",
+    sesion: "Session active",
+    cerrarSesion: "🚪 Se déconnecter",
+    guardado: "La préférence linguistique a été mise à jour et enregistrée.",
+    guardadoLocal: "La langue a changé sur cet appareil, mais l’enregistrement dans votre profil n’a pas pu être confirmé.",
+    error: "Impossible d’enregistrer la langue dans votre profil. Veuillez réessayer.",
+    idiomas: { es: "🇪🇸 Espagnol", en: "🇬🇧 Anglais", fr: "🇫🇷 Français" },
+  },
+};
 
 export default function Ajustes() {
   const { user, logout } = useAuth();
+  const { language, changeLanguage } = useLanguage();
   const navigate = useNavigate();
-  const [idiomaActual, setIdiomaActual] = useState(localStorage.getItem("app_idioma") || "es");
+
+  const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
+  const [tipoMensaje, setTipoMensaje] = useState("");
+
+  const idioma = ["es", "en", "fr"].includes(language) ? language : "es";
+  const texto = TEXTOS[idioma];
 
   const cambiarIdiomaManual = async (nuevoIdioma) => {
-    setIdiomaActual(nuevoIdioma);
+    if (!["es", "en", "fr"].includes(nuevoIdioma) || guardando) return;
+    if (nuevoIdioma === idioma) return;
+
+    setMensaje("");
+    setTipoMensaje("");
+
+    // Cambia inmediatamente el idioma de la interfaz.
+    changeLanguage(nuevoIdioma);
     localStorage.setItem("app_idioma", nuevoIdioma);
 
-    if (user?.id) {
-      await supabase
-        .from("clientes")
-        .update({ idioma: nuevoIdioma })
-        .or(`user_id.eq.${user.id},usuario_id.eq.${user.id}`);
+    if (!user?.id) {
+      setMensaje(TEXTOS[nuevoIdioma].guardadoLocal);
+      setTipoMensaje("error");
+      return;
     }
 
-    setMensaje("Idioma actualizado correctamente. Actualizando...");
-    setTimeout(() => {
-      window.location.reload();
-    }, 600);
+    setGuardando(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("clientes")
+        .update({ idioma: nuevoIdioma })
+        .or(`usuario_id.eq.${user.id},user_id.eq.${user.id}`)
+        .select("id");
+
+      if (error) {
+        console.error("Error guardando el idioma del cliente:", error);
+        setMensaje(TEXTOS[nuevoIdioma].error);
+        setTipoMensaje("error");
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.warn(
+          "No se encontró un registro de cliente asociado al usuario para guardar el idioma."
+        );
+        setMensaje(TEXTOS[nuevoIdioma].guardadoLocal);
+        setTipoMensaje("error");
+        return;
+      }
+
+      setMensaje(TEXTOS[nuevoIdioma].guardado);
+      setTipoMensaje("exito");
+    } catch (error) {
+      console.error("Error inesperado guardando el idioma:", error);
+      setMensaje(TEXTOS[nuevoIdioma].error);
+      setTipoMensaje("error");
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const cerrarSesion = async () => {
-    await logout();
-    navigate("/login", { replace: true });
+    try {
+      await logout();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Error cerrando sesión:", error);
+    }
   };
 
   const cardStyle = {
@@ -45,6 +129,7 @@ export default function Ajustes() {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: "12px",
     padding: "12px 0",
     fontSize: "16px",
     color: "#4db8ff",
@@ -69,24 +154,53 @@ export default function Ajustes() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          ⚙️ Ajustes
+          {texto.titulo}
         </h1>
 
         {mensaje && (
-          <div style={{ background: "rgba(34, 197, 94, 0.2)", border: "1px solid rgba(34, 197, 94, 0.4)", padding: "10px", borderRadius: "8px", color: "#22c55e", marginBottom: "15px", textAlign: "center", fontSize: "14px", fontWeight: "700" }}>
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              background:
+                tipoMensaje === "error"
+                  ? "rgba(239,68,68,0.15)"
+                  : "rgba(34,197,94,0.2)",
+              border:
+                tipoMensaje === "error"
+                  ? "1px solid rgba(239,68,68,0.4)"
+                  : "1px solid rgba(34,197,94,0.4)",
+              padding: "10px",
+              borderRadius: "8px",
+              color: tipoMensaje === "error" ? "#f87171" : "#22c55e",
+              marginBottom: "15px",
+              textAlign: "center",
+              fontSize: "14px",
+              fontWeight: "700",
+            }}
+          >
             {mensaje}
           </div>
         )}
 
         <div style={cardStyle}>
-          <p style={{ fontSize: "16px", opacity: 0.8, marginBottom: "15px" }}>
-            Configuración general de tu cuenta y preferencias de idioma.
+          <p
+            style={{
+              fontSize: "16px",
+              opacity: 0.8,
+              marginBottom: "15px",
+            }}
+          >
+            {texto.descripcion}
           </p>
 
           <div style={itemStyle}>
-            <span>🌐 Idioma de la aplicación</span>
-            <select 
-              value={idiomaActual}
+            <label htmlFor="idioma-aplicacion">{texto.idioma}</label>
+
+            <select
+              id="idioma-aplicacion"
+              value={idioma}
+              disabled={guardando}
               onChange={(e) => cambiarIdiomaManual(e.target.value)}
               style={{
                 background: "rgba(11, 19, 32, 0.9)",
@@ -95,33 +209,53 @@ export default function Ajustes() {
                 padding: "8px 12px",
                 borderRadius: "8px",
                 fontSize: "14px",
-                cursor: "pointer",
-                outline: "none"
+                cursor: guardando ? "wait" : "pointer",
+                outline: "none",
+                maxWidth: "55%",
               }}
             >
-              <option value="es" style={{ background: "#030509" }}>🇪🇸 Español</option>
-              <option value="en" style={{ background: "#030509" }}>🇬🇧 English</option>
-              <option value="fr" style={{ background: "#030509" }}>🇫🇷 Français</option>
+              <option value="es" style={{ background: "#030509" }}>
+                {texto.idiomas.es}
+              </option>
+              <option value="en" style={{ background: "#030509" }}>
+                {texto.idiomas.en}
+              </option>
+              <option value="fr" style={{ background: "#030509" }}>
+                {texto.idiomas.fr}
+              </option>
             </select>
           </div>
 
           <div style={itemStyle}>
-            <span style={{ color: "#fff", opacity: 0.85 }}>
-              📧 {user?.email || "Sesión activa"}
+            <span
+              style={{
+                color: "#fff",
+                opacity: 0.85,
+                overflowWrap: "anywhere",
+              }}
+            >
+              📧 {user?.email || texto.sesion}
             </span>
           </div>
 
-          <div
+          <button
+            type="button"
             onClick={cerrarSesion}
             style={{
               ...itemStyle,
+              width: "100%",
+              background: "transparent",
               color: "#ff6b6b",
               cursor: "pointer",
-              borderBottom: "none"
+              borderBottom: "none",
+              borderTop: "none",
+              borderLeft: "none",
+              borderRight: "none",
+              textAlign: "left",
             }}
           >
-            <span>🚪 Cerrar sesión</span>
-          </div>
+            {texto.cerrarSesion}
+          </button>
         </div>
       </div>
     </Menu>
