@@ -1,17 +1,67 @@
-import React from "react";
+
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { useLanguage } from "../../context/LanguageContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { supabase } from "../../supabaseClient";
 
 export default function Idioma() {
   const navigate = useNavigate();
-  // Se extraen correctamente t, lang y changeLanguage del hook
-  const { lang, changeLanguage, t } = useLanguage();
+  const { language, changeLanguage, t } = useLanguage();
+  const { user } = useAuth();
+  const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSelectLanguage = (newLang) => {
+  const handleSelectLanguage = async (newLang) => {
+    if (!["es", "en", "fr"].includes(newLang) || guardando) return;
+
+    setError("");
+    setMensaje("");
+
+    // Aplicar el idioma inmediatamente en la interfaz.
     changeLanguage(newLang);
-    // Opcional: volver automáticamente a ajustes o dejarlo ahí
-    // navigate(-1); 
+    localStorage.setItem("app_idioma", newLang);
+
+    if (!user?.id) {
+      setError(
+        "El idioma se ha cambiado en este dispositivo, pero no se ha podido verificar la sesión."
+      );
+      return;
+    }
+
+    setGuardando(true);
+
+    try {
+      const { error: updateError } = await supabase
+        .from("clientes")
+        .update({ idioma: newLang })
+        .or(`usuario_id.eq.${user.id},user_id.eq.${user.id}`);
+
+      if (updateError) {
+        console.error("Error guardando el idioma del cliente:", updateError);
+        setError(
+          "El idioma ha cambiado en esta pantalla, pero no se ha podido guardar en el perfil. Vuelve a intentarlo."
+        );
+        return;
+      }
+
+      setMensaje(
+        newLang === "en"
+          ? "Language preference saved."
+          : newLang === "fr"
+            ? "Préférence linguistique enregistrée."
+            : "Preferencia de idioma guardada."
+      );
+    } catch (err) {
+      console.error("Error inesperado guardando el idioma:", err);
+      setError(
+        "No se ha podido confirmar el guardado del idioma en el perfil."
+      );
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const cardStyle = {
@@ -27,11 +77,15 @@ export default function Idioma() {
     width: "100%",
     padding: "15px",
     marginBottom: "12px",
-    backgroundColor: isActive ? "#2563eb" : "rgba(255,255,255,0.08)",
+    backgroundColor: isActive
+      ? "#2563eb"
+      : "rgba(255,255,255,0.08)",
     color: "#fff",
-    border: "1px solid " + (isActive ? "#3b82f6" : "rgba(255,255,255,0.15)"),
+    border:
+      "1px solid " +
+      (isActive ? "#3b82f6" : "rgba(255,255,255,0.15)"),
     borderRadius: "10px",
-    cursor: "pointer",
+    cursor: guardando ? "wait" : "pointer",
     fontSize: "16px",
     fontWeight: "600",
     display: "flex",
@@ -39,6 +93,7 @@ export default function Idioma() {
     justifyContent: "center",
     gap: "10px",
     transition: "all 0.2s ease",
+    opacity: guardando ? 0.7 : 1,
   });
 
   return (
@@ -66,7 +121,7 @@ export default function Idioma() {
             gap: "5px",
           }}
         >
-          ← Volver
+          ← {t("volver") || "Volver"}
         </button>
 
         <h1
@@ -78,37 +133,86 @@ export default function Idioma() {
             textShadow: "0 0 8px rgba(0,153,255,0.6)",
           }}
         >
-          🌐 {t("cambiarIdioma") || "Seleccionar Idioma"}
+          🌐 {t("cambiarIdioma") || "Seleccionar idioma"}
         </h1>
 
         <div style={cardStyle}>
-          <p style={{ fontSize: "15px", opacity: 0.8, marginBottom: "20px" }}>
-            Elige el idioma en el que deseas visualizar la aplicación:
+          <p
+            style={{
+              fontSize: "15px",
+              opacity: 0.8,
+              marginBottom: "20px",
+            }}
+          >
+            {language === "en"
+              ? "Choose the language you want to use in the application:"
+              : language === "fr"
+                ? "Choisissez la langue que vous souhaitez utiliser dans l’application :"
+                : "Elige el idioma en el que deseas visualizar la aplicación:"}
           </p>
 
-          {/* Español */}
           <button
+            type="button"
+            disabled={guardando}
             onClick={() => handleSelectLanguage("es")}
-            style={btnStyle(lang === "es")}
+            style={btnStyle(language === "es")}
           >
-            🇪🇸 Español {lang === "es" && "✓"}
+            🇪🇸 Español {language === "es" && "✓"}
           </button>
 
-          {/* Inglés */}
           <button
+            type="button"
+            disabled={guardando}
             onClick={() => handleSelectLanguage("en")}
-            style={btnStyle(lang === "en")}
+            style={btnStyle(language === "en")}
           >
-            🇬🇧 English {lang === "en" && "✓"}
+            🇬🇧 English {language === "en" && "✓"}
           </button>
 
-          {/* Francés */}
           <button
+            type="button"
+            disabled={guardando}
             onClick={() => handleSelectLanguage("fr")}
-            style={btnStyle(lang === "fr")}
+            style={btnStyle(language === "fr")}
           >
-            🇫🇷 Français {lang === "fr" && "✓"}
+            🇫🇷 Français {language === "fr" && "✓"}
           </button>
+
+          {guardando && (
+            <p role="status" style={{ fontSize: "14px" }}>
+              {language === "en"
+                ? "Saving language preference..."
+                : language === "fr"
+                  ? "Enregistrement de la préférence linguistique..."
+                  : "Guardando preferencia de idioma..."}
+            </p>
+          )}
+
+          {mensaje && (
+            <p
+              role="status"
+              style={{
+                color: "#4dff88",
+                fontSize: "14px",
+                overflowWrap: "anywhere",
+              }}
+            >
+              {mensaje}
+            </p>
+          )}
+
+          {error && (
+            <p
+              role="alert"
+              style={{
+                color: "#ff8a8a",
+                fontSize: "14px",
+                overflowWrap: "anywhere",
+              }}
+            >
+              {error}
+            </p>
+          )}
         </div>
       </div>
     </Menu>
