@@ -9,6 +9,7 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [idioma, setIdioma] = useState("es");
   const [aceptaPrivacidad, setAceptaPrivacidad] = useState(false);
+  const [aceptaContrato, setAceptaContrato] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -51,18 +52,18 @@ export default function Register() {
     const emailNormalizado = email.trim().toLowerCase();
 
     if (!emailNormalizado || !password) {
-      setErrorMsg("Debes completar todos los campos");
+      setErrorMsg("Debes completar todos los campos.");
       return;
     }
 
     if (password.length < 6) {
-      setErrorMsg("La contraseña debe tener al menos 6 caracteres");
+      setErrorMsg("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
 
-    if (!aceptaPrivacidad) {
+    if (!aceptaPrivacidad || !aceptaContrato) {
       setErrorMsg(
-        "Debes confirmar que has leído la Política de Privacidad."
+        "Debes aceptar por separado la Política de Privacidad y el Contrato Marco de Servicios."
       );
       return;
     }
@@ -70,9 +71,10 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // La fecha probatoria de aceptación la genera el trigger de Supabase
-      // con la fecha de alta del servidor, no con una hora enviada por el navegador.
+      // Las fechas probatorias deben generarse en el servidor.
+      // Se envían por separado las aceptaciones y versiones de los documentos.
       const versionPrivacidad = "v1.1";
+      const versionContrato = "v1.1";
 
       const { data, error } = await supabase.auth.signUp({
         email: emailNormalizado,
@@ -80,9 +82,18 @@ export default function Register() {
         options: {
           emailRedirectTo: "coastguard://auth/callback",
           data: {
+            idioma,
+
             acepta_privacidad: true,
             version_privacidad: versionPrivacidad,
-            idioma,
+
+            acepta_contrato_marco: true,
+            contrato_marco_aceptado: true,
+            contrato_marco_aceptado_at: null,
+            version_contrato_marco: versionContrato,
+
+            acepta_terminos: true,
+            version_terminos: versionContrato,
           },
         },
       });
@@ -101,11 +112,9 @@ export default function Register() {
         return;
       }
 
-      // Los triggers de Supabase crean el perfil, vinculan o crean la ficha
-      // de cliente y guardan la evidencia legal. No se repiten escrituras desde
-      // el navegador, que pueden fallar por RLS antes de confirmar el correo.
-      // Si una operación esencial falla, el trigger aborta el alta y signUp devuelve error.
-
+      // Se conservan los triggers de Supabase para crear el perfil,
+      // vincular o crear la ficha del cliente y guardar la evidencia legal.
+      // No se duplican escrituras desde el navegador.
       changeLanguage(idioma);
       localStorage.setItem("app_idioma", idioma);
 
@@ -123,6 +132,8 @@ export default function Register() {
       setLoading(false);
     }
   };
+
+  const aceptaTodo = aceptaPrivacidad && aceptaContrato;
 
   const estiloEnlace = {
     color: "#4db8ff",
@@ -198,6 +209,7 @@ export default function Register() {
               borderRadius: "8px",
               color: "#4dff88",
               marginBottom: "15px",
+              textAlign: "center",
             }}
           >
             {mensaje}
@@ -283,7 +295,7 @@ export default function Register() {
 
         <div
           style={{
-            marginBottom: "20px",
+            marginBottom: "14px",
             display: "flex",
             alignItems: "flex-start",
             gap: "10px",
@@ -322,8 +334,53 @@ export default function Register() {
             >
               Política de Privacidad
             </a>{" "}
-            y confirmo que he sido informado sobre el tratamiento de mis
-            datos personales.
+            y confirmo que he sido informado sobre el tratamiento de mis datos
+            personales.
+          </label>
+        </div>
+
+        <div
+          style={{
+            marginBottom: "20px",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "10px",
+            textAlign: "left",
+          }}
+        >
+          <input
+            type="checkbox"
+            id="aceptaContrato"
+            checked={aceptaContrato}
+            onChange={(e) => setAceptaContrato(e.target.checked)}
+            required
+            style={{
+              marginTop: "4px",
+              cursor: "pointer",
+              width: "18px",
+              height: "18px",
+              flexShrink: 0,
+            }}
+          />
+
+          <label
+            htmlFor="aceptaContrato"
+            style={{
+              fontSize: "12px",
+              lineHeight: "1.5",
+              color: "#9fb3c8",
+              cursor: "pointer",
+            }}
+          >
+            He leído y acepto el{" "}
+            <a
+              href="/documentos-legales#contrato"
+              onClick={abrirDocumento("contrato")}
+              style={estiloEnlace}
+            >
+              Contrato Marco de Servicios
+            </a>
+            .
           </label>
         </div>
 
@@ -335,7 +392,7 @@ export default function Register() {
             marginBottom: "20px",
           }}
         >
-          La creación de la cuenta no sustituye la aceptación ni la firma
+          La aceptación del Contrato Marco no sustituye la revisión ni la firma
           del contrato concreto de los servicios que contrates. Ese contrato
           se mostrará para su revisión y firma en el proceso correspondiente.
         </p>
@@ -343,19 +400,17 @@ export default function Register() {
         <button
           type="button"
           onClick={handleRegister}
-          disabled={loading || !aceptaPrivacidad}
+          disabled={loading || !aceptaTodo}
           style={{
             width: "100%",
             padding: "12px",
-            background:
-              !aceptaPrivacidad || loading ? "#2a324b" : "#0077cc",
+            background: !aceptaTodo || loading ? "#2a324b" : "#0077cc",
             color: "#fff",
             border: "none",
             borderRadius: "8px",
             fontSize: "16px",
-            cursor:
-              !aceptaPrivacidad || loading ? "not-allowed" : "pointer",
-            opacity: !aceptaPrivacidad || loading ? "0.4" : "1",
+            cursor: !aceptaTodo || loading ? "not-allowed" : "pointer",
+            opacity: !aceptaTodo || loading ? "0.4" : "1",
             transition: "background 0.2s, opacity 0.2s",
           }}
         >
