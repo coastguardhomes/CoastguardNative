@@ -6,7 +6,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import logo from "../../assets/logo.jpeg";
 
 const COLOR_DORADO = "#e0b034";
-const FONDO_GRADIENTE = "radial-gradient(circle at top, #1a1f26 0%, #030509 100%)";
+const FONDO_GRADIENTE =
+  "radial-gradient(circle at top, #1a1f26 0%, #030509 100%)";
 const BORDE_DORADO_LUJO = "1px solid rgba(224, 176, 52, 0.35)";
 
 export default function Login() {
@@ -15,8 +16,57 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+
   const navigate = useNavigate();
   const { t, changeLanguage, language } = useLanguage();
+
+  const text = {
+    es: {
+      configError: "Error de configuración.",
+      invalidRole: "Rol de usuario no válido o sin permisos.",
+      noSession: "No se pudo iniciar sesión, sesión no encontrada.",
+      email: "Correo electrónico",
+      password: "Contraseña",
+      signingIn: "Iniciando sesión...",
+      signIn: "Iniciar sesión",
+      register: "¿No tienes cuenta? Regístrate",
+      resetPrompt: "Introduce tu email para recuperar la contraseña:",
+      resetError: "No se pudo enviar el email de recuperación: ",
+      resetSent: "Te hemos enviado un email para recuperar tu contraseña.",
+      forgot: "¿Olvidaste tu contraseña?",
+    },
+    en: {
+      configError: "Account configuration error.",
+      invalidRole: "Invalid user role or insufficient permissions.",
+      noSession: "Could not sign in: no session was returned.",
+      email: "Email address",
+      password: "Password",
+      signingIn: "Signing in...",
+      signIn: "Sign in",
+      register: "Don't have an account? Sign up",
+      resetPrompt: "Enter your email to reset your password:",
+      resetError: "Could not send the password reset email: ",
+      resetSent: "We've sent you an email to reset your password.",
+      forgot: "Forgot your password?",
+    },
+    fr: {
+      configError: "Erreur de configuration du compte.",
+      invalidRole: "Rôle utilisateur invalide ou autorisations insuffisantes.",
+      noSession: "Connexion impossible : aucune session reçue.",
+      email: "Adresse e-mail",
+      password: "Mot de passe",
+      signingIn: "Connexion...",
+      signIn: "Se connecter",
+      register: "Vous n'avez pas de compte ? Inscrivez-vous",
+      resetPrompt: "Saisissez votre e-mail pour réinitialiser votre mot de passe :",
+      resetError: "Impossible d'envoyer l'e-mail de réinitialisation : ",
+      resetSent: "Nous vous avons envoyé un e-mail pour réinitialiser votre mot de passe.",
+      forgot: "Mot de passe oublié ?",
+    },
+  };
+
+  const idioma = ["es", "en", "fr"].includes(language) ? language : "es";
+  const copy = text[idioma];
 
   useEffect(() => {
     setCheckingSession(false);
@@ -31,7 +81,10 @@ export default function Login() {
       .eq("usuario_id", userId)
       .maybeSingle();
 
-    if (clienteData?.idioma) {
+    let idiomaUsuario = idioma;
+
+    if (clienteData?.idioma && ["es", "en", "fr"].includes(clienteData.idioma)) {
+      idiomaUsuario = clienteData.idioma;
       localStorage.setItem("app_idioma", clienteData.idioma);
       changeLanguage(clienteData.idioma);
     }
@@ -43,7 +96,12 @@ export default function Login() {
       .maybeSingle();
 
     if (!perfil) {
-      setErrorMsg("Error de configuración.");
+      const mensajes = {
+        es: "Error de configuración.",
+        en: "Account configuration error.",
+        fr: "Erreur de configuration du compte.",
+      };
+      setErrorMsg(mensajes[idiomaUsuario]);
       return;
     }
 
@@ -57,13 +115,19 @@ export default function Login() {
       case "tecnico":
         navigate("/tecnico", { replace: true });
         break;
-      default:
-        setErrorMsg("Rol de usuario no válido o sin permisos.");
+      default: {
+        const mensajes = {
+          es: "Rol de usuario no válido o sin permisos.",
+          en: "Invalid user role or insufficient permissions.",
+          fr: "Rôle utilisateur invalide ou autorisations insuffisantes.",
+        };
+        setErrorMsg(mensajes[idiomaUsuario]);
+      }
     }
   }
 
   const handleLogin = async () => {
-    if (!email || !password) return;
+    if (!email || !password || loading) return;
 
     setLoading(true);
     setErrorMsg("");
@@ -76,22 +140,20 @@ export default function Login() {
 
       if (error) {
         setErrorMsg(error.message || JSON.stringify(error));
-        setLoading(false);
         return;
       }
 
       if (!data.session) {
-        setErrorMsg("No se pudo iniciar sesión, sesión no encontrada.");
-        setLoading(false);
+        setErrorMsg(copy.noSession);
         return;
       }
 
       await redirigirSegunRol(data.session.user.id);
     } catch (e) {
       setErrorMsg(e?.message || String(e));
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   if (checkingSession) return null;
@@ -131,10 +193,12 @@ export default function Login() {
           }}
         >
           <select
-            value={language || localStorage.getItem("app_idioma") || "es"}
+            aria-label={idioma === "en" ? "Language" : idioma === "fr" ? "Langue" : "Idioma"}
+            value={idioma}
             onChange={(e) => {
-              changeLanguage(e.target.value);
-              localStorage.setItem("app_idioma", e.target.value);
+              const nuevoIdioma = e.target.value;
+              changeLanguage(nuevoIdioma);
+              localStorage.setItem("app_idioma", nuevoIdioma);
             }}
             style={{
               background: "rgba(11, 19, 32, 0.9)",
@@ -177,7 +241,7 @@ export default function Login() {
         >
           <img
             src={logo}
-            alt="Logo"
+            alt="CoastGuard Homes"
             style={{
               width: "115%",
               height: "115%",
@@ -201,6 +265,7 @@ export default function Login() {
 
         {errorMsg && (
           <div
+            role="alert"
             style={{
               background: "rgba(239, 68, 68, 0.15)",
               border: "1px solid rgba(239, 68, 68, 0.4)",
@@ -220,7 +285,9 @@ export default function Login() {
 
         <input
           type="email"
-          placeholder="Correo electrónico"
+          autoComplete="email"
+          aria-label={copy.email}
+          placeholder={copy.email}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           style={{
@@ -239,9 +306,14 @@ export default function Login() {
 
         <input
           type="password"
-          placeholder="Contraseña"
+          autoComplete="current-password"
+          aria-label={copy.password}
+          placeholder={copy.password}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleLogin();
+          }}
           style={{
             width: "100%",
             padding: "14px 16px",
@@ -267,7 +339,7 @@ export default function Login() {
             border: BORDE_DORADO_LUJO,
             borderRadius: "14px",
             fontWeight: "900",
-            cursor: "pointer",
+            cursor: loading ? "wait" : "pointer",
             fontSize: "13px",
             textTransform: "uppercase",
             letterSpacing: "0.5px",
@@ -275,7 +347,7 @@ export default function Login() {
             boxSizing: "border-box",
           }}
         >
-          {loading ? "Iniciando sesión..." : "Iniciar sesión"}
+          {loading ? copy.signingIn : copy.signIn}
         </button>
 
         <button
@@ -292,14 +364,12 @@ export default function Login() {
             textDecoration: "underline",
           }}
         >
-          ¿No tienes cuenta? Regístrate
+          {copy.register}
         </button>
 
         <button
           onClick={async () => {
-            const correoInput = prompt(
-              "Introduce tu email para recuperar la contraseña:"
-            );
+            const correoInput = prompt(copy.resetPrompt);
             if (!correoInput) return;
 
             const correo = correoInput.trim();
@@ -318,10 +388,10 @@ export default function Login() {
                   ? JSON.stringify(error)
                   : String(error));
 
-              alert("No se pudo enviar el email de recuperación: " + msg);
+              alert(copy.resetError + msg);
               console.error("Error al resetear contraseña:", error);
             } else {
-              alert("Te hemos enviado un email para recuperar tu contraseña.");
+              alert(copy.resetSent);
             }
           }}
           style={{
@@ -336,7 +406,7 @@ export default function Login() {
             textDecoration: "underline",
           }}
         >
-          ¿Olvidaste tu contraseña?
+          {copy.forgot}
         </button>
       </div>
     </div>
