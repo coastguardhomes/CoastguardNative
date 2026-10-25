@@ -49,23 +49,9 @@ export default function Login() {
       resetSent: "We've sent you an email to reset your password.",
       forgot: "Forgot your password?",
     },
-    fr: {
-      configError: "Erreur de configuration du compte.",
-      invalidRole: "Rôle utilisateur invalide ou autorisations insuffisantes.",
-      noSession: "Connexion impossible : aucune session reçue.",
-      email: "Adresse e-mail",
-      password: "Mot de passe",
-      signingIn: "Connexion...",
-      signIn: "Se connecter",
-      register: "Vous n'avez pas de compte ? Inscrivez-vous",
-      resetPrompt: "Saisissez votre e-mail pour réinitialiser votre mot de passe :",
-      resetError: "Impossible d'envoyer l'e-mail de réinitialisation : ",
-      resetSent: "Nous vous avons envoyé un e-mail pour réinitialiser votre mot de passe.",
-      forgot: "Mot de passe oublié ?",
-    },
   };
 
-  const idioma = ["es", "en", "fr"].includes(language) ? language : "es";
+  const idioma = language === "en" ? "en" : "es";
   const copy = text[idioma];
 
   useEffect(() => {
@@ -83,7 +69,7 @@ export default function Login() {
 
     let idiomaUsuario = idioma;
 
-    if (clienteData?.idioma && ["es", "en", "fr"].includes(clienteData.idioma)) {
+    if (clienteData?.idioma && ["es", "en"].includes(clienteData.idioma)) {
       idiomaUsuario = clienteData.idioma;
       localStorage.setItem("app_idioma", clienteData.idioma);
       changeLanguage(clienteData.idioma);
@@ -99,7 +85,6 @@ export default function Login() {
       const mensajes = {
         es: "Error de configuración.",
         en: "Account configuration error.",
-        fr: "Erreur de configuration du compte.",
       };
       setErrorMsg(mensajes[idiomaUsuario]);
       return;
@@ -119,7 +104,6 @@ export default function Login() {
         const mensajes = {
           es: "Rol de usuario no válido o sin permisos.",
           en: "Invalid user role or insufficient permissions.",
-          fr: "Rôle utilisateur invalide ou autorisations insuffisantes.",
         };
         setErrorMsg(mensajes[idiomaUsuario]);
       }
@@ -193,7 +177,7 @@ export default function Login() {
           }}
         >
           <select
-            aria-label={idioma === "en" ? "Language" : idioma === "fr" ? "Langue" : "Idioma"}
+            aria-label={idioma === "en" ? "Language" : "Idioma"}
             value={idioma}
             onChange={(e) => {
               const nuevoIdioma = e.target.value;
@@ -217,9 +201,6 @@ export default function Login() {
             </option>
             <option value="en" style={{ background: "#030509", color: "#fff" }}>
               English
-            </option>
-            <option value="fr" style={{ background: "#030509", color: "#fff" }}>
-              Français
             </option>
           </select>
         </div>
