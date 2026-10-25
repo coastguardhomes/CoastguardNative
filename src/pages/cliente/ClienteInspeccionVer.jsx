@@ -16,6 +16,7 @@ import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 import { useAuth } from "../../context/AuthContext";
 import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
 import { useLanguage } from "../../context/LanguageContext";
+import { traducirObservacionInspeccion } from "../../lib/traducirObservacionesInspeccion";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -55,6 +56,7 @@ export default function ClienteInspeccionVer() {
   const [fotoModal, setFotoModal] = useState(null);
   const [esExtra, setEsExtra] = useState(false);
   const [clienteId, setClienteId] = useState(null);
+  const [idiomaCliente, setIdiomaCliente] = useState("es");
   const [pdfUrl, setPdfUrl] = useState(null);
 
   useEffect(() => {
@@ -255,14 +257,14 @@ export default function ClienteInspeccionVer() {
     try {
       let { data: cliente } = await supabase
         .from("clientes")
-        .select("id")
+        .select("id, idioma")
         .eq("usuario_id", user.id)
         .maybeSingle();
 
       if (!cliente) {
         const { data: clienteById } = await supabase
           .from("clientes")
-          .select("id")
+          .select("id, idioma")
           .eq("user_id", user.id)
           .maybeSingle();
 
@@ -279,6 +281,7 @@ export default function ClienteInspeccionVer() {
 
       const clienteIdActual = cliente.id;
       setClienteId(clienteIdActual);
+      setIdiomaCliente(cliente.idioma === "en" ? "en" : "es");
 
       /*
        * 1. Inspección normal.
@@ -790,9 +793,12 @@ export default function ClienteInspeccionVer() {
                   wordBreak: "break-word",
                 }}
               >
-                {inspeccion.notas_tecnico ||
-                  inspeccion.observaciones ||
-                  "Sin observaciones registradas."}
+                {traducirObservacionInspeccion(
+                  inspeccion.notas_tecnico ||
+                    inspeccion.observaciones ||
+                    "Sin observaciones registradas.",
+                  idiomaCliente
+                )}
               </p>
 
               {inspeccion.materiales && (
