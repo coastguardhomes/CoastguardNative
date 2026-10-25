@@ -1,5 +1,11 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+} from "react";
+import { useAuth } from "./AuthContext.jsx";
 
 // Diccionario de traducciones de la interfaz: español e inglés
 const translations = {
@@ -238,6 +244,7 @@ const translations = {
     fotoAmpliada: "Foto ampliada",
     cerrar: "Cerrar",
   },
+
   en: {
     // Menu & Navigation
     inicio: "Home",
@@ -442,7 +449,7 @@ const translations = {
     cargandoListado: "Loading List...",
     misInspeccionesInformesTitulo: "My Inspections & Reports",
     errorPerfilClienteAsociado: "Associated client profile not found.",
-    errorCargarDatos: "There was an error loading data.",
+    errorCargarDatos: "There was an error loading the data.",
     noHayInspeccionesInformes: "No inspections or reports available.",
     servicioExtraTrabajo: "🛠️ Extra Service / Job",
     inspeccionLabel: "📋 Inspection",
@@ -478,14 +485,64 @@ const translations = {
 const LanguageContext = createContext();
 
 export function LanguageProvider({ children }) {
-  const [language, setLanguage] = useState(() => {
-    const savedLanguage = localStorage.getItem("app_idioma");
-    return savedLanguage === "en" ? "en" : "es";
-  });
+  const { user, role } = useAuth();
+
+  const [language, setLanguage] = useState("es");
+  const [loadedFor, setLoadedFor] = useState(null);
+
+  // Identificador de la cuenta actual. Mientras se carga el rol,
+  // no se permite guardar ni recuperar preferencias de otra cuenta.
+  const accountKey = user?.id
+    ? role
+      ? `app_idioma_${user.id}`
+      : `loading_${user.id}`
+    : "app_idioma";
 
   useEffect(() => {
+    if (user?.id && !role) {
+      setLoadedFor(null);
+      return;
+    }
+
+    let savedLanguage = null;
+
+    if (user?.id) {
+      // Preferencia individual de esta cuenta.
+      savedLanguage = localStorage.getItem(`app_idioma_${user.id}`);
+
+      // Compatibilidad con el idioma anterior del cliente.
+      if (!savedLanguage && role === "cliente") {
+        savedLanguage = localStorage.getItem("app_idioma");
+      }
+
+      // La cuenta administradora comienza en español si no
+      // tenía previamente una preferencia individual.
+      if (!savedLanguage && role === "admin") {
+        savedLanguage = "es";
+      }
+    } else {
+      // En las páginas públicas se conserva la preferencia general.
+      savedLanguage = localStorage.getItem("app_idioma");
+    }
+
+    const initialLanguage = savedLanguage === "en" ? "en" : "es";
+
+    setLanguage(initialLanguage);
+    setLoadedFor(accountKey);
+  }, [user?.id, role, accountKey]);
+
+  useEffect(() => {
+    // Solo persistir cuando la preferencia ya se haya cargado
+    // para la cuenta que está activa en este render.
+    if (loadedFor !== accountKey) return;
+    if (user?.id && !role) return;
+
     localStorage.setItem("app_idioma", language);
-  }, [language]);
+
+    if (user?.id) {
+      localStorage.setItem(`app_idioma_${user.id}`, language);
+    }
+  }, [language, loadedFor, accountKey, user?.id, role]);
 
   const changeLanguage = (lang) => {
     if (translations[lang]) {
@@ -507,8 +564,10 @@ export function LanguageProvider({ children }) {
 
 export function useLanguage() {
   const context = useContext(LanguageContext);
+
   if (!context) {
     throw new Error("useLanguage debe usarse dentro de un LanguageProvider");
   }
+
   return context;
 }
