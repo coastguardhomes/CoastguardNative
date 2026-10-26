@@ -143,16 +143,18 @@ export default function ClienteDashboard() {
             .eq("cliente_id", clienteId),
 
           /*
-           * Solo mostramos extras publicados realmente al cliente
-           * que todavía no se hayan marcado como vistos.
-           * Incluimos NULL porque también significa que no se han visto.
+           * Mostramos únicamente los trabajos extra publicados al cliente
+           * cuyo aviso del Dashboard todavía no se ha cerrado.
+           *
+           * alerta_vista controla el aviso, mientras que visto mantiene
+           * su significado independiente en el registro del trabajo.
            */
           supabase
             .from("extras")
             .select("*")
             .eq("cliente_id", clienteId)
             .eq("estado", "enviado_cliente")
-            .or("visto.is.null,visto.eq.false")
+            .or("alerta_vista.is.null,alerta_vista.eq.false")
             .order("created_at", { ascending: false }),
         ]);
 
@@ -259,8 +261,9 @@ export default function ClienteDashboard() {
   }, [user]);
 
   /*
-   * Abrir el aviso NO elimina el extra.
-   * Simplemente lo marca como visto.
+   * Abrir el aviso lleva a facturas.
+   * Esta acción conserva el comportamiento original de marcar el trabajo
+   * como visto y de cerrar la alerta relacionada con la factura.
    */
   const manejarVerFactura = async (extra) => {
     try {
@@ -278,10 +281,6 @@ export default function ClienteDashboard() {
         throw errorExtra;
       }
 
-      /*
-       * Si el extra está relacionado con una factura,
-       * también marcamos el aviso de esa factura como visto.
-       */
       if (extra.factura_id) {
         const { error: errorFactura } = await supabase
           .from("facturas")
@@ -312,56 +311,62 @@ export default function ClienteDashboard() {
   };
 
   /*
-   * El botón 🗑️ NO BORRA el registro.
-   * Solo elimina el aviso del Dashboard.
+   * Quita ÚNICAMENTE el aviso del Dashboard.
+   *
+   * No borra el trabajo extra.
+   * No modifica visto.
+   * No modifica la factura.
+   * No modifica la inspección, las fotografías ni los documentos.
+   *
+   * Se cambia exclusivamente alerta_vista en el registro de extras.
    */
   const manejarEliminarAvisoExtra = async (e, extra) => {
     e.stopPropagation();
 
     if (
       !window.confirm(
-        "¿Quieres quitar este aviso del Dashboard? El informe y la factura no se borrarán."
+        "¿Quieres quitar este aviso del Dashboard? El trabajo, la inspección, las fotos y la factura se conservarán."
       )
     ) {
       return;
     }
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("extras")
         .update({
-          visto: true,
           alerta_vista: true,
         })
-        .eq("id", extra.id);
+        .eq("id", extra.id)
+        .select("id")
+        .maybeSingle();
 
       if (error) {
         throw error;
       }
 
-      if (extra.factura_id) {
-        const { error: facturaError } = await supabase
-          .from("facturas")
-          .update({
-            alerta_vista: true,
-          })
-          .eq("id", extra.factura_id);
-
-        if (facturaError) {
-          console.error(
-            "No se pudo marcar la factura como vista:",
-            facturaError
-          );
-        }
+      /*
+       * Supabase puede no devolver error si la actualización no afecta
+       * ninguna fila. Comprobamos que realmente se actualizó el registro.
+       */
+      if (!data) {
+        throw new Error(
+          "No se pudo actualizar el aviso. Comprueba los permisos de Supabase (RLS) para la tabla extras."
+        );
       }
 
+      // Ocultamos solo el aviso de la interfaz después de confirmar el cambio.
       setNuevosExtras((prev) =>
         prev.filter((item) => item.id !== extra.id)
       );
     } catch (err) {
       console.error(
-        "Error al quitar aviso:",
+        "Error al quitar el aviso del Dashboard:",
         err
+      );
+
+      window.alert(
+        "No se ha podido quitar el aviso. No se ha borrado ningún trabajo ni documento. Revisa los permisos de Supabase e inténtalo de nuevo."
       );
     }
   };
@@ -566,15 +571,15 @@ export default function ClienteDashboard() {
           </div>
         )}
 
+        {/* Avisos compactos de trabajos extra */}
         {nuevosExtras.length > 0 && (
           <div
             style={{
-              marginBottom: "20px",
-              background: FONDO_BANNER_EXTRA,
-              border: BORDE_DORADO_INTENSO,
-              borderRadius: "20px",
-              padding: "18px",
-              boxShadow: "0 10px 30px rgba(224, 176, 52, 0.25)",
+              marginBottom: "14px",
+              background: "rgba(11, 19, 32, 0.88)",
+              border: "1px solid rgba(224, 176, 52, 0.45)",
+              borderRadius: "12px",
+              padding: "12px",
               minWidth: 0,
               boxSizing: "border-box",
             }}
@@ -583,32 +588,20 @@ export default function ClienteDashboard() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "10px",
-                marginBottom: "14px",
+                gap: "8px",
+                marginBottom: "8px",
               }}
             >
-              <div
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "10px",
-                  background: "rgba(224, 176, 52, 0.25)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: BORDE_DORADO_FINO,
-                  flexShrink: 0,
-                }}
-              >
+              <span aria-hidden="true" style={{ fontSize: "18px" }}>
                 📥
-              </div>
+              </span>
 
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <h3
                   style={{
                     fontSize: "13px",
-                    fontWeight: "900",
-                    ...TEXTO_DORADO_BRILLO,
+                    fontWeight: "800",
+                    color: COLOR_DORADO,
                     margin: 0,
                   }}
                 >
@@ -619,7 +612,7 @@ export default function ClienteDashboard() {
                   style={{
                     fontSize: "11px",
                     color: "#cbd5e1",
-                    margin: 0,
+                    margin: "2px 0 0",
                   }}
                 >
                   {t("tienes")} {nuevosExtras.length}{" "}
@@ -632,7 +625,7 @@ export default function ClienteDashboard() {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "10px",
+                gap: "8px",
                 minWidth: 0,
               }}
             >
@@ -641,97 +634,94 @@ export default function ClienteDashboard() {
                   key={extra.id}
                   style={{
                     display: "flex",
+                    alignItems: "center",
                     gap: "8px",
-                    alignItems: "stretch",
                     minWidth: 0,
                     width: "100%",
+                    boxSizing: "border-box",
+                    padding: "9px",
+                    borderRadius: "9px",
+                    background: "rgba(30, 58, 138, 0.28)",
+                    border: "1px solid rgba(224, 176, 52, 0.2)",
                   }}
                 >
-                  <div
+                  <button
+                    type="button"
                     onClick={() => manejarVerFactura(extra)}
                     style={{
-                      flex: "1 1 0",
+                      flex: "1 1 auto",
                       minWidth: 0,
-                      maxWidth: "100%",
-                      boxSizing: "border-box",
-                      background: DEGRADADO_AZUL_BOTON,
-                      border: BORDE_DORADO_FINO,
-                      borderRadius: "12px",
-                      padding: "14px",
+                      padding: 0,
+                      background: "transparent",
+                      border: "none",
+                      color: "#fff",
+                      textAlign: "left",
                       cursor: "pointer",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      gap: "10px",
                     }}
+                    title={t("verFactura")}
                   >
-                    <div
+                    <span
                       style={{
-                        flex: "1 1 0",
-                        minWidth: 0,
+                        display: "block",
+                        fontSize: "12px",
+                        fontWeight: "700",
                         overflowWrap: "anywhere",
                       }}
                     >
-                      <div
-                        style={{
-                          fontSize: "13px",
-                          fontWeight: "800",
-                          color: "#fff",
-                          overflowWrap: "anywhere",
-                        }}
-                      >
-                        {t("trabajoExtraFactura")}
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "11px",
-                          color: "#e2e8f0",
-                          marginTop: "2px",
-                          minWidth: 0,
-                          maxWidth: "100%",
-                          boxSizing: "border-box",
-                          whiteSpace: "pre-wrap",
-                          overflowWrap: "anywhere",
-                          wordBreak: "break-word",
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        {extra.descripcion ||
-                          extra.observaciones ||
-                          t("verDetallesFotosFacturas")}
-                      </div>
-                    </div>
+                      {t("trabajoExtraFactura")}
+                    </span>
 
                     <span
                       style={{
+                        display: "block",
                         fontSize: "11px",
-                        fontWeight: "900",
-                        color: COLOR_DORADO,
-                        flexShrink: 0,
-                        whiteSpace: "nowrap",
+                        color: "#cbd5e1",
+                        marginTop: "3px",
+                        whiteSpace: "pre-wrap",
+                        overflowWrap: "anywhere",
+                        wordBreak: "break-word",
+                        lineHeight: 1.4,
                       }}
                     >
-                      {t("verFactura")}
+                      {extra.descripcion ||
+                        extra.observaciones ||
+                        t("verDetallesFotosFacturas")}
                     </span>
-                  </div>
+
+                    <span
+                      style={{
+                        display: "inline-block",
+                        marginTop: "5px",
+                        fontSize: "11px",
+                        fontWeight: "800",
+                        color: COLOR_DORADO,
+                      }}
+                    >
+                      {t("verFactura")} →
+                    </span>
+                  </button>
 
                   <button
+                    type="button"
                     onClick={(e) =>
                       manejarEliminarAvisoExtra(e, extra)
                     }
                     style={{
-                      background: "rgba(239, 68, 68, 0.15)",
-                      border: "1px solid rgba(239, 68, 68, 0.4)",
-                      borderRadius: "12px",
-                      padding: "0 14px",
+                      background: "rgba(239, 68, 68, 0.12)",
+                      border: "1px solid rgba(239, 68, 68, 0.45)",
+                      borderRadius: "8px",
+                      padding: "8px 10px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
+                      color: "#fecaca",
+                      fontSize: "15px",
+                      lineHeight: 1,
                     }}
-                    title="Quitar aviso"
+                    title="Quitar solo este aviso"
+                    aria-label="Quitar solo este aviso"
                   >
                     🗑️
                   </button>
