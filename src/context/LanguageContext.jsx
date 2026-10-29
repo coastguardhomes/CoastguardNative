@@ -490,8 +490,8 @@ export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState("es");
   const [loadedFor, setLoadedFor] = useState(null);
 
-  // Identificador de la cuenta actual. Mientras se carga el rol,
-  // no se permite guardar ni recuperar preferencias de otra cuenta.
+  // Una preferencia distinta para cada cuenta autenticada.
+  // El idioma general solo se utiliza cuando no hay sesión.
   const accountKey = user?.id
     ? role
       ? `app_idioma_${user.id}`
@@ -499,30 +499,32 @@ export function LanguageProvider({ children }) {
     : "app_idioma";
 
   useEffect(() => {
+    // No cargar preferencias mientras AuthContext está resolviendo el rol.
     if (user?.id && !role) {
       setLoadedFor(null);
+      setLanguage("es");
       return;
     }
 
     let savedLanguage = null;
 
     if (user?.id) {
-      // Preferencia individual de esta cuenta.
-      savedLanguage = localStorage.getItem(`app_idioma_${user.id}`);
-
-      // Compatibilidad con el idioma anterior del cliente.
-      if (!savedLanguage && role === "cliente") {
-        savedLanguage = localStorage.getItem("app_idioma");
-      }
-
-      // La cuenta administradora comienza en español si no
-      // tenía previamente una preferencia individual.
-      if (!savedLanguage && role === "admin") {
-        savedLanguage = "es";
+      // La cuenta autenticada solo puede leer su propia preferencia.
+      // No se consulta app_idioma ni la preferencia de otra cuenta.
+      try {
+        savedLanguage = localStorage.getItem(
+          `app_idioma_${user.id}`
+        );
+      } catch (error) {
+        console.error("No se pudo leer el idioma de la cuenta:", error);
       }
     } else {
-      // En las páginas públicas se conserva la preferencia general.
-      savedLanguage = localStorage.getItem("app_idioma");
+      // Preferencia general únicamente para páginas públicas.
+      try {
+        savedLanguage = localStorage.getItem("app_idioma");
+      } catch (error) {
+        console.error("No se pudo leer el idioma público:", error);
+      }
     }
 
     const initialLanguage = savedLanguage === "en" ? "en" : "es";
@@ -532,15 +534,26 @@ export function LanguageProvider({ children }) {
   }, [user?.id, role, accountKey]);
 
   useEffect(() => {
-    // Solo persistir cuando la preferencia ya se haya cargado
-    // para la cuenta que está activa en este render.
+    // No guardar hasta haber terminado de cargar la preferencia
+    // correspondiente a la cuenta que está activa.
     if (loadedFor !== accountKey) return;
+
+    // No guardar nada mientras se está resolviendo el rol.
     if (user?.id && !role) return;
 
-    localStorage.setItem("app_idioma", language);
-
-    if (user?.id) {
-      localStorage.setItem(`app_idioma_${user.id}`, language);
+    try {
+      if (user?.id) {
+        // Sesión activa: guardar solo en la clave individual.
+        localStorage.setItem(
+          `app_idioma_${user.id}`,
+          language
+        );
+      } else {
+        // Sin sesión: guardar la preferencia de páginas públicas.
+        localStorage.setItem("app_idioma", language);
+      }
+    } catch (error) {
+      console.error("No se pudo guardar la preferencia de idioma:", error);
     }
   }, [language, loadedFor, accountKey, user?.id, role]);
 
@@ -556,7 +569,13 @@ export function LanguageProvider({ children }) {
   };
 
   return (
-    <LanguageContext.Provider value={{ language, changeLanguage, t }}>
+    <LanguageContext.Provider
+      value={{
+        language,
+        changeLanguage,
+        t,
+      }}
+    >
       {children}
     </LanguageContext.Provider>
   );
