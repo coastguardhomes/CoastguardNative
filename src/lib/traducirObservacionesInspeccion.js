@@ -1,5 +1,15 @@
-
 const FRASES_INSPECCION_ES_EN = {
+  // Campos y etiquetas
+  "descripcion del trabajo": "Job description",
+  "descripcion del trabajo y observaciones": "Job description and observations",
+  "observaciones": "Observations",
+  "observacion": "Observation",
+  "materiales utilizados": "Materials used",
+  "material utilizado": "Material used",
+  "tiempo empleado": "Time spent",
+  "tiempo de trabajo": "Working time",
+  "duracion del trabajo": "Work duration",
+
   // Observaciones generales
   "sin observaciones": "No observations",
   "sin observaciones registradas": "No observations recorded",
@@ -15,20 +25,22 @@ const FRASES_INSPECCION_ES_EN = {
   "estado general correcto": "Overall condition is satisfactory",
   "estado general bueno": "Good overall condition",
   "estado general adecuado": "Overall condition is satisfactory",
+  "estado general satisfactorio": "Overall condition is satisfactory",
   "estado aceptable": "Acceptable condition",
   "estado mejorable": "Condition could be improved",
   "estado deficiente": "Poor condition",
   "revisado y correcto": "Checked and satisfactory",
   "revisada y correcta": "Checked and satisfactory",
-  "revisado correctamente": "Checked and found satisfactory",
   "revision completada": "Inspection completed",
   "revision realizada": "Inspection completed",
   "inspeccion visual realizada": "Visual inspection completed",
   "comprobado visualmente": "Visually checked",
   "todo comprobado": "Everything checked",
   "todo revisado": "Everything inspected",
+  "todo en orden": "Everything is in order",
   "sin incidencias": "No issues found",
   "sin incidencias visibles": "No visible issues",
+  "sin incidencias pendientes": "No outstanding issues",
   "sin problemas": "No problems",
   "sin problemas aparentes": "No apparent problems",
   "sin anomalias": "No abnormalities",
@@ -43,9 +55,8 @@ const FRASES_INSPECCION_ES_EN = {
   "no se ha detectado ninguna incidencia": "No issues have been detected",
   "no se han detectado incidencias": "No issues have been detected",
   "no se han observado incidencias": "No issues have been observed",
-  "todo en orden": "Everything is in order",
-  "sin cambios respecto a la ultima visita": "No changes since the last visit",
   "sin cambios apreciables": "No noticeable changes",
+  "sin cambios respecto a la ultima visita": "No changes since the last visit",
   "se mantiene en buen estado": "Remains in good condition",
   "se encuentra en buen estado": "Is in good condition",
   "requiere revision": "Requires inspection",
@@ -56,20 +67,44 @@ const FRASES_INSPECCION_ES_EN = {
   "pendiente de comprobacion": "Pending verification",
   "pendiente de reparacion": "Pending repair",
   "pendiente de mantenimiento": "Pending maintenance",
+  "pendiente de confirmar": "Pending confirmation",
+  "pendiente de acceso": "Access pending",
   "incidencia comunicada": "Issue reported",
   "incidencia notificada": "Issue reported",
+  "incidencia resuelta": "Issue resolved",
+  "incidencia pendiente": "Issue pending",
+  "incidencia abierta": "Open issue",
+  "incidencia cerrada": "Issue closed",
   "avisado al responsable": "Person in charge notified",
+  "responsable informado": "Person in charge informed",
+  "cliente informado": "Customer informed",
   "se recomienda revisar": "Inspection is recommended",
   "se recomienda reparacion": "Repair is recommended",
   "se recomienda mantenimiento": "Maintenance is recommended",
+  "se recomienda seguimiento": "Follow-up is recommended",
+  "se necesita seguimiento": "Follow-up is needed",
+  "se recomienda una revision": "An inspection is recommended",
+  "se recomienda una reparacion": "A repair is recommended",
+  "se recomienda sustituir": "Replacement is recommended",
+  "se recomienda limpiar": "Cleaning is recommended",
+  "se recomienda cambiar el filtro": "Changing the filter is recommended",
   "no se ha podido comprobar": "Could not be checked",
   "no ha sido posible comprobar": "It was not possible to check",
   "no se ha podido acceder": "Access was not possible",
+  "no se pudo acceder a la zona": "The area could not be accessed",
+  "no se pudo realizar la comprobacion": "The check could not be completed",
+  "comprobacion no realizada": "Check not completed",
   "acceso limitado": "Limited access",
   "acceso bloqueado": "Access blocked",
   "sin acceso a la zona": "No access to the area",
+  "sin problemas de acceso": "No access issues",
+  "sin problemas de funcionamiento": "No operational issues",
+  "no aplica": "Not applicable",
+  "no disponible": "Not available",
+  "sin datos": "No data available",
+  "sin informacion adicional": "No additional information",
 
-  // Puertas, ventanas, llaves y seguridad
+  // Puertas, ventanas y seguridad
   "puerta en buen estado": "Door in good condition",
   "puertas en buen estado": "Doors in good condition",
   "puerta cerrada correctamente": "Door closed properly",
@@ -98,8 +133,8 @@ const FRASES_INSPECCION_ES_EN = {
   "ventanas en buen estado": "Windows in good condition",
   "ventana cerrada": "Window closed",
   "ventana abierta": "Window open",
-  "ventanas cerradas correctamente": "Windows closed properly",
   "ventana danada": "Damaged window",
+  "ventanas cerradas correctamente": "Windows closed properly",
   "ventana no cierra correctamente": "Window does not close properly",
   "cristal roto": "Broken glass",
   "cristales rotos": "Broken glass panes",
@@ -116,7 +151,6 @@ const FRASES_INSPECCION_ES_EN = {
   "alarma comprobada": "Alarm checked",
   "alarma no funciona": "Alarm is not working",
   "sensores funcionando correctamente": "Sensors working correctly",
-  "sensores de movimiento limpios y operativos": "Motion sensors clean and operational",
   "detector de humo comprobado": "Smoke detector checked",
   "detector de humo funcionando": "Smoke detector working",
   "extintor en su lugar": "Fire extinguisher in its designated place",
@@ -159,11 +193,10 @@ const FRASES_INSPECCION_ES_EN = {
   "baterias agotadas": "Batteries depleted",
   "electrodomesticos funcionando correctamente": "Appliances working correctly",
   "electrodomestico no funciona": "Appliance is not working",
-  "electrodomesticos con suministro electrico correcto": "Appliances have a satisfactory electrical supply",
   "sin problemas electricos": "No electrical problems",
   "no se detectan problemas electricos": "No electrical problems detected",
 
-  // Agua y fontanería
+  // Fontanería, agua y fugas
   "grifo funcionando correctamente": "Tap working correctly",
   "grifos funcionando correctamente": "Taps working correctly",
   "grifo danado": "Damaged tap",
@@ -172,15 +205,37 @@ const FRASES_INSPECCION_ES_EN = {
   "grifo goteando": "Dripping tap",
   "grifos goteando": "Dripping taps",
   "sin goteos": "No dripping",
+  "sin fugas": "No leaks",
+  "sin fuga": "No leak",
+  "no hay fugas": "No leaks",
+  "no hay fugas de agua": "There are no water leaks",
   "sin fugas de agua": "No water leaks",
   "no se observan fugas": "No leaks observed",
+  "no se observan fugas de agua": "No water leaks observed",
+  "no se aprecian fugas": "No leaks are apparent",
   "no se detectan fugas": "No leaks detected",
+  "no se ha detectado ninguna fuga": "No leaks have been detected",
   "no se detectan filtraciones": "No water ingress detected",
   "no hay fugas ni filtraciones": "There are no leaks or water ingress",
+  "no hay filtraciones": "There is no water ingress",
+  "sin filtraciones": "No water ingress",
+  "sin signos de fuga": "No signs of leaks",
   "fuga visible": "Visible leak",
   "fuga de agua": "Water leak",
   "fugas de agua": "Water leaks",
+  "fuga reparada": "Leak repaired",
+  "fuga reparada correctamente": "Leak repaired successfully",
+  "fugas reparadas": "Leaks repaired",
+  "fuga solucionada": "Leak fixed",
+  "fugas solucionadas": "Leaks fixed",
+  "fuga pendiente de reparar": "Leak awaiting repair",
   "se detecta una fuga": "A leak has been detected",
+  "se ha detectado una fuga": "A leak has been detected",
+  "se observa una fuga": "A leak is observed",
+  "se reparo la fuga": "The leak was repaired",
+  "se ha reparado la fuga": "The leak has been repaired",
+  "se ha solucionado la fuga": "The leak has been fixed",
+  "se ha comprobado que no hay fugas": "It has been checked that there are no leaks",
   "llave de paso funcionando correctamente": "Shut-off valve working correctly",
   "llaves de paso funcionando correctamente": "Shut-off valves working correctly",
   "llave de agua cerrada": "Water valve is closed",
@@ -207,15 +262,16 @@ const FRASES_INSPECCION_ES_EN = {
   "sin problemas de fontaneria": "No plumbing problems",
   "no se detectan problemas de fontaneria": "No plumbing problems detected",
 
-  // Humedades, paredes, techos y suelos
+  // Humedad, paredes, techos y suelos
   "humedad en la pared": "Dampness on the wall",
   "humedades en las paredes": "Dampness on the walls",
   "presencia de humedad": "Presence of dampness",
   "se detecta humedad": "Dampness has been detected",
   "no se detecta humedad": "No dampness has been detected",
-  "no hay signos de humedad": "There are no signs of dampness",
+  "no hay humedad": "There is no dampness",
   "no hay humedades": "There is no dampness",
   "no se detectan humedades": "No dampness detected",
+  "no hay signos de humedad": "There are no signs of dampness",
   "olor a humedad": "Musty smell",
   "manchas de humedad": "Damp stains",
   "manchas en el techo": "Stains on the ceiling",
@@ -227,8 +283,8 @@ const FRASES_INSPECCION_ES_EN = {
   "se observan manchas": "Stains have been observed",
   "grieta en la pared": "Crack in the wall",
   "grietas en la pared": "Cracks in the wall",
-  "grietas en el techo": "Cracks in the ceiling",
   "grieta en el techo": "Crack in the ceiling",
+  "grietas en el techo": "Cracks in the ceiling",
   "no hay grietas ni fisuras": "There are no cracks or fissures",
   "no se aprecian grietas": "No cracks are apparent",
   "pintura desconchada": "Peeling paint",
@@ -254,6 +310,13 @@ const FRASES_INSPECCION_ES_EN = {
   "se observa deterioro": "Deterioration has been observed",
   "danos estructurales": "Structural damage",
   "sin danos estructurales visibles": "No visible structural damage",
+  "sin problemas de humedad": "No dampness issues",
+  "no hay danos ni desperfectos": "There is no damage or deterioration",
+  "no se aprecian desperfectos": "No defects are apparent",
+  "no se aprecian manchas": "No stains are apparent",
+  "no hay signos de filtracion": "There are no signs of water ingress",
+  "presencia de filtraciones": "Presence of water ingress",
+  "se observa una filtracion": "Water ingress is observed",
 
   // Cocina y electrodomésticos
   "cocina en buen estado": "Kitchen in good condition",
@@ -315,7 +378,7 @@ const FRASES_INSPECCION_ES_EN = {
   "sin malos olores": "No unpleasant odours",
   "no se detectan olores": "No odours detected",
 
-  // Limpieza y estado de la vivienda
+  // Limpieza, vivienda y exteriores
   "limpieza correcta": "Cleaning is satisfactory",
   "vivienda limpia": "Property is clean",
   "vivienda en buen estado": "Property in good condition",
@@ -337,8 +400,6 @@ const FRASES_INSPECCION_ES_EN = {
   "sin presencia de insectos": "No insects present",
   "presencia de roedores": "Rodents present",
   "sin presencia de roedores": "No rodents present",
-
-  // Jardín, exteriores y piscina
   "jardin en buen estado": "Garden in good condition",
   "jardin limpio": "Garden is clean",
   "jardin descuidado": "Neglected garden",
@@ -364,7 +425,7 @@ const FRASES_INSPECCION_ES_EN = {
   "agua de piscina limpia": "Pool water is clean",
   "agua de piscina turbia": "Pool water is cloudy",
 
-  // Mobiliario y elementos interiores
+  // Mobiliario
   "mobiliario en buen estado": "Furniture in good condition",
   "mueble danado": "Damaged furniture",
   "muebles en buen estado": "Furniture in good condition",
@@ -375,11 +436,10 @@ const FRASES_INSPECCION_ES_EN = {
   "mesa en buen estado": "Table in good condition",
   "sillas en buen estado": "Chairs in good condition",
   "cortinas en buen estado": "Curtains in good condition",
-  "cristales en buen estado": "Glass panes in good condition",
 
-  // Incidencias, reparaciones y mantenimiento
-  "no funciona": "Not working",
+  // Reparaciones y mantenimiento
   "no funciona correctamente": "Not working correctly",
+  "no funciona": "Not working",
   "necesita reparacion": "Needs repair",
   "necesita sustitucion": "Needs replacement",
   "se ha sustituido": "Has been replaced",
@@ -393,51 +453,222 @@ const FRASES_INSPECCION_ES_EN = {
   "se detecta una grieta": "A crack has been detected",
   "se detectan grietas": "Cracks have been detected",
   "se detecta un olor extrano": "An unusual smell has been detected",
-  "presencia de filtraciones": "Presence of water ingress",
-  "no hay signos de filtracion": "There are no signs of water ingress",
-  "no se ha detectado ninguna fuga": "No leaks have been detected",
   "no se ha observado deterioro": "No deterioration has been observed",
-  "no hay danos ni desperfectos": "There is no damage or deterioration",
-  "no se aprecian desperfectos": "No defects are apparent",
-  "no se aprecian manchas": "No stains are apparent",
-  "sin problemas de humedad": "No dampness issues",
-  "sin problemas de acceso": "No access issues",
-  "sin problemas de funcionamiento": "No operational issues",
   "trabajo finalizado": "Work completed",
   "trabajo realizado": "Work carried out",
   "trabajo pendiente": "Work pending",
+  "trabajo completado": "Work completed",
+  "trabajo terminado": "Work finished",
   "reparacion realizada": "Repair completed",
+  "reparacion completada": "Repair completed",
   "mantenimiento realizado": "Maintenance completed",
   "mantenimiento pendiente": "Maintenance pending",
   "material sustituido": "Material replaced",
   "pieza sustituida": "Part replaced",
   "pieza danada": "Damaged part",
-  "se recomienda seguimiento": "Follow-up is recommended",
-  "se necesita seguimiento": "Follow-up is needed",
   "se informara al responsable": "The person in charge will be informed",
-  "responsable informado": "Person in charge informed",
-  "cliente informado": "Customer informed",
-  "incidencia resuelta": "Issue resolved",
-  "incidencia pendiente": "Issue pending",
-  "incidencia abierta": "Open issue",
-  "incidencia cerrada": "Issue closed",
-  "sin incidencias pendientes": "No outstanding issues",
-  "todo revisado y correcto": "Everything checked and satisfactory",
-  "estado general satisfactorio": "Overall condition is satisfactory",
-  "se recomienda una revision": "An inspection is recommended",
-  "se recomienda una reparacion": "A repair is recommended",
-  "se recomienda sustituir": "Replacement is recommended",
-  "se recomienda limpiar": "Cleaning is recommended",
-  "se recomienda cambiar el filtro": "Changing the filter is recommended",
-  "pendiente de confirmar": "Pending confirmation",
-  "pendiente de acceso": "Access pending",
-  "no se pudo acceder a la zona": "The area could not be accessed",
-  "no se pudo realizar la comprobacion": "The check could not be completed",
-  "comprobacion no realizada": "Check not completed",
-  "no aplica": "Not applicable",
-  "no disponible": "Not available",
-  "sin datos": "No data available",
-  "sin informacion adicional": "No additional information"
+
+  // Vocabulario individual. Se utiliza solo cuando no coincide una frase más larga.
+  "puerta": "door",
+  "puertas": "doors",
+  "ventana": "window",
+  "ventanas": "windows",
+  "pared": "wall",
+  "paredes": "walls",
+  "techo": "ceiling",
+  "techos": "ceilings",
+  "suelo": "floor",
+  "suelos": "floors",
+  "cocina": "kitchen",
+  "bano": "bathroom",
+  "jardin": "garden",
+  "piscina": "swimming pool",
+  "terraza": "terrace",
+  "balcon": "balcony",
+  "patio": "patio",
+  "habitacion": "room",
+  "salon": "living room",
+  "dormitorio": "bedroom",
+  "vivienda": "property",
+  "casa": "house",
+  "grifo": "tap",
+  "grifos": "taps",
+  "tubo": "pipe",
+  "tubos": "pipes",
+  "tuberia": "pipework",
+  "tuberias": "pipes",
+  "junta": "seal",
+  "juntas": "seals",
+  "tornillo": "screw",
+  "tornillos": "screws",
+  "tuerca": "nut",
+  "tuercas": "nuts",
+  "arandela": "washer",
+  "arandelas": "washers",
+  "cable": "cable",
+  "cables": "cables",
+  "cableado": "wiring",
+  "enchufe": "socket",
+  "enchufes": "sockets",
+  "interruptor": "switch",
+  "interruptores": "switches",
+  "bombilla": "bulb",
+  "bombillas": "bulbs",
+  "luz": "light",
+  "luces": "lights",
+  "pintura": "paint",
+  "silicona": "sealant",
+  "masilla": "filler",
+  "cemento": "cement",
+  "mortero": "mortar",
+  "azulejo": "tile",
+  "azulejos": "tiles",
+  "baldosa": "tile",
+  "baldosas": "tiles",
+  "cristal": "glass",
+  "cristales": "glass panes",
+  "cerradura": "lock",
+  "bisagra": "hinge",
+  "bisagras": "hinges",
+  "persiana": "shutter",
+  "persianas": "shutters",
+  "mosquitera": "insect screen",
+  "filtro": "filter",
+  "filtros": "filters",
+  "bomba": "pump",
+  "valvula": "valve",
+  "valvulas": "valves",
+  "desague": "drain",
+  "desagues": "drains",
+  "sifon": "trap",
+  "cisterna": "cistern",
+  "lavabo": "washbasin",
+  "ducha": "shower",
+  "banera": "bathtub",
+  "inodoro": "toilet",
+  "wc": "toilet",
+  "horno": "oven",
+  "nevera": "fridge",
+  "frigorifico": "refrigerator",
+  "lavadora": "washing machine",
+  "lavavajillas": "dishwasher",
+  "microondas": "microwave",
+  "caldera": "boiler",
+  "radiador": "radiator",
+  "termostato": "thermostat",
+  "calefaccion": "heating",
+  "mueble": "furniture item",
+  "muebles": "furniture",
+  "armario": "wardrobe",
+  "cama": "bed",
+  "colchon": "mattress",
+  "sofa": "sofa",
+  "mesa": "table",
+  "silla": "chair",
+  "sillas": "chairs",
+  "cortina": "curtain",
+  "cortinas": "curtains",
+  "llave": "key",
+  "llaves": "keys",
+  "mancha": "stain",
+  "manchas": "stains",
+  "grieta": "crack",
+  "grietas": "cracks",
+  "humedad": "dampness",
+  "humedades": "dampness",
+  "fuga": "leak",
+  "fugas": "leaks",
+  "filtracion": "water ingress",
+  "filtraciones": "water ingress",
+  "polvo": "dust",
+  "suciedad": "dirt",
+  "basura": "rubbish",
+  "insecto": "insect",
+  "insectos": "insects",
+  "plaga": "pest",
+  "plagas": "pests",
+  "roedor": "rodent",
+  "roedores": "rodents",
+  "olor": "smell",
+  "ruido": "noise",
+  "ruidos": "noises",
+  "presion": "pressure",
+  "agua": "water",
+  "material": "material",
+  "materiales": "materials",
+  "pieza": "part",
+  "piezas": "parts",
+  "cantidad": "quantity",
+  "unidad": "unit",
+  "unidades": "units",
+  "abierto": "open",
+  "abierta": "open",
+  "abiertos": "open",
+  "abiertas": "open",
+  "cerrado": "closed",
+  "cerrada": "closed",
+  "cerrados": "closed",
+  "cerradas": "closed",
+  "limpio": "clean",
+  "limpia": "clean",
+  "limpios": "clean",
+  "limpias": "clean",
+  "sucio": "dirty",
+  "sucia": "dirty",
+  "sucios": "dirty",
+  "sucias": "dirty",
+  "roto": "broken",
+  "rota": "broken",
+  "rotos": "broken",
+  "rotas": "broken",
+  "danado": "damaged",
+  "danada": "damaged",
+  "danados": "damaged",
+  "danadas": "damaged",
+  "desgastado": "worn",
+  "desgastada": "worn",
+  "atascado": "blocked",
+  "atascada": "blocked",
+  "suelto": "loose",
+  "suelta": "loose",
+  "sueltos": "loose",
+  "sueltas": "loose",
+  "nuevo": "new",
+  "nueva": "new",
+  "nuevos": "new",
+  "nuevas": "new",
+  "viejo": "old",
+  "vieja": "old",
+  "correcto": "correct",
+  "correcta": "correct",
+  "incorrecto": "incorrect",
+  "incorrecta": "incorrect",
+  "funciona": "works",
+  "funcionando": "working",
+  "averia": "fault",
+  "averiado": "faulty",
+  "averiada": "faulty",
+  "reparar": "repair",
+  "reparado": "repaired",
+  "reparada": "repaired",
+  "reparados": "repaired",
+  "reparadas": "repaired",
+  "sustituir": "replace",
+  "sustituido": "replaced",
+  "sustituida": "replaced",
+  "limpiar": "clean",
+  "limpieza": "cleaning",
+  "mantenimiento": "maintenance",
+  "inspeccion": "inspection",
+  "revision": "inspection",
+  "electrico": "electrical",
+  "electrica": "electrical",
+  "electricos": "electrical",
+  "electricas": "electrical",
+  "interior": "interior",
+  "exterior": "exterior",
+  "interiores": "interiors",
+  "exteriores": "outdoor areas"
 };
 
 function normalizarFrase(texto) {
@@ -449,6 +680,44 @@ function normalizarFrase(texto) {
     .replace(/[¿?¡!.,;:()[\]{}"“”]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+const ENTRADAS = Object.entries(FRASES_INSPECCION_ES_EN)
+  .map(([frase, traduccion]) => {
+    const normalizada = normalizarFrase(frase);
+    return {
+      normalizada,
+      palabras: normalizada.split(" ").filter(Boolean),
+      traduccion
+    };
+  })
+  .sort((a, b) => b.palabras.length - a.palabras.length);
+
+const MAX_PALABRAS = Math.max(
+  1,
+  ...ENTRADAS.map((entrada) => entrada.palabras.length)
+);
+
+function buscarCoincidenciaExacta(palabras, inicio) {
+  for (const entrada of ENTRADAS) {
+    const cantidad = entrada.palabras.length;
+    if (inicio + cantidad > palabras.length) continue;
+
+    let coincide = true;
+
+    for (let i = 0; i < cantidad; i += 1) {
+      if (palabras[inicio + i] !== entrada.palabras[i]) {
+        coincide = false;
+        break;
+      }
+    }
+
+    if (coincide) {
+      return { cantidad, traduccion: entrada.traduccion };
+    }
+  }
+
+  return null;
 }
 
 function distanciaEdicion(a, b) {
@@ -476,72 +745,39 @@ function distanciaEdicion(a, b) {
   return anterior[b.length];
 }
 
-const ENTRADAS = Object.entries(FRASES_INSPECCION_ES_EN)
-  .map(([frase, traduccion]) => {
-    const normalizada = normalizarFrase(frase);
-    return {
-      original: frase,
-      normalizada,
-      palabras: normalizada.split(" ").filter(Boolean),
-      traduccion
-    };
-  })
-  .sort((a, b) => b.palabras.length - a.palabras.length);
-
-const MAX_PALABRAS = Math.max(
-  1,
-  ...ENTRADAS.map((entrada) => entrada.palabras.length)
-);
-
-function buscarCoincidenciaExacta(palabras, inicio) {
-  for (const entrada of ENTRADAS) {
-    const cantidad = entrada.palabras.length;
-
-    if (inicio + cantidad > palabras.length) continue;
-
-    let coincide = true;
-
-    for (let i = 0; i < cantidad; i += 1) {
-      if (palabras[inicio + i] !== entrada.palabras[i]) {
-        coincide = false;
-        break;
-      }
-    }
-
-    if (coincide) {
-      return { cantidad, traduccion: entrada.traduccion };
-    }
-  }
-
-  return null;
-}
-
 function buscarCoincidenciaAproximada(palabras, inicio) {
   let mejor = null;
   let mejorPuntuacion = 0;
 
-  // Se permiten pequeñas variaciones: una letra distinta,
-  // una errata breve o una palabra adicional/ausente.
-  for (let cantidad = Math.max(2, MAX_PALABRAS - 1);
-       cantidad >= 2;
-       cantidad -= 1) {
-    if (inicio + cantidad > palabras.length) continue;
-
+  // Solo se buscan erratas en frases de varias palabras.
+  // Las coincidencias aproximadas de una sola palabra podrían
+  // cambiar términos técnicos por error, por eso se evitan.
+  for (
+    let cantidad = Math.min(MAX_PALABRAS, palabras.length - inicio);
+    cantidad >= 2;
+    cantidad -= 1
+  ) {
     const textoVentana = palabras.slice(inicio, inicio + cantidad).join(" ");
-    if (textoVentana.length < 18) continue;
+    if (textoVentana.length < 12) continue;
 
     for (const entrada of ENTRADAS) {
       if (entrada.palabras.length !== cantidad) continue;
-      if (Math.abs(entrada.normalizada.length - textoVentana.length) > 2) {
-        continue;
-      }
+      if (entrada.normalizada.length < 12) continue;
+
+      const diferenciaLongitud = Math.abs(
+        entrada.normalizada.length - textoVentana.length
+      );
+
+      if (diferenciaLongitud > 2) continue;
 
       const distancia = distanciaEdicion(
         textoVentana,
         entrada.normalizada
       );
+
       const puntuacion =
-        1 - distancia / Math.max(textoVentana.length, entrada.normalizada.length);
+        1 - distancia /
+        Math.max(textoVentana.length, entrada.normalizada.length);
 
       if (puntuacion > mejorPuntuacion) {
         mejor = { cantidad, traduccion: entrada.traduccion };
@@ -553,7 +789,53 @@ function buscarCoincidenciaAproximada(palabras, inicio) {
   return mejorPuntuacion >= 0.91 ? mejor : null;
 }
 
+function traducirCantidadesTiempo(texto) {
+  let resultado = texto;
+
+  // Ejemplos: 1 hora, 3 horas, 30 minutos, 1h, 45 min.
+  // También admite combinaciones como "1 hora y 30 minutos".
+  resultado = resultado.replace(
+    /\b(\d+)\s*(?:horas?|hrs?|h)\s*(?:y\s*)?(\d+)\s*(?:minutos?|mins?|min)\b/gi,
+    (_, horas, minutos) =>
+      `${horas} ${Number(horas) === 1 ? "hour" : "hours"} and ` +
+      `${minutos} ${Number(minutos) === 1 ? "minute" : "minutes"}`
+  );
+
+  resultado = resultado.replace(
+    /\b(\d+)\s*(?:horas?|hrs?|h)\b/gi,
+    (_, cantidad) =>
+      `${cantidad} ${Number(cantidad) === 1 ? "hour" : "hours"}`
+  );
+
+  resultado = resultado.replace(
+    /\b(\d+)\s*(?:minutos?|mins?|min)\b/gi,
+    (_, cantidad) =>
+      `${cantidad} ${Number(cantidad) === 1 ? "minute" : "minutes"}`
+  );
+
+  resultado = resultado.replace(
+    /\b(\d+)\s*(?:segundos?|segs?|s)\b/gi,
+    (_, cantidad) =>
+      `${cantidad} ${Number(cantidad) === 1 ? "second" : "seconds"}`
+  );
+
+  return resultado;
+}
+
+function traducirEtiquetas(texto) {
+  return texto
+    .replace(/\bdescripcion del trabajo\s*:/gi, "Job description:")
+    .replace(/\bobservaciones\s*:/gi, "Observations:")
+    .replace(/\bmateriales utilizados\s*:/gi, "Materials used:")
+    .replace(/\bmaterial utilizado\s*:/gi, "Material used:")
+    .replace(/\btiempo empleado\s*:/gi, "Time spent:")
+    .replace(/\btiempo de trabajo\s*:/gi, "Working time:");
+}
+
 function traducirFragmento(texto) {
+  texto = traducirCantidadesTiempo(texto);
+  texto = traducirEtiquetas(texto);
+
   const normalizadoCompleto = normalizarFrase(texto);
   if (!normalizadoCompleto) return texto;
 
@@ -566,7 +848,6 @@ function traducirFragmento(texto) {
   const coincidencias = Array.from(
     texto.matchAll(/[\p{L}\p{N}]+/gu)
   ).map((coincidencia) => ({
-    original: coincidencia[0],
     normalizada: normalizarFrase(coincidencia[0]),
     inicio: coincidencia.index,
     fin: coincidencia.index + coincidencia[0].length
@@ -592,10 +873,9 @@ function traducirFragmento(texto) {
 
     const primera = coincidencias[indice];
     const ultima = coincidencias[indice + coincidencia.cantidad - 1];
-
-    // No se combinan frases a través de un salto de línea
-    // ni de un final de oración.
     const textoEntrePalabras = texto.slice(primera.inicio, ultima.fin);
+
+    // Nunca se emparejan palabras atravesando puntuación de frase.
     if (/[.!?;\n]/.test(textoEntrePalabras)) {
       indice += 1;
       continue;
@@ -628,11 +908,13 @@ function traducirFragmento(texto) {
 }
 
 /**
- * Traduce localmente las frases conocidas de una observación al inglés.
+ * Traduce localmente las observaciones al inglés para clientes con idioma "en".
  *
- * No guarda cambios en Supabase ni modifica el texto original.
- * Para clientes en español devuelve el texto original.
- * Las partes desconocidas se conservan, para evitar inventar información.
+ * - No usa servicios de traducción externos.
+ * - No modifica ni guarda datos en Supabase.
+ * - Mantiene el texto original para clientes cuyo idioma no sea "en".
+ * - Traduce frases conocidas, vocabulario frecuente y cantidades de tiempo.
+ * - Conserva las partes que no reconoce para evitar inventar datos técnicos.
  */
 export function traducirObservacionInspeccion(texto, idiomaCliente = "es") {
   if (typeof texto !== "string" || !texto.trim()) return texto ?? "";
