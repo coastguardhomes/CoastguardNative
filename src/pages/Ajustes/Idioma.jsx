@@ -9,7 +9,7 @@ import { supabase } from "../../supabaseClient";
 export default function Idioma() {
   const navigate = useNavigate();
   const { language, changeLanguage, t } = useLanguage();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -20,27 +20,19 @@ export default function Idioma() {
       descripcion: "Elige el idioma en el que deseas visualizar la aplicación:",
       guardando: "Guardando preferencia de idioma...",
       guardado: "Preferencia de idioma guardada.",
-      sinSesion:
-        "El idioma ha cambiado en este dispositivo, pero no se ha podido verificar la sesión.",
-      errorGuardar:
-        "El idioma ha cambiado en esta pantalla, pero no se ha podido confirmar que se guardara en el perfil. Vuelve a intentarlo.",
-      errorSinCliente:
-        "El idioma ha cambiado en este dispositivo, pero no se encontró un perfil de cliente asociado a esta cuenta.",
-      errorInesperado:
-        "No se ha podido confirmar el guardado del idioma en el perfil.",
+      sinSesion: "No se ha podido verificar la sesión.",
+      errorGuardar: "No se ha podido guardar el idioma en el perfil del cliente. Vuelve a intentarlo.",
+      errorSinCliente: "No se encontró un perfil de cliente asociado a esta cuenta.",
+      errorInesperado: "No se ha podido confirmar el guardado del idioma.",
     },
     en: {
       descripcion: "Choose the language you want to use in the application:",
       guardando: "Saving language preference...",
       guardado: "Language preference saved.",
-      sinSesion:
-        "The language has changed on this device, but the session could not be verified.",
-      errorGuardar:
-        "The language has changed on this screen, but saving it to your profile could not be confirmed. Please try again.",
-      errorSinCliente:
-        "The language has changed on this device, but no client profile was found for this account.",
-      errorInesperado:
-        "The language preference could not be confirmed as saved to your profile.",
+      sinSesion: "The session could not be verified.",
+      errorGuardar: "The language could not be saved to the client profile. Please try again.",
+      errorSinCliente: "No client profile was found for this account.",
+      errorInesperado: "The language preference could not be confirmed as saved.",
     },
   };
 
@@ -55,44 +47,58 @@ export default function Idioma() {
     setError("");
     setMensaje("");
 
-    // Aplicar inmediatamente el idioma en esta instalación.
+    if (!user?.id || !role) {
+      setError(textos[newLang].sinSesion);
+      return;
+    }
+
+    // La preferencia visual se aplica inmediatamente.
+    // LanguageContext se encarga de guardarla por usuario.
     changeLanguage(newLang);
-    localStorage.setItem("app_idioma", newLang);
 
-    const mensajes = textos[newLang];
-
-    if (!user?.id) {
-      setError(mensajes.sinSesion);
+    // Administrador y técnico no deben modificar clientes.idioma.
+    if (role !== "cliente") {
+      setMensaje(textos[newLang].guardado);
       return;
     }
 
     setGuardando(true);
 
     try {
-      const { data, error: updateError } = await supabase
+      let { data, error: updateError } = await supabase
         .from("clientes")
         .update({ idioma: newLang })
-        .or(`usuario_id.eq.${user.id},user_id.eq.${user.id}`)
+        .eq("usuario_id", user.id)
         .select("id");
 
       if (updateError) {
-        console.error(
-          "Error guardando el idioma del cliente:",
-          updateError
-        );
-        setError(mensajes.errorGuardar);
-        return;
+        throw updateError;
+      }
+
+      // Compatibilidad con perfiles que utilizan user_id.
+      if (!data || data.length === 0) {
+        const resultado = await supabase
+          .from("clientes")
+          .update({ idioma: newLang })
+          .eq("user_id", user.id)
+          .select("id");
+
+        if (resultado.error) {
+          throw resultado.error;
+        }
+
+        data = resultado.data;
       }
 
       if (!data || data.length === 0) {
-        setError(mensajes.errorSinCliente);
+        setError(textos[newLang].errorSinCliente);
         return;
       }
 
-      setMensaje(mensajes.guardado);
+      setMensaje(textos[newLang].guardado);
     } catch (err) {
-      console.error("Error inesperado guardando el idioma:", err);
-      setError(mensajes.errorInesperado);
+      console.error("Error guardando el idioma:", err);
+      setError(textos[newLang].errorGuardar);
     } finally {
       setGuardando(false);
     }
@@ -170,7 +176,9 @@ export default function Idioma() {
         >
           🌐{" "}
           {t("cambiarIdioma") ||
-            (idiomaActual === "en" ? "Select language" : "Seleccionar idioma")}
+            (idiomaActual === "en"
+              ? "Select language"
+              : "Seleccionar idioma")}
         </h1>
 
         <div style={cardStyle}>
