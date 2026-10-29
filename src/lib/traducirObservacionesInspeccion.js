@@ -1,934 +1,1935 @@
-const FRASES_INSPECCION_ES_EN = {
-  // Campos y etiquetas
-  "descripcion del trabajo": "Job description",
-  "descripcion del trabajo y observaciones": "Job description and observations",
-  "observaciones": "Observations",
-  "observacion": "Observation",
-  "materiales utilizados": "Materials used",
-  "material utilizado": "Material used",
-  "tiempo empleado": "Time spent",
-  "tiempo de trabajo": "Working time",
-  "duracion del trabajo": "Work duration",
 
-  // Observaciones generales
-  "sin observaciones": "No observations",
-  "sin observaciones registradas": "No observations recorded",
-  "no hay observaciones": "There are no observations",
-  "todo correcto": "Everything is in order",
-  "todo esta correcto": "Everything is in order",
-  "todo funciona correctamente": "Everything is working correctly",
-  "funciona correctamente": "Working correctly",
-  "funcionando correctamente": "Working correctly",
-  "en buen estado": "In good condition",
-  "en perfecto estado": "In perfect condition",
-  "buen estado general": "Good overall condition",
-  "estado general correcto": "Overall condition is satisfactory",
-  "estado general bueno": "Good overall condition",
-  "estado general adecuado": "Overall condition is satisfactory",
-  "estado general satisfactorio": "Overall condition is satisfactory",
-  "estado aceptable": "Acceptable condition",
-  "estado mejorable": "Condition could be improved",
-  "estado deficiente": "Poor condition",
-  "revisado y correcto": "Checked and satisfactory",
-  "revisada y correcta": "Checked and satisfactory",
-  "revision completada": "Inspection completed",
-  "revision realizada": "Inspection completed",
-  "inspeccion visual realizada": "Visual inspection completed",
-  "comprobado visualmente": "Visually checked",
-  "todo comprobado": "Everything checked",
-  "todo revisado": "Everything inspected",
-  "todo en orden": "Everything is in order",
-  "sin incidencias": "No issues found",
-  "sin incidencias visibles": "No visible issues",
-  "sin incidencias pendientes": "No outstanding issues",
-  "sin problemas": "No problems",
-  "sin problemas aparentes": "No apparent problems",
-  "sin anomalias": "No abnormalities",
-  "sin desperfectos": "No defects",
-  "sin danos visibles": "No visible damage",
-  "sin danos aparentes": "No apparent damage",
-  "sin roturas": "No breakages",
-  "no se observan danos": "No damage observed",
-  "no se aprecian danos": "No damage is apparent",
-  "no se detectan danos": "No damage detected",
-  "no se ha observado ningun dano": "No damage has been observed",
-  "no se ha detectado ninguna incidencia": "No issues have been detected",
-  "no se han detectado incidencias": "No issues have been detected",
-  "no se han observado incidencias": "No issues have been observed",
-  "sin cambios apreciables": "No noticeable changes",
-  "sin cambios respecto a la ultima visita": "No changes since the last visit",
-  "se mantiene en buen estado": "Remains in good condition",
-  "se encuentra en buen estado": "Is in good condition",
-  "requiere revision": "Requires inspection",
-  "requiere comprobacion": "Requires checking",
-  "requiere reparacion": "Requires repair",
-  "requiere mantenimiento": "Requires maintenance",
-  "pendiente de revision": "Pending inspection",
-  "pendiente de comprobacion": "Pending verification",
-  "pendiente de reparacion": "Pending repair",
-  "pendiente de mantenimiento": "Pending maintenance",
-  "pendiente de confirmar": "Pending confirmation",
-  "pendiente de acceso": "Access pending",
-  "incidencia comunicada": "Issue reported",
-  "incidencia notificada": "Issue reported",
-  "incidencia resuelta": "Issue resolved",
-  "incidencia pendiente": "Issue pending",
-  "incidencia abierta": "Open issue",
-  "incidencia cerrada": "Issue closed",
-  "avisado al responsable": "Person in charge notified",
-  "responsable informado": "Person in charge informed",
-  "cliente informado": "Customer informed",
-  "se recomienda revisar": "Inspection is recommended",
-  "se recomienda reparacion": "Repair is recommended",
-  "se recomienda mantenimiento": "Maintenance is recommended",
-  "se recomienda seguimiento": "Follow-up is recommended",
-  "se necesita seguimiento": "Follow-up is needed",
-  "se recomienda una revision": "An inspection is recommended",
-  "se recomienda una reparacion": "A repair is recommended",
-  "se recomienda sustituir": "Replacement is recommended",
-  "se recomienda limpiar": "Cleaning is recommended",
-  "se recomienda cambiar el filtro": "Changing the filter is recommended",
-  "no se ha podido comprobar": "Could not be checked",
-  "no ha sido posible comprobar": "It was not possible to check",
-  "no se ha podido acceder": "Access was not possible",
-  "no se pudo acceder a la zona": "The area could not be accessed",
-  "no se pudo realizar la comprobacion": "The check could not be completed",
-  "comprobacion no realizada": "Check not completed",
-  "acceso limitado": "Limited access",
-  "acceso bloqueado": "Access blocked",
-  "sin acceso a la zona": "No access to the area",
-  "sin problemas de acceso": "No access issues",
-  "sin problemas de funcionamiento": "No operational issues",
-  "no aplica": "Not applicable",
-  "no disponible": "Not available",
-  "sin datos": "No data available",
-  "sin informacion adicional": "No additional information",
+/*
+ * COASTGUARD HOMES SERVICES
+ * Traductor local de observaciones de inspección
+ *
+ * Objetivo:
+ * - Traducir observaciones españolas al inglés.
+ * - Reconocer frases en español, inglés y mezclas de ambos.
+ * - Traducir frases completas antes que palabras individuales.
+ * - Conservar las frases que ya estén correctamente en inglés.
+ * - No inventar reparaciones, causas ni estados.
+ * - Mantener números, puntuación y saltos de línea.
+ * - Traducir vocabulario técnico de viviendas y mantenimiento.
+ *
+ * Uso:
+ * traducirObservacionInspeccion(texto, "en")
+ *
+ * La función conserva la API anterior.
+ */
 
-  // Puertas, ventanas y seguridad
-  "puerta en buen estado": "Door in good condition",
-  "puertas en buen estado": "Doors in good condition",
-  "puerta cerrada correctamente": "Door closed properly",
-  "puertas cerradas correctamente": "Doors closed properly",
-  "puerta cerrada": "Door closed",
-  "puerta abierta": "Door open",
-  "puerta danada": "Damaged door",
-  "puerta desajustada": "Misaligned door",
-  "puerta no cierra correctamente": "Door does not close properly",
-  "puerta roza con el suelo": "Door rubs against the floor",
-  "bisagras en buen estado": "Hinges in good condition",
-  "bisagras danadas": "Damaged hinges",
-  "cerradura en buen estado": "Lock in good condition",
-  "cerradura funcionando correctamente": "Lock working correctly",
-  "cerraduras funcionando correctamente": "Locks working correctly",
-  "cerradura danada": "Damaged lock",
-  "cerradura atascada": "Jammed lock",
-  "cerradura no funciona": "Lock is not working",
-  "llaves comprobadas": "Keys checked",
-  "llaves en su lugar": "Keys in their designated place",
-  "llaves de repuesto comprobadas": "Spare keys checked",
-  "llaves entregadas": "Keys handed over",
-  "llaves recogidas": "Keys collected",
-  "llaves guardadas correctamente": "Keys stored correctly",
-  "ventana en buen estado": "Window in good condition",
-  "ventanas en buen estado": "Windows in good condition",
-  "ventana cerrada": "Window closed",
-  "ventana abierta": "Window open",
-  "ventana danada": "Damaged window",
-  "ventanas cerradas correctamente": "Windows closed properly",
-  "ventana no cierra correctamente": "Window does not close properly",
-  "cristal roto": "Broken glass",
-  "cristales rotos": "Broken glass panes",
-  "cristales sin roturas": "Glass panes are not broken",
-  "cristales en buen estado": "Glass panes in good condition",
-  "persiana en buen estado": "Shutter in good condition",
-  "persianas funcionando correctamente": "Shutters working correctly",
-  "persiana atascada": "Stuck shutter",
-  "persiana danada": "Damaged shutter",
-  "persiana abierta": "Shutter open",
-  "persiana cerrada": "Shutter closed",
-  "mosquitera en buen estado": "Insect screen in good condition",
-  "alarma funcionando correctamente": "Alarm working correctly",
-  "alarma comprobada": "Alarm checked",
-  "alarma no funciona": "Alarm is not working",
-  "sensores funcionando correctamente": "Sensors working correctly",
-  "detector de humo comprobado": "Smoke detector checked",
-  "detector de humo funcionando": "Smoke detector working",
-  "extintor en su lugar": "Fire extinguisher in its designated place",
-  "botiquin en su lugar": "First-aid kit in its designated place",
-  "accesos comprobados": "Access points checked",
-  "accesos exteriores revisados": "Exterior access points checked",
+// ============================================================
+// 1. NORMALIZACIÓN
+// ============================================================
 
-  // Electricidad e iluminación
-  "suministro electrico correcto": "Electrical supply is satisfactory",
-  "suministro electrico restablecido": "Electrical supply restored",
-  "suministro electrico interrumpido": "Electrical supply interrupted",
-  "cuadro electrico en buen estado": "Electrical panel in good condition",
-  "cuadro electrico sin interruptores disparados": "Electrical panel with no tripped breakers",
-  "sin interruptores disparados": "No tripped breakers",
-  "interruptor disparado": "Tripped breaker",
-  "interruptores funcionando correctamente": "Switches working correctly",
-  "interruptor danado": "Damaged switch",
-  "enchufes en buen estado": "Sockets in good condition",
-  "enchufe en buen estado": "Socket in good condition",
-  "enchufe danado": "Damaged socket",
-  "enchufes danados": "Damaged sockets",
-  "enchufes sin marcas de quemaduras ni holguras": "Sockets show no burn marks or looseness",
-  "toma de corriente danada": "Damaged power outlet",
-  "marcas de quemaduras": "Burn marks",
-  "sin marcas de quemaduras": "No burn marks",
-  "cableado visible": "Visible wiring",
-  "cableado en buen estado": "Wiring in good condition",
-  "cable suelto": "Loose cable",
-  "cables sueltos": "Loose cables",
-  "cable danado": "Damaged cable",
-  "bombilla fundida": "Blown bulb",
-  "bombillas fundidas": "Blown bulbs",
-  "falta una bombilla": "A bulb is missing",
-  "luces funcionando correctamente": "Lights working correctly",
-  "iluminacion funcionando correctamente": "Lighting working correctly",
-  "luces e interruptores funcionando correctamente": "Lights and switches working correctly",
-  "luz no funciona": "Light is not working",
-  "iluminacion insuficiente": "Insufficient lighting",
-  "bateria baja": "Low battery",
-  "baterias agotadas": "Batteries depleted",
-  "electrodomesticos funcionando correctamente": "Appliances working correctly",
-  "electrodomestico no funciona": "Appliance is not working",
-  "sin problemas electricos": "No electrical problems",
-  "no se detectan problemas electricos": "No electrical problems detected",
-
-  // Fontanería, agua y fugas
-  "grifo funcionando correctamente": "Tap working correctly",
-  "grifos funcionando correctamente": "Taps working correctly",
-  "grifo danado": "Damaged tap",
-  "grifo atascado": "Blocked tap",
-  "grifos sin goteos": "Taps not dripping",
-  "grifo goteando": "Dripping tap",
-  "grifos goteando": "Dripping taps",
-  "sin goteos": "No dripping",
-  "sin fugas": "No leaks",
-  "sin fuga": "No leak",
-  "no hay fugas": "No leaks",
-  "no hay fugas de agua": "There are no water leaks",
-  "sin fugas de agua": "No water leaks",
-  "no se observan fugas": "No leaks observed",
-  "no se observan fugas de agua": "No water leaks observed",
-  "no se aprecian fugas": "No leaks are apparent",
-  "no se detectan fugas": "No leaks detected",
-  "no se ha detectado ninguna fuga": "No leaks have been detected",
-  "no se detectan filtraciones": "No water ingress detected",
-  "no hay fugas ni filtraciones": "There are no leaks or water ingress",
-  "no hay filtraciones": "There is no water ingress",
-  "sin filtraciones": "No water ingress",
-  "sin signos de fuga": "No signs of leaks",
-  "fuga visible": "Visible leak",
-  "fuga de agua": "Water leak",
-  "fugas de agua": "Water leaks",
-  "fuga reparada": "Leak repaired",
-  "fuga reparada correctamente": "Leak repaired successfully",
-  "fugas reparadas": "Leaks repaired",
-  "fuga solucionada": "Leak fixed",
-  "fugas solucionadas": "Leaks fixed",
-  "fuga pendiente de reparar": "Leak awaiting repair",
-  "se detecta una fuga": "A leak has been detected",
-  "se ha detectado una fuga": "A leak has been detected",
-  "se observa una fuga": "A leak is observed",
-  "se reparo la fuga": "The leak was repaired",
-  "se ha reparado la fuga": "The leak has been repaired",
-  "se ha solucionado la fuga": "The leak has been fixed",
-  "se ha comprobado que no hay fugas": "It has been checked that there are no leaks",
-  "llave de paso funcionando correctamente": "Shut-off valve working correctly",
-  "llaves de paso funcionando correctamente": "Shut-off valves working correctly",
-  "llave de agua cerrada": "Water valve is closed",
-  "llave de agua abierta": "Water valve is open",
-  "suministro de agua cortado": "Water supply is shut off",
-  "suministro de agua restablecido": "Water supply restored",
-  "presion de agua correcta": "Water pressure is satisfactory",
-  "presion de agua baja": "Low water pressure",
-  "presion de agua alta": "High water pressure",
-  "sin suministro de agua": "No water supply",
-  "cisterna funcionando correctamente": "Toilet cistern working correctly",
-  "cisterna cargando correctamente": "Toilet cistern refilling correctly",
-  "cisterna pierde agua": "Toilet cistern is leaking",
-  "wc funcionando correctamente": "Toilet working correctly",
-  "wc atascado": "Blocked toilet",
-  "inodoro en buen estado": "Toilet in good condition",
-  "desague limpio": "Drain is clean",
-  "desagues limpios": "Drains are clean",
-  "desagues sin obstrucciones": "Drains are unobstructed",
-  "desague obstruido": "Blocked drain",
-  "desague lento": "Slow drain",
-  "desagues atascados": "Blocked drains",
-  "sifon en buen estado": "Trap in good condition",
-  "sin problemas de fontaneria": "No plumbing problems",
-  "no se detectan problemas de fontaneria": "No plumbing problems detected",
-
-  // Humedad, paredes, techos y suelos
-  "humedad en la pared": "Dampness on the wall",
-  "humedades en las paredes": "Dampness on the walls",
-  "presencia de humedad": "Presence of dampness",
-  "se detecta humedad": "Dampness has been detected",
-  "no se detecta humedad": "No dampness has been detected",
-  "no hay humedad": "There is no dampness",
-  "no hay humedades": "There is no dampness",
-  "no se detectan humedades": "No dampness detected",
-  "no hay signos de humedad": "There are no signs of dampness",
-  "olor a humedad": "Musty smell",
-  "manchas de humedad": "Damp stains",
-  "manchas en el techo": "Stains on the ceiling",
-  "mancha en la pared": "Stain on the wall",
-  "manchas en la pared": "Stains on the wall",
-  "no hay manchas": "There are no stains",
-  "sin manchas visibles": "No visible stains",
-  "se observa una mancha": "A stain has been observed",
-  "se observan manchas": "Stains have been observed",
-  "grieta en la pared": "Crack in the wall",
-  "grietas en la pared": "Cracks in the wall",
-  "grieta en el techo": "Crack in the ceiling",
-  "grietas en el techo": "Cracks in the ceiling",
-  "no hay grietas ni fisuras": "There are no cracks or fissures",
-  "no se aprecian grietas": "No cracks are apparent",
-  "pintura desconchada": "Peeling paint",
-  "pintura en buen estado": "Paint in good condition",
-  "paredes en buen estado": "Walls in good condition",
-  "pared danada": "Damaged wall",
-  "techo en buen estado": "Ceiling in good condition",
-  "techos en buen estado": "Ceilings in good condition",
-  "suelo en buen estado": "Floor in good condition",
-  "suelos en buen estado": "Floors in good condition",
-  "baldosas rotas": "Broken tiles",
-  "baldosa rota": "Broken tile",
-  "azulejos en buen estado": "Tiles in good condition",
-  "azulejo roto": "Broken tile",
-  "suelo danado": "Damaged floor",
-  "suelo mojado": "Wet floor",
-  "suelo seco": "Dry floor",
-  "desgaste normal": "Normal wear",
-  "desgaste excesivo": "Excessive wear",
-  "se observa desgaste": "Wear has been observed",
-  "se aprecia desgaste": "Wear is visible",
-  "sin signos de deterioro": "There are no signs of deterioration",
-  "se observa deterioro": "Deterioration has been observed",
-  "danos estructurales": "Structural damage",
-  "sin danos estructurales visibles": "No visible structural damage",
-  "sin problemas de humedad": "No dampness issues",
-  "no hay danos ni desperfectos": "There is no damage or deterioration",
-  "no se aprecian desperfectos": "No defects are apparent",
-  "no se aprecian manchas": "No stains are apparent",
-  "no hay signos de filtracion": "There are no signs of water ingress",
-  "presencia de filtraciones": "Presence of water ingress",
-  "se observa una filtracion": "Water ingress is observed",
-
-  // Cocina y electrodomésticos
-  "cocina en buen estado": "Kitchen in good condition",
-  "encimera en buen estado": "Countertop in good condition",
-  "encimera danada": "Damaged countertop",
-  "horno funcionando correctamente": "Oven working correctly",
-  "horno no funciona": "Oven is not working",
-  "vitroceramica funcionando correctamente": "Ceramic hob working correctly",
-  "placa de cocina funcionando correctamente": "Cooktop working correctly",
-  "campana extractora funcionando correctamente": "Extractor hood working correctly",
-  "campana extractora sucia": "Dirty extractor hood",
-  "nevera funcionando correctamente": "Fridge working correctly",
-  "frigorifico funcionando correctamente": "Refrigerator working correctly",
-  "congelador funcionando correctamente": "Freezer working correctly",
-  "lavavajillas funcionando correctamente": "Dishwasher working correctly",
-  "lavadora funcionando correctamente": "Washing machine working correctly",
-  "secadora funcionando correctamente": "Dryer working correctly",
-  "microondas funcionando correctamente": "Microwave working correctly",
-  "electrodomesticos limpios": "Appliances are clean",
-  "electrodomesticos en buen estado": "Appliances in good condition",
-
-  // Baño
-  "bano en buen estado": "Bathroom in good condition",
-  "ducha en buen estado": "Shower in good condition",
-  "ducha funcionando correctamente": "Shower working correctly",
-  "mampara en buen estado": "Shower screen in good condition",
-  "mampara danada": "Damaged shower screen",
-  "silicona en buen estado": "Sealant in good condition",
-  "silicona deteriorada": "Deteriorated sealant",
-  "lavabo en buen estado": "Washbasin in good condition",
-  "lavabo atascado": "Blocked washbasin",
-  "banera en buen estado": "Bathtub in good condition",
-  "toallero en buen estado": "Towel rail in good condition",
-  "extractor funcionando correctamente": "Extractor fan working correctly",
-  "ventilacion correcta": "Ventilation is satisfactory",
-  "ventilacion insuficiente": "Insufficient ventilation",
-
-  // Climatización
-  "aire acondicionado funcionando correctamente": "Air conditioning working correctly",
-  "aire acondicionado no funciona": "Air conditioning is not working",
-  "aire acondicionado limpio": "Air conditioning is clean",
-  "filtro limpio": "Clean filter",
-  "filtro sucio": "Dirty filter",
-  "filtro sustituido": "Filter replaced",
-  "calefaccion funcionando correctamente": "Heating working correctly",
-  "calefaccion no funciona": "Heating is not working",
-  "termostato funcionando correctamente": "Thermostat working correctly",
-  "radiador funcionando correctamente": "Radiator working correctly",
-  "radiador no calienta": "Radiator is not heating",
-  "temperatura correcta": "Temperature is satisfactory",
-  "temperatura demasiado alta": "Temperature is too high",
-  "temperatura demasiado baja": "Temperature is too low",
-  "ruido extraño": "Unusual noise",
-  "ruidos extraños": "Unusual noises",
-  "funciona de forma intermitente": "Works intermittently",
-  "funcionamiento irregular": "Irregular operation",
-  "olor a quemado": "Burning smell",
-  "sin olores extraños": "No unusual smells",
-  "sin malos olores": "No unpleasant odours",
-  "no se detectan olores": "No odours detected",
-
-  // Limpieza, vivienda y exteriores
-  "limpieza correcta": "Cleaning is satisfactory",
-  "vivienda limpia": "Property is clean",
-  "vivienda en buen estado": "Property in good condition",
-  "limpieza ligera realizada": "Light cleaning completed",
-  "limpieza realizada": "Cleaning completed",
-  "limpieza pendiente": "Cleaning pending",
-  "necesita limpieza": "Needs cleaning",
-  "zona limpia": "Area is clean",
-  "zona sucia": "Dirty area",
-  "zona humeda": "Damp area",
-  "zona seca": "Dry area",
-  "basura retirada": "Rubbish removed",
-  "basura acumulada": "Accumulated rubbish",
-  "ausencia de basura interior": "No rubbish indoors",
-  "olor desagradable": "Unpleasant smell",
-  "sin signos de plagas": "No signs of pests",
-  "no se observan plagas": "No pests observed",
-  "presencia de insectos": "Insects present",
-  "sin presencia de insectos": "No insects present",
-  "presencia de roedores": "Rodents present",
-  "sin presencia de roedores": "No rodents present",
-  "jardin en buen estado": "Garden in good condition",
-  "jardin limpio": "Garden is clean",
-  "jardin descuidado": "Neglected garden",
-  "jardin necesita mantenimiento": "Garden requires maintenance",
-  "estado general del jardin y limpieza de exteriores": "Overall garden condition and outdoor cleanliness",
-  "exteriores limpios": "Outdoor areas are clean",
-  "exteriores en buen estado": "Outdoor areas in good condition",
-  "terraza en buen estado": "Terrace in good condition",
-  "balcon en buen estado": "Balcony in good condition",
-  "patio limpio": "Patio is clean",
-  "valla en buen estado": "Fence in good condition",
-  "puerta exterior en buen estado": "Exterior door in good condition",
-  "piscina en buen estado": "Swimming pool in good condition",
-  "piscina limpia": "Swimming pool is clean",
-  "piscina sucia": "Swimming pool is dirty",
-  "nivel de agua correcto": "Water level is satisfactory",
-  "nivel de agua bajo": "Water level is low",
-  "nivel de agua alto": "Water level is high",
-  "bomba de piscina funcionando correctamente": "Pool pump working correctly",
-  "bomba de piscina no funciona": "Pool pump is not working",
-  "filtro de piscina comprobado": "Pool filter checked",
-  "filtro de piscina sucio": "Pool filter is dirty",
-  "agua de piscina limpia": "Pool water is clean",
-  "agua de piscina turbia": "Pool water is cloudy",
-
-  // Mobiliario
-  "mobiliario en buen estado": "Furniture in good condition",
-  "mueble danado": "Damaged furniture",
-  "muebles en buen estado": "Furniture in good condition",
-  "armario en buen estado": "Wardrobe in good condition",
-  "cama en buen estado": "Bed in good condition",
-  "colchon en buen estado": "Mattress in good condition",
-  "sofa en buen estado": "Sofa in good condition",
-  "mesa en buen estado": "Table in good condition",
-  "sillas en buen estado": "Chairs in good condition",
-  "cortinas en buen estado": "Curtains in good condition",
-
-  // Reparaciones y mantenimiento
-  "no funciona correctamente": "Not working correctly",
-  "no funciona": "Not working",
-  "necesita reparacion": "Needs repair",
-  "necesita sustitucion": "Needs replacement",
-  "se ha sustituido": "Has been replaced",
-  "se ha reparado": "Has been repaired",
-  "se ha limpiado": "Has been cleaned",
-  "danos accidentales": "Accidental damage",
-  "dano accidental": "Accidental damage",
-  "dano visible": "Visible damage",
-  "danos visibles": "Visible damage",
-  "deterioro visible": "Visible deterioration",
-  "se detecta una grieta": "A crack has been detected",
-  "se detectan grietas": "Cracks have been detected",
-  "se detecta un olor extrano": "An unusual smell has been detected",
-  "no se ha observado deterioro": "No deterioration has been observed",
-  "trabajo finalizado": "Work completed",
-  "trabajo realizado": "Work carried out",
-  "trabajo pendiente": "Work pending",
-  "trabajo completado": "Work completed",
-  "trabajo terminado": "Work finished",
-  "reparacion realizada": "Repair completed",
-  "reparacion completada": "Repair completed",
-  "mantenimiento realizado": "Maintenance completed",
-  "mantenimiento pendiente": "Maintenance pending",
-  "material sustituido": "Material replaced",
-  "pieza sustituida": "Part replaced",
-  "pieza danada": "Damaged part",
-  "se informara al responsable": "The person in charge will be informed",
-
-  // Vocabulario individual. Se utiliza solo cuando no coincide una frase más larga.
-  "puerta": "door",
-  "puertas": "doors",
-  "ventana": "window",
-  "ventanas": "windows",
-  "pared": "wall",
-  "paredes": "walls",
-  "techo": "ceiling",
-  "techos": "ceilings",
-  "suelo": "floor",
-  "suelos": "floors",
-  "cocina": "kitchen",
-  "bano": "bathroom",
-  "jardin": "garden",
-  "piscina": "swimming pool",
-  "terraza": "terrace",
-  "balcon": "balcony",
-  "patio": "patio",
-  "habitacion": "room",
-  "salon": "living room",
-  "dormitorio": "bedroom",
-  "vivienda": "property",
-  "casa": "house",
-  "grifo": "tap",
-  "grifos": "taps",
-  "tubo": "pipe",
-  "tubos": "pipes",
-  "tuberia": "pipework",
-  "tuberias": "pipes",
-  "junta": "seal",
-  "juntas": "seals",
-  "tornillo": "screw",
-  "tornillos": "screws",
-  "tuerca": "nut",
-  "tuercas": "nuts",
-  "arandela": "washer",
-  "arandelas": "washers",
-  "cable": "cable",
-  "cables": "cables",
-  "cableado": "wiring",
-  "enchufe": "socket",
-  "enchufes": "sockets",
-  "interruptor": "switch",
-  "interruptores": "switches",
-  "bombilla": "bulb",
-  "bombillas": "bulbs",
-  "luz": "light",
-  "luces": "lights",
-  "pintura": "paint",
-  "silicona": "sealant",
-  "masilla": "filler",
-  "cemento": "cement",
-  "mortero": "mortar",
-  "azulejo": "tile",
-  "azulejos": "tiles",
-  "baldosa": "tile",
-  "baldosas": "tiles",
-  "cristal": "glass",
-  "cristales": "glass panes",
-  "cerradura": "lock",
-  "bisagra": "hinge",
-  "bisagras": "hinges",
-  "persiana": "shutter",
-  "persianas": "shutters",
-  "mosquitera": "insect screen",
-  "filtro": "filter",
-  "filtros": "filters",
-  "bomba": "pump",
-  "valvula": "valve",
-  "valvulas": "valves",
-  "desague": "drain",
-  "desagues": "drains",
-  "sifon": "trap",
-  "cisterna": "cistern",
-  "lavabo": "washbasin",
-  "ducha": "shower",
-  "banera": "bathtub",
-  "inodoro": "toilet",
-  "wc": "toilet",
-  "horno": "oven",
-  "nevera": "fridge",
-  "frigorifico": "refrigerator",
-  "lavadora": "washing machine",
-  "lavavajillas": "dishwasher",
-  "microondas": "microwave",
-  "caldera": "boiler",
-  "radiador": "radiator",
-  "termostato": "thermostat",
-  "calefaccion": "heating",
-  "mueble": "furniture item",
-  "muebles": "furniture",
-  "armario": "wardrobe",
-  "cama": "bed",
-  "colchon": "mattress",
-  "sofa": "sofa",
-  "mesa": "table",
-  "silla": "chair",
-  "sillas": "chairs",
-  "cortina": "curtain",
-  "cortinas": "curtains",
-  "llave": "key",
-  "llaves": "keys",
-  "mancha": "stain",
-  "manchas": "stains",
-  "grieta": "crack",
-  "grietas": "cracks",
-  "humedad": "dampness",
-  "humedades": "dampness",
-  "fuga": "leak",
-  "fugas": "leaks",
-  "filtracion": "water ingress",
-  "filtraciones": "water ingress",
-  "polvo": "dust",
-  "suciedad": "dirt",
-  "basura": "rubbish",
-  "insecto": "insect",
-  "insectos": "insects",
-  "plaga": "pest",
-  "plagas": "pests",
-  "roedor": "rodent",
-  "roedores": "rodents",
-  "olor": "smell",
-  "ruido": "noise",
-  "ruidos": "noises",
-  "presion": "pressure",
-  "agua": "water",
-  "material": "material",
-  "materiales": "materials",
-  "pieza": "part",
-  "piezas": "parts",
-  "cantidad": "quantity",
-  "unidad": "unit",
-  "unidades": "units",
-  "abierto": "open",
-  "abierta": "open",
-  "abiertos": "open",
-  "abiertas": "open",
-  "cerrado": "closed",
-  "cerrada": "closed",
-  "cerrados": "closed",
-  "cerradas": "closed",
-  "limpio": "clean",
-  "limpia": "clean",
-  "limpios": "clean",
-  "limpias": "clean",
-  "sucio": "dirty",
-  "sucia": "dirty",
-  "sucios": "dirty",
-  "sucias": "dirty",
-  "roto": "broken",
-  "rota": "broken",
-  "rotos": "broken",
-  "rotas": "broken",
-  "danado": "damaged",
-  "danada": "damaged",
-  "danados": "damaged",
-  "danadas": "damaged",
-  "desgastado": "worn",
-  "desgastada": "worn",
-  "atascado": "blocked",
-  "atascada": "blocked",
-  "suelto": "loose",
-  "suelta": "loose",
-  "sueltos": "loose",
-  "sueltas": "loose",
-  "nuevo": "new",
-  "nueva": "new",
-  "nuevos": "new",
-  "nuevas": "new",
-  "viejo": "old",
-  "vieja": "old",
-  "correcto": "correct",
-  "correcta": "correct",
-  "incorrecto": "incorrect",
-  "incorrecta": "incorrect",
-  "funciona": "works",
-  "funcionando": "working",
-  "averia": "fault",
-  "averiado": "faulty",
-  "averiada": "faulty",
-  "reparar": "repair",
-  "reparado": "repaired",
-  "reparada": "repaired",
-  "reparados": "repaired",
-  "reparadas": "repaired",
-  "sustituir": "replace",
-  "sustituido": "replaced",
-  "sustituida": "replaced",
-  "limpiar": "clean",
-  "limpieza": "cleaning",
-  "mantenimiento": "maintenance",
-  "inspeccion": "inspection",
-  "revision": "inspection",
-  "electrico": "electrical",
-  "electrica": "electrical",
-  "electricos": "electrical",
-  "electricas": "electrical",
-  "interior": "interior",
-  "exterior": "exterior",
-  "interiores": "interiors",
-  "exteriores": "outdoor areas"
-};
-
-function normalizarFrase(texto) {
+function normalizar(texto) {
   return String(texto ?? "")
+    .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
     .replace(/[’‘]/g, "'")
-    .replace(/[¿?¡!.,;:()[\]{}"“”]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-const ENTRADAS = Object.entries(FRASES_INSPECCION_ES_EN)
-  .map(([frase, traduccion]) => {
-    const normalizada = normalizarFrase(frase);
-    return {
-      normalizada,
-      palabras: normalizada.split(" ").filter(Boolean),
-      traduccion
-    };
-  })
-  .sort((a, b) => b.palabras.length - a.palabras.length);
-
-const MAX_PALABRAS = Math.max(
-  1,
-  ...ENTRADAS.map((entrada) => entrada.palabras.length)
-);
-
-function buscarCoincidenciaExacta(palabras, inicio) {
-  for (const entrada of ENTRADAS) {
-    const cantidad = entrada.palabras.length;
-    if (inicio + cantidad > palabras.length) continue;
-
-    let coincide = true;
-
-    for (let i = 0; i < cantidad; i += 1) {
-      if (palabras[inicio + i] !== entrada.palabras[i]) {
-        coincide = false;
-        break;
-      }
-    }
-
-    if (coincide) {
-      return { cantidad, traduccion: entrada.traduccion };
-    }
-  }
-
-  return null;
+function escaparRegex(texto) {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function distanciaEdicion(a, b) {
-  if (a === b) return 0;
-  if (!a.length) return b.length;
-  if (!b.length) return a.length;
+function conservarMayusculas(original, resultado) {
+  if (!original || !resultado) return resultado;
 
-  let anterior = Array.from({ length: b.length + 1 }, (_, i) => i);
-
-  for (let i = 1; i <= a.length; i += 1) {
-    const actual = [i];
-
-    for (let j = 1; j <= b.length; j += 1) {
-      const coste = a[i - 1] === b[j - 1] ? 0 : 1;
-      actual[j] = Math.min(
-        actual[j - 1] + 1,
-        anterior[j] + 1,
-        anterior[j - 1] + coste
-      );
-    }
-
-    anterior = actual;
+  if (original === original.toUpperCase()) {
+    return resultado.toUpperCase();
   }
 
-  return anterior[b.length];
-}
-
-function buscarCoincidenciaAproximada(palabras, inicio) {
-  let mejor = null;
-  let mejorPuntuacion = 0;
-
-  // Solo se buscan erratas en frases de varias palabras.
-  // Las coincidencias aproximadas de una sola palabra podrían
-  // cambiar términos técnicos por error, por eso se evitan.
-  for (
-    let cantidad = Math.min(MAX_PALABRAS, palabras.length - inicio);
-    cantidad >= 2;
-    cantidad -= 1
+  if (
+    original[0] &&
+    original[0] === original[0].toUpperCase()
   ) {
-    const textoVentana = palabras.slice(inicio, inicio + cantidad).join(" ");
-    if (textoVentana.length < 12) continue;
-
-    for (const entrada of ENTRADAS) {
-      if (entrada.palabras.length !== cantidad) continue;
-      if (entrada.normalizada.length < 12) continue;
-
-      const diferenciaLongitud = Math.abs(
-        entrada.normalizada.length - textoVentana.length
-      );
-
-      if (diferenciaLongitud > 2) continue;
-
-      const distancia = distanciaEdicion(
-        textoVentana,
-        entrada.normalizada
-      );
-
-      const puntuacion =
-        1 - distancia /
-        Math.max(textoVentana.length, entrada.normalizada.length);
-
-      if (puntuacion > mejorPuntuacion) {
-        mejor = { cantidad, traduccion: entrada.traduccion };
-        mejorPuntuacion = puntuacion;
-      }
-    }
+    return resultado.charAt(0).toUpperCase() + resultado.slice(1);
   }
 
-  return mejorPuntuacion >= 0.91 ? mejor : null;
+  return resultado;
 }
 
-function traducirCantidadesTiempo(texto) {
+// ============================================================
+// 2. CORRECCIONES CONTROLADAS DE ERRORES FRECUENTES
+// ============================================================
+
+const CORRECCIONES = [
+  [/\bbao\b/gi, "baño"],
+  [/\bbano\b/gi, "baño"],
+  [/\bbathrom\b/gi, "bathroom"],
+  [/\bbathromm\b/gi, "bathroom"],
+  [/\bvitroceramica\b/gi, "vitrocerámica"],
+  [/\bvitro\b/gi, "vitro"],
+  [/\bfontaneria\b/gi, "fontanería"],
+  [/\belectricidad\b/gi, "electricidad"],
+  [/\belectrico\b/gi, "eléctrico"],
+  [/\belectrica\b/gi, "eléctrica"],
+  [/\blampara\b/gi, "lámpara"],
+  [/\blamparas\b/gi, "lámparas"],
+  [/\bpersiana\b/gi, "persiana"],
+  [/\bpersianas\b/gi, "persianas"],
+  [/\bhumedad\b/gi, "humedad"],
+  [/\bhumedades\b/gi, "humedades"],
+  [/\bgrifo\b/gi, "grifo"],
+  [/\bgrifos\b/gi, "grifos"],
+  [/\bnevera\b/gi, "nevera"],
+  [/\bfrigorifico\b/gi, "frigorífico"],
+  [/\bcalentador\b/gi, "calentador"],
+  [/\btermo\b/gi, "termo"],
+  [/\bdesague\b/gi, "desagüe"],
+  [/\bfontanero\b/gi, "fontanero"],
+  [/\bfontanera\b/gi, "fontanera"],
+  [/\bducha\b/gi, "ducha"],
+  [/\bduchas\b/gi, "duchas"],
+  [/\bbanera\b/gi, "bañera"],
+  [/\bbaneras\b/gi, "bañeras"],
+  [/\bencimera\b/gi, "encimera"],
+  [/\bencimeras\b/gi, "encimeras"],
+  [/\bhabitacion\b/gi, "habitación"],
+  [/\bhabitaciones\b/gi, "habitaciones"],
+  [/\bcocina\b/gi, "cocina"],
+  [/\bcocinas\b/gi, "cocinas"],
+  [/\btejado\b/gi, "tejado"],
+  [/\btejados\b/gi, "tejados"],
+  [/\bdesconectado\b/gi, "desconectado"],
+  [/\bdesconectada\b/gi, "desconectada"],
+  [/\bconectado\b/gi, "conectado"],
+  [/\bconectada\b/gi, "conectada"],
+  [/\binterruptor\b/gi, "interruptor"],
+  [/\binterruptores\b/gi, "interruptores"],
+  [/\benchufe\b/gi, "enchufe"],
+  [/\benchufes\b/gi, "enchufes"],
+  [/\btelevision\b/gi, "televisión"],
+  [/\btelevisor\b/gi, "televisor"],
+  [/\btelevisores\b/gi, "televisores"],
+  [/\bmicroondas\b/gi, "microondas"],
+  [/\b lavadora\b/gi, "lavadora"],
+  [/\bsecadora\b/gi, "secadora"],
+  [/\bcalefaccion\b/gi, "calefacción"],
+  [/\bventilacion\b/gi, "ventilación"],
+  [/\binstalacion\b/gi, "instalación"],
+  [/\binstalaciones\b/gi, "instalaciones"],
+  [/\breparacion\b/gi, "reparación"],
+  [/\breparaciones\b/gi, "reparaciones"],
+  [/\bdesperfecto\b/gi, "desperfecto"],
+  [/\bdesperfectos\b/gi, "desperfectos"],
+  [/\bcristal\b/gi, "cristal"],
+  [/\bcristales\b/gi, "cristales"],
+  [/\bventilador\b/gi, "ventilador"],
+  [/\bventiladores\b/gi, "ventiladores"],
+  [/\bhabitacion\b/gi, "habitación"],
+];
+
+// ============================================================
+// 3. FRASES COMPLETAS Y EQUIVALENCIAS DE SIGNIFICADO
+// ============================================================
+
+const REGLAS_FRASES = [
+  // ----------------------------------------------------------
+  // GRIFOS Y FONTANERÍA
+  // ----------------------------------------------------------
+
+  [/\b(?:el )?grifo (?:esta )?roto\b/gi, "the tap is broken"],
+  [/\bgrifo roto\b/gi, "broken tap"],
+  [/\bgrifo (?:esta )?goteando\b/gi, "the tap is dripping"],
+  [/\bgrifo gotea\b/gi, "the tap is dripping"],
+  [/\bgrifo pierde agua\b/gi, "the tap is leaking"],
+  [/\bgrifo esta perdiendo agua\b/gi, "the tap is leaking"],
+  [/\bgrifo pierde\b/gi, "the tap is leaking"],
+  [/\bgrifo no cierra\b/gi, "the tap does not close properly"],
+  [/\bgrifo no funciona\b/gi, "the tap is not working"],
+  [/\bgrifo no sale agua\b/gi, "no water comes out of the tap"],
+  [/\bgrifo no tiene agua\b/gi, "there is no water coming from the tap"],
+  [/\bgrifo suelto\b/gi, "loose tap"],
+  [/\bgrifo flojo\b/gi, "loose tap"],
+  [/\bgrifo oxidado\b/gi, "rusty tap"],
+  [/\bgrifo atascado\b/gi, "blocked tap"],
+  [/\bgrifo obstruido\b/gi, "blocked tap"],
+  [/\bgrifo nuevo\b/gi, "new tap"],
+  [/\bcambiar grifo\b/gi, "replace the tap"],
+  [/\breparar grifo\b/gi, "repair the tap"],
+  [/\breparado el grifo\b/gi, "tap repaired"],
+  [/\bgrifo reparado\b/gi, "tap repaired"],
+  [/\bgrifos reparados\b/gi, "taps repaired"],
+  [/\bfuga de agua\b/gi, "water leak"],
+  [/\bfuga\b/gi, "leak"],
+  [/\bfugas\b/gi, "leaks"],
+  [/\bperdida de agua\b/gi, "water leak"],
+  [/\bperdida en tuberia\b/gi, "pipe leak"],
+  [/\btuberia rota\b/gi, "broken pipe"],
+  [/\btuberia agrietada\b/gi, "cracked pipe"],
+  [/\btuberia pierde agua\b/gi, "pipe is leaking"],
+  [/\btuberia obstruida\b/gi, "blocked pipe"],
+  [/\btuberia atascada\b/gi, "blocked pipe"],
+  [/\btuberia suelta\b/gi, "loose pipe"],
+  [/\btuberia oxidada\b/gi, "rusty pipe"],
+  [/\bcambiar tuberia\b/gi, "replace the pipe"],
+  [/\breparar tuberia\b/gi, "repair the pipe"],
+  [/\bfuga reparada\b/gi, "leak repaired"],
+  [/\bfuga solucionada\b/gi, "leak fixed"],
+  [/\bfuga arreglada\b/gi, "leak fixed"],
+  [/\bfuga pendiente\b/gi, "leak still pending"],
+  [/\bfuga sin reparar\b/gi, "leak not yet repaired"],
+  [/\bno hay fugas\b/gi, "there are no leaks"],
+  [/\bsin fugas\b/gi, "no leaks"],
+  [/\bno se detectan fugas\b/gi, "no leaks detected"],
+  [/\bse detecta una fuga\b/gi, "a leak has been detected"],
+  [/\bse ha detectado una fuga\b/gi, "a leak has been detected"],
+  [/\bse observa una fuga\b/gi, "a leak is visible"],
+  [/\bescape de agua\b/gi, "water leak"],
+  [/\bsalida de agua\b/gi, "water outlet"],
+  [/\bpresion de agua baja\b/gi, "low water pressure"],
+  [/\bbaja presion de agua\b/gi, "low water pressure"],
+  [/\bsin presion de agua\b/gi, "no water pressure"],
+  [/\bno hay presion\b/gi, "there is no pressure"],
+  [/\bno sale agua\b/gi, "no water comes out"],
+  [/\bno llega agua\b/gi, "no water supply"],
+  [/\bno hay suministro de agua\b/gi, "there is no water supply"],
+  [/\bllave de paso cerrada\b/gi, "shut-off valve is closed"],
+  [/\bllave de paso abierta\b/gi, "shut-off valve is open"],
+  [/\bllave de paso\b/gi, "shut-off valve"],
+  [/\bvalvula rota\b/gi, "broken valve"],
+  [/\bvalvula de agua\b/gi, "water valve"],
+  [/\bvalvula de seguridad\b/gi, "safety valve"],
+  [/\bsifon atascado\b/gi, "blocked siphon"],
+  [/\bsifon pierde agua\b/gi, "siphon is leaking"],
+  [/\bsifon roto\b/gi, "broken siphon"],
+  [/\bsifon\b/gi, "siphon"],
+  [/\bdesague atascado\b/gi, "blocked drain"],
+  [/\bdesague obstruido\b/gi, "blocked drain"],
+  [/\bdesague lento\b/gi, "slow drain"],
+  [/\bdesague no traga\b/gi, "drain is not draining"],
+  [/\bdesague pierde agua\b/gi, "drain is leaking"],
+  [/\bdesague roto\b/gi, "broken drain"],
+  [/\bdesague\b/gi, "drain"],
+  [/\batasco en el desague\b/gi, "blocked drain"],
+  [/\btapon del desague\b/gi, "drain plug"],
+
+  // ----------------------------------------------------------
+  // BAÑOS, DUCHAS Y SANITARIOS
+  // ----------------------------------------------------------
+
+  [/\bcisterna no enciende\b/gi, "toilet cistern is not working"],
+  [/\bcisterna no funciona\b/gi, "toilet cistern is not working"],
+  [/\bcisterna no carga\b/gi, "toilet cistern is not filling"],
+  [/\bcisterna pierde agua\b/gi, "toilet cistern is leaking"],
+  [/\bcisterna gotea\b/gi, "toilet cistern is dripping"],
+  [/\bcisterna rota\b/gi, "broken toilet cistern"],
+  [/\bcisterna atascada\b/gi, "blocked toilet cistern"],
+  [/\bcisterna\b/gi, "toilet cistern"],
+  [/\binodoro atascado\b/gi, "blocked toilet"],
+  [/\binodoro roto\b/gi, "broken toilet"],
+  [/\binodoro pierde agua\b/gi, "toilet is leaking"],
+  [/\binodoro no descarga\b/gi, "toilet does not flush"],
+  [/\binodoro no funciona\b/gi, "toilet is not working"],
+  [/\binodoro suelto\b/gi, "loose toilet"],
+  [/\binodoro\b/gi, "toilet"],
+  [/\bretrete atascado\b/gi, "blocked toilet"],
+  [/\bretrete\b/gi, "toilet"],
+  [/\bwc atascado\b/gi, "blocked toilet"],
+  [/\bwc\b/gi, "toilet"],
+  [/\bducha pierde agua\b/gi, "shower is leaking"],
+  [/\bducha gotea\b/gi, "shower is dripping"],
+  [/\bducha atascada\b/gi, "blocked shower"],
+  [/\bducha rota\b/gi, "broken shower"],
+  [/\bducha no funciona\b/gi, "shower is not working"],
+  [/\bducha obstruida\b/gi, "blocked shower"],
+  [/\bducha no calienta\b/gi, "shower does not heat up"],
+  [/\bducha sin agua caliente\b/gi, "shower has no hot water"],
+  [/\bducha fria\b/gi, "cold shower"],
+  [/\bducha caliente\b/gi, "hot shower"],
+  [/\bducha\b/gi, "shower"],
+  [/\bcabezal de ducha\b/gi, "shower head"],
+  [/\bmanguera de ducha\b/gi, "shower hose"],
+  [/\bmampara rota\b/gi, "broken shower screen"],
+  [/\bmampara agrietada\b/gi, "cracked shower screen"],
+  [/\bmampara suelta\b/gi, "loose shower screen"],
+  [/\bmampara\b/gi, "shower screen"],
+  [/\bplato de ducha\b/gi, "shower tray"],
+  [/\bplato de ducha roto\b/gi, "broken shower tray"],
+  [/\bbanera rota\b/gi, "broken bathtub"],
+  [/\bbanera pierde agua\b/gi, "bathtub is leaking"],
+  [/\bbanera\b/gi, "bathtub"],
+  [/\blavabo atascado\b/gi, "blocked washbasin"],
+  [/\blavabo pierde agua\b/gi, "washbasin is leaking"],
+  [/\blavabo roto\b/gi, "broken washbasin"],
+  [/\blavabo suelto\b/gi, "loose washbasin"],
+  [/\blavabo\b/gi, "washbasin"],
+  [/\bbidet\b/gi, "bidet"],
+  [/\bgriferia\b/gi, "tap fittings"],
+  [/\bgriferia de ducha\b/gi, "shower fittings"],
+  [/\btoallero\b/gi, "towel rail"],
+  [/\bportarrollos\b/gi, "toilet roll holder"],
+  [/\bespejo del baño\b/gi, "bathroom mirror"],
+  [/\bespejo\b/gi, "mirror"],
+
+  // ----------------------------------------------------------
+  // ELECTRICIDAD
+  // ----------------------------------------------------------
+
+  [/\benchufe quemado\b/gi, "burnt socket"],
+  [/\benchufe roto\b/gi, "broken socket"],
+  [/\benchufe suelto\b/gi, "loose socket"],
+  [/\benchufe flojo\b/gi, "loose socket"],
+  [/\benchufe no funciona\b/gi, "socket is not working"],
+  [/\benchufe sin corriente\b/gi, "socket has no power"],
+  [/\benchufe chispea\b/gi, "socket is sparking"],
+  [/\benchufe hace chispas\b/gi, "socket is sparking"],
+  [/\benchufe caliente\b/gi, "hot socket"],
+  [/\benchufe\b/gi, "socket"],
+  [/\btoma de corriente\b/gi, "power outlet"],
+  [/\btoma electrica\b/gi, "electrical outlet"],
+  [/\binterruptor quemado\b/gi, "burnt switch"],
+  [/\binterruptor roto\b/gi, "broken switch"],
+  [/\binterruptor suelto\b/gi, "loose switch"],
+  [/\binterruptor no funciona\b/gi, "switch is not working"],
+  [/\binterruptor\b/gi, "switch"],
+  [/\bconmutador\b/gi, "two-way switch"],
+  [/\bcuadro electrico\b/gi, "electrical panel"],
+  [/\bcuadro de luces\b/gi, "electrical panel"],
+  [/\bcuadro electrico apagado\b/gi, "electrical panel is switched off"],
+  [/\bcuadro electrico encendido\b/gi, "electrical panel is switched on"],
+  [/\bdiferencial\b/gi, "residual current device"],
+  [/\bmagnetotermico\b/gi, "circuit breaker"],
+  [/\bdisyuntor\b/gi, "circuit breaker"],
+  [/\bfusible quemado\b/gi, "blown fuse"],
+  [/\bfusible fundido\b/gi, "blown fuse"],
+  [/\bfusible\b/gi, "fuse"],
+  [/\bcable pelado\b/gi, "exposed wire"],
+  [/\bcable quemado\b/gi, "burnt wire"],
+  [/\bcable roto\b/gi, "broken cable"],
+  [/\bcable suelto\b/gi, "loose wire"],
+  [/\bcable electrico\b/gi, "electrical cable"],
+  [/\bcableado\b/gi, "wiring"],
+  [/\binstalacion electrica\b/gi, "electrical installation"],
+  [/\bcortocircuito\b/gi, "short circuit"],
+  [/\bsin electricidad\b/gi, "no electricity"],
+  [/\bsin corriente\b/gi, "no power"],
+  [/\bcorte de luz\b/gi, "power cut"],
+  [/\bno hay luz\b/gi, "there is no power"],
+  [/\bse ha ido la luz\b/gi, "the power has gone out"],
+  [/\bse fue la luz\b/gi, "the power went out"],
+  [/\bluz intermitente\b/gi, "flickering light"],
+  [/\bluces intermitentes\b/gi, "flickering lights"],
+  [/\bluz parpadea\b/gi, "light is flickering"],
+  [/\bparpadea la luz\b/gi, "the light is flickering"],
+  [/\blampara quemada\b/gi, "burnt lamp"],
+  [/\blampara rota\b/gi, "broken lamp"],
+  [/\blampara no funciona\b/gi, "lamp is not working"],
+  [/\blampara fundida\b/gi, "blown lamp"],
+  [/\bbombilla fundida\b/gi, "blown bulb"],
+  [/\bbombilla quemada\b/gi, "burnt bulb"],
+  [/\bbombilla rota\b/gi, "broken bulb"],
+  [/\bbombillas fundidas\b/gi, "blown bulbs"],
+  [/\bbombillas quemadas\b/gi, "burnt bulbs"],
+  [/\bbombillas\b/gi, "bulbs"],
+  [/\bbombilla\b/gi, "bulb"],
+  [/\blamparas\b/gi, "lamps"],
+  [/\blampara\b/gi, "lamp"],
+  [/\bplafon\b/gi, "ceiling light"],
+  [/\bfoco\b/gi, "spotlight"],
+  [/\bfocos\b/gi, "spotlights"],
+  [/\bdownlight\b/gi, "downlight"],
+  [/\btransformador\b/gi, "transformer"],
+  [/\bregleta\b/gi, "power strip"],
+  [/\bextension electrica\b/gi, "extension lead"],
+  [/\balarma apagada\b/gi, "alarm switched off"],
+  [/\balarma encendida\b/gi, "alarm switched on"],
+  [/\balarma desconectada\b/gi, "alarm disconnected"],
+  [/\balarma conectada\b/gi, "alarm connected"],
+  [/\balarma no funciona\b/gi, "alarm is not working"],
+  [/\balarma\b/gi, "alarm"],
+
+  // ----------------------------------------------------------
+  // ELECTRODOMÉSTICOS
+  // ----------------------------------------------------------
+
+  [/\bmicroondas no enciende\b/gi, "microwave is not working"],
+  [/\bmicroondas no funciona\b/gi, "microwave is not working"],
+  [/\bmicroondas no calienta\b/gi, "microwave is not heating"],
+  [/\bmicroondas hace ruido\b/gi, "microwave is making a noise"],
+  [/\bmicroondas roto\b/gi, "broken microwave"],
+  [/\bmicroondas\b/gi, "microwave"],
+  [/\bfrigorifico no enciende\b/gi, "fridge is not working"],
+  [/\bfrigorifico no funciona\b/gi, "fridge is not working"],
+  [/\bfrigorifico no enfria\b/gi, "fridge is not cooling"],
+  [/\bfrigorifico hace ruido raro\b/gi, "fridge is making an unusual noise"],
+  [/\bfrigorifico hace ruido\b/gi, "fridge is making a noise"],
+  [/\bfrigorifico pierde agua\b/gi, "fridge is leaking water"],
+  [/\bfrigorifico roto\b/gi, "broken fridge"],
+  [/\bfrigorifico\b/gi, "fridge"],
+  [/\bnevera no enfria\b/gi, "fridge is not cooling"],
+  [/\bnevera no funciona\b/gi, "fridge is not working"],
+  [/\bnevera hace ruido\b/gi, "fridge is making a noise"],
+  [/\bnevera\b/gi, "fridge"],
+  [/\bcongelador no congela\b/gi, "freezer is not freezing"],
+  [/\bcongelador no funciona\b/gi, "freezer is not working"],
+  [/\bcongelador\b/gi, "freezer"],
+  [/\blavadora no enciende\b/gi, "washing machine is not working"],
+  [/\blavadora no funciona\b/gi, "washing machine is not working"],
+  [/\blavadora no centrifuga\b/gi, "washing machine is not spinning"],
+  [/\blavadora pierde agua\b/gi, "washing machine is leaking"],
+  [/\blavadora hace ruido\b/gi, "washing machine is making a noise"],
+  [/\blavadora atascada\b/gi, "blocked washing machine"],
+  [/\blavadora rota\b/gi, "broken washing machine"],
+  [/\blavadora\b/gi, "washing machine"],
+  [/\bsecadora no enciende\b/gi, "dryer is not working"],
+  [/\bsecadora no funciona\b/gi, "dryer is not working"],
+  [/\bsecadora no seca\b/gi, "dryer is not drying"],
+  [/\bsecadora hace ruido\b/gi, "dryer is making a noise"],
+  [/\bsecadora\b/gi, "dryer"],
+  [/\blavavajillas no enciende\b/gi, "dishwasher is not working"],
+  [/\blavavajillas no funciona\b/gi, "dishwasher is not working"],
+  [/\blavavajillas no desagua\b/gi, "dishwasher is not draining"],
+  [/\blavavajillas pierde agua\b/gi, "dishwasher is leaking"],
+  [/\blavavajillas hace ruido\b/gi, "dishwasher is making a noise"],
+  [/\blavavajillas\b/gi, "dishwasher"],
+  [/\bvitroceramica no enciende\b/gi, "ceramic hob is not working"],
+  [/\bvitroceramica no funciona\b/gi, "ceramic hob is not working"],
+  [/\bvitroceramica rota\b/gi, "broken ceramic hob"],
+  [/\bplaca de induccion no funciona\b/gi, "induction hob is not working"],
+  [/\bplaca de induccion\b/gi, "induction hob"],
+  [/\bvitroceramica\b/gi, "ceramic hob"],
+  [/\bvitro\b/gi, "hob"],
+  [/\bplaca de cocina\b/gi, "hob"],
+  [/\bhornillo\b/gi, "cooker burner"],
+  [/\bhornillos\b/gi, "cooker burners"],
+  [/\bhornado\b/gi, "oven"],
+  [/\bhornillo no funciona\b/gi, "cooker burner is not working"],
+  [/\bhornillo roto\b/gi, "broken cooker burner"],
+  [/\bhomo no enciende\b/gi, "oven is not working"],
+  [/\bhomo no funciona\b/gi, "oven is not working"],
+  [/\bhomo no calienta\b/gi, "oven is not heating"],
+  [/\bhomo\b/gi, "oven"],
+  [/\bhorno no enciende\b/gi, "oven is not working"],
+  [/\bhorno no funciona\b/gi, "oven is not working"],
+  [/\bhorno no calienta\b/gi, "oven is not heating"],
+  [/\bhorno\b/gi, "oven"],
+  [/\bcampana extractora no funciona\b/gi, "extractor hood is not working"],
+  [/\bcampana extractora\b/gi, "extractor hood"],
+  [/\bcampana\b/gi, "extractor hood"],
+  [/\bcafetera\b/gi, "coffee machine"],
+  [/\btermo electrico\b/gi, "electric water heater"],
+  [/\bcalentador de agua\b/gi, "water heater"],
+  [/\bcalentador no enciende\b/gi, "water heater is not working"],
+  [/\bcalentador no funciona\b/gi, "water heater is not working"],
+  [/\bcalentador no calienta\b/gi, "water heater is not heating"],
+  [/\bcalentador\b/gi, "water heater"],
+  [/\btermo\b/gi, "water heater"],
+  [/\btelevisor no enciende\b/gi, "TV is not working"],
+  [/\btelevisor no funciona\b/gi, "TV is not working"],
+  [/\btelevisor sin imagen\b/gi, "TV has no picture"],
+  [/\btelevisor sin sonido\b/gi, "TV has no sound"],
+  [/\btelevisor\b/gi, "TV"],
+  [/\btelevision no funciona\b/gi, "TV is not working"],
+  [/\btelevision\b/gi, "TV"],
+  [/\brouter no funciona\b/gi, "router is not working"],
+  [/\brouter\b/gi, "router"],
+  [/\bventilador no funciona\b/gi, "fan is not working"],
+  [/\bventilador hace ruido\b/gi, "fan is making a noise"],
+  [/\bventilador\b/gi, "fan"],
+  [/\baspiradora\b/gi, "vacuum cleaner"],
+  [/\bplancha\b/gi, "iron"],
+
+  // ----------------------------------------------------------
+  // PUERTAS, VENTANAS Y PERSIANAS
+  // ----------------------------------------------------------
+
+  [/\bpuerta forzada\b/gi, "door has been forced"],
+  [/\bpuerta ha sido forzada\b/gi, "door has been forced"],
+  [/\bpuerta rota\b/gi, "broken door"],
+  [/\bpuerta agrietada\b/gi, "cracked door"],
+  [/\bpuerta rajada\b/gi, "cracked door"],
+  [/\bpuerta atascada\b/gi, "jammed door"],
+  [/\bpuerta no cierra\b/gi, "door does not close"],
+  [/\bpuerta no abre\b/gi, "door does not open"],
+  [/\bpuerta no encaja\b/gi, "door does not fit properly"],
+  [/\bpuerta descolgada\b/gi, "door is off its hinges"],
+  [/\bpuerta descuadrada\b/gi, "misaligned door"],
+  [/\bpuerta hinchada\b/gi, "swollen door"],
+  [/\bpuerta suelta\b/gi, "loose door"],
+  [/\bpuerta cerrada\b/gi, "door closed"],
+  [/\bpuerta abierta\b/gi, "door open"],
+  [/\bpuerta bloqueada\b/gi, "door is blocked"],
+  [/\bpuerta con llave\b/gi, "door locked"],
+  [/\bpuerta sin llave\b/gi, "door unlocked"],
+  [/\bpuerta\b/gi, "door"],
+  [/\bmarco de puerta\b/gi, "door frame"],
+  [/\bmarco roto\b/gi, "broken frame"],
+  [/\bmarco agrietado\b/gi, "cracked frame"],
+  [/\bbisagra rota\b/gi, "broken hinge"],
+  [/\bbisagras rotas\b/gi, "broken hinges"],
+  [/\bbisagra suelta\b/gi, "loose hinge"],
+  [/\bbisagras\b/gi, "hinges"],
+  [/\bbisagra\b/gi, "hinge"],
+  [/\bcerradura rota\b/gi, "broken lock"],
+  [/\bcerradura atascada\b/gi, "jammed lock"],
+  [/\bcerradura no funciona\b/gi, "lock is not working"],
+  [/\bcerradura\b/gi, "lock"],
+  [/\bcerrojo\b/gi, "bolt"],
+  [/\bmanilla rota\b/gi, "broken handle"],
+  [/\bmanilla suelta\b/gi, "loose handle"],
+  [/\bmanilla\b/gi, "handle"],
+  [/\bpomo\b/gi, "door knob"],
+  [/\bventana abierta\b/gi, "window open"],
+  [/\bventana cerrada\b/gi, "window closed"],
+  [/\bventana rota\b/gi, "broken window"],
+  [/\bventana agrietada\b/gi, "cracked window"],
+  [/\bventana rajada\b/gi, "cracked window"],
+  [/\bventana no cierra\b/gi, "window does not close"],
+  [/\bventana no abre\b/gi, "window does not open"],
+  [/\bventana atascada\b/gi, "jammed window"],
+  [/\bventana no encaja\b/gi, "window does not fit properly"],
+  [/\bventana pierde aire\b/gi, "window is letting air in"],
+  [/\bventana pierde agua\b/gi, "window is leaking water"],
+  [/\bventana con condensacion\b/gi, "window has condensation"],
+  [/\bventana\b/gi, "window"],
+  [/\bventanas\b/gi, "windows"],
+  [/\bcristal roto\b/gi, "broken glass"],
+  [/\bcristal agrietado\b/gi, "cracked glass"],
+  [/\bcristal rajado\b/gi, "cracked glass"],
+  [/\bdoble acristalamiento\b/gi, "double glazing"],
+  [/\bmarco de ventana\b/gi, "window frame"],
+  [/\bpersiana rota\b/gi, "broken shutter"],
+  [/\bpersiana rajada\b/gi, "cracked shutter"],
+  [/\bpersiana atascada\b/gi, "jammed shutter"],
+  [/\bpersiana no sube\b/gi, "shutter does not go up"],
+  [/\bpersiana no baja\b/gi, "shutter does not go down"],
+  [/\bpersiana no funciona\b/gi, "shutter is not working"],
+  [/\bpersiana suelta\b/gi, "loose shutter"],
+  [/\bpersiana descolgada\b/gi, "shutter has come loose"],
+  [/\bpersiana electrica\b/gi, "electric shutter"],
+  [/\bpersiana\b/gi, "shutter"],
+  [/\bpersianas\b/gi, "shutters"],
+  [/\bcinta de persiana\b/gi, "shutter strap"],
+  [/\bmotor de persiana\b/gi, "shutter motor"],
+  [/\bmosquitera rota\b/gi, "broken fly screen"],
+  [/\bmosquitera\b/gi, "fly screen"],
+  [/\bbarandilla\b/gi, "railing"],
+  [/\bbalcon\b/gi, "balcony"],
+  [/\bterraza\b/gi, "terrace"],
+  [/\bcerrojo\b/gi, "bolt"],
+
+  // ----------------------------------------------------------
+  // HUMEDADES, FILTRACIONES Y CONSTRUCCIÓN
+  // ----------------------------------------------------------
+
+  [/\bno hay humedad\b/gi, "there is no dampness"],
+  [/\bsin humedad\b/gi, "no dampness"],
+  [/\bno se observa humedad\b/gi, "no dampness is visible"],
+  [/\bno se detecta humedad\b/gi, "no dampness detected"],
+  [/\bhumedad en el techo\b/gi, "dampness on the ceiling"],
+  [/\bhumedad en techo\b/gi, "dampness on the ceiling"],
+  [/\bhumedad en la pared\b/gi, "dampness on the wall"],
+  [/\bhumedad en pared\b/gi, "dampness on the wall"],
+  [/\bhumedad en el suelo\b/gi, "dampness on the floor"],
+  [/\bhumedad en suelo\b/gi, "dampness on the floor"],
+  [/\bhumedad en el bano\b/gi, "dampness in the bathroom"],
+  [/\bhumedad en el baño\b/gi, "dampness in the bathroom"],
+  [/\bmancha de humedad\b/gi, "damp patch"],
+  [/\bmanchas de humedad\b/gi, "damp patches"],
+  [/\bhumedad ascendente\b/gi, "rising damp"],
+  [/\bhumedad por condensacion\b/gi, "condensation dampness"],
+  [/\bhumedad por filtracion\b/gi, "dampness caused by water ingress"],
+  [/\bhumedad\b/gi, "dampness"],
+  [/\bhumedades\b/gi, "damp patches"],
+  [/\bmoho negro\b/gi, "black mould"],
+  [/\bmoho\b/gi, "mould"],
+  [/\bhongos\b/gi, "fungus"],
+  [/\bhongo\b/gi, "fungus"],
+  [/\bcondensacion\b/gi, "condensation"],
+  [/\bfiltracion de agua\b/gi, "water ingress"],
+  [/\bfiltraciones de agua\b/gi, "water ingress"],
+  [/\bfiltracion\b/gi, "water ingress"],
+  [/\bfiltraciones\b/gi, "water ingress"],
+  [/\bgoteras\b/gi, "water leaks from the ceiling"],
+  [/\bgotera\b/gi, "water leak from the ceiling"],
+  [/\btecho gotea\b/gi, "ceiling is leaking"],
+  [/\btecho con gotera\b/gi, "ceiling has a leak"],
+  [/\btecho mojado\b/gi, "wet ceiling"],
+  [/\btecho humedo\b/gi, "damp ceiling"],
+  [/\btecho agrietado\b/gi, "cracked ceiling"],
+  [/\btecho roto\b/gi, "damaged ceiling"],
+  [/\btecho\b/gi, "ceiling"],
+  [/\bcielo raso\b/gi, "ceiling"],
+  [/\bpintura desconchada\b/gi, "peeling paint"],
+  [/\bpintura levantada\b/gi, "peeling paint"],
+  [/\bpintura agrietada\b/gi, "cracked paint"],
+  [/\bpintura descascarillada\b/gi, "flaking paint"],
+  [/\bpintura deteriorada\b/gi, "deteriorated paint"],
+  [/\bpintura nueva\b/gi, "new paint"],
+  [/\bpintar pared\b/gi, "paint wall"],
+  [/\bpintar techo\b/gi, "paint ceiling"],
+  [/\bpintura\b/gi, "paint"],
+  [/\bpintor\b/gi, "painter"],
+  [/\bpintores\b/gi, "painters"],
+  [/\bpared agrietada\b/gi, "cracked wall"],
+  [/\bpared rajada\b/gi, "cracked wall"],
+  [/\bpared rota\b/gi, "damaged wall"],
+  [/\bpared humeda\b/gi, "damp wall"],
+  [/\bpared mojada\b/gi, "wet wall"],
+  [/\bpared desconchada\b/gi, "flaking wall"],
+  [/\bpared\b/gi, "wall"],
+  [/\bparedes\b/gi, "walls"],
+  [/\bgrieta\b/gi, "crack"],
+  [/\bgrietas\b/gi, "cracks"],
+  [/\bfisura\b/gi, "hairline crack"],
+  [/\bfisuras\b/gi, "hairline cracks"],
+  [/\bsuelo agrietado\b/gi, "cracked floor"],
+  [/\bsuelo roto\b/gi, "damaged floor"],
+  [/\bsuelo levantado\b/gi, "raised floor"],
+  [/\bsuelo mojado\b/gi, "wet floor"],
+  [/\bsuelo humedo\b/gi, "damp floor"],
+  [/\bsuelo\b/gi, "floor"],
+  [/\bpavimento\b/gi, "flooring"],
+  [/\bazulejo roto\b/gi, "broken tile"],
+  [/\bazulejos rotos\b/gi, "broken tiles"],
+  [/\bazulejo suelto\b/gi, "loose tile"],
+  [/\bazulejos sueltos\b/gi, "loose tiles"],
+  [/\bazulejo\b/gi, "tile"],
+  [/\bazulejos\b/gi, "tiles"],
+  [/\bbaldosa rota\b/gi, "broken floor tile"],
+  [/\bbaldosas rotas\b/gi, "broken floor tiles"],
+  [/\bbaldosa\b/gi, "floor tile"],
+  [/\bbaldosas\b/gi, "floor tiles"],
+  [/\bsilicona deteriorada\b/gi, "deteriorated sealant"],
+  [/\bsilicona rota\b/gi, "damaged sealant"],
+  [/\bsilicona\b/gi, "sealant"],
+  [/\bsellado\b/gi, "sealing"],
+  [/\bsellar\b/gi, "seal"],
+  [/\baislamiento\b/gi, "insulation"],
+  [/\baislamiento termico\b/gi, "thermal insulation"],
+  [/\baislamiento acustico\b/gi, "sound insulation"],
+  [/\bfachada\b/gi, "facade"],
+  [/\bfachadas\b/gi, "facades"],
+  [/\btejado\b/gi, "roof"],
+  [/\btecho exterior\b/gi, "external roof"],
+  [/\btejas\b/gi, "roof tiles"],
+  [/\bteja\b/gi, "roof tile"],
+  [/\bcanalon\b/gi, "gutter"],
+  [/\bcanalones\b/gi, "gutters"],
+  [/\bbajante\b/gi, "downpipe"],
+  [/\bbajantes\b/gi, "downpipes"],
+  [/\bdesprendimiento\b/gi, "detachment"],
+  [/\bdesprendimientos\b/gi, "detachments"],
+  [/\bobra\b/gi, "building work"],
+  [/\bobras\b/gi, "building works"],
+  [/\balbanil\b/gi, "bricklayer"],
+  [/\balbañil\b/gi, "bricklayer"],
+  [/\bconstruccion\b/gi, "construction"],
+  [/\bdemolicion\b/gi, "demolition"],
+  [/\brevestimiento\b/gi, "covering"],
+  [/\brevestimientos\b/gi, "coverings"],
+
+  // ----------------------------------------------------------
+  // HABITACIONES Y UBICACIONES
+  // ----------------------------------------------------------
+
+  [/\ben el cuarto de baño\b/gi, "in the bathroom"],
+  [/\ben el cuarto de bano\b/gi, "in the bathroom"],
+  [/\ben el baño\b/gi, "in the bathroom"],
+  [/\ben el bano\b/gi, "in the bathroom"],
+  [/\ben baño\b/gi, "in the bathroom"],
+  [/\ben bano\b/gi, "in the bathroom"],
+  [/\bdel baño\b/gi, "of the bathroom"],
+  [/\bde el baño\b/gi, "of the bathroom"],
+  [/\bde la cocina\b/gi, "of the kitchen"],
+  [/\ben la cocina\b/gi, "in the kitchen"],
+  [/\ben el salon\b/gi, "in the living room"],
+  [/\ben el salón\b/gi, "in the living room"],
+  [/\ben salon\b/gi, "in the living room"],
+  [/\ben el dormitorio\b/gi, "in the bedroom"],
+  [/\ben la habitacion\b/gi, "in the room"],
+  [/\ben la habitación\b/gi, "in the room"],
+  [/\ben el pasillo\b/gi, "in the hallway"],
+  [/\ben la entrada\b/gi, "at the entrance"],
+  [/\ben el exterior\b/gi, "outside"],
+  [/\ben el jardin\b/gi, "in the garden"],
+  [/\ben el jardín\b/gi, "in the garden"],
+  [/\ben la terraza\b/gi, "on the terrace"],
+  [/\ben el balcon\b/gi, "on the balcony"],
+  [/\ben el balcón\b/gi, "on the balcony"],
+  [/\ben el garaje\b/gi, "in the garage"],
+  [/\ben el trastero\b/gi, "in the storage room"],
+  [/\ben el lavadero\b/gi, "in the utility room"],
+  [/\ben el techo\b/gi, "on the ceiling"],
+  [/\ben la pared\b/gi, "on the wall"],
+  [/\ben el suelo\b/gi, "on the floor"],
+  [/\bsalon\b/gi, "living room"],
+  [/\bsalón\b/gi, "living room"],
+  [/\bcomedor\b/gi, "dining room"],
+  [/\bdormitorio principal\b/gi, "master bedroom"],
+  [/\bhabitacion principal\b/gi, "master bedroom"],
+  [/\bhabitación principal\b/gi, "master bedroom"],
+  [/\bdormitorio\b/gi, "bedroom"],
+  [/\bdormitorios\b/gi, "bedrooms"],
+  [/\bhabitacion\b/gi, "room"],
+  [/\bhabitación\b/gi, "room"],
+  [/\bhabitaciones\b/gi, "rooms"],
+  [/\bcuarto\b/gi, "room"],
+  [/\bcuartos\b/gi, "rooms"],
+  [/\bpasillo\b/gi, "hallway"],
+  [/\bentrada\b/gi, "entrance"],
+  [/\brecibidor\b/gi, "hallway"],
+  [/\btrastero\b/gi, "storage room"],
+  [/\blavadero\b/gi, "utility room"],
+  [/\blavanderia\b/gi, "laundry room"],
+  [/\blavandería\b/gi, "laundry room"],
+  [/\bgaraje\b/gi, "garage"],
+  [/\bgarajes\b/gi, "garages"],
+  [/\bterraza\b/gi, "terrace"],
+  [/\bterrazas\b/gi, "terraces"],
+  [/\bbalcon\b/gi, "balcony"],
+  [/\bbalcón\b/gi, "balcony"],
+  [/\bbalcones\b/gi, "balconies"],
+  [/\bpatio\b/gi, "patio"],
+  [/\bpatios\b/gi, "patios"],
+  [/\bjardin\b/gi, "garden"],
+  [/\bjardín\b/gi, "garden"],
+  [/\bjardines\b/gi, "gardens"],
+  [/\bexterior\b/gi, "outside"],
+  [/\binterior\b/gi, "inside"],
+  [/\bplanta baja\b/gi, "ground floor"],
+  [/\bprimera planta\b/gi, "first floor"],
+  [/\bsegunda planta\b/gi, "second floor"],
+  [/\bultima planta\b/gi, "top floor"],
+  [/\bático\b/gi, "penthouse"],
+  [/\batico\b/gi, "penthouse"],
+
+  // ----------------------------------------------------------
+  // COCINA Y MOBILIARIO
+  // ----------------------------------------------------------
+
+  [/\bfregadero atascado\b/gi, "blocked kitchen sink"],
+  [/\bfregadero pierde agua\b/gi, "kitchen sink is leaking"],
+  [/\bfregadero roto\b/gi, "broken kitchen sink"],
+  [/\bfregadero\b/gi, "kitchen sink"],
+  [/\bencimera rota\b/gi, "broken worktop"],
+  [/\bencimera agrietada\b/gi, "cracked worktop"],
+  [/\bencimera\b/gi, "worktop"],
+  [/\bmueble de cocina\b/gi, "kitchen cabinet"],
+  [/\bmuebles de cocina\b/gi, "kitchen cabinets"],
+  [/\barmario de cocina\b/gi, "kitchen cupboard"],
+  [/\barmario roto\b/gi, "broken cupboard"],
+  [/\barmario suelto\b/gi, "loose cupboard"],
+  [/\barmario\b/gi, "cupboard"],
+  [/\barmarios\b/gi, "cupboards"],
+  [/\bcajon roto\b/gi, "broken drawer"],
+  [/\bcajon atascado\b/gi, "stuck drawer"],
+  [/\bcajon\b/gi, "drawer"],
+  [/\bcajones\b/gi, "drawers"],
+  [/\bpuerta de armario\b/gi, "cupboard door"],
+  [/\bpuertas de armario\b/gi, "cupboard doors"],
+  [/\bmesa rota\b/gi, "broken table"],
+  [/\bmesa\b/gi, "table"],
+  [/\bsilla rota\b/gi, "broken chair"],
+  [/\bsilla\b/gi, "chair"],
+  [/\bsillas\b/gi, "chairs"],
+  [/\bsofa roto\b/gi, "broken sofa"],
+  [/\bsofá roto\b/gi, "broken sofa"],
+  [/\bsofa\b/gi, "sofa"],
+  [/\bsofá\b/gi, "sofa"],
+  [/\bcama\b/gi, "bed"],
+  [/\bcamas\b/gi, "beds"],
+  [/\bcolchon\b/gi, "mattress"],
+  [/\bcolchón\b/gi, "mattress"],
+  [/\bestanteria\b/gi, "shelf"],
+  [/\bestantería\b/gi, "shelf"],
+  [/\bestanterias\b/gi, "shelves"],
+  [/\bestanterías\b/gi, "shelves"],
+  [/\bcortina rota\b/gi, "broken curtain"],
+  [/\bcortinas\b/gi, "curtains"],
+  [/\bcortina\b/gi, "curtain"],
+  [/\bpersiana\b/gi, "shutter"],
+  [/\bencimera\b/gi, "worktop"],
+  [/\bfrontal de cocina\b/gi, "kitchen splashback"],
+  [/\bextractor\b/gi, "extractor"],
+  [/\bgrasa acumulada\b/gi, "grease build-up"],
+  [/\bgrasa\b/gi, "grease"],
+
+  // ----------------------------------------------------------
+  // CLIMATIZACIÓN Y VENTILACIÓN
+  // ----------------------------------------------------------
+
+  [/\baire acondicionado no enciende\b/gi, "air conditioning is not working"],
+  [/\baire acondicionado no funciona\b/gi, "air conditioning is not working"],
+  [/\baire acondicionado no enfria\b/gi, "air conditioning is not cooling"],
+  [/\baire acondicionado no calienta\b/gi, "air conditioning is not heating"],
+  [/\baire acondicionado pierde agua\b/gi, "air conditioning is leaking water"],
+  [/\baire acondicionado hace ruido\b/gi, "air conditioning is making a noise"],
+  [/\baire acondicionado\b/gi, "air conditioning"],
+  [/\bunidad exterior\b/gi, "outdoor unit"],
+  [/\bunidad interior\b/gi, "indoor unit"],
+  [/\bfiltro sucio\b/gi, "dirty filter"],
+  [/\bfiltro obstruido\b/gi, "blocked filter"],
+  [/\bfiltro\b/gi, "filter"],
+  [/\bcalefaccion no funciona\b/gi, "heating is not working"],
+  [/\bcalefaccion no calienta\b/gi, "heating is not working"],
+  [/\bcalefaccion\b/gi, "heating"],
+  [/\bradiador no calienta\b/gi, "radiator is not heating"],
+  [/\bradiador pierde agua\b/gi, "radiator is leaking"],
+  [/\bradiador\b/gi, "radiator"],
+  [/\btermostato no funciona\b/gi, "thermostat is not working"],
+  [/\btermostato\b/gi, "thermostat"],
+  [/\bventilacion\b/gi, "ventilation"],
+  [/\bextractor de baño\b/gi, "bathroom extractor fan"],
+  [/\bextractor de bano\b/gi, "bathroom extractor fan"],
+  [/\bextractor de cocina\b/gi, "kitchen extractor"],
+  [/\bventilador de techo\b/gi, "ceiling fan"],
+  [/\bcaldera no enciende\b/gi, "boiler is not working"],
+  [/\bcaldera no funciona\b/gi, "boiler is not working"],
+  [/\bcaldera pierde agua\b/gi, "boiler is leaking"],
+  [/\bcaldera\b/gi, "boiler"],
+
+  // ----------------------------------------------------------
+  // JARDÍN, PISCINA Y EXTERIORES
+  // ----------------------------------------------------------
+
+  [/\bpiscina pierde agua\b/gi, "pool is leaking"],
+  [/\bpiscina sucia\b/gi, "dirty pool"],
+  [/\bpiscina limpia\b/gi, "clean pool"],
+  [/\bpiscina vacia\b/gi, "empty pool"],
+  [/\bpiscina llena\b/gi, "full pool"],
+  [/\bpiscina verde\b/gi, "green pool water"],
+  [/\bpiscina\b/gi, "pool"],
+  [/\bdepuradora no funciona\b/gi, "pool pump is not working"],
+  [/\bdepuradora\b/gi, "pool filtration system"],
+  [/\bbomba de piscina\b/gi, "pool pump"],
+  [/\bfiltro de piscina\b/gi, "pool filter"],
+  [/\bskimmer\b/gi, "skimmer"],
+  [/\bclorador\b/gi, "chlorinator"],
+  [/\bcloro\b/gi, "chlorine"],
+  [/\bcesped\b/gi, "grass"],
+  [/\bcésped\b/gi, "grass"],
+  [/\bseto\b/gi, "hedge"],
+  [/\bsetos\b/gi, "hedges"],
+  [/\barbol\b/gi, "tree"],
+  [/\bárbol\b/gi, "tree"],
+  [/\barboles\b/gi, "trees"],
+  [/\bplantas\b/gi, "plants"],
+  [/\bplanta\b/gi, "plant"],
+  [/\briego\b/gi, "irrigation"],
+  [/\bsistema de riego\b/gi, "irrigation system"],
+  [/\briego automatico\b/gi, "automatic irrigation"],
+  [/\bmanguera\b/gi, "hose"],
+  [/\bmangueras\b/gi, "hoses"],
+  [/\bgrifo exterior\b/gi, "outdoor tap"],
+  [/\bgrifo del jardin\b/gi, "garden tap"],
+  [/\bpuerta de jardin\b/gi, "garden gate"],
+  [/\bporton\b/gi, "gate"],
+  [/\bportón\b/gi, "gate"],
+  [/\bvalla rota\b/gi, "broken fence"],
+  [/\bvalla\b/gi, "fence"],
+  [/\bvallado\b/gi, "fencing"],
+  [/\bmuro exterior\b/gi, "external wall"],
+  [/\bmuro\b/gi, "wall"],
+  [/\bbarbacoa\b/gi, "barbecue"],
+  [/\bterraza exterior\b/gi, "outdoor terrace"],
+  [/\bdesague exterior\b/gi, "external drain"],
+  [/\bcanaleta\b/gi, "drainage channel"],
+  [/\bcanaletas\b/gi, "drainage channels"],
+  [/\biluminacion exterior\b/gi, "outdoor lighting"],
+  [/\bluz exterior\b/gi, "outdoor light"],
+  [/\bluces exteriores\b/gi, "outdoor lights"],
+
+  // ----------------------------------------------------------
+  // LIMPIEZA Y ESTADO GENERAL
+  // ----------------------------------------------------------
+
+  [/\blimpieza realizada\b/gi, "cleaning completed"],
+  [/\blimpieza pendiente\b/gi, "cleaning pending"],
+  [/\bpendiente de limpieza\b/gi, "cleaning pending"],
+  [/\bnecesita limpieza\b/gi, "requires cleaning"],
+  [/\brequiere limpieza\b/gi, "requires cleaning"],
+  [/\bse ha limpiado\b/gi, "has been cleaned"],
+  [/\bse limpio\b/gi, "was cleaned"],
+  [/\blimpio\b/gi, "clean"],
+  [/\blimpia\b/gi, "clean"],
+  [/\bsucio\b/gi, "dirty"],
+  [/\bsucia\b/gi, "dirty"],
+  [/\bsucios\b/gi, "dirty"],
+  [/\bsucias\b/gi, "dirty"],
+  [/\bpolvo acumulado\b/gi, "dust build-up"],
+  [/\bmucho polvo\b/gi, "a lot of dust"],
+  [/\bpolvo\b/gi, "dust"],
+  [/\bmancha\b/gi, "stain"],
+  [/\bmanchas\b/gi, "stains"],
+  [/\bmal olor\b/gi, "bad smell"],
+  [/\bmalos olores\b/gi, "bad smells"],
+  [/\bolor a humedad\b/gi, "musty smell"],
+  [/\bmal olor en el baño\b/gi, "bad smell in the bathroom"],
+  [/\bbasura\b/gi, "rubbish"],
+  [/\bresiduos\b/gi, "waste"],
+  [/\brestos\b/gi, "debris"],
+  [/\bdesordenado\b/gi, "untidy"],
+  [/\bdesordenada\b/gi, "untidy"],
+  [/\bordenado\b/gi, "tidy"],
+  [/\bordenada\b/gi, "tidy"],
+  [/\bbuen estado\b/gi, "good condition"],
+  [/\bmal estado\b/gi, "poor condition"],
+  [/\ben buen estado\b/gi, "in good condition"],
+  [/\ben mal estado\b/gi, "in poor condition"],
+  [/\bestado correcto\b/gi, "good condition"],
+  [/\bestado incorrecto\b/gi, "poor condition"],
+  [/\bfunciona correctamente\b/gi, "works correctly"],
+  [/\bfunciona bien\b/gi, "works well"],
+  [/\bfunciona\b/gi, "works"],
+  [/\bno funciona\b/gi, "is not working"],
+  [/\bfuncionamiento correcto\b/gi, "working correctly"],
+  [/\bfuncionamiento incorrecto\b/gi, "not working correctly"],
+  [/\bdesgastado\b/gi, "worn"],
+  [/\bdesgastada\b/gi, "worn"],
+  [/\bdesgastados\b/gi, "worn"],
+  [/\bdesgastadas\b/gi, "worn"],
+  [/\bdeteriorado\b/gi, "deteriorated"],
+  [/\bdeteriorada\b/gi, "deteriorated"],
+  [/\bdanado\b/gi, "damaged"],
+  [/\bdañado\b/gi, "damaged"],
+  [/\bdanada\b/gi, "damaged"],
+  [/\bdañada\b/gi, "damaged"],
+  [/\broto\b/gi, "broken"],
+  [/\brota\b/gi, "broken"],
+  [/\brotos\b/gi, "broken"],
+  [/\brotas\b/gi, "broken"],
+  [/\bagrietado\b/gi, "cracked"],
+  [/\bagrietada\b/gi, "cracked"],
+  [/\brajado\b/gi, "cracked"],
+  [/\brajada\b/gi, "cracked"],
+  [/\bsuelto\b/gi, "loose"],
+  [/\bsuelta\b/gi, "loose"],
+  [/\bsueltos\b/gi, "loose"],
+  [/\bsueltas\b/gi, "loose"],
+  [/\batascado\b/gi, "blocked"],
+  [/\batascada\b/gi, "blocked"],
+  [/\batascados\b/gi, "blocked"],
+  [/\batascadas\b/gi, "blocked"],
+  [/\bobstruido\b/gi, "blocked"],
+  [/\bobstruida\b/gi, "blocked"],
+  [/\boxidado\b/gi, "rusty"],
+  [/\boxidada\b/gi, "rusty"],
+  [/\bquemado\b/gi, "burnt"],
+  [/\bquemada\b/gi, "burnt"],
+  [/\bfundido\b/gi, "blown"],
+  [/\bfundida\b/gi, "blown"],
+  [/\babierto\b/gi, "open"],
+  [/\babierta\b/gi, "open"],
+  [/\bcerrado\b/gi, "closed"],
+  [/\bcerrada\b/gi, "closed"],
+  [/\bapagado\b/gi, "switched off"],
+  [/\bapagada\b/gi, "switched off"],
+  [/\bencendido\b/gi, "switched on"],
+  [/\bencendida\b/gi, "switched on"],
+  [/\bpendiente\b/gi, "pending"],
+  [/\bpendientes\b/gi, "pending"],
+  [/\bcompletado\b/gi, "completed"],
+  [/\bcompletada\b/gi, "completed"],
+  [/\bfinalizado\b/gi, "completed"],
+  [/\bfinalizada\b/gi, "completed"],
+  [/\breparado\b/gi, "repaired"],
+  [/\breparada\b/gi, "repaired"],
+  [/\breparados\b/gi, "repaired"],
+  [/\breparadas\b/gi, "repaired"],
+  [/\binstalado\b/gi, "installed"],
+  [/\binstalada\b/gi, "installed"],
+  [/\binstalados\b/gi, "installed"],
+  [/\binstaladas\b/gi, "installed"],
+  [/\bsustituido\b/gi, "replaced"],
+  [/\bsustituida\b/gi, "replaced"],
+  [/\bcambiado\b/gi, "replaced"],
+  [/\bcambiada\b/gi, "replaced"],
+  [/\bnuevo\b/gi, "new"],
+  [/\bnueva\b/gi, "new"],
+  [/\bnuevos\b/gi, "new"],
+  [/\bnuevas\b/gi, "new"],
+  [/\bviejo\b/gi, "old"],
+  [/\bvieja\b/gi, "old"],
+  [/\bantiguo\b/gi, "old"],
+  [/\bantigua\b/gi, "old"],
+  [/\bcorrecto\b/gi, "correct"],
+  [/\bcorrecta\b/gi, "correct"],
+  [/\bincorrecto\b/gi, "incorrect"],
+  [/\bincorrecta\b/gi, "incorrect"],
+
+  // ----------------------------------------------------------
+  // MATERIALES Y HERRAMIENTAS
+  // ----------------------------------------------------------
+
+  [/\btubo de cobre\b/gi, "copper pipe"],
+  [/\btubo de pvc\b/gi, "PVC pipe"],
+  [/\btubo\b/gi, "pipe"],
+  [/\btubos\b/gi, "pipes"],
+  [/\bcinta aislante\b/gi, "insulating tape"],
+  [/\bcinta de teflon\b/gi, "PTFE tape"],
+  [/\bteflon\b/gi, "PTFE tape"],
+  [/\bsilicona\b/gi, "sealant"],
+  [/\bmasilla\b/gi, "filler"],
+  [/\bcemento\b/gi, "cement"],
+  [/\bmortero\b/gi, "mortar"],
+  [/\byeso\b/gi, "plaster"],
+  [/\bescayola\b/gi, "plaster"],
+  [/\bladrillo\b/gi, "brick"],
+  [/\bladrillos\b/gi, "bricks"],
+  [/\bcemento cola\b/gi, "tile adhesive"],
+  [/\badhesivo\b/gi, "adhesive"],
+  [/\bpegamento\b/gi, "glue"],
+  [/\btornillo\b/gi, "screw"],
+  [/\btornillos\b/gi, "screws"],
+  [/\btuerca\b/gi, "nut"],
+  [/\btuercas\b/gi, "nuts"],
+  [/\bperno\b/gi, "bolt"],
+  [/\bclavo\b/gi, "nail"],
+  [/\bclavos\b/gi, "nails"],
+  [/\bbrida\b/gi, "cable tie"],
+  [/\bbridas\b/gi, "cable ties"],
+  [/\babrazadera\b/gi, "clamp"],
+  [/\babrazaderas\b/gi, "clamps"],
+  [/\bllave inglesa\b/gi, "adjustable spanner"],
+  [/\bdestornillador\b/gi, "screwdriver"],
+  [/\bdestornilladores\b/gi, "screwdrivers"],
+  [/\bmartillo\b/gi, "hammer"],
+  [/\bmartillos\b/gi, "hammers"],
+  [/\btaladro\b/gi, "drill"],
+  [/\bbroca\b/gi, "drill bit"],
+  [/\bbrocas\b/gi, "drill bits"],
+  [/\bsierrra\b/gi, "saw"],
+  [/\bsierra\b/gi, "saw"],
+  [/\bpinzas\b/gi, "pliers"],
+  [/\balicates\b/gi, "pliers"],
+  [/\bcutter\b/gi, "utility knife"],
+  [/\bmetro\b/gi, "tape measure"],
+  [/\bnivel\b/gi, "level"],
+  [/\bguantes\b/gi, "gloves"],
+  [/\bmascarilla\b/gi, "mask"],
+  [/\bmaterial\b/gi, "material"],
+  [/\bmateriales\b/gi, "materials"],
+  [/\brepuesto\b/gi, "spare part"],
+  [/\brepuestos\b/gi, "spare parts"],
+  [/\bpieza\b/gi, "part"],
+  [/\bpiezas\b/gi, "parts"],
+  [/\brecambio\b/gi, "replacement part"],
+  [/\brecambios\b/gi, "replacement parts"],
+  [/\bmano de obra\b/gi, "labour"],
+  [/\btrabajo realizado\b/gi, "work carried out"],
+  [/\btrabajos realizados\b/gi, "work carried out"],
+  [/\btrabajo pendiente\b/gi, "work pending"],
+  [/\btrabajos pendientes\b/gi, "work pending"],
+  [/\breparacion realizada\b/gi, "repair completed"],
+  [/\breparacion pendiente\b/gi, "repair pending"],
+  [/\breparar\b/gi, "repair"],
+  [/\breparacion\b/gi, "repair"],
+  [/\breparaciones\b/gi, "repairs"],
+  [/\bsustituir\b/gi, "replace"],
+  [/\bcambiar\b/gi, "replace"],
+  [/\binstalar\b/gi, "install"],
+  [/\binstalacion\b/gi, "installation"],
+  [/\bmontar\b/gi, "fit"],
+  [/\bdesmontar\b/gi, "remove"],
+  [/\bajustar\b/gi, "adjust"],
+  [/\bajuste\b/gi, "adjustment"],
+  [/\blubricar\b/gi, "lubricate"],
+  [/\blubricacion\b/gi, "lubrication"],
+  [/\bapretar\b/gi, "tighten"],
+  [/\baflojar\b/gi, "loosen"],
+  [/\bdesatascar\b/gi, "unblock"],
+  [/\blimpiar\b/gi, "clean"],
+  [/\bpulir\b/gi, "polish"],
+  [/\bdesinfectar\b/gi, "disinfect"],
+  [/\bcomprobar\b/gi, "check"],
+  [/\brevisar\b/gi, "inspect"],
+  [/\bverificar\b/gi, "verify"],
+  [/\bprobar\b/gi, "test"],
+  [/\bprueba\b/gi, "test"],
+  [/\bpruebas\b/gi, "tests"],
+  [/\bmedir\b/gi, "measure"],
+  [/\bmedicion\b/gi, "measurement"],
+  [/\bmedición\b/gi, "measurement"],
+  [/\bretirar\b/gi, "remove"],
+  [/\bcolocar\b/gi, "fit"],
+  [/\bponer\b/gi, "put"],
+  [/\bquitar\b/gi, "remove"],
+  [/\brecoger\b/gi, "collect"],
+  [/\bentregar\b/gi, "deliver"],
+  [/\bavisar\b/gi, "notify"],
+  [/\binformar\b/gi, "report"],
+
+  // ----------------------------------------------------------
+  // RUIDOS, MOVIMIENTOS Y COMPORTAMIENTOS
+  // ----------------------------------------------------------
+
+  [/\bhace ruido raro\b/gi, "is making an unusual noise"],
+  [/\bhace un ruido raro\b/gi, "is making an unusual noise"],
+  [/\bhace ruido extraño\b/gi, "is making an unusual noise"],
+  [/\bhace un ruido extraño\b/gi, "is making an unusual noise"],
+  [/\bruido raro\b/gi, "unusual noise"],
+  [/\bruido extraño\b/gi, "unusual noise"],
+  [/\bruido fuerte\b/gi, "loud noise"],
+  [/\bruido constante\b/gi, "constant noise"],
+  [/\bruido intermitente\b/gi, "intermittent noise"],
+  [/\bhace ruido\b/gi, "is making a noise"],
+  [/\bse escucha un ruido\b/gi, "a noise can be heard"],
+  [/\bse oye un ruido\b/gi, "a noise can be heard"],
+  [/\bno hace ruido\b/gi, "makes no noise"],
+  [/\bvibra mucho\b/gi, "vibrates excessively"],
+  [/\bvibra\b/gi, "vibrates"],
+  [/\btemblor\b/gi, "vibration"],
+  [/\bvibracion\b/gi, "vibration"],
+  [/\bvibraciones\b/gi, "vibrations"],
+  [/\bse mueve\b/gi, "moves"],
+  [/\bse mueve demasiado\b/gi, "moves excessively"],
+  [/\bno se mueve\b/gi, "does not move"],
+  [/\bse atasca\b/gi, "gets stuck"],
+  [/\bse queda atascado\b/gi, "gets stuck"],
+  [/\bse queda bloqueado\b/gi, "gets blocked"],
+  [/\bse abre solo\b/gi, "opens by itself"],
+  [/\bse cierra solo\b/gi, "closes by itself"],
+  [/\bse cae\b/gi, "falls down"],
+  [/\bse ha caido\b/gi, "has fallen down"],
+  [/\bse ha caído\b/gi, "has fallen down"],
+  [/\bse rompe\b/gi, "breaks"],
+  [/\bse ha roto\b/gi, "has broken"],
+  [/\bse ha desprendido\b/gi, "has come loose"],
+  [/\bse esta desprendiendo\b/gi, "is coming loose"],
+  [/\bse esta filtrando\b/gi, "is leaking through"],
+  [/\besta perdiendo agua\b/gi, "is leaking water"],
+  [/\besta goteando\b/gi, "is dripping"],
+  [/\bgotea\b/gi, "is dripping"],
+  [/\bpierde agua\b/gi, "is leaking water"],
+  [/\bpierde\b/gi, "is leaking"],
+
+  // ----------------------------------------------------------
+  // FRASES MIXTAS ESPAÑOL / INGLÉS
+  // ----------------------------------------------------------
+
+  [/\btap broken\b/gi, "tap is broken"],
+  [/\btap roto\b/gi, "tap is broken"],
+  [/\btap rota\b/gi, "tap is broken"],
+  [/\btap gotea\b/gi, "tap is dripping"],
+  [/\btap pierde agua\b/gi, "tap is leaking"],
+  [/\btap esta perdiendo agua\b/gi, "tap is leaking"],
+  [/\btap de el baño no sale water\b/gi, "no water comes out of the bathroom tap"],
+  [/\btap del baño no sale water\b/gi, "no water comes out of the bathroom tap"],
+  [/\btap de el bano no sale water\b/gi, "no water comes out of the bathroom tap"],
+  [/\btap no sale water\b/gi, "no water comes out of the tap"],
+  [/\btap no funciona\b/gi, "tap is not working"],
+  [/\bshutter rajada\b/gi, "shutter is cracked"],
+  [/\bshutter rota\b/gi, "shutter is broken"],
+  [/\bshutter atascada\b/gi, "shutter is jammed"],
+  [/\bdoor forzada\b/gi, "door has been forced"],
+  [/\bdoor rota\b/gi, "door is broken"],
+  [/\bdoor abierta\b/gi, "door open"],
+  [/\bdoor cerrada\b/gi, "door closed"],
+  [/\bwindow abierta\b/gi, "window open"],
+  [/\bwindow abierta\b/gi, "window open"],
+  [/\bwindow cerrada\b/gi, "window closed"],
+  [/\bwindow rota\b/gi, "window is broken"],
+  [/\bwindow rajada\b/gi, "window is cracked"],
+  [/\bwindow agrietada\b/gi, "window is cracked"],
+  [/\bwindow no cierra\b/gi, "window does not close"],
+  [/\bwindow no abre\b/gi, "window does not open"],
+  [/\bno hay fugas\b/gi, "there are no leaks"],
+  [/\bthere is no dampness\b/gi, "there is no dampness"],
+  [/\bno dampness\b/gi, "no dampness"],
+  [/\bdampness en el ceiling\b/gi, "dampness on the ceiling"],
+  [/\bdampness en el techo\b/gi, "dampness on the ceiling"],
+  [/\bdampness en la pared\b/gi, "dampness on the wall"],
+  [/\bdampness en el baño\b/gi, "dampness in the bathroom"],
+  [/\bdampness en el bano\b/gi, "dampness in the bathroom"],
+  [/\bdampness en el ceiling de el baño\b/gi, "dampness on the bathroom ceiling"],
+  [/\bdampness en el ceiling del baño\b/gi, "dampness on the bathroom ceiling"],
+  [/\bdampness en el ceiling de el bano\b/gi, "dampness on the bathroom ceiling"],
+  [/\bceiling de el baño\b/gi, "bathroom ceiling"],
+  [/\bceiling del baño\b/gi, "bathroom ceiling"],
+  [/\bceiling de el bano\b/gi, "bathroom ceiling"],
+  [/\bceiling\b/gi, "ceiling"],
+  [/\bmicrowave no enciende\b/gi, "microwave is not working"],
+  [/\bmicrowave no funciona\b/gi, "microwave is not working"],
+  [/\bmicrowave no calienta\b/gi, "microwave is not heating"],
+  [/\bfridge no enfria\b/gi, "fridge is not cooling"],
+  [/\bfridge no funciona\b/gi, "fridge is not working"],
+  [/\bfridge hace noise raro\b/gi, "fridge is making an unusual noise"],
+  [/\bfridge hace ruido raro\b/gi, "fridge is making an unusual noise"],
+  [/\bfridge hace ruido\b/gi, "fridge is making a noise"],
+  [/\bfridge pierde agua\b/gi, "fridge is leaking water"],
+  [/\bfridge\b/gi, "fridge"],
+  [/\bno enciende\b/gi, "is not working"],
+  [/\bno prende\b/gi, "is not working"],
+  [/\bno arranca\b/gi, "does not start"],
+  [/\bno funciona\b/gi, "is not working"],
+  [/\bnot working\b/gi, "not working"],
+  [/\bno esta funcionando\b/gi, "is not working"],
+  [/\bno está funcionando\b/gi, "is not working"],
+  [/\besta funcionando\b/gi, "is working"],
+  [/\bestá funcionando\b/gi, "is working"],
+  [/\bno sale water\b/gi, "no water comes out"],
+  [/\bno hay water\b/gi, "there is no water"],
+  [/\bno tiene water\b/gi, "has no water"],
+  [/\bwater leak\b/gi, "water leak"],
+  [/\bfuga repaired\b/gi, "leak repaired"],
+  [/\bfuga fixed\b/gi, "leak fixed"],
+  [/\bfuga pendiente\b/gi, "leak still pending"],
+  [/\balarma apagada\b/gi, "alarm switched off"],
+  [/\balarma encendida\b/gi, "alarm switched on"],
+  [/\btelevisor no enciende\b/gi, "TV is not working"],
+  [/\btv no enciende\b/gi, "TV is not working"],
+  [/\btv no funciona\b/gi, "TV is not working"],
+  [/\bno hay luz\b/gi, "there is no power"],
+  [/\bno electricity\b/gi, "no electricity"],
+  [/\bdoor closed\b/gi, "door closed"],
+  [/\bwindow closed\b/gi, "window closed"],
+  [/\bwindow open\b/gi, "window open"],
+];
+
+// ============================================================
+// 4. DICCIONARIO DE PALABRAS INDIVIDUALES
+// ============================================================
+
+const PALABRAS = {
+  // Vivienda y zonas
+  vivienda: "property",
+  viviendas: "properties",
+  casa: "house",
+  casas: "houses",
+  hogar: "home",
+  edificio: "building",
+  edificios: "buildings",
+  apartamento: "apartment",
+  apartamentos: "apartments",
+  piso: "flat",
+  pisos: "flats",
+  propiedad: "property",
+  propiedades: "properties",
+  habitacion: "room",
+  habitaciones: "rooms",
+  baño: "bathroom",
+  bano: "bathroom",
+  cocina: "kitchen",
+  salon: "living room",
+  salón: "living room",
+  dormitorio: "bedroom",
+  pasillo: "hallway",
+  entrada: "entrance",
+  escalera: "staircase",
+  escaleras: "stairs",
+  escalon: "step",
+  escalón: "step",
+  techo: "ceiling",
+  pared: "wall",
+  paredes: "walls",
+  suelo: "floor",
+  jardin: "garden",
+  jardín: "garden",
+  terraza: "terrace",
+  balcon: "balcony",
+  balcón: "balcony",
+  garaje: "garage",
+  trastero: "storage room",
+  lavadero: "utility room",
+  exterior: "outside",
+  interior: "inside",
+  tejado: "roof",
+  fachada: "facade",
+  patio: "patio",
+
+  // Fontanería
+  grifo: "tap",
+  grifos: "taps",
+  tubo: "pipe",
+  tuberia: "pipe",
+  tubería: "pipe",
+  tuberias: "pipes",
+  tuberías: "pipes",
+  agua: "water",
+  aguas: "water",
+  fuga: "leak",
+  fugas: "leaks",
+  gotera: "leak",
+  goteras: "leaks",
+  goteo: "dripping",
+  goteando: "dripping",
+  desague: "drain",
+  desagüe: "drain",
+  sifon: "siphon",
+  sifón: "siphon",
+  cisterna: "cistern",
+  inodoro: "toilet",
+  retrete: "toilet",
+  lavabo: "washbasin",
+  lavamanos: "washbasin",
+  bidet: "bidet",
+  ducha: "shower",
+  bañera: "bathtub",
+  banera: "bathtub",
+  mampara: "shower screen",
+  manguera: "hose",
+  valvula: "valve",
+  válvula: "valve",
+  llave: "valve",
+  fontaneria: "plumbing",
+  fontanería: "plumbing",
+  presion: "pressure",
+  presión: "pressure",
+  caliente: "hot",
+  frio: "cold",
+  frío: "cold",
+  templado: "warm",
+  caliente: "hot",
+  caliente: "hot",
+  caudal: "flow",
+  suministro: "supply",
+  tuberia: "pipe",
+
+  // Electricidad
+  enchufe: "socket",
+  interruptor: "switch",
+  cable: "wire",
+  cables: "wires",
+  electricidad: "electricity",
+  electrico: "electrical",
+  eléctrico: "electrical",
+  electrica: "electrical",
+  eléctrica: "electrical",
+  luz: "light",
+  luces: "lights",
+  lampara: "lamp",
+  lámpara: "lamp",
+  lamparas: "lamps",
+  lámparas: "lamps",
+  bombilla: "bulb",
+  bombillas: "bulbs",
+  corriente: "power",
+  fusible: "fuse",
+  diferencial: "residual current device",
+  magnetotermico: "circuit breaker",
+  cuadro: "panel",
+  alarma: "alarm",
+  sensor: "sensor",
+  sensores: "sensors",
+  detector: "detector",
+  detectores: "detectors",
+  bateria: "battery",
+  batería: "battery",
+  pilas: "batteries",
+  pila: "battery",
+  transformador: "transformer",
+
+  // Puertas y ventanas
+  puerta: "door",
+  puertas: "doors",
+  ventana: "window",
+  ventanas: "windows",
+  persiana: "shutter",
+  persianas: "shutters",
+  cristal: "glass",
+  cristales: "glass",
+  vidrio: "glass",
+  marco: "frame",
+  marcos: "frames",
+  bisagra: "hinge",
+  bisagras: "hinges",
+  cerradura: "lock",
+  cerraduras: "locks",
+  manilla: "handle",
+  manillas: "handles",
+  pomo: "knob",
+  pomos: "knobs",
+  llave: "key",
+  llaves: "keys",
+  mosquitera: "fly screen",
+  mosquiteras: "fly screens",
+  cortina: "curtain",
+  cortinas: "curtains",
+  cristalera: "glass panel",
+  barandilla: "railing",
+  valla: "fence",
+  porton: "gate",
+  portón: "gate",
+
+  // Humedad y construcción
+  humedad: "dampness",
+  humedades: "dampness",
+  moho: "mould",
+  hongos: "fungus",
+  condensacion: "condensation",
+  condensación: "condensation",
+  filtracion: "water ingress",
+  filtración: "water ingress",
+  grieta: "crack",
+  grietas: "cracks",
+  fisura: "hairline crack",
+  fisuras: "hairline cracks",
+  pintura: "paint",
+  yeso: "plaster",
+  escayola: "plaster",
+  cemento: "cement",
+  mortero: "mortar",
+  ladrillo: "brick",
+  azulejo: "tile",
+  azulejos: "tiles",
+  baldosa: "floor tile",
+  baldosas: "floor tiles",
+  suelo: "floor",
+  pavimento: "flooring",
+  techo: "ceiling",
+  aislamiento: "insulation",
+  silicona: "sealant",
+  masilla: "filler",
+  tejado: "roof",
+  teja: "roof tile",
+  tejas: "roof tiles",
+  canalon: "gutter",
+  canalón: "gutter",
+  bajante: "downpipe",
+  fachada: "facade",
+  obra: "building work",
+  obras: "building works",
+  pared: "wall",
+
+  // Electrodomésticos
+  nevera: "fridge",
+  frigorifico: "fridge",
+  frigorífico: "fridge",
+  congelador: "freezer",
+  microondas: "microwave",
+  lavadora: "washing machine",
+  secadora: "dryer",
+  lavavajillas: "dishwasher",
+  horno: "oven",
+  vitroceramica: "ceramic hob",
+  vitrocerámica: "ceramic hob",
+  vitro: "hob",
+  cocina: "kitchen",
+  hornillo: "cooker burner",
+  campana: "extractor hood",
+  extractor: "extractor",
+  cafetera: "coffee machine",
+  televisor: "TV",
+  television: "TV",
+  televisión: "TV",
+  tele: "TV",
+  router: "router",
+  ventilador: "fan",
+  aspiradora: "vacuum cleaner",
+  plancha: "iron",
+  caldera: "boiler",
+  calentador: "water heater",
+  termo: "water heater",
+  radiador: "radiator",
+  termostato: "thermostat",
+  filtro: "filter",
+
+  // Mobiliario
+  mueble: "furniture",
+  muebles: "furniture",
+  armario: "cupboard",
+  armarios: "cupboards",
+  cajon: "drawer",
+  cajón: "drawer",
+  cajones: "drawers",
+  mesa: "table",
+  mesas: "tables",
+  silla: "chair",
+  sillas: "chairs",
+  sofa: "sofa",
+  sofá: "sofa",
+  cama: "bed",
+  camas: "beds",
+  colchon: "mattress",
+  colchón: "mattress",
+  estanteria: "shelf",
+  estantería: "shelf",
+  estanterias: "shelves",
+  estanterías: "shelves",
+  espejo: "mirror",
+  espejos: "mirrors",
+  encimera: "worktop",
+  fregadero: "kitchen sink",
+
+  // Jardín y piscina
+  piscina: "pool",
+  piscinas: "pools",
+  depuradora: "filtration system",
+  skimmer: "skimmer",
+  cloro: "chlorine",
+  cesped: "grass",
+  césped: "grass",
+  arbol: "tree",
+  árbol: "tree",
+  arboles: "trees",
+  árboles: "trees",
+  planta: "plant",
+  plantas: "plants",
+  riego: "irrigation",
+  manguera: "hose",
+  barbacoa: "barbecue",
+  jardinero: "gardener",
+  jardineria: "gardening",
+  jardinería: "gardening",
+
+  // Limpieza y estado
+  limpieza: "cleaning",
+  limpio: "clean",
+  limpia: "clean",
+  sucio: "dirty",
+  sucia: "dirty",
+  polvo: "dust",
+  basura: "rubbish",
+  residuo: "waste",
+  residuos: "waste",
+  mancha: "stain",
+  manchas: "stains",
+  olor: "smell",
+  ruido: "noise",
+  ruidos: "noises",
+  vibracion: "vibration",
+  vibración: "vibration",
+  vibraciones: "vibrations",
+  rotura: "breakage",
+  desgaste: "wear",
+  deterioro: "deterioration",
+  daño: "damage",
+  danado: "damaged",
+  dañado: "damaged",
+  dañada: "damaged",
+  roto: "broken",
+  rota: "broken",
+  rotos: "broken",
+  rotas: "broken",
+  agrietado: "cracked",
+  agrietada: "cracked",
+  rajado: "cracked",
+  rajada: "cracked",
+  suelto: "loose",
+  suelta: "loose",
+  atascado: "blocked",
+  atascada: "blocked",
+  obstruido: "blocked",
+  obstruida: "blocked",
+  oxidado: "rusty",
+  oxidada: "rusty",
+  quemado: "burnt",
+  quemada: "burnt",
+  fundido: "blown",
+  fundida: "blown",
+  abierto: "open",
+  abierta: "open",
+  cerrado: "closed",
+  cerrada: "closed",
+  apagado: "switched off",
+  apagada: "switched off",
+  encendido: "switched on",
+  encendida: "switched on",
+  pendiente: "pending",
+  finalizado: "completed",
+  finalizada: "completed",
+  completado: "completed",
+  completada: "completed",
+  reparado: "repaired",
+  reparada: "repaired",
+  instalado: "installed",
+  instalada: "installed",
+  sustituido: "replaced",
+  sustituida: "replaced",
+  nuevo: "new",
+  nueva: "new",
+  viejo: "old",
+  vieja: "old",
+  correcto: "correct",
+  correcta: "correct",
+  incorrecto: "incorrect",
+  incorrecta: "incorrect",
+  bueno: "good",
+  buena: "good",
+  malo: "bad",
+  mala: "bad",
+  grande: "large",
+  pequeño: "small",
+  pequeña: "small",
+  largo: "long",
+  larga: "long",
+  corto: "short",
+  corta: "short",
+  alto: "high",
+  alta: "high",
+  bajo: "low",
+  baja: "low",
+  fuerte: "strong",
+  flojo: "loose",
+  floja: "loose",
+  limpio: "clean",
+  sucio: "dirty",
+
+  // Acciones y trabajos
+  revisar: "inspect",
+  revisión: "inspection",
+  revision: "inspection",
+  comprobar: "check",
+  comprobarlo: "check it",
+  verificar: "verify",
+  reparar: "repair",
+  reparación: "repair",
+  reparacion: "repair",
+  cambiar: "replace",
+  sustituir: "replace",
+  instalar: "install",
+  instalación: "installation",
+  instalacion: "installation",
+  retirar: "remove",
+  quitar: "remove",
+  colocar: "fit",
+  montar: "fit",
+  desmontar: "remove",
+  ajustar: "adjust",
+  apretar: "tighten",
+  aflojar: "loosen",
+  limpiar: "clean",
+  desatascar: "unblock",
+  pintar: "paint",
+  sellar: "seal",
+  medir: "measure",
+  probar: "test",
+  prueba: "test",
+  pruebas: "tests",
+  terminado: "finished",
+  terminada: "finished",
+  realizado: "carried out",
+  realizada: "carried out",
+  pendiente: "pending",
+  pendiente: "pending",
+  urgente: "urgent",
+  urgencia: "urgent issue",
+  necesario: "necessary",
+  necesaria: "necessary",
+  recomendado: "recommended",
+  recomendada: "recommended",
+  revisar: "inspect",
+  mantenimiento: "maintenance",
+  material: "material",
+  materiales: "materials",
+  herramienta: "tool",
+  herramientas: "tools",
+  tubo: "pipe",
+  tornillo: "screw",
+  tornillos: "screws",
+  silicona: "sealant",
+  teflon: "PTFE tape",
+  teflón: "PTFE tape",
+  cinta: "tape",
+  cable: "wire",
+  cables: "wires",
+
+  // Personas y referencias
+  tecnico: "technician",
+  técnico: "technician",
+  tecnica: "technician",
+  técnica: "technician",
+  cliente: "client",
+  propietario: "owner",
+  propietaria: "owner",
+  inquilino: "tenant",
+  inquilina: "tenant",
+  proveedor: "supplier",
+  fontanero: "plumber",
+  electricista: "electrician",
+  pintor: "painter",
+  albañil: "bricklayer",
+  albanil: "bricklayer",
+
+  // Tiempo
+  hora: "hour",
+  horas: "hours",
+  minuto: "minute",
+  minutos: "minutes",
+  segundo: "second",
+  segundos: "seconds",
+  dia: "day",
+  días: "days",
+  dias: "days",
+  semana: "week",
+  semanas: "weeks",
+  mes: "month",
+  meses: "months",
+  año: "year",
+  anos: "years",
+  años: "years",
+  ayer: "yesterday",
+  hoy: "today",
+  mañana: "tomorrow",
+  manana: "tomorrow",
+  antes: "before",
+  despues: "after",
+  después: "after",
+  durante: "during",
+  aproximadamente: "approximately",
+  aprox: "approx.",
+
+  // Conectores y expresiones sencillas
+  tambien: "also",
+  también: "also",
+  solamente: "only",
+  solo: "only",
+  falta: "missing",
+  faltan: "missing",
+  necesita: "needs",
+  necesitan: "need",
+  requiere: "requires",
+  requieren: "require",
+  revisar: "inspect",
+  encontrado: "found",
+  encontrada: "found",
+  detectado: "detected",
+  detectada: "detected",
+  observado: "observed",
+  observada: "observed",
+  visible: "visible",
+  invisible: "not visible",
+  aparentemente: "apparently",
+  posiblemente: "possibly",
+  probablemente: "probably",
+  correctamente: "correctly",
+  mal: "badly",
+  bien: "well",
+};
+
+// ============================================================
+// 5. TRADUCCIÓN DE FRASES CON PRIORIDAD
+// ============================================================
+
+function aplicarReglasFrases(texto) {
   let resultado = texto;
 
-  // Ejemplos: 1 hora, 3 horas, 30 minutos, 1h, 45 min.
-  // También admite combinaciones como "1 hora y 30 minutos".
-  resultado = resultado.replace(
-    /\b(\d+)\s*(?:horas?|hrs?|h)\s*(?:y\s*)?(\d+)\s*(?:minutos?|mins?|min)\b/gi,
-    (_, horas, minutos) =>
-      `${horas} ${Number(horas) === 1 ? "hour" : "hours"} and ` +
-      `${minutos} ${Number(minutos) === 1 ? "minute" : "minutes"}`
-  );
-
-  resultado = resultado.replace(
-    /\b(\d+)\s*(?:horas?|hrs?|h)\b/gi,
-    (_, cantidad) =>
-      `${cantidad} ${Number(cantidad) === 1 ? "hour" : "hours"}`
-  );
-
-  resultado = resultado.replace(
-    /\b(\d+)\s*(?:minutos?|mins?|min)\b/gi,
-    (_, cantidad) =>
-      `${cantidad} ${Number(cantidad) === 1 ? "minute" : "minutes"}`
-  );
-
-  resultado = resultado.replace(
-    /\b(\d+)\s*(?:segundos?|segs?|s)\b/gi,
-    (_, cantidad) =>
-      `${cantidad} ${Number(cantidad) === 1 ? "second" : "seconds"}`
-  );
+  for (const [patron, traduccion] of REGLAS_FRASES) {
+    resultado = resultado.replace(patron, (coincidencia) => {
+      return conservarMayusculas(coincidencia, traduccion);
+    });
+  }
 
   return resultado;
 }
+
+// ============================================================
+// 6. TRADUCCIÓN DE PALABRAS SIN ALTERAR TÉRMINOS DESCONOCIDOS
+// ============================================================
+
+function traducirPalabras(texto) {
+  return texto.replace(
+    /[\p{L}]+(?:['’][\p{L}]+)*/gu,
+    (palabra) => {
+      const clave = normalizar(palabra);
+      const traduccion = PALABRAS[clave];
+
+      if (!traduccion) {
+        return palabra;
+      }
+
+      return conservarMayusculas(palabra, traduccion);
+    }
+  );
+}
+
+// ============================================================
+// 7. TRADUCCIÓN DE EXPRESIONES MIXTAS Y LOCALIZACIONES
+// ============================================================
+
+function traducirExpresionesMixtas(texto) {
+  let resultado = texto;
+
+  const reglas = [
+    // Habitaciones y localizaciones mezcladas
+    [/\bliving room\b/gi, "living room"],
+    [/\bmaster bedroom\b/gi, "master bedroom"],
+    [/\bguest bedroom\b/gi, "guest bedroom"],
+    [/\bguest bathroom\b/gi, "guest bathroom"],
+    [/\bmain bathroom\b/gi, "main bathroom"],
+    [/\butility room\b/gi, "utility room"],
+    [/\bhallway\b/gi, "hallway"],
+    [/\bkitchen sink\b/gi, "kitchen sink"],
+    [/\bbathroom ceiling\b/gi, "bathroom ceiling"],
+    [/\bbathroom wall\b/gi, "bathroom wall"],
+    [/\bbedroom window\b/gi, "bedroom window"],
+    [/\bkitchen window\b/gi, "kitchen window"],
+    [/\bliving room lamp\b/gi, "living room lamp"],
+
+    // Frases inglesas frecuentes que deben conservarse
+    [/\bdoor closed\b/gi, "door closed"],
+    [/\bdoor open\b/gi, "door open"],
+    [/\bwindow closed\b/gi, "window closed"],
+    [/\bwindow open\b/gi, "window open"],
+    [/\bno dampness\b/gi, "no dampness"],
+    [/\bno leaks\b/gi, "no leaks"],
+    [/\bwater leak\b/gi, "water leak"],
+    [/\bno water\b/gi, "no water"],
+    [/\bnot working\b/gi, "not working"],
+    [/\bworking correctly\b/gi, "working correctly"],
+    [/\bin good condition\b/gi, "in good condition"],
+    [/\bin poor condition\b/gi, "in poor condition"],
+    [/\bcompleted\b/gi, "completed"],
+    [/\bpending\b/gi, "pending"],
+    [/\brepaired\b/gi, "repaired"],
+    [/\breplaced\b/gi, "replaced"],
+    [/\binstalled\b/gi, "installed"],
+    [/\bcleaned\b/gi, "cleaned"],
+    [/\bchecked\b/gi, "checked"],
+    [/\binspected\b/gi, "inspected"],
+  ];
+
+  for (const [patron, traduccion] of reglas) {
+    resultado = resultado.replace(patron, traduccion);
+  }
+
+  return resultado;
+}
+
+// ============================================================
+// 8. TIEMPOS Y CANTIDADES
+// ============================================================
+
+function traducirCantidadesTiempo(texto) {
+  return texto
+    .replace(
+      /\b(\d+)\s*(?:h|hrs?|horas?)\b/gi,
+      "$1 hours"
+    )
+    .replace(
+      /\b(\d+)\s*(?:min|mins|minutos?)\b/gi,
+      "$1 minutes"
+    )
+    .replace(
+      /\b(\d+)\s*(?:seg|segs|segundos?)\b/gi,
+      "$1 seconds"
+    )
+    .replace(
+      /\b(\d+)\s*(?:dias?)\b/gi,
+      "$1 days"
+    )
+    .replace(
+      /\b(\d+)\s*(?:semanas?)\b/gi,
+      "$1 weeks"
+    )
+    .replace(
+      /\b(\d+)\s*(?:meses?)\b/gi,
+      "$1 months"
+    )
+    .replace(
+      /\b(\d+)\s*(?:años?|anos?)\b/gi,
+      "$1 years"
+    );
+}
+
+// ============================================================
+// 9. ETIQUETAS HABITUALES DE LOS INFORMES
+// ============================================================
 
 function traducirEtiquetas(texto) {
-  return texto
-    .replace(/\bdescripcion del trabajo\s*:/gi, "Job description:")
-    .replace(/\bobservaciones\s*:/gi, "Observations:")
-    .replace(/\bmateriales utilizados\s*:/gi, "Materials used:")
-    .replace(/\bmaterial utilizado\s*:/gi, "Material used:")
-    .replace(/\btiempo empleado\s*:/gi, "Time spent:")
-    .replace(/\btiempo de trabajo\s*:/gi, "Working time:");
-}
+  let resultado = texto;
 
-function traducirFragmento(texto) {
-  texto = traducirCantidadesTiempo(texto);
-  texto = traducirEtiquetas(texto);
+  const etiquetas = [
+    [/\bdescripcion\b/gi, "Description"],
+    [/\bdescripción\b/gi, "Description"],
+    [/\bobservaciones\b/gi, "Observations"],
+    [/\bobservacion\b/gi, "Observation"],
+    [/\bobservación\b/gi, "Observation"],
+    [/\btrabajo realizado\b/gi, "Work carried out"],
+    [/\btrabajos realizados\b/gi, "Work carried out"],
+    [/\btrabajo pendiente\b/gi, "Pending work"],
+    [/\bmaterial utilizado\b/gi, "Materials used"],
+    [/\bmateriales utilizados\b/gi, "Materials used"],
+    [/\btiempo empleado\b/gi, "Time spent"],
+    [/\btiempo invertido\b/gi, "Time spent"],
+    [/\bfecha\b/gi, "Date"],
+    [/\bestado\b/gi, "Status"],
+    [/\bfinalizada\b/gi, "Completed"],
+    [/\bfinalizado\b/gi, "Completed"],
+    [/\bpendiente de revision\b/gi, "Pending inspection"],
+    [/\bpendiente de revisión\b/gi, "Pending inspection"],
+  ];
 
-  const normalizadoCompleto = normalizarFrase(texto);
-  if (!normalizadoCompleto) return texto;
-
-  const exactaCompleta = ENTRADAS.find(
-    (entrada) => entrada.normalizada === normalizadoCompleto
-  );
-
-  if (exactaCompleta) return exactaCompleta.traduccion;
-
-  const coincidencias = Array.from(
-    texto.matchAll(/[\p{L}\p{N}]+/gu)
-  ).map((coincidencia) => ({
-    normalizada: normalizarFrase(coincidencia[0]),
-    inicio: coincidencia.index,
-    fin: coincidencia.index + coincidencia[0].length
-  }));
-
-  if (!coincidencias.length) return texto;
-
-  const palabras = coincidencias.map((palabra) => palabra.normalizada);
-  const reemplazos = [];
-  let indice = 0;
-
-  while (indice < palabras.length) {
-    const exacta = buscarCoincidenciaExacta(palabras, indice);
-    const aproximada = exacta
-      ? null
-      : buscarCoincidenciaAproximada(palabras, indice);
-    const coincidencia = exacta || aproximada;
-
-    if (!coincidencia) {
-      indice += 1;
-      continue;
-    }
-
-    const primera = coincidencias[indice];
-    const ultima = coincidencias[indice + coincidencia.cantidad - 1];
-    const textoEntrePalabras = texto.slice(primera.inicio, ultima.fin);
-
-    // Nunca se emparejan palabras atravesando puntuación de frase.
-    if (/[.!?;\n]/.test(textoEntrePalabras)) {
-      indice += 1;
-      continue;
-    }
-
-    reemplazos.push({
-      inicio: primera.inicio,
-      fin: ultima.fin,
-      traduccion: coincidencia.traduccion
-    });
-
-    indice += coincidencia.cantidad;
+  for (const [patron, traduccion] of etiquetas) {
+    resultado = resultado.replace(patron, traduccion);
   }
 
-  if (!reemplazos.length) return texto;
-
-  let resultado = "";
-  let cursor = 0;
-
-  for (const reemplazo of reemplazos) {
-    if (reemplazo.inicio < cursor) continue;
-
-    resultado += texto.slice(cursor, reemplazo.inicio);
-    resultado += reemplazo.traduccion;
-    cursor = reemplazo.fin;
-  }
-
-  resultado += texto.slice(cursor);
   return resultado;
 }
 
-/**
- * Traduce localmente las observaciones al inglés para clientes con idioma "en".
- *
- * - No usa servicios de traducción externos.
- * - No modifica ni guarda datos en Supabase.
- * - Mantiene el texto original para clientes cuyo idioma no sea "en".
- * - Traduce frases conocidas, vocabulario frecuente y cantidades de tiempo.
- * - Conserva las partes que no reconoce para evitar inventar datos técnicos.
- */
-export function traducirObservacionInspeccion(texto, idiomaCliente = "es") {
-  if (typeof texto !== "string" || !texto.trim()) return texto ?? "";
-  if (idiomaCliente !== "en") return texto;
+// ============================================================
+// 10. TRADUCCIÓN DE CADA FRAGMENTO
+// ============================================================
 
+function traducirFragmento(fragmento) {
+  if (!fragmento || !fragmento.trim()) {
+    return fragmento;
+  }
+
+  let resultado = fragmento;
+
+  // Primero corregimos errores de escritura conocidos.
+  for (const [patron, reemplazo] of CORRECCIONES) {
+    resultado = resultado.replace(patron, reemplazo);
+  }
+
+  // Después se aplican las frases completas.
+  resultado = aplicarReglasFrases(resultado);
+
+  // Las expresiones inglesas conocidas se conservan.
+  resultado = traducirExpresionesMixtas(resultado);
+
+  // Se traducen palabras españolas reconocidas.
+  resultado = traducirPalabras(resultado);
+
+  // Se traducen las etiquetas de los informes.
+  resultado = traducirEtiquetas(resultado);
+
+  // Se traducen cantidades y unidades de tiempo.
+  resultado = traducirCantidadesTiempo(resultado);
+
+  return resultado;
+}
+
+// ============================================================
+// 11. FUNCIÓN PÚBLICA
+// ============================================================
+
+export function traducirObservacionInspeccion(
+  texto,
+  idiomaCliente = "es"
+) {
+  if (typeof texto !== "string" || !texto.trim()) {
+    return texto ?? "";
+  }
+
+  const idioma = String(idiomaCliente ?? "es")
+    .trim()
+    .toLowerCase();
+
+  // Si el cliente no utiliza inglés, no se modifica el texto.
+  if (!["en", "english", "ingles", "inglés"].includes(idioma)) {
+    return texto;
+  }
+
+  /*
+   * Se procesan por separado las líneas para conservar
+   * los saltos de línea originales.
+   *
+   * Dentro de cada línea se conservan los signos de
+   * puntuación y los espacios entre fragmentos.
+   */
   return texto
     .split(/(\n+)/)
     .map((linea) => {
-      if (!linea.trim()) return linea;
+      if (!linea.trim()) {
+        return linea;
+      }
 
       return linea
         .split(/([.!?;]+\s*)/)
         .map((fragmento) => {
-          if (!fragmento.trim() || /^[.!?;\s]+$/.test(fragmento)) {
+          if (
+            !fragmento.trim() ||
+            /^[.!?;\s]+$/.test(fragmento)
+          ) {
             return fragmento;
           }
 
