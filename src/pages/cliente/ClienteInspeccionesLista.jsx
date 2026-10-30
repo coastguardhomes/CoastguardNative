@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import Menu from "../../layouts/Menu.jsx";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 import { traducirObservacionInspeccion } from "../../lib/traducirObservacionesInspeccion";
+import { resolverUrlPdfSegura } from "../../lib/urlPdf";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -180,6 +181,54 @@ export default function ClienteInspeccionesLista() {
       cancelado = true;
     };
   }, [user, t]);
+
+  /*
+   * Abre el informe PDF del trabajo extra.
+   *
+   * extras.pdf_url contiene la ruta del archivo dentro del bucket
+   * privado "pdfs", por lo que primero se obtiene una URL firmada.
+   *
+   * No se consulta ni se modifica facturas.pdf_url.
+   */
+  const manejarAbrirPdfExtra = async (e, extra) => {
+    e.stopPropagation();
+
+    if (!extra?.pdf_url) {
+      window.alert("Este trabajo extra todavía no tiene un informe PDF disponible.");
+      return;
+    }
+
+    // Abrimos la pestaña durante el clic para evitar bloqueos del navegador.
+    const ventana = window.open("about:blank", "_blank");
+
+    if (!ventana) {
+      window.alert(
+        "El navegador ha bloqueado la nueva pestaña. Permite las ventanas emergentes e inténtalo de nuevo."
+      );
+      return;
+    }
+
+    try {
+      const urlSegura = await resolverUrlPdfSegura(
+        extra.pdf_url,
+        "pdfs"
+      );
+
+      if (!urlSegura) {
+        throw new Error("No se pudo obtener la URL segura del informe.");
+      }
+
+      ventana.location.href = urlSegura;
+    } catch (error) {
+      console.error("Error al abrir el informe PDF del extra:", error);
+
+      ventana.close();
+
+      window.alert(
+        "No se ha podido abrir el informe PDF. Comprueba que el documento existe y que tienes permisos para acceder a él."
+      );
+    }
+  };
 
   if (loading) {
     return (
@@ -430,6 +479,29 @@ export default function ClienteInspeccionesLista() {
                       {t("verDetalleFlecha")}
                     </span>
                   </div>
+
+                  {esExtra && item.pdf_url && (
+                    <button
+                      type="button"
+                      onClick={(e) => manejarAbrirPdfExtra(e, item)}
+                      style={{
+                        width: "100%",
+                        marginTop: "6px",
+                        padding: "11px 14px",
+                        borderRadius: "10px",
+                        border: "1px solid rgba(224, 176, 52, 0.75)",
+                        background:
+                          "linear-gradient(135deg, rgba(224, 176, 52, 0.2), rgba(224, 176, 52, 0.08))",
+                        color: COLOR_DORADO,
+                        fontSize: "12px",
+                        fontWeight: "800",
+                        cursor: "pointer",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      📄 Ver informe PDF
+                    </button>
+                  )}
                 </div>
               );
             })}
