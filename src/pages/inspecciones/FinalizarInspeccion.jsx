@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import Menu from "../../layouts/Menu";
+import BotonGenerarPDF from "../../components/pdf/BotonGenerarPDF";
 
 export default function VerInspeccion() {
   const { id } = useParams();
@@ -20,6 +21,7 @@ export default function VerInspeccion() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [publicando, setPublicando] = useState(false);
+  const [actualizandoPDF, setActualizandoPDF] = useState(false);
 
   function formatearFecha(fechaISO) {
     if (!fechaISO) return "Sin fecha";
@@ -37,10 +39,6 @@ export default function VerInspeccion() {
     return `${dia}/${mes}/${año}`;
   }
 
-  /*
-   * Convierte las rutas de Storage y las antiguas URL de Supabase
-   * en referencias que se pueden firmar para leer buckets privados.
-   */
   function obtenerReferenciaStorage(valor) {
     if (typeof valor !== "string" || !valor.trim()) {
       return null;
@@ -161,7 +159,6 @@ export default function VerInspeccion() {
         continue;
       }
 
-      // Mantener las fotos externas que no proceden de Supabase Storage.
       if (/^https?:\/\//i.test(candidato)) {
         return {
           url: candidato,
@@ -190,6 +187,30 @@ export default function VerInspeccion() {
       url: referencia.url,
       claveFoto: referencia.clave,
     };
+  }
+
+  async function actualizarInspeccionDesdeBD() {
+    const { data, error } = await supabase
+      .from("inspecciones")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(
+        "No se pudo comprobar el estado del informe: " +
+          error.message
+      );
+    }
+
+    if (!data) {
+      throw new Error(
+        "No se encontró la inspección."
+      );
+    }
+
+    setInspeccion(data);
+    return data;
   }
 
   useEffect(() => {
@@ -386,8 +407,20 @@ export default function VerInspeccion() {
       return;
     }
 
+    // No se permite publicar sin un PDF guardado.
+    if (
+      !inspeccion.pdf_url ||
+      typeof inspeccion.pdf_url !== "string" ||
+      !inspeccion.pdf_url.trim()
+    ) {
+      setErrorMsg(
+        "Primero debes generar y guardar el PDF de la inspección."
+      );
+      return;
+    }
+
     const confirmar = window.confirm(
-      "¿Has revisado las fotos y observaciones y quieres enviar esta inspección al cliente?"
+      "¿Has revisado las fotos, las observaciones y el PDF y quieres publicar esta inspección para el cliente?"
     );
 
     if (!confirmar) return;
@@ -409,6 +442,7 @@ export default function VerInspeccion() {
         .eq("id", id)
         .eq("estado", "completada_tecnico")
         .eq("estado_tecnico", "completada")
+        .not("pdf_url", "is", null)
         .select("*")
         .maybeSingle();
 
@@ -419,7 +453,7 @@ export default function VerInspeccion() {
         );
 
         setErrorMsg(
-          "No se pudo enviar la inspección al cliente: " +
+          "No se pudo publicar la inspección: " +
             error.message
         );
 
@@ -428,7 +462,7 @@ export default function VerInspeccion() {
 
       if (!data) {
         setErrorMsg(
-          "La inspección ya no está pendiente de revisión administrativa."
+          "No se pudo publicar. Comprueba que el PDF siga guardado y que la inspección continúe pendiente de revisión."
         );
 
         return;
@@ -437,7 +471,7 @@ export default function VerInspeccion() {
       setInspeccion(data);
 
       alert(
-        "Inspección enviada al cliente correctamente."
+        "Inspección publicada para el cliente correctamente."
       );
     } catch (error) {
       console.error(
@@ -446,7 +480,8 @@ export default function VerInspeccion() {
       );
 
       setErrorMsg(
-        "Error al enviar la inspección al cliente."
+        error?.message ||
+          "Error al publicar la inspección."
       );
     } finally {
       setPublicando(false);
@@ -611,6 +646,41 @@ export default function VerInspeccion() {
     inspeccion.estado === "completada_tecnico" &&
     inspeccion.estado_tecnico === "completada";
 
+  const pdfGuardado =
+    typeof inspeccion.pdf_url === "string" &&
+    inspeccion.pdf_url.trim() !== "";
+
+  async function alGenerarPDF() {
+    setActualizandoPDF(true);
+    setErrorMsg("");
+
+    try {
+      const actualizada =
+        await actualizarInspeccionDesdeBD();
+
+      if (
+        !actualizada.pdf_url ||
+        !String(actualizada.pdf_url).trim()
+      ) {
+        throw new Error(
+          "El generador terminó, pero no se encontró la referencia del PDF en la inspección."
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Error comprobando el PDF generado:",
+        error
+      );
+
+      setErrorMsg(
+        error?.message ||
+          "No se pudo comprobar el PDF guardado."
+      );
+    } finally {
+      setActualizandoPDF(false);
+    }
+  }
+
   return (
     <Menu>
       <div
@@ -634,6 +704,7 @@ export default function VerInspeccion() {
 
         {errorMsg && (
           <div
+            role="alert"
             style={{
               padding: "12px",
               marginBottom: "15px",
@@ -838,39 +909,109 @@ export default function VerInspeccion() {
             🖼️ Ver Galería de Fotos
           </Link>
 
-          <Link
-            to={`/inspecciones/pdf/${id}`}
-            style={{
-              color: "#4db8ff",
-              fontWeight: "bold",
-              textDecoration: "none",
-            }}
-          >
-            📄 Ver PDF
-          </Link>
+          {pdfGuardado && (
+            <Link
+              to={`/inspecciones/pdf/${id}`}
+              style={{
+                color: "#4db8ff",
+                fontWeight: "bold",
+                textDecoration: "none",
+              }}
+            >
+              📄 Ver PDF
+            </Link>
+          )}
         </div>
 
         {pendienteRevision && (
-          <button
-            onClick={publicarParaCliente}
-            disabled={publicando}
+          <div
             style={{
               marginTop: "25px",
-              padding: "15px",
-              width: "100%",
-              background: publicando ? "#64748b" : "#4ade80",
-              color: "#052e16",
-              borderRadius: "10px",
-              border: "none",
-              fontWeight: "800",
-              fontSize: "17px",
-              cursor: publicando ? "not-allowed" : "pointer",
+              padding: "16px",
+              borderRadius: "12px",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(77,184,255,0.25)",
             }}
           >
-            {publicando
-              ? "Enviando al cliente..."
-              : "✔ Revisar y enviar al cliente"}
-          </button>
+            <h3
+              style={{
+                color: "#4db8ff",
+                marginTop: 0,
+              }}
+            >
+              Informe para el cliente
+            </h3>
+
+            {!pdfGuardado ? (
+              <>
+                <p
+                  style={{
+                    color: "#cbd5e1",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Antes de publicar la inspección,
+                  genera el PDF. Se guardará en el
+                  almacenamiento privado y estará
+                  disponible desde la aplicación.
+                </p>
+
+                <BotonGenerarPDF
+                  id={id}
+                  tipo="inspeccion"
+                  onGenerado={alGenerarPDF}
+                />
+              </>
+            ) : (
+              <>
+                <p
+                  style={{
+                    color: "#4ade80",
+                    fontWeight: "bold",
+                  }}
+                >
+                  ✓ PDF generado y guardado.
+                </p>
+
+                <Link
+                  to={`/inspecciones/pdf/${id}`}
+                  style={{
+                    display: "block",
+                    color: "#4db8ff",
+                    marginBottom: "15px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  📄 Revisar PDF antes de publicar
+                </Link>
+
+                <button
+                  onClick={publicarParaCliente}
+                  disabled={publicando || actualizandoPDF}
+                  style={{
+                    marginTop: "10px",
+                    padding: "15px",
+                    width: "100%",
+                    background: publicando
+                      ? "#64748b"
+                      : "#4ade80",
+                    color: "#052e16",
+                    borderRadius: "10px",
+                    border: "none",
+                    fontWeight: "800",
+                    fontSize: "17px",
+                    cursor: publicando
+                      ? "not-allowed"
+                      : "pointer",
+                  }}
+                >
+                  {publicando
+                    ? "Publicando para el cliente..."
+                    : "✔ Revisar y publicar para el cliente"}
+                </button>
+              </>
+            )}
+          </div>
         )}
 
         <button
