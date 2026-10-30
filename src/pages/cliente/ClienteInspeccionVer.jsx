@@ -1,4 +1,3 @@
-
 import React, {
   useEffect,
   useState,
@@ -328,35 +327,21 @@ export default function ClienteInspeccionVer() {
             factura = facturaData;
           }
 
-          if (
-            fotosEncontradas.length === 0 &&
-            factura?.fotos
-          ) {
-            fotosEncontradas = parsearFotos(factura.fotos);
-          }
-
+          // Las fotografías del informe extra proceden exclusivamente de extras.fotos.
           insp = {
             id: extra.id,
-            fecha: extra.updated_at || extra.created_at,
+            fecha: extra.creado_en || extra.updated_at || extra.created_at,
             estado: "ENVIADO AL CLIENTE",
-            direccion:
-              extra.direccion ||
-              factura?.direccion ||
-              "Servicio Extra",
+            direccion: extra.direccion || null,
+            vivienda_id: extra.vivienda_id || null,
             notas_tecnico:
               extra.descripcion ||
               extra.observaciones ||
-              factura?.descripcion ||
               "Sin descripción",
-            materiales:
-              extra.materiales ||
-              factura?.materiales,
-            tiempo_empleado:
-              extra.tiempo_empleado ||
-              factura?.tiempo_empleado,
-            pdf_url:
-              extra.pdf_url ||
-              factura?.pdf_url,
+            materiales: extra.materiales || null,
+            tiempo_empleado: extra.tiempo_empleado || null,
+            // Este es el PDF del informe extra, nunca el PDF fiscal.
+            pdf_url: extra.pdf_url || null,
             extra_id: extra.id,
             factura_id: extra.factura_id || null,
           };
@@ -452,11 +437,11 @@ export default function ClienteInspeccionVer() {
       setInspeccion(insp);
       setFotos(fotosEncontradas || []);
 
-      if (!esExtraActual && insp.vivienda_id) {
+      if (insp.vivienda_id) {
         const { data: viv, error: errorVivienda } =
           await supabase
             .from("viviendas")
-            .select("direccion, ciudad")
+            .select("direccion, ciudad, localidad, provincia, codigo_postal")
             .eq("id", insp.vivienda_id)
             .maybeSingle();
 
@@ -801,6 +786,23 @@ export default function ClienteInspeccionVer() {
                 )}
               </p>
 
+              {esExtra && inspeccion.factura_id && (
+                <p
+                  style={{
+                    margin: "10px 0 0",
+                    fontSize: "12px",
+                    color: "#94a3b8",
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  <strong style={{ color: COLOR_DORADO }}>
+                    Factura relacionada:
+                  </strong>{" "}
+                  #{inspeccion.factura_id}
+                </p>
+              )}
+
               {inspeccion.materiales && (
                 <p
                   style={{
@@ -947,7 +949,7 @@ export default function ClienteInspeccionVer() {
                 }}
               >
                 {esExtra
-                  ? "📄 Ver factura / PDF"
+                  ? "📄 Ver informe del servicio extra"
                   : t("verInformePdf") || "Ver informe PDF"}
               </a>
             )}
