@@ -1,3 +1,488 @@
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+} from "react";
+import { useAuth } from "./AuthContext.jsx";
+import { supabase } from "../lib/supabase";
+
+// Diccionario de traducciones de la interfaz: español e inglés
+const translations = {
+  es: {
+    // Menú y Navegación
+    inicio: "Inicio",
+    clientes: "Clientes",
+    viviendas: "Viviendas",
+    inspecciones: "Inspecciones",
+    servicios: "Servicios",
+    contratos: "Contratos",
+    facturas: "Facturas",
+    tecnicos: "Técnicos",
+    dashboard: "Dashboard",
+    ajustes: "Ajustes",
+    perfil: "Perfil",
+
+    // Generales / Dashboard
+    bienvenida: "Bienvenido a tu panel de cliente",
+    misViviendas: "Mis Viviendas",
+    serviciosExtras: "Servicios Extras",
+    cerrarSesion: "Cerrar Sesión",
+    logout: "Cerrar Sesión",
+    noHayDatos: "No hay registros disponibles.",
+    cambiarIdioma: "Idioma",
+    verDetalles: "Ver Detalles",
+    estadoPendiente: "Pendiente",
+    estadoAprobado: "Aprobado",
+    estadoCompletado: "Completado",
+    solicitarExtra: "Solicitar Servicio Extra",
+    totalPagar: "Total a Pagar",
+    direccion: "Dirección",
+    cargandoPanel: "Cargando Panel...",
+    panelDeControl: "Panel de Control",
+    dashboardCliente: "Dashboard Cliente",
+    operativo: "Operativo",
+    trabajosExtrasDisponibles: "¡Trabajos Extras Disponibles!",
+    tienes: "Tienes",
+    trabajosRegistrados: "trabajos o informes extras registrados.",
+    trabajoExtraFactura: "Trabajo Extra / Factura",
+    verDetallesFotosFacturas: "Ver detalles y fotos en facturas",
+    verFactura: "Ver Factura →",
+    alertas: "Alertas",
+    inspeccionesDiarias: "Inspecciones Diarias",
+    configuracionSeguridadNotificaciones: "Configuración de Seguridad y Notificaciones",
+    lun: "Lun",
+    mar: "Mar",
+    mie: "Mié",
+    jue: "Jue",
+    vie: "Vie",
+    sab: "Sáb",
+    dom: "Dom",
+
+    // Crear Factura
+    tituloNuevaFactura: "Nueva Factura / Extra",
+    errorSeleccionarCliente: "Selecciona un cliente.",
+    errorSeleccionarVivienda: "Selecciona una vivienda.",
+    errorIntroducirImporte: "Introduce el importe.",
+    errorCreandoFactura: "Error creando factura",
+    facturaCreadaCorrectamente: "Factura creada correctamente",
+    cliente: "Cliente",
+    seleccionaCliente: "Selecciona un cliente...",
+    vivienda: "Vivienda",
+    seleccionaVivienda: "Selecciona una vivienda...",
+    fecha: "Fecha",
+    concepto: "Concepto",
+    placeholderConcepto: "Descripción del servicio...",
+    importe: "Importe",
+    btnCrearFactura: "Crear Factura",
+
+    // Perfil Cliente
+    clienteDashboardCargando: "Cargando perfil...",
+    clienteDashboardNoEncontrado: "No se encontró el perfil de cliente.",
+    clientePerfilTitulo: "Mi Perfil",
+    clienteDashboardNombre: "Nombre",
+    clienteDashboardEmail: "Correo electrónico",
+    clienteDashboardTelefono: "Teléfono",
+
+    // Configuración y Seguridad
+    configuracionYSeguridad: "Configuración y Seguridad",
+    volver: "← Volver",
+    preferenciasNotificacion: "Preferencias de Notificación",
+    notifPushTitulo: "Notificaciones Push",
+    notifPushSub: "Recibe avisos inmediatos en la app sobre tus inspecciones.",
+    resumenCorreoTitulo: "Resumen por Correo",
+    resumenCorreoSub: "Recibe informes y facturas directamente en tu email.",
+    alertasCriticasTitulo: "Alertas de Incidencias Críticas",
+    alertasCriticasSub: "Avisos urgentes de incidencias graves detectadas en viviendas.",
+    seguridadCuenta: "Seguridad de la Cuenta",
+    autenticacionDosPasosTitulo: "Autenticación en 2 Pasos (2FA)",
+    autenticacionDosPasosSub: "Añade un nivel extra de seguridad al iniciar sesión.",
+    contrasena: "Contraseña",
+    ultimoCambioContrasena: "Último cambio hace más de 30 días",
+    cambiar: "Cambiar",
+    alertaCambiarContrasena: "Función para cambiar contraseña",
+    cambiosGuardados: "✓ Cambios Guardados",
+    guardarPreferencias: "Guardar Preferencias",
+
+    // Lista de Contratos
+    clienteListaTitulo: "Mis Contratos",
+    cargandoContratos: "Cargando contratos...",
+    usuarioNoAutenticado: "Usuario no autenticado.",
+    errorIdentificarCliente: "No se pudo identificar el cliente asociado.",
+    errorCargandoContratos: "Error cargando contratos.",
+    errorInesperadoContratos: "Error inesperado cargando contratos.",
+    reintentar: "Reintentar",
+    clienteListaVacio: "No tienes contratos registrados.",
+    servicioContratado: "Servicio contratado",
+
+    // Ver Contrato Individual y Generación PDF
+    contratoNoEncontrado: "Contrato no encontrado",
+    clienteContratoCargando: "Cargando contrato...",
+    noSePudoCargarContrato: "No se pudo cargar el contrato",
+    compruebaTuConexion: "Comprueba tu conexión",
+    clienteContratoTitulo: "Contrato del Cliente",
+    clienteContratoDatosCliente: "Datos del Cliente",
+    nombre: "Nombre",
+    telefono: "Teléfono",
+    clienteContratoDetalles: "Detalles del Contrato",
+    tipoServicio: "Tipo de servicio: Cada",
+    dias: "días",
+    precioMensual: "Precio mensual",
+    fechaInicio: "Fecha inicio",
+    estado: "Estado",
+    firmado: "Firmado",
+    pendienteFirma: "Pendiente de firma",
+    verContratoAntesFirmar: "📄 Ver contrato antes de firmar",
+    firmaDelCliente: "Firma del Cliente",
+    verCambiarFirma: "Ver / Cambiar Firma",
+    enviarAlAdminBtn: "📤 Enviar contrato al Admin",
+    enviando: "Enviando...",
+    verContratoFirmadoPdf: "📄 Ver contrato firmado (PDF)",
+    alertaDebesFirmar: "Debes firmar el contrato antes de enviarlo.",
+    alertaErrorAdmin: "Error notificando al administrador: ",
+    alertaContratoEnviado: "¡Contrato firmado enviado al administrador!",
+    alertaNoPdfAdmin: "El administrador aún no ha generado el PDF.",
+    clienteAccesoDenegado: "Acceso denegado o contrato no encontrado.",
+    clienteContratoDireccion: "Dirección",
+
+    // PDF del Contrato
+    pdfTitulo: "CONTRATO DE PRESTACIÓN DE SERVICIOS",
+    pdfNombreCliente: "Cliente",
+    pdfDireccion: "Dirección",
+    pdfTelefono: "Teléfono",
+    pdfDetallesServicio: "DETALLES DEL SERVICIO",
+    pdfTipoServicio: "Frecuencia",
+    contratoCadaDias: "Cada",
+    pdfFechaInicio: "Fecha de inicio",
+    pdfPrecioMensual: "Precio mensual",
+    pdfCondiciones: "CONDICIONES",
+    pdfCondicionesTexto: "El prestador se compromete a realizar las inspecciones y servicios acordados según la frecuencia establecida, manteniendo la confidencialidad y el rigor profesional.",
+    pdfFirmaCliente: "Firma del Cliente",
+    pdfGenerado: "¡PDF generado y guardado con éxito!",
+    pdfGenerando: "Generando PDF...",
+    pdfGenerar: "Generar y Guardar PDF",
+    errorSubirPdfStorage: "Error al subir el PDF a Storage: ",
+    errorGenerarPdf: "Error al generar el PDF: ",
+
+    // Visor de PDF
+    pdfCargando: "Cargando PDF...",
+    pdfNoGenerado: "No hay ningún archivo PDF generado para este contrato.",
+    pdfTituloVista: "Contrato",
+    pdfVolver: "Volver",
+    pdfTituloIframe: "Visor de Contrato",
+    pdfAbrirNuevaPestana: "Abrir en nueva pestaña",
+
+    // Firma Dibujar
+    firmaDelClienteTitulo: "Firma del Cliente",
+    instruccionesFirma: "Dibuje su firma con el dedo dentro del recuadro blanco:",
+    limpiar: "🗑️ Limpiar",
+    guardarFirmaBtn: "💾 Guardar firma",
+    alertaRealizarFirma: "Por favor, realiza tu firma antes de guardar.",
+    alertaIdContratoValido: "Error: No se encontró un ID de contrato válido.",
+    errorGuardandoFirma: "Error guardando la firma.",
+    contratoFirmadoExito: "¡Contrato firmado con éxito!",
+    errorGuardandoFirmaDetalle: "Error guardando la firma: ",
+
+    // Ver Factura Individual
+    facturaNoEncontrada: "No se encontró la factura",
+    volverSimple: "Volver",
+    estadoPagada: "PAGADA",
+    estadoEnviadaCliente: "ENVIADA AL CLIENTE",
+    servicioInspeccion: "Servicio / Inspección",
+    facturaLabel: "Factura",
+    evidenciaDelTrabajo: "Evidencia del Trabajo",
+    materialesUtilizados: "Materiales utilizados:",
+    tiempoEmpleado: "Tiempo empleado:",
+    fotografiasInspeccion: "Fotografías de Inspección:",
+    detalle: "Detalle",
+    base: "Base",
+    iva: "IVA",
+    total: "Total",
+    verPdf: "Ver PDF",
+    noPdfGenerado: "Aún no hay PDF generado para esta factura.",
+
+    // Lista de Facturas
+    misFacturasTitulo: "Mis Facturas",
+    cargandoFacturas: "Cargando facturas...",
+    noHayFacturasRegistradas: "No hay facturas registradas.",
+    estadoCancelada: "CANCELADA",
+    estadoTrabajoCompletado: "TRABAJO COMPLETADO",
+    estadoPendienteRevision: "PENDIENTE DE REVISIÓN",
+
+    // Lista de Inspecciones
+    cargandoListado: "Cargando Listado...",
+    misInspeccionesInformesTitulo: "Mis Inspecciones e Informes",
+    errorPerfilClienteAsociado: "No se encontró el perfil de cliente asociado.",
+    errorCargarDatos: "Hubo un error al cargar los datos.",
+    noHayInspeccionesInformes: "No hay inspecciones ni informes disponibles.",
+    servicioExtraTrabajo: "🛠️ Servicio Extra / Trabajo",
+    inspeccionLabel: "📋 Inspección",
+    informeDisponible: "Informe disponible",
+    detalleLabel: "Detalle:",
+    verDetalleFlecha: "Ver detalle →",
+    extraBadge: "⚡ EXTRA",
+
+    // Ver Inspección / Informe
+    cargandoInformacion: "Cargando información...",
+    volverMisInformes: "← Volver a Mis Informes",
+    informeNoEncontradoPermisos: "No se encontró el informe o no tienes permisos para verlo.",
+    errorConexionCargarInformacion: "Error de conexión al cargar la información.",
+    confirmarBorrarInforme: "¿Estás seguro de que quieres eliminar este informe de tu lista?",
+    informeEliminadoExito: "Informe eliminado correctamente.",
+    errorEliminarInforme: "No se pudo eliminar el informe.",
+    informeLabel: "Informe",
+    ubicacionVivienda: "Ubicación / Vivienda",
+    direccionNoEspecificada: "Dirección no especificada",
+    descripcionTrabajoObservaciones: "Descripción del Trabajo / Observaciones",
+    sinObservacionesRegistradas: "Sin observaciones registradas.",
+    materialesUsados: "Materiales usados:",
+    tiempoEmpleadoLabel: "Tiempo empleado:",
+    fotografiasAdjuntas: "Fotografías Adjuntas",
+    noHayFotografiasInforme: "No hay fotografías adjuntas a este informe.",
+    verInformePdf: "📄 Ver Informe PDF",
+    borrarEsteInforme: "🗑️ Borrar este informe",
+    fotoAmpliada: "Foto ampliada",
+    cerrar: "Cerrar",
+  },
+
+  en: {
+    // Menu & Navigation
+    inicio: "Home",
+    clientes: "Clients",
+    viviendas: "Properties",
+    inspecciones: "Inspections",
+    servicios: "Services",
+    contratos: "Contracts",
+    facturas: "Invoices",
+    tecnicos: "Technicians",
+    dashboard: "Dashboard",
+    ajustes: "Settings",
+    perfil: "Profile",
+
+    // General / Dashboard
+    bienvenida: "Welcome to your client dashboard",
+    misViviendas: "My Properties",
+    serviciosExtras: "Extra Services",
+    cerrarSesion: "Log Out",
+    logout: "Log Out",
+    noHayDatos: "No records available.",
+    cambiarIdioma: "Language",
+    verDetalles: "View Details",
+    estadoPendiente: "Pending",
+    estadoAprobado: "Approved",
+    estadoCompletado: "Completed",
+    solicitarExtra: "Request Extra Service",
+    totalPagar: "Total Due",
+    direccion: "Address",
+    cargandoPanel: "Loading Dashboard...",
+    panelDeControl: "Control Panel",
+    dashboardCliente: "Client Dashboard",
+    operativo: "Operational",
+    trabajosExtrasDisponibles: "Extra Jobs Available!",
+    tienes: "You have",
+    trabajosRegistrados: "extra jobs or reports registered.",
+    trabajoExtraFactura: "Extra Job / Invoice",
+    verDetallesFotosFacturas: "View details and photos in invoices",
+    verFactura: "View Invoice →",
+    alertas: "Alerts",
+    inspeccionesDiarias: "Daily Inspections",
+    configuracionSeguridadNotificaciones: "Security and Notification Settings",
+    lun: "Mon",
+    mar: "Tue",
+    mie: "Wed",
+    jue: "Thu",
+    vie: "Fri",
+    sab: "Sat",
+    dom: "Sun",
+
+    // Create Invoice
+    tituloNuevaFactura: "New Invoice / Extra",
+    errorSeleccionarCliente: "Select a client.",
+    errorSeleccionarVivienda: "Select a property.",
+    errorIntroducirImporte: "Enter the amount.",
+    errorCreandoFactura: "Error creating invoice",
+    facturaCreadaCorrectamente: "Invoice created successfully",
+    cliente: "Client",
+    seleccionaCliente: "Select a client...",
+    vivienda: "Property",
+    seleccionaVivienda: "Select a property...",
+    fecha: "Date",
+    concepto: "Concept",
+    placeholderConcepto: "Service description...",
+    importe: "Amount",
+    btnCrearFactura: "Create Invoice",
+
+    // Perfil Cliente
+    clienteDashboardCargando: "Loading profile...",
+    clienteDashboardNoEncontrado: "Client profile not found.",
+    clientePerfilTitulo: "My Profile",
+    clienteDashboardNombre: "Name",
+    clienteDashboardEmail: "Email",
+    clienteDashboardTelefono: "Phone",
+
+    // Configuration & Security
+    configuracionYSeguridad: "Configuration & Security",
+    volver: "← Back",
+    preferenciasNotificacion: "Notification Preferences",
+    notifPushTitulo: "Push Notifications",
+    notifPushSub: "Receive immediate notices in the app about your inspections.",
+    resumenCorreoTitulo: "Email Summary",
+    resumenCorreoSub: "Receive reports and invoices directly in your email.",
+    alertasCriticasTitulo: "Critical Incident Alerts",
+    alertasCriticasSub: "Urgent notices of severe incidents detected in properties.",
+    seguridadCuenta: "Account Security",
+    autenticacionDosPasosTitulo: "Two-Factor Authentication (2FA)",
+    autenticacionDosPasosSub: "Add an extra level of security when logging in.",
+    contrasena: "Password",
+    ultimoCambioContrasena: "Last changed more than 30 days ago",
+    cambiar: "Change",
+    alertaCambiarContrasena: "Password change feature",
+    cambiosGuardados: "✓ Changes Saved",
+    guardarPreferencias: "Save Preferences",
+
+    // Contracts List
+    clienteListaTitulo: "My Contracts",
+    cargandoContratos: "Loading contracts...",
+    usuarioNoAutenticado: "User not authenticated.",
+    errorIdentificarCliente: "Could not identify the associated client.",
+    errorCargandoContratos: "Error loading contracts.",
+    errorInesperadoContratos: "Unexpected error loading contracts.",
+    reintentar: "Retry",
+    clienteListaVacio: "You have no registered contracts.",
+    servicioContratado: "Contracted service",
+
+    // View Contract Individual & PDF Generation
+    contratoNoEncontrado: "Contract not found",
+    clienteContratoCargando: "Loading contract...",
+    noSePudoCargarContrato: "Could not load the contract",
+    compruebaTuConexion: "Check your connection",
+    clienteContratoTitulo: "Client Contract",
+    clienteContratoDatosCliente: "Client Details",
+    nombre: "Name",
+    telefono: "Phone",
+    clienteContratoDetalles: "Contract Details",
+    tipoServicio: "Service type: Every",
+    dias: "days",
+    precioMensual: "Monthly price",
+    fechaInicio: "Start date",
+    estado: "Status",
+    firmado: "Signed",
+    pendienteFirma: "Pending signature",
+    verContratoAntesFirmar: "📄 View contract before signing",
+    firmaDelCliente: "Client Signature",
+    verCambiarFirma: "View / Change Signature",
+    enviarAlAdminBtn: "📤 Send contract to Admin",
+    enviando: "Sending...",
+    verContratoFirmadoPdf: "📄 View signed contract (PDF)",
+    alertaDebesFirmar: "You must sign the contract before sending it.",
+    alertaErrorAdmin: "Error notifying the administrator: ",
+    alertaContratoEnviado: "Signed contract sent to the administrator!",
+    alertaNoPdfAdmin: "The administrator has not generated the PDF yet.",
+    clienteAccesoDenegado: "Access denied or contract not found.",
+    clienteContratoDireccion: "Address",
+
+    // PDF Generation
+    pdfTitulo: "SERVICE AGREEMENT CONTRACT",
+    pdfNombreCliente: "Client",
+    pdfDireccion: "Address",
+    pdfTelefono: "Phone",
+    pdfDetallesServicio: "SERVICE DETAILS",
+    pdfTipoServicio: "Frequency",
+    contratoCadaDias: "Every",
+    pdfFechaInicio: "Start date",
+    pdfPrecioMensual: "Monthly price",
+    pdfCondiciones: "CONDITIONS",
+    pdfCondicionesTexto: "The provider agrees to perform the agreed inspections and services according to the established frequency, maintaining confidentiality and professional rigor.",
+    pdfFirmaCliente: "Client Signature",
+    pdfGenerado: "PDF generated and saved successfully!",
+    pdfGenerando: "Generating PDF...",
+    pdfGenerar: "Generate & Save PDF",
+    errorSubirPdfStorage: "Error uploading PDF to Storage: ",
+    errorGenerarPdf: "Error generating PDF: ",
+
+    // PDF Viewer
+    pdfCargando: "Loading PDF...",
+    pdfNoGenerado: "No PDF file has been generated for this contract yet.",
+    pdfTituloVista: "Contract",
+    pdfVolver: "Back",
+    pdfTituloIframe: "Contract Viewer",
+    pdfAbrirNuevaPestana: "Open in new tab",
+
+    // Signature Drawing
+    firmaDelClienteTitulo: "Client Signature",
+    instruccionesFirma: "Draw your signature with your finger inside the white box:",
+    limpiar: "🗑️ Clear",
+    guardarFirmaBtn: "💾 Save signature",
+    alertaRealizarFirma: "Please sign before saving.",
+    alertaIdContratoValido: "Error: No valid contract ID found.",
+    errorGuardandoFirma: "Error saving signature.",
+    contratoFirmadoExito: "Contract signed successfully!",
+    errorGuardandoFirmaDetalle: "Error saving signature: ",
+
+    // View Invoice Individual
+    facturaNoEncontrada: "Invoice not found",
+    volverSimple: "Back",
+    estadoPagada: "PAID",
+    estadoEnviadaCliente: "SENT TO CLIENT",
+    servicioInspeccion: "Service / Inspection",
+    facturaLabel: "Invoice",
+    evidenciaDelTrabajo: "Work Evidence",
+    materialesUtilizados: "Materials used:",
+    tiempoEmpleado: "Time spent:",
+    fotografiasInspeccion: "Inspection Photographs:",
+    detalle: "Detail",
+    base: "Subtotal",
+    iva: "VAT",
+    total: "Total",
+    verPdf: "View PDF",
+    noPdfGenerado: "No PDF generated for this invoice yet.",
+
+    // Invoices List
+    misFacturasTitulo: "My Invoices",
+    cargandoFacturas: "Loading invoices...",
+    noHayFacturasRegistradas: "No registered invoices found.",
+    estadoCancelada: "CANCELLED",
+    estadoTrabajoCompletado: "WORK COMPLETED",
+    estadoPendienteRevision: "PENDING REVIEW",
+
+    // Inspections List
+    cargandoListado: "Loading List...",
+    misInspeccionesInformesTitulo: "My Inspections & Reports",
+    errorPerfilClienteAsociado: "Associated client profile not found.",
+    errorCargarDatos: "There was an error loading the data.",
+    noHayInspeccionesInformes: "No inspections or reports available.",
+    servicioExtraTrabajo: "🛠️ Extra Service / Job",
+    inspeccionLabel: "📋 Inspection",
+    informeDisponible: "Report available",
+    detalleLabel: "Detail:",
+    verDetalleFlecha: "View detail →",
+    extraBadge: "⚡ EXTRA",
+
+    // View Inspection / Report
+    cargandoInformacion: "Loading information...",
+    volverMisInformes: "← Back to My Reports",
+    informeNoEncontradoPermisos: "Report not found or you don't have permission to view it.",
+    errorConexionCargarInformacion: "Connection error loading information.",
+    confirmarBorrarInforme: "Are you sure you want to delete this report from your list?",
+    informeEliminadoExito: "Report deleted successfully.",
+    errorEliminarInforme: "Could not delete the report.",
+    informeLabel: "Report",
+    ubicacionVivienda: "Location / Property",
+    direccionNoEspecificada: "Address not specified",
+    descripcionTrabajoObservaciones: "Job Description / Observations",
+    sinObservacionesRegistradas: "No observations registered.",
+    materialesUsados: "Materials used:",
+    tiempoEmpleadoLabel: "Time spent:",
+    fotografiasAdjuntas: "Attached Photographs",
+    noHayFotografiasInforme: "No photographs attached to this report.",
+    verInformePdf: "📄 View PDF Report",
+    borrarEsteInforme: "🗑️ Delete this report",
+    fotoAmpliada: "Enlarged photo",
+    cerrar: "Close",
+  },
+};
+
+const LanguageContext = createContext();
 
 export function LanguageProvider({ children }) {
   const { user, role } = useAuth();
@@ -13,6 +498,7 @@ export function LanguageProvider({ children }) {
     let cancelado = false;
 
     async function cargarIdioma() {
+      // Esperar a que AuthContext determine el rol de la cuenta.
       if (user?.id && !role) {
         setLoadedFor(null);
         return;
@@ -20,15 +506,17 @@ export function LanguageProvider({ children }) {
 
       let idiomaGuardado = null;
 
+      // Primero recuperar la preferencia local de esta cuenta.
       try {
         idiomaGuardado = localStorage.getItem(accountKey);
       } catch (error) {
         console.error("Error leyendo idioma local:", error);
       }
 
+      // Para clientes, la preferencia de Supabase es la fuente principal.
       if (user?.id && role === "cliente") {
         try {
-          const { data, error } = await supabase
+          let resultado = await supabase
             .from("clientes")
             .select("idioma")
             .eq("usuario_id", user.id)
@@ -36,27 +524,33 @@ export function LanguageProvider({ children }) {
 
           if (cancelado) return;
 
-          if (error) {
-            console.error("Error recuperando idioma del cliente:", error);
-          } else if (data?.idioma === "en" || data?.idioma === "es") {
-            idiomaGuardado = data.idioma;
-          } else {
-            const resultado = await supabase
+          // Compatibilidad con instalaciones que utilizan user_id.
+          if (!resultado.data && !resultado.error) {
+            resultado = await supabase
               .from("clientes")
               .select("idioma")
               .eq("user_id", user.id)
               .maybeSingle();
+          }
 
-            if (cancelado) return;
+          if (cancelado) return;
 
-            if (!resultado.error &&
-                (resultado.data?.idioma === "en" ||
-                 resultado.data?.idioma === "es")) {
-              idiomaGuardado = resultado.data.idioma;
-            }
+          if (resultado.error) {
+            console.error(
+              "Error recuperando idioma del cliente:",
+              resultado.error
+            );
+          } else if (
+            resultado.data?.idioma === "en" ||
+            resultado.data?.idioma === "es"
+          ) {
+            idiomaGuardado = resultado.data.idioma;
           }
         } catch (error) {
-          console.error("Error consultando idioma del cliente:", error);
+          console.error(
+            "Error consultando idioma del cliente:",
+            error
+          );
         }
       }
 
@@ -82,13 +576,17 @@ export function LanguageProvider({ children }) {
   }, [user?.id, role, accountKey]);
 
   useEffect(() => {
+    // No guardar antes de terminar la carga de la cuenta activa.
     if (loadedFor !== accountKey) return;
     if (user?.id && !role) return;
 
     try {
       localStorage.setItem(accountKey, language);
     } catch (error) {
-      console.error("Error guardando preferencia de idioma:", error);
+      console.error(
+        "Error guardando preferencia de idioma:",
+        error
+      );
     }
   }, [language, loadedFor, accountKey, user?.id, role]);
 
@@ -104,8 +602,26 @@ export function LanguageProvider({ children }) {
   };
 
   return (
-    <LanguageContext.Provider value={{ language, changeLanguage, t }}>
+    <LanguageContext.Provider
+      value={{
+        language,
+        changeLanguage,
+        t,
+      }}
+    >
       {children}
     </LanguageContext.Provider>
   );
+}
+
+export function useLanguage() {
+  const context = useContext(LanguageContext);
+
+  if (!context) {
+    throw new Error(
+      "useLanguage debe usarse dentro de un LanguageProvider"
+    );
+  }
+
+  return context;
 }
