@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { resolverUrlPdfSegura } from '../../lib/urlPdf.js';
+import { generarPDFExtra } from '../../pdf/generarPDFExtra.js';
 
 const COLOR_DORADO = '#e0b034';
 const FONDO_PRINCIPAL = '#030509';
@@ -493,6 +493,114 @@ export default function VerFactura() {
   };
 
   /*
+   * Genera y guarda el informe PDF del servicio extra.
+   * Este documento es independiente del PDF fiscal de la factura.
+   */
+  const generarYGuardarInformeExtra = async (extra) => {
+    if (!extra?.id) {
+      throw new Error('No se ha identificado el servicio extra.');
+    }
+
+    const fotosNormalizadas = parsearFotosExtra(extra.fotos);
+
+    if (!Array.isArray(fotosNormalizadas)) {
+      throw new Error('No se ha podido verificar la lista de fotografías del extra.');
+    }
+
+    const clienteId = extra.cliente_id || factura?.cliente_id;
+
+    if (!clienteId) {
+      throw new Error('El servicio extra no tiene un cliente asociado.');
+    }
+
+    const [clienteResult, viviendaResult, tecnicoResult] = await Promise.all([
+      supabase
+        .from('clientes')
+        .select('id,nombre,email,telefono,direccion,idioma')
+        .eq('id', clienteId)
+        .maybeSingle(),
+      extra.vivienda_id
+        ? supabase
+            .from('viviendas')
+            .select('*')
+            .eq('id', extra.vivienda_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      extra.tecnico_id
+        ? supabase
+            .from('tecnicos')
+            .select('id,nombre')
+            .eq('id', extra.tecnico_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null })
+    ]);
+
+    if (clienteResult.error) {
+      throw new Error('No se pudieron cargar los datos del cliente: ' + clienteResult.error.message);
+    }
+
+    if (!clienteResult.data) {
+      throw new Error('No se ha encontrado el cliente titular del servicio extra.');
+    }
+
+    if (viviendaResult.error) {
+      throw new Error('No se pudieron cargar los datos de la vivienda: ' + viviendaResult.error.message);
+    }
+
+    if (tecnicoResult.error) {
+      throw new Error('No se pudieron cargar los datos del técnico: ' + tecnicoResult.error.message);
+    }
+
+    const extraParaPdf = {
+      ...extra,
+      fotos: fotosNormalizadas
+    };
+
+    const pdf = await generarPDFExtra({
+      extra: extraParaPdf,
+      cliente: clienteResult.data,
+      vivienda: viviendaResult.data,
+      tecnico: tecnicoResult.data,
+      factura
+    });
+
+    if (!(pdf instanceof Blob) || pdf.size === 0) {
+      throw new Error('El informe PDF del servicio extra está vacío o no se ha generado correctamente.');
+    }
+
+    const ruta = `extras/extra_${extra.id}_${Date.now()}.pdf`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('pdfs')
+      .upload(ruta, pdf, {
+        contentType: 'application/pdf',
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) {
+      throw new Error('No se pudo guardar el informe PDF: ' + uploadError.message);
+    }
+
+    const { data: extraActualizado, error: guardarError } = await supabase
+      .from('extras')
+      .update({ pdf_url: ruta })
+      .eq('id', extra.id)
+      .select('id,pdf_url')
+      .maybeSingle();
+
+    if (guardarError || !extraActualizado?.pdf_url) {
+      await supabase.storage.from('pdfs').remove([ruta]);
+      throw new Error(
+        'El PDF se generó, pero no se pudo guardar su referencia en el servicio extra: ' +
+        (guardarError?.message || 'No se confirmó la ruta guardada.')
+      );
+    }
+
+    return ruta;
+  };
+
+  /*
    * Administración aprueba y publica la inspección extra
    * cuando el técnico la ha completado y la factura está pagada.
    */
@@ -550,6 +658,15 @@ export default function VerFactura() {
         String(extraExistente.estado || '').toLowerCase() ===
         'enviado_cliente'
       ) {
+        if (!extraExistente.pdf_url) {
+          await generarYGuardarInformeExtra(extraExistente);
+          await cargarDatosSeguros();
+          alert(
+            'El informe PDF que faltaba se ha generado y guardado. El servicio ya estaba publicado para el cliente.'
+          );
+          return;
+        }
+
         alert(
           'Esta inspección extra ya está publicada para el cliente.'
         );
@@ -557,6 +674,9 @@ export default function VerFactura() {
         await cargarDatosSeguros();
         return;
       }
+
+      // El informe debe estar guardado antes de aprobar y publicar el extra.
+      await generarYGuardarInformeExtra(extraExistente);
 
       const { error: aprobarError } = await supabase
         .from('extras')
