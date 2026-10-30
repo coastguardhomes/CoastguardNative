@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -65,6 +66,7 @@ export default function VerFactura() {
   const [fotosExtra, setFotosExtra] = useState([]);
   const [fotosUrlsFirmadas, setFotosUrlsFirmadas] = useState({});
   const [procesandoExtra, setProcesandoExtra] = useState(false);
+  const [generandoInformeExtra, setGenerandoInformeExtra] = useState(false);
 
   const parsearFotosExtra = (fotosRaw) => {
     if (!fotosRaw) return [];
@@ -601,6 +603,46 @@ export default function VerFactura() {
   };
 
   /*
+   * Genera o regenera únicamente el informe PDF del extra.
+   * No cambia estados, no publica y no modifica la factura fiscal.
+   * Las versiones anteriores se conservan en Storage.
+   */
+  const generarInformeExtraManual = async () => {
+    try {
+      if (!extraActual?.id) {
+        throw new Error('No se ha identificado el servicio extra.');
+      }
+
+      if (!tecnicoHaCompletadoExtra) {
+        throw new Error('El técnico todavía no ha completado el servicio extra.');
+      }
+
+      setGenerandoInformeExtra(true);
+
+      const ruta = await generarYGuardarInformeExtra(extraActual);
+
+      await cargarDatosSeguros();
+
+      alert(
+        extraActual.pdf_url
+          ? 'El informe PDF se ha regenerado y guardado correctamente. La versión anterior se conserva.'
+          : 'El informe PDF se ha generado y guardado correctamente.'
+      );
+
+      return ruta;
+    } catch (err) {
+      console.error('Error generando informe PDF del extra:', err);
+
+      alert(
+        'No se ha podido generar el informe PDF: ' +
+        (err.message || 'Error desconocido.')
+      );
+    } finally {
+      setGenerandoInformeExtra(false);
+    }
+  };
+
+  /*
    * Administración aprueba y publica la inspección extra
    * cuando el técnico la ha completado y la factura está pagada.
    */
@@ -1097,6 +1139,31 @@ export default function VerFactura() {
               </p>
             )}
 
+            {tecnicoHaCompletadoExtra && (
+              <button
+                onClick={generarInformeExtraManual}
+                disabled={generandoInformeExtra || procesandoExtra}
+                style={{
+                  ...estilos.botonPDFExtra,
+                  marginTop: '14px',
+                  opacity:
+                    generandoInformeExtra || procesandoExtra
+                      ? 0.65
+                      : 1,
+                  cursor:
+                    generandoInformeExtra || procesandoExtra
+                      ? 'not-allowed'
+                      : 'pointer'
+                }}
+              >
+                {generandoInformeExtra
+                  ? 'Generando informe PDF...'
+                  : extraActual?.pdf_url
+                    ? '📄 REGENERAR INFORME PDF'
+                    : '📄 GENERAR INFORME PDF'}
+              </button>
+            )}
+
             {extraYaEnviado && (
               <div style={estilos.avisoPublicado}>
                 <p style={estilos.textoPublicado}>
@@ -1357,6 +1424,19 @@ const estilos = {
     background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
     color: '#fff',
     border: '1px solid rgba(16, 185, 129, 0.6)',
+    borderRadius: '12px',
+    fontWeight: '900',
+    fontSize: '12px',
+    cursor: 'pointer',
+    textTransform: 'uppercase'
+  },
+
+  botonPDFExtra: {
+    width: '100%',
+    padding: '12px',
+    background: 'linear-gradient(135deg, #d6a72d 0%, #8a6412 100%)',
+    color: '#080808',
+    border: '1px solid rgba(224, 176, 52, 0.7)',
     borderRadius: '12px',
     fontWeight: '900',
     fontSize: '12px',
