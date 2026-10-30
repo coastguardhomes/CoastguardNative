@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Menu from "../../layouts/Menu.jsx";
 import { useLanguage } from "../../context/LanguageContext.jsx";
+import { traducirObservacionInspeccion } from "../../lib/traducirObservacionesInspeccion";
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#030509";
@@ -33,8 +34,11 @@ export default function ClienteInspeccionesLista() {
   const [elementos, setElementos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [idiomaCliente, setIdiomaCliente] = useState("es");
 
   useEffect(() => {
+    let cancelado = false;
+
     async function cargarTodo() {
       if (!user) {
         setLoading(false);
@@ -47,7 +51,7 @@ export default function ClienteInspeccionesLista() {
 
         let { data: clienteData, error: errorCliente } = await supabase
           .from("clientes")
-          .select("id")
+          .select("id, idioma")
           .eq("usuario_id", user.id)
           .maybeSingle();
 
@@ -59,7 +63,7 @@ export default function ClienteInspeccionesLista() {
         if (!clienteData) {
           const { data: clienteByUserId, error } = await supabase
             .from("clientes")
-            .select("id")
+            .select("id, idioma")
             .eq("user_id", user.id)
             .maybeSingle();
 
@@ -74,7 +78,7 @@ export default function ClienteInspeccionesLista() {
         if (!clienteData) {
           const { data: clienteById, error } = await supabase
             .from("clientes")
-            .select("id")
+            .select("id, idioma")
             .eq("id", user.id)
             .maybeSingle();
 
@@ -86,11 +90,20 @@ export default function ClienteInspeccionesLista() {
         }
 
         if (!clienteData) {
-          setErrorMsg(t("errorPerfilClienteAsociado"));
+          if (!cancelado) {
+            setErrorMsg(t("errorPerfilClienteAsociado"));
+          }
           return;
         }
 
         const clienteId = clienteData.id;
+        const idioma = String(clienteData.idioma || "es")
+          .trim()
+          .toLowerCase();
+
+        if (!cancelado) {
+          setIdiomaCliente(idioma);
+        }
 
         /*
          * Las inspecciones normales solo se muestran cuando
@@ -145,16 +158,27 @@ export default function ClienteInspeccionesLista() {
           (a, b) => b.fechaOrden - a.fechaOrden
         );
 
-        setElementos(combinados);
+        if (!cancelado) {
+          setElementos(combinados);
+        }
       } catch (err) {
         console.error("Error al cargar el listado del cliente:", err);
-        setErrorMsg(t("errorCargarDatos"));
+
+        if (!cancelado) {
+          setErrorMsg(t("errorCargarDatos"));
+        }
       } finally {
-        setLoading(false);
+        if (!cancelado) {
+          setLoading(false);
+        }
       }
     }
 
     cargarTodo();
+
+    return () => {
+      cancelado = true;
+    };
   }, [user, t]);
 
   if (loading) {
@@ -243,16 +267,36 @@ export default function ClienteInspeccionesLista() {
             {elementos.map((item) => {
               const esExtra = item.tipo === "extra";
 
-              const textoCrudo =
-                item.observaciones ||
-                item.comentarios ||
-                item.descripcion ||
-                item.detalle ||
-                item.nota ||
-                "";
+              /*
+               * En inspecciones normales se utiliza primero
+               * notas_tecnico, igual que en la ficha individual.
+               *
+               * En extras se conserva el orden de campos anterior.
+               */
+              const textoCrudo = esExtra
+                ? item.observaciones ||
+                  item.comentarios ||
+                  item.descripcion ||
+                  item.detalle ||
+                  item.nota ||
+                  ""
+                : item.notas_tecnico ||
+                  item.observaciones ||
+                  item.comentarios ||
+                  item.descripcion ||
+                  item.detalle ||
+                  item.nota ||
+                  "";
 
-              const descripcionLimpia = textoCrudo
+              const descripcionOriginal = textoCrudo
                 ? textoCrudo.replace(/Factura\s*[^:]*:\s*/i, "")
+                : "";
+
+              const descripcionLimpia = descripcionOriginal
+                ? traducirObservacionInspeccion(
+                    descripcionOriginal,
+                    idiomaCliente
+                  )
                 : t("informeDisponible");
 
               const tituloItem = esExtra
