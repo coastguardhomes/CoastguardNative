@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
@@ -6,8 +5,16 @@ import { generarPDFCliente } from "../../pdf/generarPDFCliente";
 
 /**
  * Botón reutilizable para generar y guardar documentos PDF.
- * Conserva el flujo de inspecciones y utiliza la función existente
- * contrato-pdf para generar los contratos.
+ *
+ * Inspecciones:
+ * - Genera el PDF con los datos actuales.
+ * - Carga las fotografías mediante URL temporales.
+ * - Guarda el documento en el bucket privado "pdfs".
+ * - Actualiza inspecciones.pdf_url con la ruta interna.
+ * - Comprueba que la referencia quedó guardada.
+ *
+ * Contratos:
+ * - Mantiene la generación mediante la función contrato-pdf.
  */
 export default function BotonGenerarPDF({
   id,
@@ -16,7 +23,6 @@ export default function BotonGenerarPDF({
 }) {
   const [loading, setLoading] = useState(false);
 
-  // Intenta eliminar un PDF que no haya podido guardarse correctamente.
   async function limpiarPDFSubido(filePath) {
     if (!filePath) return;
 
@@ -39,9 +45,235 @@ export default function BotonGenerarPDF({
     }
   }
 
-  const handlePDF = async () => {
-    if (!id) {
-      alert("Falta el identificador del registro.");
+  async function generarPDFInspeccion() {
+    const identificador = String(id).trim();
+
+    // 1. Obtener los datos actuales de la inspección.
+    const {
+      data: inspeccion,
+      error: inspeccionError,
+    } = await supabase
+      .from("inspecciones")
+      .select("*")
+      .eq("id", identificador)
+      .maybeSingle();
+
+    if (inspeccionError || !inspeccion) {
+      throw new Error(
+        inspeccionError?.message ||
+          "No se encontró la inspección."
+      );
+    }
+
+    // Evitar generar informes para inspecciones que no
+    // hayan sido completadas por el técnico.
+    if (
+      inspeccion.estado !== "completada_tecnico" ||
+      inspeccion.estado_tecnico !== "completada"
+    ) {
+      throw new Error(
+        "La inspección no está completada por el técnico o ya no está pendiente de revisión."
+      );
+    }
+
+    // 2. Cargar las fotografías.
+    // cargarFotosInspeccion resuelve las rutas privadas
+    // mediante enlaces temporales de Storage.
+    const fotos = await cargarFotosInspeccion(identificador);
+
+    // 3. Generar el documento.
+    const blob = await generarPDFCliente({
+      ...inspeccion,
+      fotos,
+    });
+
+    if (
+      !blob ||
+      typeof blob.size !== "number" ||
+      blob.size === 0 ||
+      blob.type !== "application/pdf"
+    ) {
+      throw new Error(
+        "El PDF generado está vacío o no tiene un formato válido."
+      );
+    }
+
+    // 4. Subir el PDF al bucket privado.
+    const filePath =
+      `inspecciones/inspeccion_${identificador}_${Date.now()}.pdf`;
+
+    const {
+      error: uploadError,
+    } = await supabase.storage
+      .from("pdfs")
+      .upload(filePath, blob, {
+        contentType: "application/pdf",
+        upsert: false,
+        cacheControl: "3600",
+      });
+
+    if (uploadError) {
+      throw new Error(
+        `Error al guardar el PDF en Storage: ${uploadError.message}`
+      );
+    }
+
+    try {
+      // 5. Crear enlace temporal para comprobar que el
+      // archivo puede consultarse con los permisos actuales.
+      const {
+        data: signedData,
+        error: signedError,
+      } = await supabase.storage
+        .from("pdfs")
+        .createSignedUrl(filePath, 3600);
+
+      if (signedError || !signedData?.signedUrl) {
+        throw new Error(
+          signedError?.message ||
+            "El archivo se guardó, pero no se pudo crear el enlace temporal."
+        );
+      }
+
+      // 6. Guardar la ruta interna, nunca una URL pública.
+      const {
+        data: inspeccionActualizada,
+        error: updateError,
+      } = await supabase
+        .from("inspecciones")
+        .update({
+          pdf_url: filePath,
+        })
+        .eq("id", identificador)
+        .eq("estado", "completada_tecnico")
+        .eq("estado_tecnico", "completada")
+        .select("id, pdf_url")
+        .maybeSingle();
+
+      if (updateError || !inspeccionActualizada) {
+        throw new Error(
+          updateError?.message ||
+            "El PDF se subió, pero no se pudo guardar su referencia. La inspección no debe publicarse."
+        );
+      }
+
+      if (
+        inspeccionActualizada.pdf_url !== filePath
+      ) {
+        throw new Error(
+          "La base de datos no confirmó la ruta del PDF guardado."
+        );
+      }
+
+      // 7. Comprobar de nuevo que la ruta está registrada.
+      const {
+        data: comprobacion,
+        error: comprobacionError,
+      } = await supabase
+        .from("inspecciones")
+        .select("id, pdf_url")
+        .eq("id", identificador)
+        .maybeSingle();
+
+      if (
+        comprobacionError ||
+        !comprobacion ||
+        comprobacion.pdf_url !== filePath
+      ) {
+        throw new Error(
+          comprobacionError?.message ||
+            "No se pudo verificar que el PDF quedó registrado en la inspección."
+        );
+      }
+
+      // 8. Esperar a que la pantalla administrativa
+      // actualice su estado antes de confirmar el proceso.
+      if (typeof onGenerado === "function") {
+        await onGenerado(signedData.signedUrl);
+      }
+
+      alert(
+        "PDF generado, guardado y registrado correctamente."
+      );
+    } catch (error) {
+      // Eliminar únicamente el archivo recién subido si
+      // el proceso posterior no pudo completarse.
+      // Nunca se elimina el PDF anterior.
+      await limpiarPDFSubido(filePath);
+      throw error;
+    }
+  }
+
+  async function generarPDFContrato() {
+    // 1. Comprobar que el contrato existe.
+    const {
+      data: contrato,
+      error: contratoError,
+    } = await supabase
+      .from("contratos")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (contratoError || !contrato) {
+      throw new Error(
+        contratoError?.message ||
+          "No se encontró el contrato."
+      );
+    }
+
+    // 2. Mantener la función de generación existente.
+    const {
+      data: resultado,
+      error: funcionError,
+    } = await supabase.functions.invoke("contrato-pdf", {
+      body: {
+        contratoId: Number(id),
+        contrato_id: Number(id),
+        id: Number(id),
+      },
+    });
+
+    if (funcionError) {
+      throw new Error(
+        funcionError.message ||
+          "No se pudo generar el contrato."
+      );
+    }
+
+    if (resultado?.error) {
+      throw new Error(resultado.error);
+    }
+
+    const urlContrato =
+      resultado?.url ||
+      resultado?.pdf_url ||
+      resultado?.pdfUrl;
+
+    if (!urlContrato) {
+      throw new Error(
+        "La función de contratos no devolvió la referencia del documento."
+      );
+    }
+
+    if (typeof onGenerado === "function") {
+      await onGenerado(urlContrato);
+    }
+
+    alert(
+      "Contrato generado y guardado correctamente."
+    );
+  }
+
+  async function handlePDF() {
+    if (
+      id === null ||
+      id === undefined ||
+      String(id).trim() === ""
+    ) {
+      alert(
+        "Falta el identificador del registro."
+      );
       return;
     }
 
@@ -51,170 +283,29 @@ export default function BotonGenerarPDF({
 
     try {
       if (tipo === "inspeccion") {
-        // 1. Obtener la inspección.
-        const { data: inspeccion, error } = await supabase
-          .from("inspecciones")
-          .select("*")
-          .eq("id", id)
-          .maybeSingle();
-
-        if (error || !inspeccion) {
-          throw new Error(
-            error?.message || "No se encontró la inspección."
-          );
-        }
-
-        // 2. Cargar las fotos y generar el PDF.
-        const fotos = await cargarFotosInspeccion(id);
-
-        const blob = await generarPDFCliente({
-          ...inspeccion,
-          fotos,
-        });
-
-        if (
-          !blob ||
-          typeof blob.size !== "number" ||
-          blob.size === 0
-        ) {
-          throw new Error("El PDF generado está vacío.");
-        }
-
-        // 3. Subir el PDF al bucket existente.
-        const filePath =
-          `inspecciones/inspeccion_${id}_${Date.now()}.pdf`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("pdfs")
-          .upload(filePath, blob, {
-            contentType: "application/pdf",
-            upsert: false,
-            cacheControl: "3600",
-          });
-
-        if (uploadError) {
-          throw new Error(
-            `Error al subir el PDF: ${uploadError.message}`
-          );
-        }
-
-        // 4. Crear el enlace temporal para mostrar el PDF.
-        const {
-          data: signedData,
-          error: signedError,
-        } = await supabase.storage
-          .from("pdfs")
-          .createSignedUrl(filePath, 3600);
-
-        if (signedError || !signedData?.signedUrl) {
-          await limpiarPDFSubido(filePath);
-
-          throw new Error(
-            signedError?.message ||
-              "No se pudo generar el enlace temporal del PDF. Comprueba los permisos de Storage."
-          );
-        }
-
-        // 5. Guardar la ruta interna, no una URL pública.
-        // Se conserva la columna existente pdf_url.
-        const {
-          data: inspeccionActualizada,
-          error: updateError,
-        } = await supabase
-          .from("inspecciones")
-          .update({
-            pdf_url: filePath,
-          })
-          .eq("id", id)
-          .select("id, pdf_url")
-          .maybeSingle();
-
-        if (updateError || !inspeccionActualizada) {
-          await limpiarPDFSubido(filePath);
-
-          throw new Error(
-            updateError?.message ||
-              "El PDF se subió, pero la base de datos no confirmó la actualización. Comprueba los permisos de la inspección antes de volver a generarlo."
-          );
-        }
-
-        // 6. Devolver el enlace temporal a la pantalla.
-        if (typeof onGenerado === "function") {
-          onGenerado(signedData.signedUrl);
-        }
-
-        alert("Informe PDF generado y guardado correctamente.");
+        await generarPDFInspeccion();
       } else if (tipo === "contrato") {
-        // 1. Comprobar que el contrato existe.
-        const { data: contrato, error } = await supabase
-          .from("contratos")
-          .select("id")
-          .eq("id", id)
-          .maybeSingle();
-
-        if (error || !contrato) {
-          throw new Error(
-            error?.message || "No se encontró el contrato."
-          );
-        }
-
-        // 2. Utilizar el generador de contratos existente.
-        // Esta función se encarga de generar el documento
-        // y actualizar contratos.pdf_url.
-        const { data: resultado, error: funcionError } =
-          await supabase.functions.invoke("contrato-pdf", {
-            body: {
-              contratoId: Number(id),
-              contrato_id: Number(id),
-              id: Number(id),
-            },
-          });
-
-        if (funcionError) {
-          throw new Error(
-            funcionError.message ||
-              "No se pudo generar el contrato."
-          );
-        }
-
-        if (resultado?.error) {
-          throw new Error(resultado.error);
-        }
-
-        const urlContrato =
-          resultado?.url ||
-          resultado?.pdf_url ||
-          resultado?.pdfUrl;
-
-        if (!urlContrato) {
-          throw new Error(
-            "La función de contratos no devolvió la referencia del documento."
-          );
-        }
-
-        // 3. Entregar el documento generado a la pantalla.
-        if (typeof onGenerado === "function") {
-          onGenerado(urlContrato);
-        }
-
-        alert("Contrato generado y guardado correctamente.");
+        await generarPDFContrato();
       } else {
         throw new Error(
           `Tipo de documento no válido: ${tipo}`
         );
       }
-    } catch (e) {
-      console.error("Error generando documento PDF:", e);
+    } catch (error) {
+      console.error(
+        "Error generando documento PDF:",
+        error
+      );
 
       alert(
         `No se pudo generar el documento: ${
-          e?.message || "Error desconocido."
+          error?.message || "Error desconocido."
         }`
       );
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <button
