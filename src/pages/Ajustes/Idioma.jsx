@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -17,22 +16,30 @@ export default function Idioma() {
 
   const textos = {
     es: {
-      descripcion: "Elige el idioma en el que deseas visualizar la aplicación:",
+      descripcion:
+        "Elige el idioma en el que deseas visualizar la aplicación:",
       guardando: "Guardando preferencia de idioma...",
       guardado: "Preferencia de idioma guardada.",
       sinSesion: "No se ha podido verificar la sesión.",
-      errorGuardar: "No se ha podido guardar el idioma en el perfil del cliente. Vuelve a intentarlo.",
-      errorSinCliente: "No se encontró un perfil de cliente asociado a esta cuenta.",
-      errorInesperado: "No se ha podido confirmar el guardado del idioma.",
+      errorGuardar:
+        "No se ha podido guardar el idioma en el perfil del cliente. Vuelve a intentarlo.",
+      errorSinCliente:
+        "No se encontró un perfil de cliente asociado a esta cuenta.",
+      errorInesperado:
+        "No se ha podido confirmar el guardado del idioma.",
     },
     en: {
-      descripcion: "Choose the language you want to use in the application:",
+      descripcion:
+        "Choose the language you want to use in the application:",
       guardando: "Saving language preference...",
       guardado: "Language preference saved.",
       sinSesion: "The session could not be verified.",
-      errorGuardar: "The language could not be saved to the client profile. Please try again.",
-      errorSinCliente: "No client profile was found for this account.",
-      errorInesperado: "The language preference could not be confirmed as saved.",
+      errorGuardar:
+        "The language could not be saved to the client profile. Please try again.",
+      errorSinCliente:
+        "No client profile was found for this account.",
+      errorInesperado:
+        "The language preference could not be confirmed as saved.",
     },
   };
 
@@ -52,12 +59,9 @@ export default function Idioma() {
       return;
     }
 
-    // La preferencia visual se aplica inmediatamente.
-    // LanguageContext se encarga de guardarla por usuario.
-    changeLanguage(newLang);
-
-    // Administrador y técnico no deben modificar clientes.idioma.
+    // Administrador y técnico guardan su preferencia local por cuenta.
     if (role !== "cliente") {
+      changeLanguage(newLang);
       setMensaje(textos[newLang].guardado);
       return;
     }
@@ -65,19 +69,21 @@ export default function Idioma() {
     setGuardando(true);
 
     try {
-      let { data, error: updateError } = await supabase
+      // Guardar primero en Supabase para que la preferencia del cliente
+      // permanezca después de cerrar sesión y volver a entrar.
+      let resultado = await supabase
         .from("clientes")
         .update({ idioma: newLang })
         .eq("usuario_id", user.id)
         .select("id");
 
-      if (updateError) {
-        throw updateError;
+      if (resultado.error) {
+        throw resultado.error;
       }
 
       // Compatibilidad con perfiles que utilizan user_id.
-      if (!data || data.length === 0) {
-        const resultado = await supabase
+      if (!resultado.data || resultado.data.length === 0) {
+        resultado = await supabase
           .from("clientes")
           .update({ idioma: newLang })
           .eq("user_id", user.id)
@@ -86,15 +92,15 @@ export default function Idioma() {
         if (resultado.error) {
           throw resultado.error;
         }
-
-        data = resultado.data;
       }
 
-      if (!data || data.length === 0) {
+      if (!resultado.data || resultado.data.length === 0) {
         setError(textos[newLang].errorSinCliente);
         return;
       }
 
+      // Aplicar el idioma después de confirmar el guardado.
+      changeLanguage(newLang);
       setMensaje(textos[newLang].guardado);
     } catch (err) {
       console.error("Error guardando el idioma:", err);
@@ -162,7 +168,9 @@ export default function Idioma() {
             gap: "5px",
           }}
         >
-          ← {t("volver") || (idiomaActual === "en" ? "Back" : "Volver")}
+          ←{" "}
+          {t("volver") ||
+            (idiomaActual === "en" ? "Back" : "Volver")}
         </button>
 
         <h1
