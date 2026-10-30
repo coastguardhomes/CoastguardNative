@@ -261,9 +261,9 @@ export default function ClienteDashboard() {
   }, [user]);
 
   /*
-   * Abrir el aviso lleva a facturas.
-   * Esta acción conserva el comportamiento original de marcar el trabajo
-   * como visto y de cerrar la alerta relacionada con la factura.
+   * Abre el detalle del trabajo extra para consultar su informe.
+   * Conserva el marcado del trabajo como visto y el cierre de la alerta
+   * relacionada con su factura.
    */
   const manejarVerFactura = async (extra) => {
     try {
@@ -307,7 +307,8 @@ export default function ClienteDashboard() {
       );
     }
 
-    navigate("/cliente/facturas");
+    // Abre el detalle del extra, no el listado de facturas.
+    navigate(`/cliente/inspeccion/${extra.id}`);
   };
 
   /*
@@ -658,7 +659,7 @@ export default function ClienteDashboard() {
                       textAlign: "left",
                       cursor: "pointer",
                     }}
-                    title={t("verFactura")}
+                    title="Ver informe del trabajo extra"
                   >
                     <span
                       style={{
@@ -697,7 +698,7 @@ export default function ClienteDashboard() {
                         color: COLOR_DORADO,
                       }}
                     >
-                      {t("verFactura")} →
+                      Ver informe del trabajo extra →
                     </span>
                   </button>
 
