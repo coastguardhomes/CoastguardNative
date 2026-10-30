@@ -14,83 +14,117 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Botón atrás normal en toda la aplicación.
   useEffect(() => {
-    const backSub = App.addListener("backButton", () => {
-      // Si no hay usuario, se conserva el comportamiento existente.
-      if (!user) return;
+    let activo = true;
 
+    const backSub = App.addListener("backButton", () => {
+      if (!user) return;
       window.history.back();
     });
 
     return () => {
+      activo = false;
       backSub.remove();
     };
   }, [user]);
 
-  // Cargar sesión al iniciar la aplicación.
   useEffect(() => {
+    let activo = true;
+
     async function cargarSesion() {
-      const { data } = await supabase.auth.getSession();
+      try {
+        const { data, error } = await supabase.auth.getSession();
 
-      if (data?.session?.user) {
-        setUser(data.session.user);
+        if (error) throw error;
+
+        if (!activo) return;
+
+        setUser(data?.session?.user || null);
+      } catch (error) {
+        console.error("Error recuperando sesión:", error);
+        if (activo) setUser(null);
+      } finally {
+        if (activo) setLoading(false);
       }
-
-      setLoading(false);
     }
 
     cargarSesion();
 
-    // Escuchar cambios de sesión.
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-        } else {
-          setUser(null);
+      (_event, session) => {
+        if (!activo) return;
+
+        const nuevoUsuario = session?.user || null;
+
+        setUser((usuarioActual) => {
+          if (usuarioActual?.id !== nuevoUsuario?.id) {
+            setRole(null);
+          }
+          return nuevoUsuario;
+        });
+
+        if (!nuevoUsuario) {
+          setRole(null);
         }
       }
     );
 
     return () => {
+      activo = false;
       listener.subscription.unsubscribe();
     };
   }, []);
 
-  // Cargar el rol del usuario.
   useEffect(() => {
-    if (!user) {
-      setRole(null);
-      return;
+    let cancelado = false;
+
+    setRole(null);
+
+    if (!user?.id) {
+      return () => {
+        cancelado = true;
+      };
     }
 
     async function cargarRol() {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("rol")
-        .eq("id", user.id)
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("rol")
+          .eq("id", user.id)
+          .maybeSingle();
 
-      if (!error && data) {
-        setRole(data.rol);
+        if (cancelado) return;
+
+        if (error) {
+          console.error("Error cargando rol:", error);
+          setRole(null);
+          return;
+        }
+
+        setRole(data?.rol || null);
+      } catch (error) {
+        if (!cancelado) {
+          console.error("Error inesperado cargando rol:", error);
+          setRole(null);
+        }
       }
     }
 
     cargarRol();
-  }, [user]);
 
-  // Redirección automática por rol.
+    return () => {
+      cancelado = true;
+    };
+  }, [user?.id]);
+
   useEffect(() => {
     if (loading) return;
 
-    // No redirigir durante la actualización de contraseña.
     if (pathname.includes("update-password")) {
       return;
     }
 
-    // Rutas accesibles sin iniciar sesión.
-    // IMPORTANTE: los documentos legales deben permanecer públicos.
     const rutasPublicas = [
       "/",
       "/login",
@@ -104,7 +138,6 @@ export function AuthProvider({ children }) {
 
     const esPublica = rutasPublicas.includes(pathname);
 
-    // Sin sesión, solo se permite permanecer en rutas públicas.
     if (!user && !esPublica) {
       navigate("/login", { replace: true });
       return;
@@ -112,7 +145,6 @@ export function AuthProvider({ children }) {
 
     if (!user || !esPublica) return;
 
-    // Si ya existe una sesión, conservar la redirección por rol.
     if (role === "admin") {
       navigate("/admin/dashboard", { replace: true });
       return;
@@ -125,15 +157,21 @@ export function AuthProvider({ children }) {
 
     if (role === "cliente") {
       navigate("/cliente", { replace: true });
-      return;
     }
   }, [user, role, loading, navigate, pathname]);
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setRole(null);
-    navigate("/login", { replace: true });
+    try {
+      const { error } = await supabase.auth.signOut();
+
+      if (error) throw error;
+
+      setUser(null);
+      setRole(null);
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Error cerrando sesión:", error);
+    }
   };
 
   return (
