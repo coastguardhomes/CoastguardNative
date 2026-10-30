@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { resolverUrlPdfSegura } from "../lib/urlPdf.js";
+import { traducirObservacionInspeccion } from "../lib/traducirObservacionesInspeccion.js";
 
 function valorTexto(valor, alternativa = "No especificado") {
   if (
@@ -26,6 +27,16 @@ function idiomaNormalizado(idioma) {
   )
     ? "en"
     : "es";
+}
+
+function traducirTextoInforme(valor, idioma, alternativa) {
+  const texto = valorTexto(valor, alternativa);
+
+  if (idioma !== "en") {
+    return texto;
+  }
+
+  return traducirObservacionInspeccion(texto, "en");
 }
 
 function fechaLegible(valor, idioma) {
@@ -248,7 +259,7 @@ async function cargarTodasLasFotos(fotosRaw) {
   return resultado;
 }
 
-function obtenerDireccion(vivienda, extra) {
+function obtenerDireccion(vivienda, extra, idioma) {
   const partes = [
     vivienda?.direccion || extra?.direccion,
     vivienda?.localidad,
@@ -264,8 +275,12 @@ function obtenerDireccion(vivienda, extra) {
     )
     .map((parte) => String(parte).trim());
 
-  return partes.length
-    ? [...new Set(partes)].join(", ")
+  if (partes.length) {
+    return [...new Set(partes)].join(", ");
+  }
+
+  return idioma === "en"
+    ? "Not specified"
     : "No especificada";
 }
 
@@ -421,21 +436,25 @@ export async function generarPDFExtra({
 
   const direccion = obtenerDireccion(
     vivienda,
-    extra
+    extra,
+    idioma
   );
 
-  const descripcion = valorTexto(
+  const descripcion = traducirTextoInforme(
     extra.descripcion || extra.observaciones,
+    idioma,
     textos.sinDescripcion
   );
 
-  const materiales = valorTexto(
+  const materiales = traducirTextoInforme(
     extra.materiales,
+    idioma,
     textos.sinMateriales
   );
 
-  const tiempo = valorTexto(
+  const tiempo = traducirTextoInforme(
     extra.tiempo_empleado,
+    idioma,
     textos.sinTiempo
   );
 
