@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -45,6 +44,117 @@ const traducirConcepto = (texto, idioma) => {
   }
 
   return textoTraducido;
+};
+
+/*
+ * Recupera el snapshot histórico del cliente.
+ *
+ * Supabase guarda cliente_snapshot como JSONB.
+ * También admitimos una cadena JSON por compatibilidad.
+ *
+ * No se inventan datos cuando un campo no existe.
+ */
+const obtenerSnapshotCliente = (snapshotRaw) => {
+  if (!snapshotRaw) return {};
+
+  if (
+    typeof snapshotRaw === 'object' &&
+    !Array.isArray(snapshotRaw)
+  ) {
+    return snapshotRaw;
+  }
+
+  if (typeof snapshotRaw === 'string') {
+    try {
+      const parsed = JSON.parse(snapshotRaw);
+
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        !Array.isArray(parsed)
+      ) {
+        return parsed;
+      }
+    } catch (error) {
+      console.warn(
+        'No se pudo interpretar el snapshot histórico del cliente:',
+        error
+      );
+    }
+  }
+
+  return {};
+};
+
+/*
+ * Combina los datos actuales del cliente con los datos históricos.
+ *
+ * La ficha actual tiene prioridad cuando contiene un valor válido.
+ * Si la ficha ya no existe o algún campo está vacío,
+ * se utiliza el valor conservado en cliente_snapshot.
+ */
+const combinarDatosCliente = (clienteActual, snapshotRaw) => {
+  const snapshot = obtenerSnapshotCliente(snapshotRaw);
+  const actual = clienteActual || {};
+
+  const obtenerValor = (...valores) => {
+    for (const valor of valores) {
+      if (
+        valor !== undefined &&
+        valor !== null &&
+        String(valor).trim() !== ''
+      ) {
+        return valor;
+      }
+    }
+
+    return null;
+  };
+
+  return {
+    ...snapshot,
+    ...actual,
+
+    nombre: obtenerValor(
+      actual.nombre,
+      snapshot.nombre
+    ),
+
+    email: obtenerValor(
+      actual.email,
+      snapshot.email
+    ),
+
+    telefono: obtenerValor(
+      actual.telefono,
+      snapshot.telefono
+    ),
+
+    direccion: obtenerValor(
+      actual.direccion,
+      snapshot.direccion
+    ),
+
+    dni: obtenerValor(
+      actual.dni,
+      snapshot.dni
+    ),
+
+    cif: obtenerValor(
+      actual.cif,
+      snapshot.cif
+    ),
+
+    idioma: obtenerValor(
+      actual.idioma,
+      snapshot.idioma
+    ),
+
+    language: obtenerValor(
+      actual.language,
+      snapshot.language
+    )
+  };
 };
 
 export default function VerFactura() {
@@ -332,24 +442,57 @@ export default function VerFactura() {
 
       await cargarInspeccionExtra(facturaData);
 
+      /*
+       * Recuperación de los datos del cliente:
+       *
+       * 1. Si cliente_id existe, intentamos recuperar la ficha actual.
+       * 2. Si no existe o ya fue eliminada, usamos cliente_snapshot.
+       * 3. Si faltan campos en la ficha actual, los completamos
+       *    con los valores históricos conservados.
+       *
+       * La factura no depende de que siga existiendo la ficha.
+       */
+      let clienteData = null;
+
       if (facturaData.cliente_id) {
         const {
-          data: clienteData,
+          data: clienteActual,
           error: clienteError
         } = await supabase
           .from('clientes')
           .select('*')
           .eq('id', facturaData.cliente_id)
-          .single();
+          .maybeSingle();
 
         if (clienteError) {
-          console.error('Error cargando cliente:', clienteError);
+          console.error(
+            'Error cargando ficha actual del cliente:',
+            clienteError
+          );
+        } else {
+          clienteData = clienteActual || null;
         }
-
-        setCliente(clienteData || null);
-      } else {
-        setCliente(null);
       }
+
+      const clienteHistorico = combinarDatosCliente(
+        clienteData,
+        facturaData.cliente_snapshot
+      );
+
+      const hayDatosCliente = Boolean(
+        clienteHistorico.nombre ||
+        clienteHistorico.email ||
+        clienteHistorico.telefono ||
+        clienteHistorico.direccion ||
+        clienteHistorico.dni ||
+        clienteHistorico.cif
+      );
+
+      setCliente(
+        hayDatosCliente
+          ? clienteHistorico
+          : null
+      );
     } catch (err) {
       console.error('Error al cargar la factura:', err);
 
@@ -983,6 +1126,23 @@ export default function VerFactura() {
           <p style={estilos.textoBlanco}>
             <strong>Teléfono:</strong> {cliente?.telefono || 'N/A'}
           </p>
+
+          <p style={estilos.textoBlanco}>
+            <strong>Dirección:</strong> {cliente?.direccion || 'N/A'}
+          </p>
+
+          {(cliente?.dni || cliente?.cif) && (
+            <p style={estilos.textoBlanco}>
+              <strong>DNI/CIF:</strong>{' '}
+              {cliente?.dni || cliente?.cif}
+            </p>
+          )}
+
+          {!factura.cliente_id && factura.cliente_snapshot && (
+            <p style={estilos.textoSecundario}>
+              Datos históricos conservados en la factura.
+            </p>
+          )}
         </div>
 
         <div style={estilos.tarjeta}>
