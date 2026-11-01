@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { cargarFotosInspeccion } from "../../lib/cargarFotosInspeccion";
@@ -9,6 +10,8 @@ import { generarPDFCliente } from "../../pdf/generarPDFCliente";
  * Inspecciones:
  * - Genera el PDF con los datos actuales.
  * - Carga las fotografías mediante URL temporales.
+ * - Carga vivienda, cliente y técnico.
+ * - Obtiene el idioma configurado para el cliente.
  * - Guarda el documento en el bucket privado "pdfs".
  * - Actualiza inspecciones.pdf_url con la ruta interna.
  * - Comprueba que la referencia quedó guardada.
@@ -76,14 +79,148 @@ export default function BotonGenerarPDF({
       );
     }
 
-    // 2. Cargar las fotografías.
+    // 2. Cargar los datos de la vivienda.
+    let vivienda = null;
+    let contrato = null;
+
+    if (inspeccion.vivienda_id) {
+      const {
+        data: viviendaData,
+        error: viviendaError,
+      } = await supabase
+        .from("viviendas")
+        .select("*")
+        .eq("id", inspeccion.vivienda_id)
+        .maybeSingle();
+
+      if (viviendaError) {
+        console.warn(
+          "No se pudieron cargar los datos de la vivienda:",
+          viviendaError.message
+        );
+      } else {
+        vivienda = viviendaData;
+      }
+    }
+
+    // 3. Si no se encontró la vivienda directamente,
+    // intentar recuperarla mediante el contrato.
+    if (
+      !vivienda &&
+      inspeccion.contrato_id
+    ) {
+      const {
+        data: contratoData,
+        error: contratoError,
+      } = await supabase
+        .from("contratos")
+        .select("*")
+        .eq("id", inspeccion.contrato_id)
+        .maybeSingle();
+
+      if (contratoError) {
+        console.warn(
+          "No se pudieron cargar los datos del contrato:",
+          contratoError.message
+        );
+      } else {
+        contrato = contratoData;
+      }
+
+      if (contrato?.vivienda_id) {
+        const {
+          data: viviendaData,
+          error: viviendaError,
+        } = await supabase
+          .from("viviendas")
+          .select("*")
+          .eq("id", contrato.vivienda_id)
+          .maybeSingle();
+
+        if (viviendaError) {
+          console.warn(
+            "No se pudo recuperar la vivienda desde el contrato:",
+            viviendaError.message
+          );
+        } else {
+          vivienda = viviendaData;
+        }
+      }
+    }
+
+    // 4. Cargar los datos del cliente.
+    // Se intenta obtener el cliente desde la vivienda,
+    // la inspección o el contrato, por ese orden.
+    const clienteId =
+      vivienda?.cliente_id ||
+      inspeccion.cliente_id ||
+      contrato?.cliente_id;
+
+    let cliente = null;
+
+    if (clienteId) {
+      const {
+        data: clienteData,
+        error: clienteError,
+      } = await supabase
+        .from("clientes")
+        .select("*")
+        .eq("id", clienteId)
+        .maybeSingle();
+
+      if (clienteError) {
+        console.warn(
+          "No se pudieron cargar los datos del cliente:",
+          clienteError.message
+        );
+      } else {
+        cliente = clienteData;
+      }
+    }
+
+    // 5. Cargar los datos del técnico.
+    let tecnico = null;
+
+    if (inspeccion.tecnico_id) {
+      const {
+        data: tecnicoData,
+        error: tecnicoError,
+      } = await supabase
+        .from("tecnicos")
+        .select("*")
+        .eq("id", inspeccion.tecnico_id)
+        .maybeSingle();
+
+      if (tecnicoError) {
+        console.warn(
+          "No se pudieron cargar los datos del técnico:",
+          tecnicoError.message
+        );
+      } else {
+        tecnico = tecnicoData;
+      }
+    }
+
+    // 6. Determinar el idioma según la configuración
+    // del cliente.
+    const idioma =
+      cliente?.idioma === "en" ? "en" : "es";
+
+    // 7. Cargar las fotografías.
     // cargarFotosInspeccion resuelve las rutas privadas
     // mediante enlaces temporales de Storage.
-    const fotos = await cargarFotosInspeccion(identificador);
+    const fotos = await cargarFotosInspeccion(
+      identificador
+    );
 
-    // 3. Generar el documento.
+    // 8. Generar el documento con todos los datos.
     const blob = await generarPDFCliente({
       ...inspeccion,
+      vivienda,
+      cliente,
+      tecnico,
+      contrato,
+      idioma,
       fotos,
     });
 
@@ -98,7 +235,7 @@ export default function BotonGenerarPDF({
       );
     }
 
-    // 4. Subir el PDF al bucket privado.
+    // 9. Subir el PDF al bucket privado.
     const filePath =
       `inspecciones/inspeccion_${identificador}_${Date.now()}.pdf`;
 
@@ -119,7 +256,7 @@ export default function BotonGenerarPDF({
     }
 
     try {
-      // 5. Crear enlace temporal para comprobar que el
+      // 10. Crear enlace temporal para comprobar que el
       // archivo puede consultarse con los permisos actuales.
       const {
         data: signedData,
@@ -135,7 +272,7 @@ export default function BotonGenerarPDF({
         );
       }
 
-      // 6. Guardar la ruta interna, nunca una URL pública.
+      // 11. Guardar la ruta interna, nunca una URL pública.
       const {
         data: inspeccionActualizada,
         error: updateError,
@@ -165,7 +302,7 @@ export default function BotonGenerarPDF({
         );
       }
 
-      // 7. Comprobar de nuevo que la ruta está registrada.
+      // 12. Comprobar de nuevo que la ruta está registrada.
       const {
         data: comprobacion,
         error: comprobacionError,
@@ -186,7 +323,7 @@ export default function BotonGenerarPDF({
         );
       }
 
-      // 8. Esperar a que la pantalla administrativa
+      // 13. Esperar a que la pantalla administrativa
       // actualice su estado antes de confirmar el proceso.
       if (typeof onGenerado === "function") {
         await onGenerado(signedData.signedUrl);
