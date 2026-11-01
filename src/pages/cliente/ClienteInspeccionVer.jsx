@@ -1,3 +1,4 @@
+
 import React, {
   useEffect,
   useState,
@@ -437,12 +438,35 @@ export default function ClienteInspeccionVer() {
       setInspeccion(insp);
       setFotos(fotosEncontradas || []);
 
-      if (insp.vivienda_id) {
+      // Recuperar la vivienda primero desde la inspección.
+      // Si no tiene vivienda_id, intentar localizarla mediante
+      // el contrato asociado, sin modificar ningún dato.
+      let viviendaId = insp.vivienda_id || null;
+
+      if (!viviendaId && insp.contrato_id) {
+        const { data: contratoData, error: contratoError } =
+          await supabase
+            .from("contratos")
+            .select("vivienda_id")
+            .eq("id", insp.contrato_id)
+            .maybeSingle();
+
+        if (contratoError) {
+          console.error(
+            "Error recuperando la vivienda desde el contrato:",
+            contratoError
+          );
+        } else {
+          viviendaId = contratoData?.vivienda_id || null;
+        }
+      }
+
+      if (viviendaId) {
         const { data: viv, error: errorVivienda } =
           await supabase
             .from("viviendas")
             .select("direccion, ciudad, localidad, provincia, codigo_postal")
-            .eq("id", insp.vivienda_id)
+            .eq("id", viviendaId)
             .maybeSingle();
 
         if (errorVivienda) {
@@ -703,41 +727,61 @@ export default function ClienteInspeccionVer() {
                 {t("ubicacionVivienda") || "Ubicación"}
               </h4>
 
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "15px",
-                  fontWeight: "700",
-                  color: "#fff",
-                  minWidth: 0,
-                  maxWidth: "100%",
-                  boxSizing: "border-box",
-                  overflowWrap: "anywhere",
-                  wordBreak: "break-word",
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                {vivienda?.direccion ||
-                  inspeccion.direccion ||
-                  "Dirección no especificada"}
-              </p>
+              {(() => {
+                const direccion = [
+                  vivienda?.direccion || inspeccion.direccion,
+                  vivienda?.localidad || inspeccion.localidad,
+                  vivienda?.ciudad || inspeccion.ciudad,
+                  vivienda?.provincia || inspeccion.provincia,
+                  vivienda?.codigo_postal || vivienda?.cp ||
+                    inspeccion.codigo_postal || inspeccion.cp,
+                ]
+                  .filter(
+                    (valor, indice, lista) =>
+                      typeof valor === "string" &&
+                      valor.trim() &&
+                      lista.findIndex(
+                        (otro) =>
+                          typeof otro === "string" &&
+                          otro.trim().toLowerCase() ===
+                            valor.trim().toLowerCase()
+                      ) === indice
+                  )
+                  .map((valor) => valor.trim());
 
-              {vivienda?.ciudad && (
-                <p
-                  style={{
-                    margin: "5px 0 0",
-                    color: "#94a3b8",
-                    fontSize: "13px",
-                    minWidth: 0,
-                    maxWidth: "100%",
-                    boxSizing: "border-box",
-                    overflowWrap: "anywhere",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {vivienda.ciudad}
-                </p>
-              )}
+                return direccion.length > 0 ? (
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "15px",
+                      fontWeight: "700",
+                      color: "#fff",
+                      minWidth: 0,
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
+                      overflowWrap: "anywhere",
+                      wordBreak: "break-word",
+                      whiteSpace: "pre-wrap",
+                      lineHeight: "1.6",
+                    }}
+                  >
+                    {direccion.join(", ")}
+                  </p>
+                ) : (
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "15px",
+                      fontWeight: "700",
+                      color: "#fff",
+                    }}
+                  >
+                    {idiomaCliente === "en"
+                      ? "Address not specified"
+                      : "Dirección no especificada"}
+                  </p>
+                );
+              })()}
             </div>
 
             <div
