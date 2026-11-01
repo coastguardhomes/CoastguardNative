@@ -1,5 +1,7 @@
+
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { traducirObservacionInspeccion } from "../lib/traducirObservacionesInspeccion";
 
 /**
  * Convierte una URL o un Base64 a una imagen Base64.
@@ -54,8 +56,35 @@ function texto(valor, alternativa = "No especificado") {
   return String(valor);
 }
 
-function fechaLegible(valor) {
-  if (!valor) return "Sin fecha";
+function obtenerIdioma(inspeccion, opciones) {
+  return (
+    opciones?.idioma === "en" ||
+    inspeccion?.idioma === "en" ||
+    inspeccion?.cliente?.idioma === "en"
+  )
+    ? "en"
+    : "es";
+}
+
+function traducir(valor, idioma) {
+  const contenido = texto(valor, "");
+
+  if (!contenido || idioma !== "en") {
+    return contenido;
+  }
+
+  try {
+    return traducirObservacionInspeccion(contenido, "en");
+  } catch (error) {
+    console.warn("No se pudo traducir el texto del PDF:", error);
+    return contenido;
+  }
+}
+
+function fechaLegible(valor, idioma = "es") {
+  if (!valor) {
+    return idioma === "en" ? "No date" : "Sin fecha";
+  }
 
   const fecha = new Date(valor);
 
@@ -63,7 +92,9 @@ function fechaLegible(valor) {
     return texto(valor);
   }
 
-  return fecha.toLocaleString("es-ES");
+  return fecha.toLocaleString(
+    idioma === "en" ? "en-GB" : "es-ES"
+  );
 }
 
 function obtenerUrlFoto(item) {
@@ -84,6 +115,21 @@ function obtenerUrlFoto(item) {
   );
 }
 
+function obtenerDireccion(inspeccion) {
+  const vivienda = inspeccion.vivienda || {};
+  const partes = [
+    inspeccion.direccion || vivienda.direccion,
+    inspeccion.localidad || vivienda.localidad,
+    inspeccion.ciudad || vivienda.ciudad,
+    inspeccion.provincia || vivienda.provincia,
+    inspeccion.codigo_postal || vivienda.codigo_postal,
+  ]
+    .map((parte) => texto(parte, ""))
+    .filter(Boolean);
+
+  return [...new Set(partes)].join(", ");
+}
+
 /**
  * Genera el PDF de una inspección normal o de un servicio extra.
  *
@@ -101,6 +147,79 @@ export async function generarPDFCliente(
       "No se han proporcionado los datos del informe."
     );
   }
+
+  const idioma = obtenerIdioma(inspeccion, opciones);
+  const esIngles = idioma === "en";
+
+  const etiquetas = esIngles
+    ? {
+        tituloInspeccion: "Inspection Report",
+        tituloExtra: "Extra Service Report",
+        identificador: "Reference",
+        contrato: "Contract",
+        sinContrato: "No contract",
+        fecha: "Date",
+        direccion: "Address",
+        localidad: "Town / City",
+        provincia: "Province",
+        codigoPostal: "Postcode",
+        cliente: "Client",
+        telefono: "Phone",
+        inspector: "Inspector / Technician",
+        tipoInspeccion: "Inspection type",
+        factura: "Invoice",
+        noEspecificada: "Not specified",
+        precio: "Price",
+        campo: "Field",
+        informacion: "Information",
+        descripcionServicio: "Service description",
+        observaciones: "Technician's observations",
+        sinDescripcion: "No description recorded",
+        sinObservaciones: "No observations recorded",
+        materiales: "Materials used",
+        tiempo: "Time spent",
+        fotografias: "Photographs",
+        fotografia: "Photograph",
+        generado: "Generated",
+        pagina: "Page",
+        de: "of",
+        noEspecificado: "Not specified",
+        sinDireccion: "Address not specified",
+      }
+    : {
+        tituloInspeccion: "Informe de inspección",
+        tituloExtra: "Informe de servicio extra",
+        identificador: "Identificador",
+        contrato: "Contrato",
+        sinContrato: "Sin contrato",
+        fecha: "Fecha",
+        direccion: "Dirección",
+        localidad: "Localidad / Ciudad",
+        provincia: "Provincia",
+        codigoPostal: "Código postal",
+        cliente: "Cliente",
+        telefono: "Teléfono",
+        inspector: "Inspector / técnico",
+        tipoInspeccion: "Tipo de inspección",
+        factura: "Factura",
+        noEspecificada: "No especificada",
+        precio: "Precio",
+        campo: "Campo",
+        informacion: "Información",
+        descripcionServicio: "Descripción del servicio",
+        observaciones: "Observaciones del técnico",
+        sinDescripcion: "Sin descripción registrada",
+        sinObservaciones: "Sin observaciones registradas",
+        materiales: "Materiales utilizados",
+        tiempo: "Tiempo empleado",
+        fotografias: "Fotografías",
+        fotografia: "Fotografía",
+        generado: "Generado",
+        pagina: "Página",
+        de: "de",
+        noEspecificado: "No especificado",
+        sinDireccion: "Dirección no especificada",
+      };
 
   const esExtra =
     opciones.esExtra === true ||
@@ -144,8 +263,8 @@ export async function generarPDFCliente(
   doc.setTextColor(...azul);
 
   const titulo = esExtra
-    ? "Informe de servicio extra"
-    : "Informe de inspección";
+    ? etiquetas.tituloExtra
+    : etiquetas.tituloInspeccion;
 
   doc.text(
     titulo,
@@ -162,83 +281,141 @@ export async function generarPDFCliente(
   y += 22;
 
   // DATOS GENERALES
-  const fecha =
-    esExtra
-      ? inspeccion.creado_en || inspeccion.created_at
-      : inspeccion.fecha ||
-        inspeccion.fecha_finalizacion ||
-        inspeccion.created_at ||
-        inspeccion.fecha_creacion;
+  const fecha = esExtra
+    ? inspeccion.creado_en || inspeccion.created_at
+    : inspeccion.fecha ||
+      inspeccion.fecha_finalizacion ||
+      inspeccion.created_at ||
+      inspeccion.fecha_creacion;
 
-  const direccion = texto(
-    inspeccion.direccion ||
-      inspeccion.vivienda?.direccion
-  );
+  const direccionCompleta = obtenerDireccion(inspeccion);
+
+  const direccion = direccionCompleta || etiquetas.sinDireccion;
 
   const localidad = texto(
     inspeccion.localidad ||
       inspeccion.vivienda?.localidad ||
+      inspeccion.ciudad ||
       inspeccion.vivienda?.ciudad,
-    "No especificada"
+    etiquetas.noEspecificado
   );
 
-  const observaciones = esExtra
-    ? texto(
-        inspeccion.descripcion ||
-          inspeccion.observaciones ||
-          inspeccion.notas_tecnico,
-        "Sin descripción registrada"
-      )
-    : texto(
-        inspeccion.notas_tecnico ||
-          inspeccion.observaciones ||
-          inspeccion.notas,
-        "Sin observaciones registradas"
-      );
+  const provincia = texto(
+    inspeccion.provincia ||
+      inspeccion.vivienda?.provincia,
+    ""
+  );
+
+  const codigoPostal = texto(
+    inspeccion.codigo_postal ||
+      inspeccion.vivienda?.codigo_postal,
+    ""
+  );
+
+  const observacionesOriginales = esExtra
+    ? inspeccion.descripcion ||
+      inspeccion.observaciones ||
+      inspeccion.notas_tecnico
+    : inspeccion.notas_tecnico ||
+      inspeccion.observaciones ||
+      inspeccion.notas;
+
+  const observaciones = traducir(
+    observacionesOriginales ||
+      (esExtra
+        ? etiquetas.sinDescripcion
+        : etiquetas.sinObservaciones),
+    idioma
+  );
 
   const tecnico = texto(
     inspeccion.inspector ||
       inspeccion.tecnico_nombre ||
-      inspeccion.nombre_tecnico,
-    "No especificado"
+      inspeccion.nombre_tecnico ||
+      inspeccion.tecnico?.nombre ||
+      inspeccion.tecnico?.nombre_completo,
+    etiquetas.noEspecificado
+  );
+
+  const clienteNombre = texto(
+    inspeccion.cliente_nombre ||
+      inspeccion.nombre_cliente ||
+      inspeccion.cliente?.nombre ||
+      inspeccion.cliente?.nombre_completo,
+    ""
+  );
+
+  const clienteTelefono = texto(
+    inspeccion.cliente_telefono ||
+      inspeccion.telefono_cliente ||
+      inspeccion.cliente?.telefono,
+    ""
   );
 
   const filas = [
-    ["Identificador", texto(inspeccion.id)],
-    ["Contrato", texto(inspeccion.contrato_id, "Sin contrato")],
-    ["Fecha", fechaLegible(fecha)],
-    ["Dirección", direccion],
-    ["Localidad", localidad],
+    [etiquetas.identificador, texto(inspeccion.id)],
+    [
+      etiquetas.contrato,
+      texto(inspeccion.contrato_id, etiquetas.sinContrato),
+    ],
+    [
+      etiquetas.fecha,
+      fechaLegible(fecha, idioma),
+    ],
+    [etiquetas.direccion, direccion],
   ];
+
+  if (localidad && localidad !== etiquetas.noEspecificado) {
+    filas.push([etiquetas.localidad, localidad]);
+  }
+
+  if (provincia) {
+    filas.push([etiquetas.provincia, provincia]);
+  }
+
+  if (codigoPostal) {
+    filas.push([etiquetas.codigoPostal, codigoPostal]);
+  }
+
+  if (clienteNombre) {
+    filas.push([etiquetas.cliente, clienteNombre]);
+  }
+
+  if (clienteTelefono) {
+    filas.push([etiquetas.telefono, clienteTelefono]);
+  }
 
   if (esExtra) {
     filas.push([
-      "Factura",
-      texto(inspeccion.factura_id, "No especificada"),
+      etiquetas.factura,
+      texto(inspeccion.factura_id, etiquetas.noEspecificada),
     ]);
 
     filas.push([
-      "Precio",
+      etiquetas.precio,
       inspeccion.precio !== null &&
       inspeccion.precio !== undefined
         ? `${Number(inspeccion.precio).toFixed(2)} €`
-        : "No especificado",
+        : etiquetas.noEspecificado,
     ]);
   } else {
-    filas.push(["Inspector / técnico", tecnico]);
+    filas.push([etiquetas.inspector, tecnico]);
+
     filas.push([
-      "Tipo de inspección",
-      texto(
+      etiquetas.tipoInspeccion,
+      traducir(
         inspeccion.tipo_inspeccion ||
           inspeccion.tipo ||
-          inspeccion.origen
+          inspeccion.origen ||
+          etiquetas.noEspecificado,
+        idioma
       ),
     ]);
   }
 
   autoTable(doc, {
     startY: y,
-    head: [["Campo", "Información"]],
+    head: [[etiquetas.campo, etiquetas.informacion]],
     body: filas,
     theme: "grid",
     headStyles: {
@@ -269,7 +446,7 @@ export async function generarPDFCliente(
 
   y = doc.lastAutoTable.finalY + 25;
 
-  // OBSERVACIONES / DESCRIPCIÓN
+  // TÍTULOS DE SECCIÓN
   const añadirTitulo = (tituloSeccion) => {
     if (y + 45 > pageHeight - 55) {
       doc.addPage();
@@ -295,10 +472,11 @@ export async function generarPDFCliente(
     y += 16;
   };
 
+  // OBSERVACIONES / DESCRIPCIÓN
   añadirTitulo(
     esExtra
-      ? "Descripción del servicio"
-      : "Observaciones del técnico"
+      ? etiquetas.descripcionServicio
+      : etiquetas.observaciones
   );
 
   doc.setFont("helvetica", "normal");
@@ -323,16 +501,17 @@ export async function generarPDFCliente(
   y += 12;
 
   // MATERIALES
-  const materiales = texto(
-    esExtra
-      ? inspeccion.materiales
-      : inspeccion.materiales_usados ||
-          inspeccion.materiales,
-    ""
+  const materialesOriginales = esExtra
+    ? inspeccion.materiales
+    : inspeccion.materiales_usados || inspeccion.materiales;
+
+  const materiales = traducir(
+    materialesOriginales,
+    idioma
   );
 
   if (materiales) {
-    añadirTitulo("Materiales utilizados");
+    añadirTitulo(etiquetas.materiales);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
@@ -358,14 +537,19 @@ export async function generarPDFCliente(
 
   // TIEMPO EMPLEADO
   if (inspeccion.tiempo_empleado) {
-    añadirTitulo("Tiempo empleado");
+    añadirTitulo(etiquetas.tiempo);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(35, 35, 35);
 
+    const tiempo = traducir(
+      inspeccion.tiempo_empleado,
+      idioma
+    );
+
     const lineas = doc.splitTextToSize(
-      String(inspeccion.tiempo_empleado),
+      tiempo,
       anchoContenido
     );
 
@@ -388,7 +572,7 @@ export async function generarPDFCliente(
     : [];
 
   if (fotos.length > 0) {
-    añadirTitulo("Fotografías");
+    añadirTitulo(etiquetas.fotografias);
 
     const anchoFoto = 220;
     const altoFoto = 155;
@@ -450,7 +634,7 @@ export async function generarPDFCliente(
         doc.setTextColor(...gris);
 
         doc.text(
-          `Fotografía ${index + 1}`,
+          `${etiquetas.fotografia} ${index + 1}`,
           x,
           y + altoFoto + 13
         );
@@ -491,13 +675,15 @@ export async function generarPDFCliente(
     );
 
     doc.text(
-      `Generado: ${new Date().toLocaleString("es-ES")}`,
+      `${etiquetas.generado}: ${new Date().toLocaleString(
+        esIngles ? "en-GB" : "es-ES"
+      )}`,
       margen,
       pageHeight - 15
     );
 
     doc.text(
-      `Página ${pagina} de ${numeroPaginas}`,
+      `${etiquetas.pagina} ${pagina} ${etiquetas.de} ${numeroPaginas}`,
       pageWidth - margen,
       pageHeight - 20,
       { align: "right" }
