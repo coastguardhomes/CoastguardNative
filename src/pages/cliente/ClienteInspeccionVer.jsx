@@ -465,7 +465,8 @@ export default function ClienteInspeccionVer() {
         const { data: viv, error: errorVivienda } =
           await supabase
             .from("viviendas")
-            .select("direccion, ciudad, localidad, provincia, codigo_postal")
+            // provincia se ha eliminado porque no existe en esta tabla.
+            .select("direccion, ciudad, localidad, codigo_postal")
             .eq("id", viviendaId)
             .maybeSingle();
 
@@ -732,9 +733,10 @@ export default function ClienteInspeccionVer() {
                   vivienda?.direccion || inspeccion.direccion,
                   vivienda?.localidad || inspeccion.localidad,
                   vivienda?.ciudad || inspeccion.ciudad,
-                  vivienda?.provincia || inspeccion.provincia,
-                  vivienda?.codigo_postal || vivienda?.cp ||
-                    inspeccion.codigo_postal || inspeccion.cp,
+                  vivienda?.codigo_postal ||
+                    vivienda?.cp ||
+                    inspeccion.codigo_postal ||
+                    inspeccion.cp,
                 ]
                   .filter(
                     (valor, indice, lista) =>
