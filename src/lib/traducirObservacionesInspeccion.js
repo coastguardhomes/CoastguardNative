@@ -23,6 +23,15 @@
  */
 
 // ============================================================
+// IMPORTACIÓN DEL MÓDULO AVANZADO
+// ============================================================
+
+import {
+  prepararObservacionMixtaCG,
+  mejorarTraduccionObservacionCG
+} from "./traducirObservacionesAvanzado.js";
+
+// ============================================================
 // 1. CONFIGURACIÓN GENERAL
 // ============================================================
 
