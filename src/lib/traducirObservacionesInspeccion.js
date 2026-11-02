@@ -1770,6 +1770,10 @@ function traducirFragmento(texto) {
 
   let resultado = String(texto);
 
+  // Primera fase: reconocer frases mixtas completas.
+  resultado = prepararObservacionMixtaCG(resultado);
+
+  // Traducción general existente.
   resultado = corregirOrtografiaCG(resultado);
   resultado = aplicarReglasFrases(resultado);
   resultado = traducirExpresionesMixtas(resultado);
@@ -1779,7 +1783,11 @@ function traducirFragmento(texto) {
   resultado = ajustarOrdenAdjetivosCG(resultado);
   resultado = corregirTextoOriginalCG(resultado);
 
+  // Segunda fase: corregir estructuras que hayan quedado mezcladas.
+  resultado = mejorarTraduccionObservacionCG(resultado);
+
   return capitalizarInicioCG(resultado);
+
 }
 
 function traducirTextoCompletoCG(texto) {
