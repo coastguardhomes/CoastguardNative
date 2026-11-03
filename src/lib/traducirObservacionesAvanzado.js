@@ -1,4 +1,3 @@
-
 /*
  * ============================================================
  * COASTGUARD HOMES SERVICES
@@ -118,11 +117,11 @@ function textoValidoCG(texto) {
 
 const REGLAS_COCINA_MOBILIARIO_CG = [
   {
-    patron: /\bla\s+kitchen\s+esta\s+dirty\b/gi,
+    patron: /\bla\s+kitchen\s+est[áa]\s+dirty\b/gi,
     traduccion: "The kitchen is dirty"
   },
   {
-    patron: /\bkitchen\s+esta\s+dirty\b/gi,
+    patron: /\bkitchen\s+est[áa]\s+dirty\b/gi,
     traduccion: "The kitchen is dirty"
   },
   {
@@ -130,23 +129,23 @@ const REGLAS_COCINA_MOBILIARIO_CG = [
     traduccion: "The kitchen is dirty"
   },
   {
-    patron: /\bla\s+kitchen\s+esta\s+clean\b/gi,
+    patron: /\bla\s+kitchen\s+est[áa]\s+clean\b/gi,
     traduccion: "The kitchen is clean"
   },
   {
-    patron: /\bla\s+kitchen\s+no\s+esta\s+clean\b/gi,
+    patron: /\bla\s+kitchen\s+no\s+est[áa]\s+clean\b/gi,
     traduccion: "The kitchen is not clean"
   },
   {
-    patron: /\bla\s+table\s+de\s+el\s+dining\s+room\s+esta\s+broken\b/gi,
+    patron: /\bla\s+table\s+de\s+el\s+dining\s+room\s+est[áa]\s+broken\b/gi,
     traduccion: "The dining room table is broken"
   },
   {
-    patron: /\btable\s+de\s+el\s+dining\s+room\s+esta\s+broken\b/gi,
+    patron: /\btable\s+de\s+el\s+dining\s+room\s+est[áa]\s+broken\b/gi,
     traduccion: "The dining room table is broken"
   },
   {
-    patron: /\bla\s+mesa\s+del?\s+dining\s+room\s+esta\s+broken\b/gi,
+    patron: /\bla\s+mesa\s+del?\s+dining\s+room\s+est[áa]\s+broken\b/gi,
     traduccion: "The dining room table is broken"
   },
   {
@@ -158,19 +157,19 @@ const REGLAS_COCINA_MOBILIARIO_CG = [
     traduccion: "The kitchen table is broken"
   },
   {
-    patron: /\bel\s+sofa\s+esta\s+dirty\b/gi,
+    patron: /\bel\s+sofa\s+est[áa]\s+dirty\b/gi,
     traduccion: "The sofa is dirty"
   },
   {
-    patron: /\bla\s+sofa\s+esta\s+broken\b/gi,
+    patron: /\bla\s+sofa\s+est[áa]\s+broken\b/gi,
     traduccion: "The sofa is broken"
   },
   {
-    patron: /\bla\s+chair\s+esta\s+broken\b/gi,
+    patron: /\bla\s+chair\s+est[áa]\s+broken\b/gi,
     traduccion: "The chair is broken"
   },
   {
-    patron: /\bla\s+bed\s+esta\s+broken\b/gi,
+    patron: /\bla\s+bed\s+est[áa]\s+broken\b/gi,
     traduccion: "The bed is broken"
   },
   {
@@ -178,7 +177,7 @@ const REGLAS_COCINA_MOBILIARIO_CG = [
     traduccion: "The wardrobe is damaged"
   },
   {
-    patron: /\bla\s+wardrobe\s+esta\s+damaged\b/gi,
+    patron: /\bla\s+wardrobe\s+est[áa]\s+damaged\b/gi,
     traduccion: "The wardrobe is damaged"
   },
   {
@@ -217,7 +216,7 @@ const REGLAS_BANOS_CG = [
     traduccion: "The cistern does not work"
   },
   {
-    patron: /\bel\s+toilet\s+esta\s+broken\b/gi,
+    patron: /\bel\s+toilet\s+est[áa]\s+broken\b/gi,
     traduccion: "The toilet is broken"
   },
   {
@@ -229,7 +228,7 @@ const REGLAS_BANOS_CG = [
     traduccion: "The shower is blocked"
   },
   {
-    patron: /\bla\s+shower\s+esta\s+atascada\b/gi,
+    patron: /\bla\s+shower\s+est[áa]\s+atascada\b/gi,
     traduccion: "The shower is blocked"
   },
   {
@@ -241,7 +240,7 @@ const REGLAS_BANOS_CG = [
     traduccion: "The washbasin is blocked"
   },
   {
-    patron: /\bel\s+sink\s+esta\s+atascado\b/gi,
+    patron: /\bel\s+sink\s+est[áa]\s+atascado\b/gi,
     traduccion: "The sink is blocked"
   },
   {
@@ -249,7 +248,7 @@ const REGLAS_BANOS_CG = [
     traduccion: "The bathtub is damaged"
   },
   {
-    patron: /\bla\s+bañera\s+esta\s+damaged\b/gi,
+    patron: /\bla\s+bañera\s+est[áa]\s+damaged\b/gi,
     traduccion: "The bathtub is damaged"
   },
   {
@@ -316,19 +315,19 @@ const REGLAS_PUERTAS_VENTANAS_CG = [
     traduccion: "The lock shows signs of forced entry"
   },
   {
-    patron: /\bla\s+window\s+esta\s+broken\b/gi,
+    patron: /\bla\s+window\s+est[áa]\s+broken\b/gi,
     traduccion: "The window is broken"
   },
   {
-    patron: /\bla\s+door\s+esta\s+broken\b/gi,
+    patron: /\bla\s+door\s+est[áa]\s+broken\b/gi,
     traduccion: "The door is broken"
   },
   {
-    patron: /\bla\s+window\s+esta\s+damaged\b/gi,
+    patron: /\bla\s+window\s+est[áa]\s+damaged\b/gi,
     traduccion: "The window is damaged"
   },
   {
-    patron: /\bla\s+door\s+esta\s+damaged\b/gi,
+    patron: /\bla\s+door\s+est[áa]\s+damaged\b/gi,
     traduccion: "The door is damaged"
   },
   {
@@ -383,7 +382,7 @@ const REGLAS_FONTANERIA_CG = [
     traduccion: "The tap is dripping"
   },
   {
-    patron: /\bla\s+faucet\s+esta\s+goteando\b/gi,
+    patron: /\bla\s+faucet\s+est[áa]\s+goteando\b/gi,
     traduccion: "The faucet is dripping"
   },
   {
@@ -395,27 +394,27 @@ const REGLAS_FONTANERIA_CG = [
     traduccion: "The pipe has a leak"
   },
   {
-    patron: /\bla\s+pipe\s+esta\s+broken\b/gi,
+    patron: /\bla\s+pipe\s+est[áa]\s+broken\b/gi,
     traduccion: "The pipe is broken"
   },
   {
-    patron: /\bel\s+desagüe\s+esta\s+blocked\b/gi,
+    patron: /\bel\s+desagüe\s+est[áa]\s+blocked\b/gi,
     traduccion: "The drain is blocked"
   },
   {
-    patron: /\bla\s+drain\s+esta\s+atascada\b/gi,
+    patron: /\bla\s+drain\s+est[áa]\s+atascada\b/gi,
     traduccion: "The drain is blocked"
   },
   {
-    patron: /\bla\s+tubería\s+esta\s+obstruida\b/gi,
+    patron: /\bla\s+tubería\s+est[áa]\s+obstruida\b/gi,
     traduccion: "The pipe is blocked"
   },
   {
-    patron: /\bla\s+llave\s+de\s+paso\s+esta\s+cerrada\b/gi,
+    patron: /\bla\s+llave\s+de\s+paso\s+est[áa]\s+cerrada\b/gi,
     traduccion: "The shut-off valve is closed"
   },
   {
-    patron: /\bla\s+llave\s+de\s+paso\s+esta\s+abierta\b/gi,
+    patron: /\bla\s+llave\s+de\s+paso\s+est[áa]\s+abierta\b/gi,
     traduccion: "The shut-off valve is open"
   },
   {
@@ -521,23 +520,23 @@ const REGLAS_HUMEDAD_CG = [
 
 const REGLAS_ELECTRICIDAD_CG = [
   {
-    patron: /\bla\s+light\s+bulb\s+de\s+el\s+bathroom\s+esta\s+fundida\b/gi,
+    patron: /\bla\s+light\s+bulb\s+de\s+el\s+bathroom\s+est[áa]\s+fundida\b/gi,
     traduccion: "The bathroom light bulb is burnt out"
   },
   {
-    patron: /\blight\s+bulb\s+de\s+el\s+bathroom\s+esta\s+fundida\b/gi,
+    patron: /\blight\s+bulb\s+de\s+el\s+bathroom\s+est[áa]\s+fundida\b/gi,
     traduccion: "The bathroom light bulb is burnt out"
   },
   {
-    patron: /\bla\s+bombilla\s+de\s+el\s+bathroom\s+esta\s+fundida\b/gi,
+    patron: /\bla\s+bombilla\s+de\s+el\s+bathroom\s+est[áa]\s+fundida\b/gi,
     traduccion: "The bathroom light bulb is burnt out"
   },
   {
-    patron: /\bla\s+bombilla\s+del\s+baño\s+esta\s+fundida\b/gi,
+    patron: /\bla\s+bombilla\s+del\s+baño\s+est[áa]\s+fundida\b/gi,
     traduccion: "The bathroom light bulb is burnt out"
   },
   {
-    patron: /\bla\s+light\s+bulb\s+esta\s+fundida\b/gi,
+    patron: /\bla\s+light\s+bulb\s+est[áa]\s+fundida\b/gi,
     traduccion: "The light bulb is burnt out"
   },
   {
@@ -565,11 +564,11 @@ const REGLAS_ELECTRICIDAD_CG = [
     traduccion: "The switch does not work"
   },
   {
-    patron: /\bel\s+enchufe\s+esta\s+damaged\b/gi,
+    patron: /\bel\s+enchufe\s+est[áa]\s+damaged\b/gi,
     traduccion: "The socket is damaged"
   },
   {
-    patron: /\bel\s+socket\s+esta\s+dañado\b/gi,
+    patron: /\bel\s+socket\s+est[áa]\s+dañado\b/gi,
     traduccion: "The socket is damaged"
   },
   {
@@ -577,11 +576,11 @@ const REGLAS_ELECTRICIDAD_CG = [
     traduccion: "The power socket does not work"
   },
   {
-    patron: /\bel\s+cuadro\s+eléctrico\s+esta\s+abierto\b/gi,
+    patron: /\bel\s+cuadro\s+eléctrico\s+est[áa]\s+abierto\b/gi,
     traduccion: "The electrical panel is open"
   },
   {
-    patron: /\bel\s+fuse\s+esta\s+fundido\b/gi,
+    patron: /\bel\s+fuse\s+est[áa]\s+fundido\b/gi,
     traduccion: "The fuse is blown"
   }
 ];
@@ -612,11 +611,11 @@ const REGLAS_EXTERIORES_CG = [
     traduccion: "The pool needs cleaning"
   },
   {
-    patron: /\bla\s+pool\s+esta\s+dirty\b/gi,
+    patron: /\bla\s+pool\s+est[áa]\s+dirty\b/gi,
     traduccion: "The pool is dirty"
   },
   {
-    patron: /\bla\s+pool\s+water\s+esta\s+dirty\b/gi,
+    patron: /\bla\s+pool\s+water\s+est[áa]\s+dirty\b/gi,
     traduccion: "The pool water is dirty"
   },
   {
@@ -636,11 +635,11 @@ const REGLAS_EXTERIORES_CG = [
     traduccion: "The grass needs cutting"
   },
   {
-    patron: /\bla\s+valla\s+esta\s+damaged\b/gi,
+    patron: /\bla\s+valla\s+est[áa]\s+damaged\b/gi,
     traduccion: "The fence is damaged"
   },
   {
-    patron: /\bla\s+fence\s+esta\s+dañada\b/gi,
+    patron: /\bla\s+fence\s+est[áa]\s+dañada\b/gi,
     traduccion: "The fence is damaged"
   },
   {
@@ -652,7 +651,7 @@ const REGLAS_EXTERIORES_CG = [
     traduccion: "The patio needs cleaning"
   },
   {
-    patron: /\bla\s+puerta\s+exterior\s+esta\s+damaged\b/gi,
+    patron: /\bla\s+puerta\s+exterior\s+est[áa]\s+damaged\b/gi,
     traduccion: "The exterior door is damaged"
   }
 ];
@@ -738,27 +737,27 @@ const REGLAS_ACABADOS_CG = [
     traduccion: "The property needs painting"
   },
   {
-    patron: /\bla\s+pared\s+esta\s+cracked\b/gi,
+    patron: /\bla\s+pared\s+est[áa]\s+cracked\b/gi,
     traduccion: "The wall is cracked"
   },
   {
-    patron: /\bla\s+wall\s+esta\s+agrietada\b/gi,
+    patron: /\bla\s+wall\s+est[áa]\s+agrietada\b/gi,
     traduccion: "The wall is cracked"
   },
   {
-    patron: /\bel\s+techo\s+esta\s+damaged\b/gi,
+    patron: /\bel\s+techo\s+est[áa]\s+damaged\b/gi,
     traduccion: "The ceiling is damaged"
   },
   {
-    patron: /\bel\s+ceiling\s+esta\s+dañado\b/gi,
+    patron: /\bel\s+ceiling\s+est[áa]\s+dañado\b/gi,
     traduccion: "The ceiling is damaged"
   },
   {
-    patron: /\bel\s+suelo\s+esta\s+damaged\b/gi,
+    patron: /\bel\s+suelo\s+est[áa]\s+damaged\b/gi,
     traduccion: "The floor is damaged"
   },
   {
-    patron: /\bel\s+floor\s+esta\s+dañado\b/gi,
+    patron: /\bel\s+floor\s+est[áa]\s+dañado\b/gi,
     traduccion: "The floor is damaged"
   },
   {
@@ -864,31 +863,31 @@ const REGLAS_ESTADO_CG = [
 
 const REGLAS_MIXTAS_ADICIONALES_CG = [
   {
-    patron: /\bla\s+property\s+esta\s+vacía\b/gi,
+    patron: /\bla\s+property\s+est[áa]\s+vacía\b/gi,
     traduccion: "The property is empty"
   },
   {
-    patron: /\bla\s+property\s+esta\s+occupied\b/gi,
+    patron: /\bla\s+property\s+est[áa]\s+occupied\b/gi,
     traduccion: "The property is occupied"
   },
   {
-    patron: /\bla\s+house\s+esta\s+vacía\b/gi,
+    patron: /\bla\s+house\s+est[áa]\s+vacía\b/gi,
     traduccion: "The house is empty"
   },
   {
-    patron: /\bel\s+hallway\s+esta\s+dirty\b/gi,
+    patron: /\bel\s+hallway\s+est[áa]\s+dirty\b/gi,
     traduccion: "The hallway is dirty"
   },
   {
-    patron: /\bla\s+entrada\s+esta\s+dirty\b/gi,
+    patron: /\bla\s+entrada\s+est[áa]\s+dirty\b/gi,
     traduccion: "The entrance is dirty"
   },
   {
-    patron: /\bla\s+escalera\s+esta\s+damaged\b/gi,
+    patron: /\bla\s+escalera\s+est[áa]\s+damaged\b/gi,
     traduccion: "The staircase is damaged"
   },
   {
-    patron: /\bel\s+balcón\s+esta\s+dirty\b/gi,
+    patron: /\bel\s+balcón\s+est[áa]\s+dirty\b/gi,
     traduccion: "The balcony is dirty"
   },
   {
@@ -916,13 +915,86 @@ const REGLAS_MIXTAS_ADICIONALES_CG = [
     traduccion: "The blind does not go down"
   },
   {
-    patron: /\bla\s+barandilla\s+esta\s+loose\b/gi,
+    patron: /\bla\s+barandilla\s+est[áa]\s+loose\b/gi,
     traduccion: "The handrail is loose"
   },
   {
-    patron: /\bel\s+handrail\s+esta\s+suelto\b/gi,
+    patron: /\bel\s+handrail\s+est[áa]\s+suelto\b/gi,
     traduccion: "The handrail is loose"
   }
+];
+
+// ============================================================
+// 12.1. VARIANTES CON TILDE Y FRASES MIXTAS ADICIONALES
+// ============================================================
+
+const REGLAS_VARIANTES_MIXTAS_CG = [
+  { patron: /\bla\s+cocina\s+est[áa]\s+dirty\b/gi, traduccion: "The kitchen is dirty" },
+  { patron: /\bla\s+cocina\s+est[áa]\s+clean\b/gi, traduccion: "The kitchen is clean" },
+  { patron: /\bkitchen\s+est[áa]\s+sucia\b/gi, traduccion: "The kitchen is dirty" },
+  { patron: /\bkitchen\s+est[áa]\s+limpia\b/gi, traduccion: "The kitchen is clean" },
+  { patron: /\bel\s+baño\s+est[áa]\s+dirty\b/gi, traduccion: "The bathroom is dirty" },
+  { patron: /\bel\s+baño\s+est[áa]\s+clean\b/gi, traduccion: "The bathroom is clean" },
+  { patron: /\bbathroom\s+est[áa]\s+sucio\b/gi, traduccion: "The bathroom is dirty" },
+  { patron: /\bbathroom\s+est[áa]\s+limpio\b/gi, traduccion: "The bathroom is clean" },
+  { patron: /\bla\s+habitación\s+est[áa]\s+dirty\b/gi, traduccion: "The bedroom is dirty" },
+  { patron: /\bla\s+habitación\s+est[áa]\s+clean\b/gi, traduccion: "The bedroom is clean" },
+  { patron: /\bbedroom\s+est[áa]\s+sucia\b/gi, traduccion: "The bedroom is dirty" },
+  { patron: /\bel\s+salón\s+est[áa]\s+dirty\b/gi, traduccion: "The living room is dirty" },
+  { patron: /\bel\s+salón\s+est[áa]\s+clean\b/gi, traduccion: "The living room is clean" },
+  { patron: /\bliving\s+room\s+est[áa]\s+sucio\b/gi, traduccion: "The living room is dirty" },
+  { patron: /\bel\s+jardín\s+est[áa]\s+dirty\b/gi, traduccion: "The garden is dirty" },
+  { patron: /\bgarden\s+est[áa]\s+descuidado\b/gi, traduccion: "The garden is neglected" },
+  { patron: /\bla\s+piscina\s+est[áa]\s+dirty\b/gi, traduccion: "The pool is dirty" },
+  { patron: /\bpool\s+est[áa]\s+sucia\b/gi, traduccion: "The pool is dirty" },
+  { patron: /\bla\s+puerta\s+est[áa]\s+open\b/gi, traduccion: "The door is open" },
+  { patron: /\bla\s+puerta\s+est[áa]\s+closed\b/gi, traduccion: "The door is closed" },
+  { patron: /\bdoor\s+est[áa]\s+abierta\b/gi, traduccion: "The door is open" },
+  { patron: /\bdoor\s+est[áa]\s+cerrada\b/gi, traduccion: "The door is closed" },
+  { patron: /\bla\s+ventana\s+est[áa]\s+open\b/gi, traduccion: "The window is open" },
+  { patron: /\bla\s+ventana\s+est[áa]\s+closed\b/gi, traduccion: "The window is closed" },
+  { patron: /\bwindow\s+est[áa]\s+abierta\b/gi, traduccion: "The window is open" },
+  { patron: /\bla\s+llave\s+de\s+paso\s+est[áa]\s+closed\b/gi, traduccion: "The shut-off valve is closed" },
+  { patron: /\bla\s+llave\s+de\s+paso\s+est[áa]\s+open\b/gi, traduccion: "The shut-off valve is open" },
+  { patron: /\bshut-off\s+valve\s+est[áa]\s+cerrada\b/gi, traduccion: "The shut-off valve is closed" },
+  { patron: /\bel\s+grifo\s+est[áa]\s+dripping\b/gi, traduccion: "The tap is dripping" },
+  { patron: /\btap\s+est[áa]\s+goteando\b/gi, traduccion: "The tap is dripping" },
+  { patron: /\bla\s+tubería\s+est[áa]\s+leaking\b/gi, traduccion: "The pipe is leaking" },
+  { patron: /\bpipe\s+est[áa]\s+goteando\b/gi, traduccion: "The pipe is leaking" },
+  { patron: /\bel\s+desagüe\s+est[áa]\s+blocked\b/gi, traduccion: "The drain is blocked" },
+  { patron: /\bdrain\s+est[áa]\s+atascado\b/gi, traduccion: "The drain is blocked" },
+  { patron: /\bla\s+pared\s+est[áa]\s+damp\b/gi, traduccion: "The wall is damp" },
+  { patron: /\bwall\s+est[áa]\s+con\s+humedad\b/gi, traduccion: "The wall is damp" },
+  { patron: /\bel\s+techo\s+est[áa]\s+damp\b/gi, traduccion: "The ceiling is damp" },
+  { patron: /\bceiling\s+est[áa]\s+con\s+humedad\b/gi, traduccion: "The ceiling is damp" },
+  { patron: /\bla\s+pared\s+est[áa]\s+cracked\b/gi, traduccion: "The wall is cracked" },
+  { patron: /\bel\s+suelo\s+est[áa]\s+wet\b/gi, traduccion: "The floor is wet" },
+  { patron: /\bfloor\s+est[áa]\s+mojado\b/gi, traduccion: "The floor is wet" },
+  { patron: /\bla\s+property\s+est[áa]\s+empty\b/gi, traduccion: "The property is empty" },
+  { patron: /\bla\s+property\s+est[áa]\s+occupied\b/gi, traduccion: "The property is occupied" },
+  { patron: /\bproperty\s+est[áa]\s+vacía\b/gi, traduccion: "The property is empty" },
+  { patron: /\bel\s+aire\s+acondicionado\s+est[áa]\s+broken\b/gi, traduccion: "The air conditioning is broken" },
+  { patron: /\bla\s+calefacción\s+est[áa]\s+off\b/gi, traduccion: "The heating is off" },
+  { patron: /\bla\s+calefacción\s+est[áa]\s+on\b/gi, traduccion: "The heating is on" },
+  { patron: /\bla\s+bombilla\s+est[áa]\s+fundida\b/gi, traduccion: "The light bulb is burnt out" },
+  { patron: /\bel\s+enchufe\s+est[áa]\s+roto\b/gi, traduccion: "The socket is broken" },
+  { patron: /\bel\s+interruptor\s+est[áa]\s+roto\b/gi, traduccion: "The switch is broken" },
+  { patron: /\bno\s+hay\s+daños\s+visibles\b/gi, traduccion: "There is no visible damage" },
+  { patron: /\bno\s+hay\s+fugas\s+visibles\b/gi, traduccion: "There are no visible leaks" },
+  { patron: /\bno\s+se\s+aprecian\s+daños\b/gi, traduccion: "No damage is apparent" },
+  { patron: /\bno\s+se\s+aprecian\s+fugas\b/gi, traduccion: "No leaks are apparent" },
+  { patron: /\bse\s+observa\s+una\s+pequeña\s+grieta\b/gi, traduccion: "A small crack is visible" },
+  { patron: /\bse\s+observan\s+varias\s+grietas\b/gi, traduccion: "Several cracks are visible" },
+  { patron: /\bnecesita\s+ser\s+revisado\b/gi, traduccion: "Needs to be inspected" },
+  { patron: /\bnecesita\s+ser\s+revisada\b/gi, traduccion: "Needs to be inspected" },
+  { patron: /\brequiere\s+una\s+revisión\b/gi, traduccion: "Requires inspection" },
+  { patron: /\brequiere\s+reparación\b/gi, traduccion: "Requires repair" },
+  { patron: /\bse\s+encuentra\s+limpio\b/gi, traduccion: "Is clean" },
+  { patron: /\bse\s+encuentra\s+limpia\b/gi, traduccion: "Is clean" },
+  { patron: /\bse\s+encuentra\s+cerrado\b/gi, traduccion: "Is closed" },
+  { patron: /\bse\s+encuentra\s+cerrada\b/gi, traduccion: "Is closed" },
+  { patron: /\bse\s+encuentra\s+abierto\b/gi, traduccion: "Is open" },
+  { patron: /\bse\s+encuentra\s+abierta\b/gi, traduccion: "Is open" }
 ];
 
 // ============================================================
@@ -931,6 +1003,10 @@ const REGLAS_MIXTAS_ADICIONALES_CG = [
 
 /*
  * Las reglas más específicas se ejecutan primero.
+ * La tabla conservadora se ejecuta antes y después del traductor principal:
+ * la primera pasada reconoce mezclas originales y la segunda puede resolver
+ * fragmentos que hayan quedado tras la traducción general. Las reglas son
+ * equivalencias explícitas; no deben inferir averías, causas ni reparaciones.
  * No se aplican sustituciones generales como:
  *
  *   "de la" -> "of the"
@@ -952,7 +1028,8 @@ const TODAS_LAS_REGLAS_AVANZADAS_CG = [
   ...REGLAS_PLAGAS_LIMPIEZA_CG,
   ...REGLAS_ACABADOS_CG,
   ...REGLAS_ESTADO_CG,
-  ...REGLAS_MIXTAS_ADICIONALES_CG
+  ...REGLAS_MIXTAS_ADICIONALES_CG,
+  ...REGLAS_VARIANTES_MIXTAS_CG
 ];
 
 // ============================================================
