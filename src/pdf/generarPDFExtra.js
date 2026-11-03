@@ -1,7 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { resolverUrlPdfSegura } from "../lib/urlPdf.js";
-import { traducirObservacionInspeccion } from "../lib/traducirObservacionesInspeccion.js";
 
 function valorTexto(valor, alternativa = "No especificado") {
   if (
@@ -29,14 +28,12 @@ function idiomaNormalizado(idioma) {
     : "es";
 }
 
-function traducirTextoInforme(valor, idioma, alternativa) {
-  const texto = valorTexto(valor, alternativa);
-
-  if (idioma !== "en") {
-    return texto;
-  }
-
-  return traducirObservacionInspeccion(texto, "en");
+/**
+ * Conserva el contenido introducido por el técnico.
+ * No traduce descripciones, observaciones, materiales ni tiempos.
+ */
+function conservarTextoTecnico(valor, alternativa) {
+  return valorTexto(valor, alternativa);
 }
 
 function fechaLegible(valor, idioma) {
@@ -440,21 +437,20 @@ export async function generarPDFExtra({
     idioma
   );
 
-  const descripcion = traducirTextoInforme(
+  // El técnico introduce directamente estos campos en inglés.
+  // No se aplica ninguna traducción automática a su contenido.
+  const descripcion = conservarTextoTecnico(
     extra.descripcion || extra.observaciones,
-    idioma,
     textos.sinDescripcion
   );
 
-  const materiales = traducirTextoInforme(
+  const materiales = conservarTextoTecnico(
     extra.materiales,
-    idioma,
     textos.sinMateriales
   );
 
-  const tiempo = traducirTextoInforme(
+  const tiempo = conservarTextoTecnico(
     extra.tiempo_empleado,
-    idioma,
     textos.sinTiempo
   );
 
