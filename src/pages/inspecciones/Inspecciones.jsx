@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
@@ -15,81 +16,178 @@ export default function Inspecciones() {
 
   async function cargarInspecciones() {
     setLoading(true);
+    setErrorMsg("");
 
     try {
-      // 1. Cargamos las inspecciones solas.
+      // 1. Cargar inspecciones.
       const { data, error } = await supabase
         .from("inspecciones")
         .select("*")
         .order("fecha", { ascending: true });
 
       if (error) {
-        setErrorMsg(
-          "Error al obtener inspecciones: " + error.message
-        );
-        setLoading(false);
-        return;
+        throw error;
       }
 
       let listaInspecciones = data || [];
 
-      // 2. Buscamos las viviendas asociadas en una consulta independiente.
-      if (listaInspecciones.length > 0) {
-        const viviendaIds = [
-          ...new Set(
-            listaInspecciones
-              .map((i) => i.vivienda_id)
-              .filter(Boolean)
-          )
-        ];
+      if (listaInspecciones.length === 0) {
+        setInspecciones([]);
+        return;
+      }
 
-        let viviendasMap = {};
+      // 2. Recuperar contratos relacionados.
+      const contratoIds = [
+        ...new Set(
+          listaInspecciones
+            .map((insp) => insp.contrato_id)
+            .filter(Boolean)
+            .map(String)
+        ),
+      ];
 
-        if (viviendaIds.length > 0) {
-          const { data: dataViviendas, error: viviendasError } =
-            await supabase
-              .from("viviendas")
-              .select(
-                "id, direccion, ciudad, localidad, provincia, codigo_postal"
-              )
-              .in("id", viviendaIds);
+      let contratosMap = {};
 
-          if (viviendasError) {
-            console.error(
-              "Error cargando viviendas:",
-              viviendasError
-            );
-          }
+      if (contratoIds.length > 0) {
+        const { data: contratos, error: errorContratos } =
+          await supabase
+            .from("contratos")
+            .select("id, vivienda_id, cliente_id")
+            .in("id", contratoIds);
 
-          if (dataViviendas) {
-            viviendasMap = dataViviendas.reduce(
-              (acc, viv) => {
-                acc[viv.id] = viv;
-                return acc;
-              },
-              {}
-            );
-          }
+        if (errorContratos) {
+          console.error(
+            "Error cargando contratos de inspecciones:",
+            errorContratos
+          );
         }
 
-        listaInspecciones = listaInspecciones.map(
-          (item) => ({
-            ...item,
-            viviendas:
-              viviendasMap[item.vivienda_id] || null
-          })
-        );
+        if (contratos) {
+          contratosMap = contratos.reduce((acc, contrato) => {
+            acc[String(contrato.id)] = contrato;
+            return acc;
+          }, {});
+        }
       }
+
+      // 3. Resolver los ID de viviendas desde la inspección
+      // o, cuando falten, desde el contrato.
+      const viviendaIds = [
+        ...new Set(
+          listaInspecciones
+            .map((insp) => {
+              const contrato = contratosMap[String(insp.contrato_id)];
+              return insp.vivienda_id || contrato?.vivienda_id;
+            })
+            .filter(Boolean)
+            .map(String)
+        ),
+      ];
+
+      let viviendasMap = {};
+
+      if (viviendaIds.length > 0) {
+        const { data: viviendas, error: errorViviendas } =
+          await supabase
+            .from("viviendas")
+            .select(
+              "id, nombre, direccion, localidad, ciudad, provincia, codigo_postal, cliente_id"
+            )
+            .in("id", viviendaIds);
+
+        if (errorViviendas) {
+          console.error(
+            "Error cargando viviendas:",
+            errorViviendas
+          );
+        }
+
+        if (viviendas) {
+          viviendasMap = viviendas.reduce((acc, vivienda) => {
+            acc[String(vivienda.id)] = vivienda;
+            return acc;
+          }, {});
+        }
+      }
+
+      // 4. Resolver los clientes desde la inspección,
+      // la vivienda o el contrato.
+      const clienteIds = [
+        ...new Set(
+          listaInspecciones
+            .map((insp) => {
+              const contrato = contratosMap[String(insp.contrato_id)];
+
+              const viviendaId =
+                insp.vivienda_id || contrato?.vivienda_id;
+
+              const vivienda = viviendasMap[String(viviendaId)];
+
+              return (
+                insp.cliente_id ||
+                vivienda?.cliente_id ||
+                contrato?.cliente_id
+              );
+            })
+            .filter(Boolean)
+            .map(String)
+        ),
+      ];
+
+      let clientesMap = {};
+
+      if (clienteIds.length > 0) {
+        const { data: clientes, error: errorClientes } =
+          await supabase
+            .from("clientes")
+            .select("id, nombre")
+            .in("id", clienteIds);
+
+        if (errorClientes) {
+          console.error(
+            "Error cargando clientes:",
+            errorClientes
+          );
+        }
+
+        if (clientes) {
+          clientesMap = clientes.reduce((acc, cliente) => {
+            acc[String(cliente.id)] = cliente;
+            return acc;
+          }, {});
+        }
+      }
+
+      // 5. Preparar cada inspección con sus datos relacionados.
+      listaInspecciones = listaInspecciones.map((insp) => {
+        const contrato = contratosMap[String(insp.contrato_id)];
+
+        const viviendaId =
+          insp.vivienda_id || contrato?.vivienda_id;
+
+        const vivienda = viviendasMap[String(viviendaId)] || null;
+
+        const clienteId =
+          insp.cliente_id ||
+          vivienda?.cliente_id ||
+          contrato?.cliente_id;
+
+        const cliente = clientesMap[String(clienteId)] || null;
+
+        return {
+          ...insp,
+          viviendas: vivienda,
+          clientes: cliente,
+        };
+      });
 
       setInspecciones(listaInspecciones);
     } catch (error) {
-      console.error(
-        "Error cargando inspecciones:",
-        error
-      );
+      console.error("Error cargando inspecciones:", error);
 
       setErrorMsg(
-        "Error conectando con el servidor."
+        "Error al obtener inspecciones: " +
+          (error?.message || "Error desconocido")
       );
     } finally {
       setLoading(false);
@@ -105,7 +203,7 @@ export default function Inspecciones() {
           minHeight: "100vh",
           color: "#fff",
           fontFamily: "Inter, sans-serif",
-          paddingBottom: "80px"
+          paddingBottom: "80px",
         }}
       >
         <h1
@@ -114,7 +212,7 @@ export default function Inspecciones() {
             marginBottom: "20px",
             fontSize: "28px",
             fontWeight: "700",
-            textAlign: "center"
+            textAlign: "center",
           }}
         >
           Inspecciones
@@ -123,7 +221,7 @@ export default function Inspecciones() {
         <Link
           to="/inspecciones/nueva"
           style={{
-            textDecoration: "none"
+            textDecoration: "none",
           }}
         >
           <button
@@ -137,7 +235,7 @@ export default function Inspecciones() {
               fontWeight: "700",
               fontSize: "16px",
               cursor: "pointer",
-              marginBottom: "25px"
+              marginBottom: "25px",
             }}
           >
             Nueva inspección
@@ -148,13 +246,12 @@ export default function Inspecciones() {
           <div
             style={{
               padding: "10px",
-              background:
-                "rgba(255,107,107,0.2)",
+              background: "rgba(255,107,107,0.2)",
               border: "1px solid #ff6b6b",
               color: "#ff6b6b",
               borderRadius: "8px",
               marginBottom: "15px",
-              textAlign: "center"
+              textAlign: "center",
             }}
           >
             {errorMsg}
@@ -166,7 +263,7 @@ export default function Inspecciones() {
             style={{
               textAlign: "center",
               color: "#4db8ff",
-              marginTop: "30px"
+              marginTop: "30px",
             }}
           >
             Cargando inspecciones...
@@ -176,7 +273,7 @@ export default function Inspecciones() {
             style={{
               textAlign: "center",
               color: "#aaa",
-              marginTop: "30px"
+              marginTop: "30px",
             }}
           >
             No hay inspecciones registradas.
@@ -186,43 +283,44 @@ export default function Inspecciones() {
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "15px"
+              gap: "15px",
             }}
           >
             {inspecciones.map((insp, index) => {
+              const vivienda = insp.viviendas;
+              const cliente = insp.clientes;
+
               const direccionReal =
-                insp.viviendas?.direccion ||
+                vivienda?.direccion ||
                 insp.direccion ||
                 "Dirección no especificada";
 
               const localidadReal =
-                insp.viviendas?.localidad ||
-                insp.viviendas?.ciudad ||
+                vivienda?.localidad ||
+                vivienda?.ciudad ||
                 insp.localidad ||
                 "No especificada";
 
-              const ciudadReal =
-                insp.viviendas?.ciudad ||
-                null;
+              const ciudadReal = vivienda?.ciudad || null;
+              const provinciaReal = vivienda?.provincia || null;
+              const codigoPostalReal = vivienda?.codigo_postal || null;
 
-              const provinciaReal =
-                insp.viviendas?.provincia ||
-                null;
+              const nombreVivienda = vivienda?.nombre || null;
 
-              const codigoPostalReal =
-                insp.viviendas?.codigo_postal ||
-                null;
+              const nombreCliente =
+                cliente?.nombre || "Cliente no identificado";
 
               const fechaFormateada = insp.fecha
                 ? String(insp.fecha).slice(0, 10)
                 : "Sin fecha";
 
-              const numeroCorrelativo =
-                String(index + 1).padStart(2, "0");
+              const numeroCorrelativo = String(index + 1).padStart(
+                2,
+                "0"
+              );
 
               const titulo =
-                direccionReal !==
-                "Dirección no especificada"
+                direccionReal !== "Dirección no especificada"
                   ? `Inspección - ${direccionReal}`
                   : `Inspección Nº ${numeroCorrelativo}`;
 
@@ -230,27 +328,22 @@ export default function Inspecciones() {
                 <div
                   key={insp.id}
                   onClick={() =>
-                    navigate(
-                      `/inspecciones/ver/${insp.id}`
-                    )
+                    navigate(`/inspecciones/ver/${insp.id}`)
                   }
                   style={{
-                    background:
-                      "rgba(255,255,255,0.05)",
+                    background: "rgba(255,255,255,0.05)",
                     padding: "18px",
                     borderRadius: "12px",
-                    border:
-                      "1px solid rgba(255,255,255,0.1)",
+                    border: "1px solid rgba(255,255,255,0.1)",
                     cursor: "pointer",
-                    boxShadow:
-                      "0 2px 8px rgba(0,0,0,0.3)"
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
                   }}
                 >
                   <h3
                     style={{
                       color: "#4db8ff",
                       fontSize: "16px",
-                      marginBottom: "8px"
+                      marginBottom: "8px",
                     }}
                   >
                     {titulo}
@@ -258,50 +351,68 @@ export default function Inspecciones() {
 
                   <p
                     style={{
-                      color: "#ccc",
+                      color: "#fff",
                       fontSize: "14px",
-                      marginBottom: "4px"
+                      marginBottom: "8px",
+                      fontWeight: "600",
                     }}
                   >
-                    <strong>Dirección:</strong>{" "}
-                    {direccionReal}
+                    <strong>Cliente:</strong> {nombreCliente}
+                  </p>
+
+                  {nombreVivienda && (
+                    <p
+                      style={{
+                        color: "#ccc",
+                        fontSize: "14px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      <strong>Vivienda:</strong> {nombreVivienda}
+                    </p>
+                  )}
+
+                  <p
+                    style={{
+                      color: "#ccc",
+                      fontSize: "14px",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    <strong>Dirección:</strong> {direccionReal}
                   </p>
 
                   <p
                     style={{
                       color: "#ccc",
                       fontSize: "14px",
-                      marginBottom: "4px"
+                      marginBottom: "4px",
                     }}
                   >
-                    <strong>Localidad:</strong>{" "}
-                    {localidadReal}
+                    <strong>Localidad:</strong> {localidadReal}
                   </p>
 
-                  {ciudadReal &&
-                    ciudadReal !== localidadReal && (
-                      <p
-                        style={{
-                          color: "#ccc",
-                          fontSize: "14px",
-                          marginBottom: "4px"
-                        }}
-                      >
-                        <strong>Ciudad:</strong>{" "}
-                        {ciudadReal}
-                      </p>
-                    )}
+                  {ciudadReal && ciudadReal !== localidadReal && (
+                    <p
+                      style={{
+                        color: "#ccc",
+                        fontSize: "14px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      <strong>Ciudad:</strong> {ciudadReal}
+                    </p>
+                  )}
 
                   {provinciaReal && (
                     <p
                       style={{
                         color: "#ccc",
                         fontSize: "14px",
-                        marginBottom: "4px"
+                        marginBottom: "4px",
                       }}
                     >
-                      <strong>Provincia:</strong>{" "}
-                      {provinciaReal}
+                      <strong>Provincia:</strong> {provinciaReal}
                     </p>
                   )}
 
@@ -310,11 +421,10 @@ export default function Inspecciones() {
                       style={{
                         color: "#ccc",
                         fontSize: "14px",
-                        marginBottom: "4px"
+                        marginBottom: "4px",
                       }}
                     >
-                      <strong>Código postal:</strong>{" "}
-                      {codigoPostalReal}
+                      <strong>Código postal:</strong> {codigoPostalReal}
                     </p>
                   )}
 
@@ -322,30 +432,27 @@ export default function Inspecciones() {
                     style={{
                       color: "#ccc",
                       fontSize: "14px",
-                      marginBottom: "4px"
+                      marginBottom: "4px",
                     }}
                   >
-                    <strong>Fecha:</strong>{" "}
-                    {fechaFormateada}
+                    <strong>Fecha:</strong> {fechaFormateada}
                   </p>
 
                   <p
                     style={{
                       color: "#ccc",
-                      fontSize: "14px"
+                      fontSize: "14px",
                     }}
                   >
                     <strong>Estado:</strong>{" "}
                     <span
                       style={{
                         color:
-                          insp.estado ===
-                          "completada_tecnico"
+                          insp.estado === "completada_tecnico"
                             ? "#4ade80"
-                            : insp.estado ===
-                              "finalizada"
-                            ? "#60a5fa"
-                            : "#facc15"
+                            : insp.estado === "finalizada"
+                              ? "#60a5fa"
+                              : "#facc15",
                       }}
                     >
                       {insp.estado || "pendiente"}
