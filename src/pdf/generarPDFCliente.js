@@ -1,7 +1,5 @@
-
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { traducirObservacionInspeccion } from "../lib/traducirObservacionesInspeccion";
 
 /**
  * Convierte una URL o un Base64 a una imagen Base64.
@@ -66,19 +64,12 @@ function obtenerIdioma(inspeccion, opciones) {
     : "es";
 }
 
-function traducir(valor, idioma) {
-  const contenido = texto(valor, "");
-
-  if (!contenido || idioma !== "en") {
-    return contenido;
-  }
-
-  try {
-    return traducirObservacionInspeccion(contenido, "en");
-  } catch (error) {
-    console.warn("No se pudo traducir el texto del PDF:", error);
-    return contenido;
-  }
+/**
+ * Los textos libres escritos por el técnico no se traducen.
+ * El técnico debe introducirlos directamente en el idioma del cliente.
+ */
+function conservarTextoTecnico(valor) {
+  return texto(valor, "");
 }
 
 function fechaLegible(valor, idioma = "es") {
@@ -320,12 +311,11 @@ export async function generarPDFCliente(
       inspeccion.observaciones ||
       inspeccion.notas;
 
-  const observaciones = traducir(
+  const observaciones = conservarTextoTecnico(
     observacionesOriginales ||
       (esExtra
         ? etiquetas.sinDescripcion
-        : etiquetas.sinObservaciones),
-    idioma
+        : etiquetas.sinObservaciones)
   );
 
   const tecnico = texto(
@@ -403,12 +393,11 @@ export async function generarPDFCliente(
 
     filas.push([
       etiquetas.tipoInspeccion,
-      traducir(
+      texto(
         inspeccion.tipo_inspeccion ||
           inspeccion.tipo ||
           inspeccion.origen ||
-          etiquetas.noEspecificado,
-        idioma
+          etiquetas.noEspecificado
       ),
     ]);
   }
@@ -505,9 +494,8 @@ export async function generarPDFCliente(
     ? inspeccion.materiales
     : inspeccion.materiales_usados || inspeccion.materiales;
 
-  const materiales = traducir(
-    materialesOriginales,
-    idioma
+  const materiales = conservarTextoTecnico(
+    materialesOriginales
   );
 
   if (materiales) {
@@ -543,9 +531,8 @@ export async function generarPDFCliente(
     doc.setFontSize(10);
     doc.setTextColor(35, 35, 35);
 
-    const tiempo = traducir(
-      inspeccion.tiempo_empleado,
-      idioma
+    const tiempo = conservarTextoTecnico(
+      inspeccion.tiempo_empleado
     );
 
     const lineas = doc.splitTextToSize(
