@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
@@ -32,7 +33,7 @@ export default function TecnicoInspeccion() {
     setMensaje("");
 
     try {
-      // 1️⃣ Obtener técnico por email (cambiado a .maybeSingle())
+      // 1. Obtener técnico por email
       const { data: tecnico, error: tecError } = await supabase
         .from("tecnicos")
         .select("id")
@@ -45,7 +46,7 @@ export default function TecnicoInspeccion() {
         return;
       }
 
-      // 2️⃣ Cargar datos de la inspección (cambiado a .maybeSingle())
+      // 2. Cargar inspección
       const { data: insp, error: inspError } = await supabase
         .from("inspecciones")
         .select("*")
@@ -58,7 +59,7 @@ export default function TecnicoInspeccion() {
         return;
       }
 
-      // 3️⃣ Validar permisos comparando como String
+      // 3. Validar permisos
       if (String(insp.tecnico_id) !== String(tecnico.id)) {
         setMensaje("No tienes permisos para acceder a esta inspección.");
         setLoading(false);
@@ -67,23 +68,24 @@ export default function TecnicoInspeccion() {
 
       setInspeccion(insp);
 
-      // 4️⃣ Cargar datos de la vivienda (cambiado a .maybeSingle())
+      // 4. Cargar vivienda y datos del cliente, incluido su idioma
       if (insp.vivienda_id) {
         const { data: viv } = await supabase
           .from("viviendas")
-          .select("*, clientes(nombre, telefono)")
+          .select("*, clientes(nombre, telefono, idioma)")
           .eq("id", insp.vivienda_id)
           .maybeSingle();
 
         if (viv) {
           setVivienda(viv);
+
           if (viv.clientes) {
             setCliente(viv.clientes);
           }
         }
       }
 
-      // 5️⃣ Si hay contrato y no se obtuvo cliente previamente, buscarlo por contrato (cambiados a .maybeSingle())
+      // 5. Si no hay cliente asociado a la vivienda, buscarlo por contrato
       if (!cliente && insp.contrato_id) {
         const { data: contrato } = await supabase
           .from("contratos")
@@ -94,7 +96,7 @@ export default function TecnicoInspeccion() {
         if (contrato?.cliente_id) {
           const { data: cli } = await supabase
             .from("clientes")
-            .select("nombre, telefono")
+            .select("nombre, telefono, idioma")
             .eq("id", contrato.cliente_id)
             .maybeSingle();
 
@@ -228,6 +230,18 @@ export default function TecnicoInspeccion() {
                       }`
                     : "Sin cliente asignado"}
                 </p>
+
+                {cliente?.idioma === "en" && (
+                  <p
+                    style={{
+                      margin: "0 0 8px",
+                      color: COLOR_DORADO,
+                      fontWeight: "800",
+                    }}
+                  >
+                    Cliente inglés
+                  </p>
+                )}
 
                 <p style={{ margin: 0, marginTop: "10px" }}>
                   <strong style={{ color: COLOR_DORADO }}>Notas / Observaciones:</strong>{" "}
