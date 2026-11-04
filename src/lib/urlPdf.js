@@ -4,11 +4,7 @@ import { supabase } from "./supabase";
 /**
  * Resuelve una ruta o URL antigua de Storage mediante una URL firmada.
  *
- * Esta función es asíncrona: debe utilizarse con await.
- * No genera URLs públicas.
- *
- * Para archivos que deban permanecer privados, el usuario autenticado
- * debe tener permiso de acceso al objeto según las políticas de Storage.
+ * Mantiene compatibilidad con la API anterior.
  */
 export async function resolverUrlPdf(
   valor,
@@ -23,15 +19,15 @@ export async function resolverUrlPdf(
  *
  * Admite:
  * - Rutas relativas dentro de un bucket.
+ * - Rutas que incluyen el nombre del bucket como carpeta.
  * - URL antiguas públicas de Storage.
  * - URL antiguas firmadas o autenticadas de Storage.
- * - URL externas que no sean de Supabase Storage, que se conservan.
+ * - URL externas que no sean de Supabase Storage.
  *
- * Las URL de Storage solo se resuelven si pertenecen al proyecto
- * Supabase configurado en VITE_SUPABASE_URL.
- *
- * La firma temporal no concede permisos nuevos: el usuario actual
- * debe tener permiso para acceder al objeto.
+ * IMPORTANTE:
+ * Primero intenta siempre la ruta exacta.
+ * Algunas rutas contienen el nombre del bucket como
+ * una carpeta real dentro del almacenamiento.
  */
 export async function resolverUrlPdfSegura(
   valor,
@@ -68,6 +64,7 @@ export async function resolverUrlPdfSegura(
 
   let bucketArchivo = bucketPredeterminado;
   let rutaArchivo = valorLimpio;
+  let esUrlStorage = false;
 
   if (/^https?:\/\//i.test(valorLimpio)) {
     let url;
@@ -82,15 +79,11 @@ export async function resolverUrlPdfSegura(
       return null;
     }
 
-    // No interpretar URLs de otros servidores como objetos
-    // del proyecto Supabase actual.
     if (
       url.origin !== urlProyecto.origin ||
       url.username ||
       url.password
     ) {
-      // Rechazar URLs de Storage de otros servidores.
-      // Conservar enlaces externos que no sean de Storage.
       if (
         /\/storage\/v1\/object\/(?:public|sign|authenticated)\//i.test(
           url.pathname
@@ -106,34 +99,28 @@ export async function resolverUrlPdfSegura(
       /\/storage\/v1\/object\/(?:public|sign|authenticated)\/([^/]+)\/(.+)$/i
     );
 
-    // Si no es una URL de objeto de Storage reconocible,
-    // conservar el comportamiento anterior.
     if (!coincidencia) {
       return valorLimpio;
     }
 
     try {
-      bucketArchivo = decodeURIComponent(coincidencia[1]);
+      bucketArchivo = decodeURIComponent(
+        coincidencia[1]
+      );
 
-      // Decodificar cada segmento por separado para no convertir
-      // barras codificadas del nombre en separadores de ruta.
       rutaArchivo = coincidencia[2]
         .split("/")
-        .map((segmento) => decodeURIComponent(segmento))
+        .map((segmento) =>
+          decodeURIComponent(segmento)
+        )
         .join("/");
+
+      esUrlStorage = true;
     } catch {
       return null;
     }
   } else {
-    // Para rutas guardadas en la base de datos.
     rutaArchivo = valorLimpio.replace(/^\/+/, "");
-
-    // Admitir referencias con el bucket incluido al principio.
-    if (rutaArchivo.startsWith(`${bucketArchivo}/`)) {
-      rutaArchivo = rutaArchivo.slice(
-        bucketArchivo.length + 1
-      );
-    }
   }
 
   if (
@@ -144,30 +131,66 @@ export async function resolverUrlPdfSegura(
     return null;
   }
 
-  try {
-    const { data, error } = await supabase.storage
-      .from(bucketArchivo)
-      .createSignedUrl(
-        rutaArchivo,
-        Math.floor(duracion)
-      );
+  /*
+   * Orden de resolución:
+   *
+   * 1. Ruta exacta tal como está guardada.
+   * 2. Ruta sin el prefijo del bucket, únicamente
+   *    como compatibilidad con referencias antiguas.
+   *
+   * No se elimina el prefijo antes del primer intento,
+   * porque puede ser una carpeta real del archivo.
+   */
+  const rutasIntento = [rutaArchivo];
 
-    if (error) {
-      console.error(
-        "Error generando URL temporal de Storage:",
-        error.message
-      );
-
-      return null;
-    }
-
-    return data?.signedUrl || null;
-  } catch (error) {
-    console.error(
-      "Error inesperado generando URL temporal de Storage:",
-      error
+  if (
+    !esUrlStorage &&
+    rutaArchivo.startsWith(`${bucketArchivo}/`)
+  ) {
+    const rutaAntigua = rutaArchivo.slice(
+      bucketArchivo.length + 1
     );
 
-    return null;
+    if (
+      rutaAntigua &&
+      rutaAntigua !== rutaArchivo
+    ) {
+      rutasIntento.push(rutaAntigua);
+    }
   }
+
+  let ultimoError = null;
+
+  for (const ruta of rutasIntento) {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucketArchivo)
+        .createSignedUrl(
+          ruta,
+          Math.floor(duracion)
+        );
+
+      if (error) {
+        ultimoError = error;
+        continue;
+      }
+
+      if (data?.signedUrl) {
+        return data.signedUrl;
+      }
+    } catch (error) {
+      ultimoError = error;
+    }
+  }
+
+  console.error(
+    "No se pudo generar una URL temporal de Storage:",
+    {
+      bucket: bucketArchivo,
+      rutasIntentadas: rutasIntento,
+      error: ultimoError?.message || null,
+    }
+  );
+
+  return null;
 }
