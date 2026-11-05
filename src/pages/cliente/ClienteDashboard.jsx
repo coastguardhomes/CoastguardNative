@@ -51,7 +51,7 @@ export default function ClienteDashboard() {
   const [numAlertas, setNumAlertas] = useState(0);
   const [alertaInspeccionId, setAlertaInspeccionId] = useState(null);
   const [numViviendas, setNumViviendas] = useState(0);
-  const [nuevosExtras, setNuevosExtras] = useState([]);
+  const [alertaExtraId, setAlertaExtraId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [pagoExitoso, setPagoExitoso] = useState(false);
 
@@ -113,7 +113,7 @@ export default function ClienteDashboard() {
           resAlertasInsp,
           resAlertasFacturas,
           resViviendas,
-          resExtras,
+          resAlertasExtras,
         ] = await Promise.all([
           supabase
             .from("inspecciones")
@@ -141,17 +141,15 @@ export default function ClienteDashboard() {
             .eq("cliente_id", clienteId),
 
           /*
-           * Mostramos únicamente los trabajos extra publicados al cliente
-           * cuyo aviso del Dashboard todavía no se ha cerrado.
-           *
-           * alerta_vista controla el aviso, mientras que visto mantiene
-           * su significado independiente en el registro del trabajo.
+           * Solo se consideran incidencias extra marcadas expresamente
+           * como alerta y todavía no revisadas por el cliente.
            */
           supabase
             .from("extras")
-            .select("*")
+            .select("id, created_at")
             .eq("cliente_id", clienteId)
             .eq("estado", "enviado_cliente")
+            .eq("alerta", true)
             .or("alerta_vista.is.null,alerta_vista.eq.false")
             .order("created_at", { ascending: false }),
         ]);
@@ -184,10 +182,10 @@ export default function ClienteDashboard() {
           );
         }
 
-        if (resExtras.error) {
+        if (resAlertasExtras.error) {
           console.error(
-            "Error al cargar los trabajos extra:",
-            resExtras.error
+            "Error al cargar las incidencias extra:",
+            resAlertasExtras.error
           );
         }
 
@@ -203,7 +201,7 @@ export default function ClienteDashboard() {
         );
 
         setNumViviendas(resViviendas.count || 0);
-        setNuevosExtras(resExtras.data || []);
+        setAlertaExtraId(resAlertasExtras.data?.[0]?.id || null);
 
         const queryParams = new URLSearchParams(
           window.location.search
@@ -259,127 +257,17 @@ export default function ClienteDashboard() {
   }, [user]);
 
   /*
-   * Abre el detalle del trabajo extra para consultar su informe.
-   * Conserva el marcado del trabajo como visto y el cierre de la alerta
-   * relacionada con su factura.
+   * Cada botón abre su informe correspondiente.
+   * ClienteInspeccionVer marca la alerta como vista al abrirla.
    */
-  const manejarVerFactura = async (extra) => {
-    try {
-      const updateExtra = {
-        visto: true,
-        alerta_vista: true,
-      };
-
-      const { error: errorExtra } = await supabase
-        .from("extras")
-        .update(updateExtra)
-        .eq("id", extra.id);
-
-      if (errorExtra) {
-        throw errorExtra;
-      }
-
-      if (extra.factura_id) {
-        const { error: errorFactura } = await supabase
-          .from("facturas")
-          .update({
-            alerta_vista: true,
-          })
-          .eq("id", extra.factura_id);
-
-        if (errorFactura) {
-          console.error(
-            "No se pudo marcar la alerta de la factura como vista:",
-            errorFactura
-          );
-        }
-      }
-
-      setNuevosExtras((prev) =>
-        prev.filter((item) => item.id !== extra.id)
-      );
-    } catch (err) {
-      console.error(
-        "Error al marcar el extra como visto:",
-        err
-      );
-    }
-
-    // Abre el detalle del extra, no el listado de facturas.
-    navigate(`/cliente/inspeccion/${extra.id}`);
-  };
-
-  /*
-   * Quita ÚNICAMENTE el aviso del Dashboard.
-   *
-   * No borra el trabajo extra.
-   * No modifica visto.
-   * No modifica la factura.
-   * No modifica la inspección, las fotografías ni los documentos.
-   *
-   * Se cambia exclusivamente alerta_vista en el registro de extras.
-   */
-  const manejarEliminarAvisoExtra = async (e, extra) => {
-    e.stopPropagation();
-
-    if (
-      !window.confirm(
-        "¿Quieres quitar este aviso del Dashboard? El trabajo, la inspección, las fotos y la factura se conservarán."
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from("extras")
-        .update({
-          alerta_vista: true,
-        })
-        .eq("id", extra.id)
-        .select("id")
-        .maybeSingle();
-
-      if (error) {
-        throw error;
-      }
-
-      /*
-       * Supabase puede no devolver error si la actualización no afecta
-       * ninguna fila. Comprobamos que realmente se actualizó el registro.
-       */
-      if (!data) {
-        throw new Error(
-          "No se pudo actualizar el aviso. Comprueba los permisos de Supabase (RLS) para la tabla extras."
-        );
-      }
-
-      // Ocultamos solo el aviso de la interfaz después de confirmar el cambio.
-      setNuevosExtras((prev) =>
-        prev.filter((item) => item.id !== extra.id)
-      );
-    } catch (err) {
-      console.error(
-        "Error al quitar el aviso del Dashboard:",
-        err
-      );
-
-      window.alert(
-        "No se ha podido quitar el aviso. No se ha borrado ningún trabajo ni documento. Revisa los permisos de Supabase e inténtalo de nuevo."
-      );
-    }
-  };
-
-  /*
-   * Si hay una alerta de inspección pendiente,
-   * vamos directamente a esa inspección.
-   */
-  const manejarClickAlertas = () => {
-    if (!alertaInspeccionId) {
-      return;
-    }
-
+  const manejarClickAlertaInspeccion = () => {
+    if (!alertaInspeccionId) return;
     navigate(`/cliente/inspeccion/${alertaInspeccionId}`);
+  };
+
+  const manejarClickAlertaExtra = () => {
+    if (!alertaExtraId) return;
+    navigate(`/cliente/inspeccion/${alertaExtraId}`);
   };
 
   const estiloTarjetaDato = {
@@ -570,165 +458,142 @@ export default function ClienteDashboard() {
           </div>
         )}
 
-        {/* Avisos compactos de trabajos extra */}
-        {nuevosExtras.length > 0 && (
-          <div
+        {/* Botones independientes de alerta e incidencia extra */}
+        <div
+          style={{
+            marginBottom: "14px",
+            background: "rgba(11, 19, 32, 0.88)",
+            border: "1px solid rgba(224, 176, 52, 0.45)",
+            borderRadius: "12px",
+            padding: "12px",
+            minWidth: 0,
+            boxSizing: "border-box",
+          }}
+        >
+          <p
             style={{
-              marginBottom: "14px",
-              background: "rgba(11, 19, 32, 0.88)",
-              border: "1px solid rgba(224, 176, 52, 0.45)",
-              borderRadius: "12px",
-              padding: "12px",
-              minWidth: 0,
-              boxSizing: "border-box",
+              color: COLOR_DORADO,
+              fontSize: "12px",
+              fontWeight: "800",
+              margin: "0 0 10px",
+              textAlign: "center",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                marginBottom: "8px",
-              }}
-            >
-              <span aria-hidden="true" style={{ fontSize: "18px" }}>
-                📥
-              </span>
+            Pulse el botón correspondiente para revisar una incidencia en su vivienda.
+          </p>
 
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <h3
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: "800",
-                    color: COLOR_DORADO,
-                    margin: 0,
-                  }}
-                >
-                  {t("trabajosExtrasDisponibles")}
-                </h3>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: "10px",
+            }}
+          >
+            {[
+              {
+                id: "inspeccion",
+                label: "Alerta",
+                pendiente: Boolean(alertaInspeccionId),
+                onClick: manejarClickAlertaInspeccion,
+              },
+              {
+                id: "extra",
+                label: "Incidencia extra",
+                pendiente: Boolean(alertaExtraId),
+                onClick: manejarClickAlertaExtra,
+              },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={item.onClick}
+                style={{
+                  position: "relative",
+                  minWidth: 0,
+                  padding: "13px 8px",
+                  border: item.pendiente
+                    ? "1px solid rgba(248, 113, 113, 0.95)"
+                    : "1px solid rgba(56, 189, 248, 0.55)",
+                  borderRadius: "10px",
+                  background: item.pendiente
+                    ? "linear-gradient(135deg, #ef4444 0%, #991b1b 100%)"
+                    : DEGRADADO_AZUL_BOTON,
+                  color: "#fff",
+                  fontSize: "12px",
+                  fontWeight: "900",
+                  cursor: "pointer",
+                  boxShadow: item.pendiente
+                    ? "0 0 14px rgba(239, 68, 68, 0.28)"
+                    : "0 5px 14px rgba(30, 58, 138, 0.25)",
+                }}
+              >
+                {item.label}
 
-                <p
-                  style={{
-                    fontSize: "11px",
-                    color: "#cbd5e1",
-                    margin: "2px 0 0",
-                  }}
-                >
-                  {t("tienes")} {nuevosExtras.length}{" "}
-                  {t("trabajosRegistrados")}
-                </p>
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-                minWidth: 0,
-              }}
-            >
-              {nuevosExtras.map((extra) => (
-                <div
-                  key={extra.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    minWidth: 0,
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "9px",
-                    borderRadius: "9px",
-                    background: "rgba(30, 58, 138, 0.28)",
-                    border: "1px solid rgba(224, 176, 52, 0.2)",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => manejarVerFactura(extra)}
+                {item.pendiente && (
+                  <span
+                    aria-label="1 incidencia pendiente"
                     style={{
-                      flex: "1 1 auto",
-                      minWidth: 0,
-                      padding: 0,
-                      background: "transparent",
-                      border: "none",
-                      color: "#fff",
-                      textAlign: "left",
-                      cursor: "pointer",
-                    }}
-                    title="Ver informe del trabajo extra"
-                  >
-                    <span
-                      style={{
-                        display: "block",
-                        fontSize: "12px",
-                        fontWeight: "700",
-                        overflowWrap: "anywhere",
-                      }}
-                    >
-                      {t("trabajoExtraFactura")}
-                    </span>
-
-                    <span
-                      style={{
-                        display: "block",
-                        fontSize: "11px",
-                        color: "#cbd5e1",
-                        marginTop: "3px",
-                        whiteSpace: "pre-wrap",
-                        overflowWrap: "anywhere",
-                        wordBreak: "break-word",
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {extra.descripcion ||
-                        extra.observaciones ||
-                        t("verDetallesFotosFacturas")}
-                    </span>
-
-                    <span
-                      style={{
-                        display: "inline-block",
-                        marginTop: "5px",
-                        fontSize: "11px",
-                        fontWeight: "800",
-                        color: COLOR_DORADO,
-                      }}
-                    >
-                      Ver informe del trabajo extra →
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) =>
-                      manejarEliminarAvisoExtra(e, extra)
-                    }
-                    style={{
-                      background: "rgba(239, 68, 68, 0.12)",
-                      border: "1px solid rgba(239, 68, 68, 0.45)",
-                      borderRadius: "8px",
-                      padding: "8px 10px",
-                      cursor: "pointer",
+                      position: "absolute",
+                      top: "-7px",
+                      right: "-7px",
+                      width: "20px",
+                      height: "20px",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      flexShrink: 0,
-                      color: "#fecaca",
-                      fontSize: "15px",
+                      borderRadius: "50%",
+                      background: "#fff",
+                      color: "#dc2626",
+                      border: "1px solid #dc2626",
+                      fontSize: "11px",
+                      fontWeight: "900",
                       lineHeight: 1,
                     }}
-                    title="Quitar solo este aviso"
-                    aria-label="Quitar solo este aviso"
                   >
-                    🗑️
-                  </button>
-                </div>
-              ))}
-            </div>
+                    1
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
-        )}
+
+          {(alertaInspeccionId || alertaExtraId) && (
+            <div
+              role="status"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "7px",
+                marginTop: "10px",
+                color: COLOR_DORADO,
+                fontSize: "12px",
+                fontWeight: "800",
+                textAlign: "center",
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  display: "inline-block",
+                  animation: "coastguard-alerta-parpadeo 1.25s ease-in-out infinite",
+                }}
+              >
+                ⚠
+              </span>
+              Incidencia pendiente de revisión
+            </div>
+          )}
+        </div>
+
+        <style>
+          {`
+            @keyframes coastguard-alerta-parpadeo {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.25; }
+            }
+          `}
+        </style>
 
         <div
           style={{
@@ -766,7 +631,7 @@ export default function ClienteDashboard() {
 
           <div
             style={estiloTarjetaDato}
-            onClick={manejarClickAlertas}
+            onClick={manejarClickAlertaInspeccion}
           >
             <span
               style={{
