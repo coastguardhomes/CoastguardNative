@@ -6,7 +6,6 @@ import React, {
 import {
   useParams,
   Link,
-  useNavigate,
 } from "react-router-dom";
 
 import Menu from "../../layouts/Menu";
@@ -43,7 +42,6 @@ const DEGRADADO_AZUL_BOTON =
 export default function ClienteInspeccionVer() {
   const { t } = useLanguage();
   const { id } = useParams();
-  const navigate = useNavigate();
   const { user } = useAuth();
 
   const [inspeccion, setInspeccion] = useState(null);
@@ -54,7 +52,6 @@ export default function ClienteInspeccionVer() {
   const [errorMsg, setErrorMsg] = useState("");
   const [fotoModal, setFotoModal] = useState(null);
   const [esExtra, setEsExtra] = useState(false);
-  const [clienteId, setClienteId] = useState(null);
   const [idiomaCliente, setIdiomaCliente] = useState("es");
   const [pdfUrl, setPdfUrl] = useState(null);
 
@@ -279,7 +276,6 @@ export default function ClienteInspeccionVer() {
       }
 
       const clienteIdActual = cliente.id;
-      setClienteId(clienteIdActual);
       setIdiomaCliente(cliente.idioma === "en" ? "en" : "es");
 
       /*
@@ -515,64 +511,6 @@ export default function ClienteInspeccionVer() {
       );
     } finally {
       setLoading(false);
-    }
-  }
-
-  /*
-   * Quitar aviso de un extra sin borrar el informe,
-   * las fotografías, el PDF ni la factura.
-   */
-  async function borrarInforme() {
-    if (!esExtra) {
-      return;
-    }
-
-    if (
-      !window.confirm(
-        "¿Quieres quitar este aviso? El informe no se borrará."
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("extras")
-        .update({
-          visto: true,
-          alerta_vista: true,
-        })
-        .eq("id", id)
-        .eq("cliente_id", clienteId);
-
-      if (error) {
-        throw error;
-      }
-
-      if (inspeccion?.factura_id) {
-        const { error: errorFactura } = await supabase
-          .from("facturas")
-          .update({ alerta_vista: true })
-          .eq("id", inspeccion.factura_id)
-          .eq("cliente_id", clienteId);
-
-        if (errorFactura) {
-          console.error(
-            "No se pudo marcar el aviso de factura:",
-            errorFactura
-          );
-        }
-      }
-
-      alert("Aviso eliminado. El informe sigue guardado.");
-      navigate("/cliente/inspecciones");
-    } catch (err) {
-      console.error("Error al quitar aviso:", err);
-
-      alert(
-        t("errorEliminarInforme") ||
-          "No se pudo quitar el aviso."
-      );
     }
   }
 
@@ -1023,28 +961,6 @@ export default function ClienteInspeccionVer() {
                   ? "📄 Ver informe del servicio extra"
                   : t("verInformePdf") || "Ver informe PDF"}
               </a>
-            )}
-
-            {esExtra && (
-              <button
-                onClick={borrarInforme}
-                style={{
-                  width: "100%",
-                  padding: "14px",
-                  background: "rgba(255, 71, 87, 0.15)",
-                  color: "#ff4757",
-                  border: "1px solid rgba(255, 71, 87, 0.4)",
-                  borderRadius: "16px",
-                  fontWeight: "900",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  marginBottom: "12px",
-                  maxWidth: "100%",
-                  boxSizing: "border-box",
-                }}
-              >
-                🗑️ {t("borrarEsteInforme") || "Quitar aviso"}
-              </button>
             )}
           </>
         )}
