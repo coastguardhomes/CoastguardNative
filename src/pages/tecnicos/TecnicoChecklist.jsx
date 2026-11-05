@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../supabaseClient";
@@ -121,6 +122,16 @@ const TEXTOS_CHECKLIST = {
     en: "Inspection notes...",
     fr: "Observations de l’inspection...",
   },
+  alertLabel: {
+    es: "⚠️ Marcar como ALERTA / Urgencia importante",
+    en: "⚠️ Mark as ALERT / Important issue",
+    fr: "⚠️ Signaler une ALERTE / Urgence importante",
+  },
+  alertHelp: {
+    es: "Activa esta opción si has detectado un problema que debe comunicarse al cliente.",
+    en: "Enable this option if you have found an issue that must be reported to the client.",
+    fr: "Activez cette option si vous avez détecté un problème à signaler au client.",
+  },
   saving: {
     es: "Guardando...",
     en: "Saving...",
@@ -149,7 +160,7 @@ const TEXTOS_CHECKLIST = {
   photoSaved: {
     es: "Foto guardada correctamente",
     en: "Photo saved successfully",
-    fr: "Photo enregistrée avec succès",
+    fr: "Photo enregistrée correctement",
   },
   sentReview: {
     es: "Checklist guardado y enviado a administración para revisión.",
@@ -316,6 +327,7 @@ export default function TecnicoChecklist() {
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState("");
   const [observaciones, setObservaciones] = useState("");
+  const [alerta, setAlerta] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
 
@@ -390,6 +402,7 @@ export default function TecnicoChecklist() {
         setTecnico(tecnicoActual);
         setInspeccion(insp);
         setObservaciones(insp.observaciones || "");
+        setAlerta(Boolean(insp.alerta));
 
         if (insp.vivienda_id) {
           const { data: viv, error: errorVivienda } = await supabase
@@ -756,6 +769,8 @@ export default function TecnicoChecklist() {
           observaciones: textoLimpio,
           checklist_completado: todoOk,
           fecha_checklist: new Date().toISOString(),
+          alerta,
+          alerta_vista: alerta ? false : true,
           estado: "completada_tecnico",
           estado_tecnico: "completada",
         })
@@ -769,6 +784,20 @@ export default function TecnicoChecklist() {
       if (!data) {
         throw new Error("No se pudo confirmar el guardado de la inspección.");
       }
+
+      setInspeccion((actual) =>
+        actual
+          ? {
+              ...actual,
+              observaciones: textoLimpio,
+              checklist_completado: todoOk,
+              alerta,
+              alerta_vista: alerta ? false : true,
+              estado: "completada_tecnico",
+              estado_tecnico: "completada",
+            }
+          : actual
+      );
 
       setMensaje(t("sentReview"));
 
@@ -1167,6 +1196,64 @@ export default function TecnicoChecklist() {
           }}
         />
 
+        <div
+          style={{
+            marginTop: "16px",
+            marginBottom: "12px",
+            padding: "14px 16px",
+            background: FONDO_TARJETA,
+            border: alerta
+              ? "1px solid rgba(239, 68, 68, 0.8)"
+              : BORDE_DORADO_FINO,
+            borderRadius: "12px",
+            boxShadow: SOMBRA_LUXURY,
+          }}
+        >
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              cursor: guardando || subiendoFoto ? "not-allowed" : "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={alerta}
+              disabled={guardando || subiendoFoto}
+              onChange={(event) => setAlerta(event.target.checked)}
+              style={{
+                width: "20px",
+                height: "20px",
+                accentColor: "#ef4444",
+                flexShrink: 0,
+              }}
+            />
+
+            <span
+              style={{
+                color: "#ef4444",
+                fontSize: "13px",
+                fontWeight: "900",
+                textTransform: "uppercase",
+              }}
+            >
+              {t("alertLabel")}
+            </span>
+          </label>
+
+          <p
+            style={{
+              color: "#cbd5e1",
+              fontSize: "12px",
+              lineHeight: 1.5,
+              margin: "10px 0 0 32px",
+            }}
+          >
+            {t("alertHelp")}
+          </p>
+        </div>
+
         <button
           type="button"
           onClick={guardarChecklistCompleto}
@@ -1182,7 +1269,7 @@ export default function TecnicoChecklist() {
             borderRadius: "16px",
             border: "1px solid rgba(16, 185, 129, 0.6)",
             fontWeight: "900",
-            marginTop: "30px",
+            marginTop: "18px",
             cursor:
               guardando || subiendoFoto ? "not-allowed" : "pointer",
           }}
