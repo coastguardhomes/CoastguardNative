@@ -1,4 +1,3 @@
-
 import React, {
   useEffect,
   useState,
@@ -384,9 +383,35 @@ export default function ClienteInspeccionVer() {
       }
 
       /*
-       * 3. Fotos de inspección normal.
+       * 3. Inspección normal: al abrir el informe, cerrar únicamente
+       * la alerta pendiente. El informe y sus datos se conservan.
        */
       if (insp && !esExtraActual) {
+        if (insp.alerta === true && insp.alerta_vista !== true) {
+          const { data: alertaActualizada, error: errorAlerta } =
+            await supabase
+              .from("inspecciones")
+              .update({ alerta_vista: true })
+              .eq("id", id)
+              .eq("cliente_id", clienteIdActual)
+              .eq("alerta", true)
+              .or("alerta_vista.is.null,alerta_vista.eq.false")
+              .select("id")
+              .maybeSingle();
+
+          if (errorAlerta) {
+            console.error(
+              "No se pudo marcar la alerta de inspección como vista:",
+              errorAlerta
+            );
+          } else if (alertaActualizada) {
+            insp = {
+              ...insp,
+              alerta_vista: true,
+            };
+          }
+        }
+
         if (insp.fotos) {
           fotosEncontradas = parsearFotos(insp.fotos);
         }
