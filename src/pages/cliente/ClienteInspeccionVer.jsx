@@ -348,21 +348,17 @@ export default function ClienteInspeccionVer() {
            * No se elimina el extra.
            */
           if (extra.alerta && !extra.alerta_vista) {
-            const { data: extraActualizado, error: errorAvisoExtra } =
-              await supabase
-                .from("extras")
-                .update({ alerta_vista: true })
-                .eq("id", extra.id)
-                .eq("cliente_id", clienteIdActual)
-                .eq("estado", "enviado_cliente")
-                .eq("alerta", true)
-                .select("id")
-                .maybeSingle();
+            const {
+              data: alertaExtraActualizada,
+              error: errorAvisoExtra,
+            } = await supabase.rpc("marcar_alerta_extra_vista", {
+              p_extra_id: extra.id,
+            });
 
-            if (errorAvisoExtra || !extraActualizado?.id) {
+            if (errorAvisoExtra || alertaExtraActualizada !== true) {
               console.error(
-                "No se pudo marcar el aviso del extra como visto:",
-                errorAvisoExtra || "La actualización no devolvió el registro."
+                "No se pudo marcar la alerta extra como vista:",
+                errorAvisoExtra || "La función no confirmó la actualización."
               );
             } else {
               extra.alerta_vista = true;
