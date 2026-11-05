@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
@@ -127,8 +126,7 @@ export default function ClienteDashboard() {
             .eq("cliente_id", clienteId)
             .eq("alerta", true)
             .or("alerta_vista.is.null,alerta_vista.eq.false")
-            .order("created_at", { ascending: false })
-            .limit(1),
+            .order("created_at", { ascending: false }),
 
           supabase
             .from("facturas")
