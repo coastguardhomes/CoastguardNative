@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
@@ -41,6 +42,66 @@ const TEXTO_DORADO_BRILLO = {
 
 const DEGRADADO_AZUL_BOTON =
   "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)";
+
+/*
+ * Obtiene la incidencia extra pendiente de revisión.
+ *
+ * La lectura del aviso se consulta en extra_alertas_vistas,
+ * una tabla independiente de extras y facturas.
+ *
+ * IMPORTANTE:
+ * - No actualiza extras.
+ * - No actualiza facturas.
+ * - No modifica importes ni activa el recálculo de facturas.
+ * - Si falla la consulta de lecturas, mantiene visible la alerta
+ *   para no ocultar una incidencia que quizá siga pendiente.
+ */
+async function obtenerAlertaExtraPendiente(clienteId) {
+  const [extrasResult, vistasResult] = await Promise.all([
+    supabase
+      .from("extras")
+      .select("id, created_at")
+      .eq("cliente_id", clienteId)
+      .eq("estado", "enviado_cliente")
+      .eq("alerta", true)
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("extra_alertas_vistas")
+      .select("extra_id")
+      .eq("cliente_id", clienteId),
+  ]);
+
+  if (extrasResult.error) {
+    console.error(
+      "Error al cargar las incidencias extra:",
+      extrasResult.error
+    );
+    return null;
+  }
+
+  if (vistasResult.error) {
+    console.error(
+      "Error al consultar las incidencias extra revisadas:",
+      vistasResult.error
+    );
+
+    // Si no se pueden consultar las lecturas, no ocultamos la alerta.
+    return extrasResult.data?.[0]?.id || null;
+  }
+
+  const idsVistos = new Set(
+    (vistasResult.data || []).map(
+      (registro) => registro.extra_id
+    )
+  );
+
+  const pendiente = (extrasResult.data || []).find(
+    (extra) => !idsVistos.has(extra.id)
+  );
+
+  return pendiente?.id || null;
+}
 
 export default function ClienteDashboard() {
   const { t, language } = useLanguage();
@@ -112,7 +173,6 @@ export default function ClienteDashboard() {
           resInspecciones,
           resAlertasInsp,
           resViviendas,
-          resAlertasExtras,
         ] = await Promise.all([
           supabase
             .from("inspecciones")
@@ -131,19 +191,6 @@ export default function ClienteDashboard() {
             .from("viviendas")
             .select("*", { count: "exact", head: true })
             .eq("cliente_id", clienteId),
-
-          /*
-           * Solo se consideran incidencias extra marcadas expresamente
-           * como alerta y todavía no revisadas por el cliente.
-           */
-          supabase
-            .from("extras")
-            .select("id, created_at")
-            .eq("cliente_id", clienteId)
-            .eq("estado", "enviado_cliente")
-            .eq("alerta", true)
-            .or("alerta_vista.is.null,alerta_vista.eq.false")
-            .order("created_at", { ascending: false }),
         ]);
 
         if (resInspecciones.error) {
@@ -167,12 +214,9 @@ export default function ClienteDashboard() {
           );
         }
 
-        if (resAlertasExtras.error) {
-          console.error(
-            "Error al cargar las incidencias extra:",
-            resAlertasExtras.error
-          );
-        }
+        // La alerta extra se consulta mediante la tabla independiente.
+        const alertaExtraPendiente =
+          await obtenerAlertaExtraPendiente(clienteId);
 
         setNumInspecciones(resInspecciones.count || 0);
 
@@ -181,7 +225,7 @@ export default function ClienteDashboard() {
         );
 
         setNumViviendas(resViviendas.count || 0);
-        setAlertaExtraId(resAlertasExtras.data?.[0]?.id || null);
+        setAlertaExtraId(alertaExtraPendiente);
 
         const queryParams = new URLSearchParams(
           window.location.search
@@ -275,25 +319,20 @@ export default function ClienteDashboard() {
 
         if (!activo || !clienteData?.id) return;
 
-        const [inspeccionesPendientes, extrasPendientes] =
-          await Promise.all([
-            supabase
-              .from("inspecciones")
-              .select("id, created_at")
-              .eq("cliente_id", clienteData.id)
-              .eq("alerta", true)
-              .or("alerta_vista.is.null,alerta_vista.eq.false")
-              .order("created_at", { ascending: false }),
+        const [
+          inspeccionesPendientes,
+          alertaExtraPendiente,
+        ] = await Promise.all([
+          supabase
+            .from("inspecciones")
+            .select("id, created_at")
+            .eq("cliente_id", clienteData.id)
+            .eq("alerta", true)
+            .or("alerta_vista.is.null,alerta_vista.eq.false")
+            .order("created_at", { ascending: false }),
 
-            supabase
-              .from("extras")
-              .select("id, created_at")
-              .eq("cliente_id", clienteData.id)
-              .eq("estado", "enviado_cliente")
-              .eq("alerta", true)
-              .or("alerta_vista.is.null,alerta_vista.eq.false")
-              .order("created_at", { ascending: false }),
-          ]);
+          obtenerAlertaExtraPendiente(clienteData.id),
+        ]);
 
         if (!activo) return;
 
@@ -308,16 +347,7 @@ export default function ClienteDashboard() {
           );
         }
 
-        if (extrasPendientes.error) {
-          console.error(
-            "Error actualizando alertas extra:",
-            extrasPendientes.error
-          );
-        } else {
-          setAlertaExtraId(
-            extrasPendientes.data?.[0]?.id || null
-          );
-        }
+        setAlertaExtraId(alertaExtraPendiente);
       } catch (error) {
         console.error(
           "Error refrescando las alertas del cliente:",
