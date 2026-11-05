@@ -43,12 +43,12 @@ const DEGRADADO_AZUL_BOTON =
   "linear-gradient(135deg, #38bdf8 0%, #1e3a8a 100%)";
 
 export default function ClienteDashboard() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const idiomaIngles = language === "en";
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const [numInspecciones, setNumInspecciones] = useState(0);
-  const [numAlertas, setNumAlertas] = useState(0);
   const [alertaInspeccionId, setAlertaInspeccionId] = useState(null);
   const [numViviendas, setNumViviendas] = useState(0);
   const [alertaExtraId, setAlertaExtraId] = useState(null);
@@ -111,7 +111,6 @@ export default function ClienteDashboard() {
         const [
           resInspecciones,
           resAlertasInsp,
-          resAlertasFacturas,
           resViviendas,
           resAlertasExtras,
         ] = await Promise.all([
@@ -127,13 +126,6 @@ export default function ClienteDashboard() {
             .eq("alerta", true)
             .or("alerta_vista.is.null,alerta_vista.eq.false")
             .order("created_at", { ascending: false }),
-
-          supabase
-            .from("facturas")
-            .select("*", { count: "exact", head: true })
-            .eq("cliente_id", clienteId)
-            .eq("alerta", true)
-            .or("alerta_vista.is.null,alerta_vista.eq.false"),
 
           supabase
             .from("viviendas")
@@ -168,13 +160,6 @@ export default function ClienteDashboard() {
           );
         }
 
-        if (resAlertasFacturas.error) {
-          console.error(
-            "Error al cargar alertas de facturas:",
-            resAlertasFacturas.error
-          );
-        }
-
         if (resViviendas.error) {
           console.error(
             "Error al cargar las viviendas:",
@@ -193,11 +178,6 @@ export default function ClienteDashboard() {
 
         setAlertaInspeccionId(
           resAlertasInsp.data?.[0]?.id || null
-        );
-
-        setNumAlertas(
-          (resAlertasInsp.data?.length || 0) +
-            (resAlertasFacturas.count || 0)
         );
 
         setNumViviendas(resViviendas.count || 0);
@@ -254,6 +234,114 @@ export default function ClienteDashboard() {
     }
 
     cargarDatos();
+  }, [user]);
+
+  /*
+   * Actualizar los indicadores al regresar al Dashboard desde un informe.
+   * Esta consulta es de solo lectura.
+   */
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let activo = true;
+
+    const refrescarAlertas = async () => {
+      try {
+        let { data: clienteData, error } = await supabase
+          .from("clientes")
+          .select("id")
+          .eq("usuario_id", user.id)
+          .maybeSingle();
+
+        if (!clienteData && !error) {
+          const resultado = await supabase
+            .from("clientes")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          clienteData = resultado.data;
+        }
+
+        if (!clienteData && !error) {
+          const resultado = await supabase
+            .from("clientes")
+            .select("id")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          clienteData = resultado.data;
+        }
+
+        if (!activo || !clienteData?.id) return;
+
+        const [inspeccionesPendientes, extrasPendientes] =
+          await Promise.all([
+            supabase
+              .from("inspecciones")
+              .select("id, created_at")
+              .eq("cliente_id", clienteData.id)
+              .eq("alerta", true)
+              .or("alerta_vista.is.null,alerta_vista.eq.false")
+              .order("created_at", { ascending: false }),
+
+            supabase
+              .from("extras")
+              .select("id, created_at")
+              .eq("cliente_id", clienteData.id)
+              .eq("estado", "enviado_cliente")
+              .eq("alerta", true)
+              .or("alerta_vista.is.null,alerta_vista.eq.false")
+              .order("created_at", { ascending: false }),
+          ]);
+
+        if (!activo) return;
+
+        if (inspeccionesPendientes.error) {
+          console.error(
+            "Error actualizando alertas de inspección:",
+            inspeccionesPendientes.error
+          );
+        } else {
+          setAlertaInspeccionId(
+            inspeccionesPendientes.data?.[0]?.id || null
+          );
+        }
+
+        if (extrasPendientes.error) {
+          console.error(
+            "Error actualizando alertas extra:",
+            extrasPendientes.error
+          );
+        } else {
+          setAlertaExtraId(
+            extrasPendientes.data?.[0]?.id || null
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Error refrescando las alertas del cliente:",
+          error
+        );
+      }
+    };
+
+    const alVolver = () => {
+      if (document.visibilityState === "visible") {
+        refrescarAlertas();
+      }
+    };
+
+    window.addEventListener("focus", alVolver);
+    window.addEventListener("pageshow", alVolver);
+    document.addEventListener("visibilitychange", alVolver);
+
+    return () => {
+      activo = false;
+      window.removeEventListener("focus", alVolver);
+      window.removeEventListener("pageshow", alVolver);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
   }, [user]);
 
   /*
@@ -442,7 +530,9 @@ export default function ClienteDashboard() {
                 margin: 0,
               }}
             >
-              ¡Pago realizado con éxito a través de Stripe! 🎉
+              {idiomaIngles
+                ? "Payment completed successfully through Stripe! 🎉"
+                : "¡Pago realizado con éxito a través de Stripe! 🎉"}
             </p>
 
             <p
@@ -453,7 +543,9 @@ export default function ClienteDashboard() {
                 opacity: 0.8,
               }}
             >
-              Gracias por completar el pago. El servicio ha sido procesado correctamente.
+              {idiomaIngles
+                ? "Thank you for completing the payment. The service has been processed successfully."
+                : "Gracias por completar el pago. El servicio ha sido procesado correctamente."}
             </p>
           </div>
         )}
@@ -479,7 +571,9 @@ export default function ClienteDashboard() {
               textAlign: "center",
             }}
           >
-            Pulse el botón correspondiente para revisar una incidencia en su vivienda.
+            {idiomaIngles
+              ? "Select the relevant button to review an issue at your property."
+              : "Pulse el botón correspondiente para revisar una incidencia en su vivienda."}
           </p>
 
           <div
@@ -492,13 +586,15 @@ export default function ClienteDashboard() {
             {[
               {
                 id: "inspeccion",
-                label: "Alerta",
+                label: idiomaIngles ? "Alert" : "Alerta",
                 pendiente: Boolean(alertaInspeccionId),
                 onClick: manejarClickAlertaInspeccion,
               },
               {
                 id: "extra",
-                label: "Incidencia extra",
+                label: idiomaIngles
+                  ? "Extra issue"
+                  : "Incidencia extra",
                 pendiente: Boolean(alertaExtraId),
                 onClick: manejarClickAlertaExtra,
               },
@@ -576,12 +672,16 @@ export default function ClienteDashboard() {
                 aria-hidden="true"
                 style={{
                   display: "inline-block",
-                  animation: "coastguard-alerta-parpadeo 1.25s ease-in-out infinite",
+                  animation:
+                    "coastguard-alerta-parpadeo 1.25s ease-in-out infinite",
                 }}
               >
                 ⚠
               </span>
-              Incidencia pendiente de revisión
+
+              {idiomaIngles
+                ? "Issue awaiting review"
+                : "Incidencia pendiente de revisión"}
             </div>
           )}
         </div>
@@ -598,7 +698,7 @@ export default function ClienteDashboard() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
             gap: "10px",
             marginBottom: "20px",
           }}
@@ -631,32 +731,6 @@ export default function ClienteDashboard() {
 
           <div
             style={estiloTarjetaDato}
-            onClick={manejarClickAlertaInspeccion}
-          >
-            <span
-              style={{
-                fontSize: "10px",
-                fontWeight: "800",
-                color: numAlertas > 0 ? "#ef4444" : "#94a3b8",
-                textTransform: "uppercase",
-              }}
-            >
-              {t("alertas")}
-            </span>
-
-            <span
-              style={{
-                fontSize: "26px",
-                fontWeight: "900",
-                color: numAlertas > 0 ? "#ef4444" : COLOR_DORADO,
-              }}
-            >
-              {numAlertas}
-            </span>
-          </div>
-
-          <div
-            style={estiloTarjetaDato}
             onClick={() => navigate("/cliente/contratos")}
           >
             <span
@@ -667,7 +741,7 @@ export default function ClienteDashboard() {
                 textTransform: "uppercase",
               }}
             >
-              Contrato
+              {idiomaIngles ? "Contract" : "Contrato"}
             </span>
 
             <span
