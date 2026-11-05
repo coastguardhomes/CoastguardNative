@@ -117,6 +117,7 @@ export default function TecnicoFinalizar() {
         notas_tecnico: notas.trim(),
         observaciones: notas.trim(),
         alerta,
+        alerta_vista: alerta ? false : true,
         estado: "completada_tecnico",
         estado_tecnico: "completada",
       };
@@ -150,7 +151,9 @@ export default function TecnicoFinalizar() {
 
       setExito(true);
       setMensaje(
-        "¡Inspección enviada a revisión con éxito! Redirigiendo..."
+        alerta
+          ? "¡Inspección enviada a revisión con una alerta registrada! Redirigiendo..."
+          : "¡Inspección enviada a revisión con éxito! Redirigiendo..."
       );
 
       setTimeout(() => {
@@ -284,7 +287,9 @@ export default function TecnicoFinalizar() {
                 background: FONDO_TARJETA,
                 padding: "14px 16px",
                 borderRadius: "12px",
-                border: BORDE_DORADO_FINO,
+                border: alerta
+                  ? "1px solid rgba(239, 68, 68, 0.8)"
+                  : BORDE_DORADO_FINO,
                 marginBottom: "20px",
                 display: "flex",
                 alignItems: "center",
