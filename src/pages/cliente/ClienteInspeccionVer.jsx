@@ -347,17 +347,18 @@ export default function ClienteInspeccionVer() {
            * No se elimina el extra.
            */
           if (extra.alerta && !extra.alerta_vista) {
-            const { error: errorAvisoExtra } = await supabase
-              .from("extras")
-              .update({ alerta_vista: true })
-              .eq("id", extra.id)
-              .eq("cliente_id", clienteIdActual);
+            const { data: alertaExtraMarcada, error: errorAvisoExtra } =
+              await supabase.rpc("marcar_alerta_extra_vista", {
+                p_extra_id: extra.id,
+              });
 
-            if (errorAvisoExtra) {
+            if (errorAvisoExtra || alertaExtraMarcada !== true) {
               console.error(
                 "No se pudo marcar el aviso del extra como visto:",
-                errorAvisoExtra
+                errorAvisoExtra || "La función no confirmó la actualización."
               );
+            } else {
+              extra.alerta_vista = true;
             }
           }
 
@@ -385,22 +386,16 @@ export default function ClienteInspeccionVer() {
       if (insp && !esExtraActual) {
         if (insp.alerta === true && insp.alerta_vista !== true) {
           const { data: alertaActualizada, error: errorAlerta } =
-            await supabase
-              .from("inspecciones")
-              .update({ alerta_vista: true })
-              .eq("id", id)
-              .eq("cliente_id", clienteIdActual)
-              .eq("alerta", true)
-              .or("alerta_vista.is.null,alerta_vista.eq.false")
-              .select("id")
-              .maybeSingle();
+            await supabase.rpc("marcar_alerta_inspeccion_vista", {
+              p_inspeccion_id: insp.id,
+            });
 
-          if (errorAlerta) {
+          if (errorAlerta || alertaActualizada !== true) {
             console.error(
               "No se pudo marcar la alerta de inspección como vista:",
-              errorAlerta
+              errorAlerta || "La función no confirmó la actualización."
             );
-          } else if (alertaActualizada) {
+          } else {
             insp = {
               ...insp,
               alerta_vista: true,
