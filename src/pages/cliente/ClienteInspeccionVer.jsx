@@ -344,38 +344,31 @@ export default function ClienteInspeccionVer() {
           };
 
           /*
-           * Abrir un extra con aviso lo marca como visto.
-           * No se elimina el extra.
+           * Registrar la lectura del aviso del extra en una tabla
+           * independiente. No se actualizan extras ni facturas.
+           *
+           * La función verifica que el extra pertenece al cliente
+           * autenticado y registra la lectura en extra_alertas_vistas.
            */
-          if (extra.alerta && !extra.alerta_vista) {
+          if (extra.alerta === true) {
             const {
-              data: alertaExtraActualizada,
+              data: alertaExtraRegistrada,
               error: errorAvisoExtra,
-            } = await supabase.rpc("marcar_alerta_extra_vista", {
-              p_extra_id: extra.id,
-            });
+            } = await supabase.rpc(
+              "marcar_alerta_extra_vista_aislada",
+              {
+                p_extra_id: extra.id,
+              }
+            );
 
-            if (errorAvisoExtra || alertaExtraActualizada !== true) {
+            if (
+              errorAvisoExtra ||
+              alertaExtraRegistrada !== true
+            ) {
               console.error(
-                "No se pudo marcar la alerta extra como vista:",
-                errorAvisoExtra || "La función no confirmó la actualización."
-              );
-            } else {
-              extra.alerta_vista = true;
-            }
-          }
-
-          if (extra.factura_id) {
-            const { error: errorAvisoFactura } = await supabase
-              .from("facturas")
-              .update({ alerta_vista: true })
-              .eq("id", extra.factura_id)
-              .eq("cliente_id", clienteIdActual);
-
-            if (errorAvisoFactura) {
-              console.error(
-                "No se pudo marcar el aviso de la factura como visto:",
-                errorAvisoFactura
+                "No se pudo registrar la lectura de la alerta extra:",
+                errorAvisoExtra ||
+                  "La función no confirmó el registro de lectura."
               );
             }
           }
