@@ -1,4 +1,3 @@
-
 import React from "react";
 import "./PoliticaPrivacidad.css";
 
@@ -85,8 +84,14 @@ function SpanishPolicy() {
           <strong>Nombre comercial:</strong> CoastGuard Homes Services.
         </li>
         <li>
+          <strong>NIF/NIE:</strong> Z1968154A.
+        </li>
+        <li>
           <strong>Domicilio profesional:</strong> Calle Casicas de Arriba,
           33, 1.º F, 03190 Pilar de la Horadada, Alicante, España.
+        </li>
+        <li>
+          <strong>Teléfono de contacto:</strong> 610390998.
         </li>
         <li>
           <strong>Correo electrónico:</strong> <EmailLink />.
@@ -94,9 +99,17 @@ function SpanishPolicy() {
       </ul>
 
       <p style={p}>
+        La actividad desarrollada bajo el nombre comercial CoastGuard
+        Homes Services comprende servicios de inspección de viviendas
+        y, cuando se contrate expresamente, custodia y gestión de llaves
+        y otros servicios relacionados con los inmuebles.
+      </p>
+
+      <p style={p}>
         Para realizar consultas sobre privacidad o ejercer los derechos
         descritos en esta política, puedes contactar con la responsable
-        mediante el correo electrónico indicado.
+        mediante el correo electrónico indicado o utilizar el teléfono
+        de contacto facilitado.
       </p>
 
       <h3 style={h}>2. CATEGORÍAS DE DATOS PERSONALES</h3>
@@ -215,6 +228,24 @@ function SpanishPolicy() {
         </li>
       </ul>
 
+      <p style={p}>
+        Los datos de la aplicación no se utilizarán actualmente para
+        enviar publicidad o comunicaciones comerciales ajenas a la
+        gestión de los servicios contratados. Las comunicaciones
+        operativas relacionadas con cuentas, contratos, pagos,
+        inspecciones o solicitudes de los clientes no se consideran
+        por sí mismas comunicaciones publicitarias.
+      </p>
+
+      <p style={p}>
+        Si en el futuro se quisiera utilizar información personal para
+        una finalidad nueva o incompatible con las anteriores, se
+        facilitará previamente la información exigida por el artículo
+        13.3 del RGPD y se determinará la base jurídica adecuada.
+        Cuando la normativa exija consentimiento, este se solicitará
+        de forma específica y separada.
+      </p>
+
       <h3 style={h}>4. BASE JURÍDICA DEL TRATAMIENTO</h3>
 
       <p style={p}>La base jurídica dependerá de la finalidad concreta:</p>
@@ -231,7 +262,8 @@ function SpanishPolicy() {
         <li>
           <strong>Interés legítimo:</strong> cuando exista un interés legítimo
           real, necesario y equilibrado, como proteger la seguridad de la
-          aplicación o defender reclamaciones.
+          aplicación o defender reclamaciones, después de valorar los derechos
+          e intereses de las personas afectadas.
         </li>
         <li>
           <strong>Consentimiento:</strong> cuando una operación concreta
@@ -248,6 +280,13 @@ function SpanishPolicy() {
         autorizaciones específicas que puedan ser necesarias.
       </p>
 
+      <p style={p}>
+        Cuando el tratamiento se base en el consentimiento, este deberá
+        ser libre, específico, informado e inequívoco. La negativa a
+        consentir una finalidad opcional no deberá impedir la contratación
+        de servicios que no dependan de esa finalidad.
+      </p>
+
       <h3 style={h}>5. CARÁCTER OBLIGATORIO DE LOS DATOS</h3>
 
       <p style={p}>
@@ -259,7 +298,9 @@ function SpanishPolicy() {
 
       <p style={p}>
         Los datos adicionales que no sean necesarios deberán ser opcionales
-        cuando la función correspondiente lo permita.
+        cuando la función correspondiente lo permita. La información
+        solicitada deberá ser adecuada y proporcional al servicio o
+        trámite que se esté realizando.
       </p>
 
       <h3 style={h}>6. CONSERVACIÓN DE LOS DATOS</h3>
@@ -339,9 +380,17 @@ function SpanishPolicy() {
       <h3 style={h}>7. DESTINATARIOS Y PROVEEDORES</h3>
 
       <p style={p}>
-        Para prestar los servicios pueden intervenir proveedores tecnológicos,
-        de pagos, facturación y comunicaciones. Solo deberán acceder a los
-        datos necesarios para las funciones que tengan encomendadas.
+        Para prestar los servicios pueden intervenir la responsable del
+        tratamiento, las personas colaboradoras o el personal que esté
+        debidamente autorizado y los proveedores tecnológicos, de pagos,
+        facturación y comunicaciones que resulten necesarios.
+      </p>
+
+      <p style={p}>
+        El acceso a los datos por parte de la responsable, colaboradores
+        o personal autorizado se limitará a la información necesaria
+        para realizar las funciones que tengan asignadas y estará sujeto
+        a las obligaciones de confidencialidad y seguridad correspondientes.
       </p>
 
       <ul>
@@ -368,6 +417,12 @@ function SpanishPolicy() {
           <strong>Resend:</strong> envío de correos electrónicos cuando
           se utilice para comunicaciones de la aplicación o del servicio.
         </li>
+        <li>
+          <strong>Entidades bancarias y financieras:</strong> podrán
+          intervenir cuando sea necesario para ejecutar pagos, cobros,
+          transferencias u otras operaciones económicas relacionadas
+          con los servicios contratados.
+        </li>
       </ul>
 
       <p style={p}>
@@ -375,14 +430,17 @@ function SpanishPolicy() {
         estar sujetos a las condiciones contractuales y garantías exigidas
         por el RGPD. Algunos proveedores pueden actuar como responsables
         independientes para determinadas operaciones realizadas bajo sus
-        propias condiciones.
+        propias condiciones. El papel concreto de cada proveedor dependerá
+        de los servicios y operaciones que efectivamente realice.
       </p>
 
       <p style={p}>
         GitHub se utiliza para alojar y gestionar el código fuente y los
         procesos de desarrollo. El repositorio no debe utilizarse para
         almacenar datos personales reales de clientes, documentos
-        contractuales, credenciales ni secretos de producción.
+        contractuales, credenciales ni secretos de producción. El acceso
+        al código fuente no implica por sí mismo autorización para acceder
+        a los datos personales de los usuarios de la aplicación.
       </p>
 
       <p style={p}>
@@ -394,7 +452,8 @@ function SpanishPolicy() {
 
       <p style={p}>
         No se venderán datos personales a terceros. El acceso por parte
-        de proveedores se limitará a las finalidades correspondientes.
+        de proveedores se limitará a las finalidades correspondientes
+        y a las funciones que tengan encomendadas.
       </p>
 
       <h3 style={h}>8. TRANSFERENCIAS INTERNACIONALES</h3>
@@ -468,7 +527,10 @@ function SpanishPolicy() {
 
       <p style={p}>
         Puedes ejercer tus derechos escribiendo a <EmailLink /> e indicando
-        claramente tu solicitud.
+        claramente tu solicitud y el derecho que deseas ejercer. También
+        puedes utilizar el teléfono de contacto para realizar consultas,
+        aunque es recomendable presentar la solicitud por un medio que
+        permita acreditar su envío y contenido.
       </p>
 
       <p style={p}>
@@ -480,20 +542,79 @@ function SpanishPolicy() {
 
       <p style={p}>
         Se responderá dentro de los plazos establecidos por la normativa.
-        El ejercicio de los derechos será gratuito, salvo en los supuestos
-        excepcionales previstos legalmente.
+        Como regla general, las solicitudes de ejercicio de derechos
+        deberán atenderse en el plazo de un mes, que podrá ampliarse
+        en los supuestos y condiciones previstos por el RGPD. El ejercicio
+        de los derechos será gratuito, salvo en los supuestos excepcionales
+        previstos legalmente.
       </p>
 
       <p style={p}>
-        También puedes presentar una reclamación ante la Agencia Española
-        de Protección de Datos (AEPD):{" "}
-        <a
-          href="https://www.aepd.es/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          www.aepd.es
-        </a>.
+        Cuando el tratamiento se base en el consentimiento, puedes retirarlo
+        en cualquier momento mediante una comunicación a <EmailLink />,
+        indicando el tratamiento o autorización que deseas retirar.
+        La retirada no afectará a la licitud del tratamiento realizado
+        antes de dicha retirada ni eliminará los datos que deban conservarse
+        por una obligación legal u otra base jurídica aplicable.
+      </p>
+
+      <h4 style={h}>Reclamaciones ante la Agencia Española de Protección de Datos</h4>
+
+      <p style={p}>
+        Si consideras que el tratamiento de tus datos personales no
+        respeta la normativa de protección de datos, puedes presentar
+        una reclamación ante la Agencia Española de Protección de Datos
+        (AEPD), autoridad de control competente en España.
+      </p>
+
+      <p style={p}>
+        Cuando la reclamación se refiera a que no se han atendido
+        correctamente tus derechos de acceso, rectificación, supresión,
+        oposición, limitación o portabilidad, deberás haberte dirigido
+        previamente a la responsable del tratamiento por un medio que
+        permita acreditar la solicitud. Si no recibes respuesta dentro
+        del plazo legal o consideras que la respuesta no es adecuada,
+        podrás acudir a la AEPD. Para otras posibles infracciones de
+        protección de datos, la AEPD dispone de procedimientos de
+        reclamación específicos según el asunto.
+      </p>
+
+      <ul>
+        <li>
+          <strong>Sede electrónica y presentación de reclamaciones:</strong>{" "}
+          <a
+            href="https://sedeaepd.gob.es/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            sedeaepd.gob.es
+          </a>.
+        </li>
+        <li>
+          <strong>Página web:</strong>{" "}
+          <a
+            href="https://www.aepd.es/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            www.aepd.es
+          </a>.
+        </li>
+        <li>
+          <strong>Dirección postal publicada por la AEPD:</strong> Agencia
+          Española de Protección de Datos, Edificio Cuzco IV, Paseo de
+          la Castellana, 141, planta 9, 28046 Madrid, España.
+        </li>
+        <li>
+          <strong>Teléfono de información general:</strong> 900 293 183.
+        </li>
+      </ul>
+
+      <p style={p}>
+        La presentación de reclamaciones ante la AEPD es gratuita.
+        La información sobre los requisitos, documentación y procedimiento
+        aplicables puede consultarse en la propia sede electrónica de
+        la Agencia.
       </p>
 
       <h3 style={h}>10. SEGURIDAD Y ACCESO A LA INFORMACIÓN</h3>
@@ -564,14 +685,22 @@ function SpanishPolicy() {
         y las garantías exigidas por la normativa aplicable.
       </p>
 
-      <h3 style={h}>13. DECISIONES AUTOMATIZADAS</h3>
+      <h3 style={h}>13. DECISIONES AUTOMATIZADAS Y ELABORACIÓN DE PERFILES</h3>
 
       <p style={p}>
-        No se pretende adoptar decisiones basadas exclusivamente en
-        tratamientos automatizados que produzcan efectos jurídicos o
-        afecten significativamente a las personas. Si se incorporase
-        un tratamiento de ese tipo, se facilitaría la información exigida
-        por el RGPD y se aplicarían las garantías correspondientes.
+        La aplicación no está destinada a elaborar perfiles de clientes
+        con fines comerciales o publicitarios. Tampoco se pretende adoptar
+        decisiones basadas exclusivamente en tratamientos automatizados
+        que produzcan efectos jurídicos o afecten significativamente
+        a las personas.
+      </p>
+
+      <p style={p}>
+        Si en el futuro se incorporase un tratamiento de elaboración
+        de perfiles o de decisiones automatizadas que requiriese
+        información adicional o garantías específicas, se facilitaría
+        previamente la información exigida por el RGPD y se aplicarían
+        las garantías correspondientes.
       </p>
 
       <h3 style={h}>14. ACTUALIZACIONES DE ESTA POLÍTICA</h3>
@@ -644,8 +773,14 @@ function EnglishPolicy() {
           <strong>Trade name:</strong> CoastGuard Homes Services.
         </li>
         <li>
+          <strong>Tax identification number (NIF/NIE):</strong> Z1968154A.
+        </li>
+        <li>
           <strong>Business address:</strong> Calle Casicas de Arriba,
           33, 1.º F, 03190 Pilar de la Horadada, Alicante, Spain.
+        </li>
+        <li>
+          <strong>Contact telephone:</strong> 610390998.
         </li>
         <li>
           <strong>Email:</strong> <EmailLink />.
@@ -653,8 +788,16 @@ function EnglishPolicy() {
       </ul>
 
       <p style={p}>
+        The activity carried out under the CoastGuard Homes Services
+        trade name includes property inspection services and, where
+        expressly contracted, key custody and management and other
+        property-related services.
+      </p>
+
+      <p style={p}>
         For privacy enquiries or to exercise the rights described in this
-        policy, you can contact the controller using the email address above.
+        policy, you can contact the controller using the email address
+        above or the telephone number provided.
       </p>
 
       <h3 style={h}>2. CATEGORIES OF PERSONAL DATA</h3>
@@ -771,6 +914,23 @@ function EnglishPolicy() {
         </li>
       </ul>
 
+      <p style={p}>
+        Personal data collected through the application is not currently
+        used to send advertising or marketing communications unrelated
+        to the contracted services. Operational communications relating
+        to accounts, contracts, payments, inspections or customer requests
+        are not, by themselves, advertising communications.
+      </p>
+
+      <p style={p}>
+        If personal data is to be used in the future for a new purpose
+        or a purpose incompatible with those described above, the
+        information required under Article 13(3) GDPR will be provided
+        in advance and an appropriate legal basis will be identified.
+        Where the law requires consent, it will be requested separately
+        and specifically.
+      </p>
+
       <h3 style={h}>4. LEGAL BASES FOR PROCESSING</h3>
 
       <p style={p}>The legal basis depends on the specific purpose:</p>
@@ -787,7 +947,8 @@ function EnglishPolicy() {
         <li>
           <strong>Legitimate interests:</strong> where a genuine, necessary
           and balanced legitimate interest exists, such as protecting
-          application security or defending legal claims.
+          application security or defending legal claims, after weighing
+          the rights and interests of the individuals concerned.
         </li>
         <li>
           <strong>Consent:</strong> where a particular activity legally
@@ -804,6 +965,13 @@ function EnglishPolicy() {
         that may be required.
       </p>
 
+      <p style={p}>
+        Where processing is based on consent, consent must be freely
+        given, specific, informed and unambiguous. Refusing consent
+        for an optional purpose should not prevent the customer from
+        purchasing services that do not depend on that purpose.
+      </p>
+
       <h3 style={h}>5. WHETHER PROVIDING DATA IS REQUIRED</h3>
 
       <p style={p}>
@@ -815,7 +983,9 @@ function EnglishPolicy() {
 
       <p style={p}>
         Additional data that is not necessary should be optional where
-        the relevant feature allows this.
+        the relevant feature allows this. The information requested
+        must be appropriate and proportionate to the service or
+        procedure being carried out.
       </p>
 
       <h3 style={h}>6. DATA RETENTION</h3>
@@ -890,9 +1060,16 @@ function EnglishPolicy() {
       <h3 style={h}>7. RECIPIENTS AND SERVICE PROVIDERS</h3>
 
       <p style={p}>
-        Technology, payment, invoicing and communications providers may
-        be involved in delivering the services. They should only access
-        the data necessary for the functions assigned to them.
+        The controller, duly authorised collaborators or staff, and
+        technology, payment, invoicing and communications providers
+        may be involved in delivering the services where necessary.
+      </p>
+
+      <p style={p}>
+        Access to data by the controller, collaborators or authorised
+        staff will be limited to the information needed to perform
+        their assigned duties and will be subject to the relevant
+        confidentiality and security obligations.
       </p>
 
       <ul>
@@ -918,20 +1095,28 @@ function EnglishPolicy() {
           <strong>Resend:</strong> email delivery when used for application
           or service communications.
         </li>
+        <li>
+          <strong>Banks and financial institutions:</strong> may be involved
+          where necessary to execute payments, collections, transfers
+          or other financial transactions relating to the contracted services.
+        </li>
       </ul>
 
       <p style={p}>
         Providers acting as data processors must be subject to the
         contractual terms and safeguards required by the GDPR. Some
         providers may act as independent controllers for particular
-        operations carried out under their own terms.
+        operations carried out under their own terms. The specific
+        role of each provider depends on the services and operations
+        it actually performs.
       </p>
 
       <p style={p}>
         GitHub is used to host and manage source code and development
         processes. The repository must not be used to store real customer
         personal data, contractual documents, credentials or production
-        secrets.
+        secrets. Access to source code does not, by itself, authorise
+        access to application users' personal data.
       </p>
 
       <p style={p}>
@@ -943,7 +1128,7 @@ function EnglishPolicy() {
 
       <p style={p}>
         Personal data will not be sold to third parties. Provider access
-        will be limited to the relevant purposes.
+        will be limited to the relevant purposes and assigned functions.
       </p>
 
       <h3 style={h}>8. INTERNATIONAL DATA TRANSFERS</h3>
@@ -967,8 +1152,8 @@ function EnglishPolicy() {
       <p style={p}>
         Where an international transfer is not covered by an adequacy
         decision, another valid safeguard under the GDPR must be used
-        where applicable, and the information required by law must be
-        provided.
+        where applicable, and the information required by law must
+        be provided.
       </p>
 
       <p style={p}>
@@ -1016,7 +1201,10 @@ function EnglishPolicy() {
 
       <p style={p}>
         You can exercise your rights by emailing <EmailLink /> and
-        clearly describing your request.
+        clearly describing your request and the right you wish to exercise.
+        You may also use the contact telephone number for enquiries,
+        although it is advisable to submit your request through a method
+        that allows you to prove its submission and content.
       </p>
 
       <p style={p}>
@@ -1028,20 +1216,78 @@ function EnglishPolicy() {
 
       <p style={p}>
         Requests will be answered within the periods established by law.
+        As a general rule, requests to exercise data protection rights
+        must be handled within one month, which may be extended in
+        the circumstances and under the conditions provided by the GDPR.
         Exercising these rights is free of charge except in the
         exceptional circumstances provided for by law.
       </p>
 
       <p style={p}>
-        You may also lodge a complaint with the Spanish Data Protection
-        Agency (AEPD):{" "}
-        <a
-          href="https://www.aepd.es/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          www.aepd.es
-        </a>.
+        Where processing is based on consent, you may withdraw it at
+        any time by contacting <EmailLink /> and identifying the
+        processing activity or authorisation you wish to withdraw.
+        Withdrawal does not affect the lawfulness of processing carried
+        out before withdrawal and does not remove data that must be
+        retained under a legal obligation or another applicable legal basis.
+      </p>
+
+      <h4 style={h}>Complaints to the Spanish Data Protection Agency</h4>
+
+      <p style={p}>
+        If you consider that the processing of your personal data
+        does not comply with data protection law, you may lodge a
+        complaint with the Spanish Data Protection Agency (AEPD),
+        the supervisory authority in Spain.
+      </p>
+
+      <p style={p}>
+        Where the complaint concerns the failure to properly handle
+        your rights of access, rectification, erasure, objection,
+        restriction or portability, you must first have contacted
+        the data controller through a method that allows you to
+        prove your request. If you do not receive a response within
+        the legal time limit or consider the response inadequate,
+        you may contact the AEPD. For other possible data protection
+        infringements, the AEPD provides specific complaint procedures
+        depending on the matter.
+      </p>
+
+      <ul>
+        <li>
+          <strong>Electronic office and complaint submissions:</strong>{" "}
+          <a
+            href="https://sedeaepd.gob.es/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            sedeaepd.gob.es
+          </a>.
+        </li>
+        <li>
+          <strong>Website:</strong>{" "}
+          <a
+            href="https://www.aepd.es/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            www.aepd.es
+          </a>.
+        </li>
+        <li>
+          <strong>Postal address published by the AEPD:</strong> Agencia
+          Española de Protección de Datos, Edificio Cuzco IV, Paseo de
+          la Castellana, 141, planta 9, 28046 Madrid, Spain.
+        </li>
+        <li>
+          <strong>General information telephone:</strong> 900 293 183.
+        </li>
+      </ul>
+
+      <p style={p}>
+        Lodging a complaint with the AEPD is free of charge. Information
+        about the applicable requirements, documentation and procedure
+        can be found on the Agency's own electronic office.
       </p>
 
       <h3 style={h}>10. SECURITY AND ACCESS TO INFORMATION</h3>
@@ -1110,14 +1356,21 @@ function EnglishPolicy() {
         safeguards required by applicable law.
       </p>
 
-      <h3 style={h}>13. AUTOMATED DECISION-MAKING</h3>
+      <h3 style={h}>13. AUTOMATED DECISION-MAKING AND PROFILING</h3>
 
       <p style={p}>
-        The intention is not to make decisions based solely on automated
-        processing that produce legal effects or similarly significantly
-        affect individuals. If such processing is introduced, the
-        information required by the GDPR will be provided and the
-        relevant safeguards will be applied.
+        The application is not intended to create customer profiles
+        for commercial or advertising purposes. Nor is it intended
+        to make decisions based solely on automated processing that
+        produce legal effects or similarly significantly affect
+        individuals.
+      </p>
+
+      <p style={p}>
+        If profiling or automated decision-making requiring additional
+        information or specific safeguards is introduced in the future,
+        the information required by the GDPR will be provided in advance
+        and the relevant safeguards will be applied.
       </p>
 
       <h3 style={h}>14. UPDATES TO THIS POLICY</h3>
