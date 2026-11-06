@@ -241,10 +241,17 @@ export default function Contratos() {
         .toLowerCase()
         .trim();
 
-      if (
-        estadoActual !== "firmado" &&
-        estadoActual !== "firmado_cliente"
-      ) {
+      const tieneFirmaRegistrada = Boolean(
+        contrato.aceptacion_contrato === true ||
+        contrato.firma_cliente ||
+        contrato.firma_url ||
+        contrato.firma ||
+        contrato.firmado_en ||
+        contrato.fecha_firma ||
+        ["firmado", "firmado_cliente", "enviado_al_admin", "activo", "completado"].includes(estadoActual)
+      );
+
+      if (!tieneFirmaRegistrada) {
         const { error: estadoError } =
           await supabase
             .from("contratos")
@@ -300,13 +307,13 @@ export default function Contratos() {
     }
   };
 
-  // Cancela la suscripción recurrente de Stripe.
+  // Solicita la cancelación de Stripe con un mes de preaviso.
   // NO elimina el contrato ni las facturas históricas.
   const cancelarSuscripcion = async (contrato) => {
     const confirmado = window.confirm(
-      "¿Cancelar la suscripción mensual de este contrato?\n\n" +
-        "Stripe dejará de realizar los próximos cobros.\n\n" +
-        "El contrato NO se borrará y el historial permanecerá guardado."
+      "¿Solicitar la cancelación de este contrato?\n\n" +
+        "La baja se programará con un mes de preaviso. El servicio y la facturación continuarán hasta la fecha efectiva indicada por Stripe.\n\n" +
+        "No se aplicará penalización por permanencia anual. El contrato y sus evidencias NO se borrarán."
     );
 
     if (!confirmado) return;
@@ -333,9 +340,15 @@ export default function Contratos() {
         );
       }
 
+      const fechaEfectiva = data?.cancelacion_efectiva_en
+        ? new Date(data.cancelacion_efectiva_en).toLocaleString("es-ES")
+        : "pendiente de confirmación";
+
       alert(
-        "✅ Suscripción cancelada correctamente.\n\n" +
-          "Stripe no volverá a cobrar este contrato."
+        "✅ Solicitud de cancelación registrada.\n\n" +
+          "El contrato seguirá activo durante el preaviso.\n" +
+          "Fecha efectiva prevista: " + fechaEfectiva + ".\n\n" +
+          "No se ha eliminado el contrato ni su historial."
       );
 
       await cargarContratos();
@@ -406,8 +419,10 @@ export default function Contratos() {
 
     if (
       pagado ||
+      est === "activo" ||
       est === "firmado" ||
       est === "firmado_cliente" ||
+      est === "enviado_al_admin" ||
       est === "completado"
     ) {
       return {
@@ -495,14 +510,25 @@ export default function Contratos() {
               actionLoading === c.id;
 
             const tieneFirma = Boolean(
+              c.aceptacion_contrato === true ||
               c.firma_cliente ||
-                c.firma_url
+              c.firma_url ||
+              c.firma ||
+              c.firmado_en ||
+              c.fecha_firma ||
+              ["firmado", "firmado_cliente", "enviado_al_admin", "activo", "completado"].includes(
+                String(c.estado || "").toLowerCase().trim()
+              )
             );
 
             const estaCancelado =
               String(c.estado || "")
                 .toLowerCase()
                 .trim() === "cancelado";
+
+            const cancelacionProgramada = Boolean(
+              c.cancelacion_solicitada_en && c.cancelacion_efectiva_en
+            );
 
             return (
               <div
@@ -589,6 +615,35 @@ export default function Contratos() {
                   )}
                 </p>
 
+                <p style={estilos.fechaInfo}>
+                  <span style={estilos.etiqueta}>Fin del período:</span>{" "}
+                  {String(c.fecha_fin || "—").slice(0, 10)}
+                </p>
+
+                <p style={estilos.fechaInfo}>
+                  <span style={estilos.etiqueta}>Renovación anual:</span>{" "}
+                  {c.renovacion_automatica === true && c.renovacion_aceptada_en
+                    ? "Aceptada y registrada"
+                    : "No consta aceptación expresa"}
+                </p>
+
+                {cancelacionProgramada && (
+                  <div style={{
+                    padding: "10px",
+                    borderRadius: "8px",
+                    background: "rgba(245,158,11,0.12)",
+                    border: "1px solid rgba(245,158,11,0.4)",
+                    color: "#fbbf24",
+                    fontSize: "13px",
+                    lineHeight: 1.5
+                  }}>
+                    <strong>Cancelación programada</strong>
+                    <div>Solicitada: {new Date(c.cancelacion_solicitada_en).toLocaleString("es-ES")}</div>
+                    <div>Fecha efectiva: {new Date(c.cancelacion_efectiva_en).toLocaleString("es-ES")}</div>
+                    El contrato permanece activo durante el preaviso.
+                  </div>
+                )}
+
                 <div
                   style={estilos.gridBotones}
                 >
@@ -629,7 +684,7 @@ export default function Contratos() {
                   </button>
                 </div>
 
-                {!estaCancelado && (
+                {!estaCancelado && !cancelacionProgramada && (
                   <button
                     type="button"
                     onClick={() =>
@@ -652,23 +707,21 @@ export default function Contratos() {
                   >
                     {estaProcesando
                       ? "⏳ Cancelando..."
-                      : "🛑 Cancelar suscripción mensual"}
+                      : "🛑 Solicitar cancelación (1 mes)"}
                   </button>
                 )}
 
                 <button
                   type="button"
-                  onClick={() =>
-                    borrarContrato(c.id)
-                  }
-                  disabled={
-                    estaProcesando
-                  }
-                  style={
-                    estilos.botonBorrar
-                  }
+                  disabled
+                  title="Los contratos son registros legales protegidos y no se eliminan físicamente."
+                  style={{
+                    ...estilos.botonBorrar,
+                    opacity: 0.55,
+                    cursor: "not-allowed",
+                  }}
                 >
-                  🗑️ Eliminar
+                  🔒 Registro protegido (no se elimina)
                 </button>
 
                 <button
