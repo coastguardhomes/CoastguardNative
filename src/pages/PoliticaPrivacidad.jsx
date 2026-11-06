@@ -41,7 +41,7 @@ function SpanishPolicy() {
       <h1 style={styles.mainTitle}>POLÍTICA DE PRIVACIDAD</h1>
 
       <p style={p}>
-        <strong>Última actualización:</strong> 18 de octubre de 2026.
+        <strong>Última actualización:</strong> 6 de noviembre de 2026.
       </p>
 
       <p style={p}>
@@ -86,7 +86,7 @@ function SpanishPolicy() {
         </li>
         <li>
           <strong>Domicilio profesional:</strong> Calle Casicas de Arriba,
-          33, 1.º F, Pilar de la Horadada, Alicante, España.
+          33, 1.º F, 03190 Pilar de la Horadada, Alicante, España.
         </li>
         <li>
           <strong>Correo electrónico:</strong> <EmailLink />.
@@ -351,6 +351,12 @@ function SpanishPolicy() {
           por la aplicación.
         </li>
         <li>
+          <strong>Vercel:</strong> alojamiento, despliegue y distribución
+          de la aplicación web. En función de los servicios utilizados,
+          puede tratar datos técnicos necesarios para servir la aplicación,
+          mantener su funcionamiento, protegerla y diagnosticar incidencias.
+        </li>
+        <li>
           <strong>Stripe:</strong> gestión de los pagos y las suscripciones
           procesados mediante su plataforma.
         </li>
@@ -595,7 +601,7 @@ function EnglishPolicy() {
       <h1 style={styles.mainTitle}>PRIVACY POLICY</h1>
 
       <p style={p}>
-        <strong>Last updated:</strong> 18 October 2026.
+        <strong>Last updated:</strong> 6 November 2026.
       </p>
 
       <p style={p}>
@@ -639,7 +645,7 @@ function EnglishPolicy() {
         </li>
         <li>
           <strong>Business address:</strong> Calle Casicas de Arriba,
-          33, 1.º F, Pilar de la Horadada, Alicante, Spain.
+          33, 1.º F, 03190 Pilar de la Horadada, Alicante, Spain.
         </li>
         <li>
           <strong>Email:</strong> <EmailLink />.
@@ -893,6 +899,12 @@ function EnglishPolicy() {
         <li>
           <strong>Supabase:</strong> database infrastructure,
           authentication, storage and related services used by the application.
+        </li>
+        <li>
+          <strong>Vercel:</strong> hosting, deployment and delivery of the
+          web application. Depending on the services used, it may process
+          technical data needed to serve the application, maintain its
+          operation, protect it and diagnose incidents.
         </li>
         <li>
           <strong>Stripe:</strong> management of payments and subscriptions
