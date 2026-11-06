@@ -84,7 +84,23 @@ export default function VerContrato() {
     }
   };
 
+  const contratoFirmado = Boolean(
+    contrato?.aceptacion_contrato === true ||
+    contrato?.firma_url ||
+    contrato?.firma_cliente ||
+    contrato?.firmado_en ||
+    contrato?.fecha_firma ||
+    ["firmado", "firmado_cliente", "enviado_al_admin", "activo", "completado"].includes(
+      String(contrato?.estado || "").toLowerCase().trim()
+    )
+  );
+
   const regenerarPDF = async () => {
+    if (contratoFirmado && contrato?.pdf_firmado_hash) {
+      alert("El PDF firmado está preservado y no se puede regenerar ni sobrescribir.");
+      return;
+    }
+
     try {
       setGenerando(true);
 
@@ -153,6 +169,11 @@ export default function VerContrato() {
   // Pone el contrato a disposición del rol cliente para que pueda firmarlo.
   // No envía ningún correo.
   const enviarAlRolCliente = async () => {
+    if (contratoFirmado) {
+      alert("Este contrato ya está firmado. No se cambiará su estado a enviado_cliente.");
+      return;
+    }
+
     try {
       setEnviando(true);
 
@@ -204,6 +225,24 @@ export default function VerContrato() {
 
   const obtenerBadgeEstado = (estado) => {
     const est = String(estado || "").toLowerCase().trim();
+
+    if (est === "cancelado") {
+      return {
+        texto: "🛑 CANCELADO",
+        color: "#f87171",
+        bg: "rgba(248, 113, 113, 0.18)",
+        border: "rgba(248, 113, 113, 0.5)",
+      };
+    }
+
+    if (est === "activo") {
+      return {
+        texto: "✅ ACTIVO",
+        color: "#34d399",
+        bg: "rgba(52, 211, 153, 0.2)",
+        border: "rgba(52, 211, 153, 0.5)",
+      };
+    }
 
     if (
       est === "firmado" ||
@@ -449,14 +488,65 @@ export default function VerContrato() {
                 </p>
 
                 <p>
-                  <strong>Precio:</strong>{" "}
-                  {contrato.precio} €/mes
+                  <strong>Precio base:</strong>{" "}
+                  {Number.isFinite(Number(contrato.precio))
+                    ? Number(contrato.precio).toFixed(2) + " €/mes"
+                    : "No registrado"}
                 </p>
 
                 <p>
-                  <strong>Frecuencia:</strong> Cada{" "}
-                  {contrato.frecuencia} días
+                  <strong>IVA:</strong>{" "}
+                  {contrato.iva != null && Number.isFinite(Number(contrato.iva))
+                    ? Number(contrato.iva).toFixed(2) + " €/mes"
+                    : "No registrado"}
                 </p>
+
+                <p>
+                  <strong>Total mensual con IVA:</strong>{" "}
+                  {contrato.precio_total != null && Number.isFinite(Number(contrato.precio_total))
+                    ? Number(contrato.precio_total).toFixed(2) + " €/mes"
+                    : "No registrado"}
+                </p>
+
+                {contrato.modalidad === "custodia_llaves" ? (
+                  <p>
+                    <strong>Frecuencia:</strong> No aplica (custodia de llaves)
+                  </p>
+                ) : (
+                  <p>
+                    <strong>Frecuencia:</strong>{" "}
+                    {contrato.frecuencia
+                      ? "Cada " + contrato.frecuencia + " días"
+                      : "No registrada"}
+                  </p>
+                )}
+
+                <p>
+                  <strong>Renovación automática anual:</strong>{" "}
+                  {contrato.renovacion_automatica === true && contrato.renovacion_aceptada_en
+                    ? "Aceptada y registrada"
+                    : "No consta aceptación expresa"}
+                </p>
+
+                {contrato.cancelacion_solicitada_en && contrato.cancelacion_efectiva_en && (
+                  <div style={{
+                    marginTop: "8px",
+                    padding: "10px",
+                    borderRadius: "8px",
+                    background: "rgba(245,158,11,0.12)",
+                    border: "1px solid rgba(245,158,11,0.4)",
+                    color: "#fbbf24"
+                  }}>
+                    <strong>Cancelación programada</strong>
+                    <p style={{ margin: "6px 0 0" }}>
+                      Solicitud: {new Date(contrato.cancelacion_solicitada_en).toLocaleString("es-ES")}
+                    </p>
+                    <p style={{ margin: "4px 0 0" }}>
+                      Fecha efectiva: {new Date(contrato.cancelacion_efectiva_en).toLocaleString("es-ES")}
+                    </p>
+                    El contrato permanece activo hasta esa fecha.
+                  </div>
+                )}
 
                 <p>
                   <strong>Inicio:</strong>{" "}
@@ -466,7 +556,7 @@ export default function VerContrato() {
                 </p>
 
                 <p>
-                  <strong>Fin:</strong>{" "}
+                  <strong>Fin del período inicial / renovación:</strong>{" "}
                   {String(
                     contrato.fecha_fin || ""
                   ).slice(0, 10)}
@@ -537,6 +627,7 @@ export default function VerContrato() {
                 marginBottom: "20px",
               }}
             >
+              {(!contratoFirmado || !contrato.pdf_firmado_hash) && (
               <button
                 onClick={regenerarPDF}
                 disabled={generando}
@@ -557,7 +648,9 @@ export default function VerContrato() {
                   ? "⌛ Procesando PDF..."
                   : "📄 Regenerar / Actualizar PDF con Firma"}
               </button>
+              )}
 
+              {!contratoFirmado && (
               <button
                 onClick={enviarAlRolCliente}
                 disabled={enviando}
@@ -578,6 +671,7 @@ export default function VerContrato() {
                   ? "⌛ Actualizando..."
                   : "📩 Enviar contrato al rol cliente"}
               </button>
+              )}
 
               <button
                 onClick={abrirPDF}
