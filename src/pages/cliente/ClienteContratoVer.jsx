@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -142,9 +141,13 @@ export default function ClienteContratoVer() {
 
   const esFirmado =
     tieneFirma ||
+    contrato?.aceptacion_contrato === true ||
+    Boolean(contrato?.firmado_en || contrato?.fecha_firma || contrato?.firma) ||
     est === "firmado" ||
+    est === "firmado_cliente" ||
     est === "enviado_al_admin" ||
-    est === "activo";
+    est === "activo" ||
+    est === "completado";
 
   const yaEnviadoAdmin =
     est === "enviado_al_admin" ||
@@ -178,17 +181,6 @@ export default function ClienteContratoVer() {
       if (error) {
         alert((t("alertaErrorAdmin") || "Error: ") + error.message);
       } else {
-        try {
-          await supabase.functions.invoke("contrato-pdf", {
-            body: {
-              contrato_id: Number(id),
-              id: Number(id)
-            }
-          });
-        } catch (fErr) {
-          console.log("PDF notificado.");
-        }
-
         alert(
           t("alertaContratoEnviado") ||
             "¡Contrato firmado enviado al administrador!"
@@ -228,6 +220,15 @@ export default function ClienteContratoVer() {
 
     if (yaPagado) {
       alert("Este contrato ya figura pagado o activo.");
+      return;
+    }
+
+    if (
+      contrato?.renovacion_automatica !== true ||
+      !contrato?.renovacion_aceptada_en ||
+      contrato?.version_condiciones !== "CONTRATO_SERVICIOS_V2_2026-11-06"
+    ) {
+      alert("Este contrato no tiene registrada la aceptación expresa de las nuevas condiciones de renovación anual. Debe aceptarse la versión actualizada antes de iniciar una suscripción mensual.");
       return;
     }
 
@@ -563,6 +564,41 @@ export default function ClienteContratoVer() {
             <strong>{t("fechaInicio")}:</strong> {contrato.fecha_inicio || "—"}
           </p>
 
+          <p style={{ margin: "6px 0" }}>
+            <strong>Fin del período inicial / renovación:</strong> {contrato.fecha_fin || "—"}
+          </p>
+
+          <p style={{ margin: "6px 0" }}>
+            <strong>Renovación automática anual:</strong>{" "}
+            {contrato.renovacion_automatica === true && contrato.renovacion_aceptada_en
+              ? "Aceptada y registrada"
+              : "No consta aceptación expresa"}
+          </p>
+
+          {contrato.cancelacion_solicitada_en && contrato.cancelacion_efectiva_en && (
+            <div
+              style={{
+                marginTop: "12px",
+                marginBottom: "12px",
+                padding: "12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(245,158,11,0.45)",
+                background: "rgba(245,158,11,0.08)",
+                color: "#fbbf24",
+                lineHeight: 1.5
+              }}
+            >
+              <strong>Cancelación programada</strong>
+              <p style={{ margin: "6px 0 0" }}>
+                Solicitud: {new Date(contrato.cancelacion_solicitada_en).toLocaleString("es-ES")}
+              </p>
+              <p style={{ margin: "4px 0 0" }}>
+                Fecha efectiva: {new Date(contrato.cancelacion_efectiva_en).toLocaleString("es-ES")}
+              </p>
+              El servicio permanece activo hasta la fecha efectiva.
+            </div>
+          )}
+
           <p style={{ margin: "6px 0 16px 0" }}>
             <strong>{t("estado")}:</strong>{" "}
             <span
@@ -606,6 +642,9 @@ export default function ClienteContratoVer() {
 
           {!yaPagado &&
             esFirmado &&
+            contrato.renovacion_automatica === true &&
+            contrato.renovacion_aceptada_en &&
+            contrato.version_condiciones === "CONTRATO_SERVICIOS_V2_2026-11-06" &&
             contrato.precio_total != null &&
             Number.isFinite(totalGuardado) &&
             totalGuardado > 0 && (
@@ -626,6 +665,20 @@ export default function ClienteContratoVer() {
                     )}/mes, IVA incluido)`}
               </button>
             )}
+
+          {!yaPagado && esFirmado && contrato.renovacion_automatica !== true && (
+            <p style={{
+              marginTop: "12px",
+              padding: "12px",
+              borderRadius: "8px",
+              background: "rgba(245,158,11,0.08)",
+              border: "1px solid rgba(245,158,11,0.35)",
+              color: "#fbbf24",
+              lineHeight: 1.5
+            }}>
+              Este contrato todavía no contiene una aceptación expresa de la renovación automática anual. Para iniciar una nueva suscripción será necesario aceptar las condiciones actualizadas mediante un documento o adenda independiente.
+            </p>
+          )}
 
           <button
             onClick={enviarAlAdmin}
