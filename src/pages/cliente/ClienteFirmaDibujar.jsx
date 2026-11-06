@@ -1,11 +1,10 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
-const VERSION_CONTRATO = "CONTRATO_SERVICIOS_V1_2026-10-11";
+const VERSION_CONTRATO = "CONTRATO_SERVICIOS_V2_2026-11-06";
 const VERSION_CONSENTIMIENTO_INICIO =
   "CONSENTIMIENTO_INICIO_ANTICIPADO_V1_2026-10-18";
 
@@ -30,6 +29,7 @@ export default function ClienteFirmaDibujar({
   const [guardando, setGuardando] = useState(false);
   const [hayFirma, setHayFirma] = useState(false);
   const [aceptaContrato, setAceptaContrato] = useState(false);
+  const [aceptaRenovacion, setAceptaRenovacion] = useState(false);
   const [solicitaInicioAnticipado, setSolicitaInicioAnticipado] =
     useState(false);
 
@@ -256,6 +256,13 @@ export default function ClienteFirmaDibujar({
       return;
     }
 
+    if (!aceptaRenovacion) {
+      alert(
+        "Debes aceptar expresamente la duración inicial de 12 meses y la renovación automática por períodos sucesivos de 12 meses antes de firmar."
+      );
+      return;
+    }
+
     if (guardando) return;
 
     setGuardando(true);
@@ -314,6 +321,7 @@ export default function ClienteFirmaDibujar({
           contrato_id: numericId,
           firmaBase64,
           aceptaContrato: true,
+          aceptaRenovacion: true,
           versionContrato: VERSION_CONTRATO,
           solicitaInicioAnticipado,
           versionConsentimientoInicio:
@@ -525,6 +533,61 @@ export default function ClienteFirmaDibujar({
               gap: "10px",
               margin: "16px 0",
               padding: "14px",
+              border: "1px solid rgba(77,184,255,0.45)",
+              borderRadius: "10px",
+              background: "rgba(77,184,255,0.08)"
+            }}
+          >
+            <input
+              id="aceptacion-renovacion-anual"
+              type="checkbox"
+              checked={aceptaRenovacion}
+              onChange={(e) => setAceptaRenovacion(e.target.checked)}
+              disabled={guardando}
+              style={{
+                width: "20px",
+                height: "20px",
+                flexShrink: 0,
+                marginTop: "2px",
+                accentColor: "#4db8ff"
+              }}
+            />
+
+            <label
+              htmlFor="aceptacion-renovacion-anual"
+              style={{
+                color: "#ffffff",
+                fontSize: "14px",
+                lineHeight: 1.5,
+                cursor: guardando ? "default" : "pointer"
+              }}
+            >
+              Acepto expresamente que el contrato tenga una duración inicial de
+              12 meses, con pagos mensuales, y que se renueve automáticamente
+              por períodos sucesivos de 12 meses, salvo que solicite la
+              cancelación con al menos un mes de preaviso. Puedo solicitar la
+              cancelación en cualquier momento, sin penalización por
+              permanencia anual; durante el preaviso se mantiene el servicio y
+              la facturación que corresponda. No se modificarán unilateralmente
+              el precio ni el alcance del servicio.
+              <br /><br />
+              I expressly agree that the agreement has an initial term of 12
+              months, paid monthly, and automatically renews for successive
+              12-month terms unless I request cancellation with at least one
+              month's notice. I may request cancellation at any time without
+              an annual-commitment penalty; service and applicable billing
+              continue during the notice period. The price and scope of the
+              service will not be changed unilaterally.
+            </label>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "10px",
+              margin: "16px 0",
+              padding: "14px",
               border: "1px solid rgba(255,193,7,0.45)",
               borderRadius: "10px",
               background: "rgba(255,193,7,0.07)"
@@ -556,12 +619,17 @@ export default function ClienteFirmaDibujar({
                 cursor: guardando ? "default" : "pointer"
               }}
             >
-              Solicito expresamente que el servicio comience antes
-              de que finalice el plazo de desistimiento de 14 días y
-              entiendo que, si desisto, podré tener que abonar la
-              parte proporcional del servicio prestado cuando
-              legalmente corresponda. Esta solicitud es opcional y
-              no condiciona la firma del contrato.
+              Solicito expresamente que el servicio comience antes de que
+              finalice el plazo de desistimiento de 14 días y entiendo que,
+              si desisto, podré tener que abonar la parte proporcional del
+              servicio prestado cuando legalmente corresponda. Esta solicitud
+              es opcional y no condiciona la firma del contrato.
+              <br /><br />
+              I expressly request that the service begin before the 14-day
+              withdrawal period ends. I understand that, if I withdraw, I may
+              have to pay the proportionate amount for the service already
+              provided where legally applicable. This request is optional and
+              is not a condition for signing the agreement.
             </label>
           </div>
 
@@ -622,18 +690,19 @@ export default function ClienteFirmaDibujar({
                 guardando ||
                 !hayFirma ||
                 !aceptaContrato ||
+                !aceptaRenovacion ||
                 estadoComprobacion !== "disponible"
               }
               style={{
                 ...estiloBoton,
                 flex: 2,
                 background:
-                  guardando || !hayFirma || !aceptaContrato
+                  guardando || !hayFirma || !aceptaContrato || !aceptaRenovacion
                     ? "rgba(77, 184, 255, 0.4)"
                     : "#4db8ff",
                 color: "#0a0f1a",
                 cursor:
-                  guardando || !hayFirma || !aceptaContrato
+                  guardando || !hayFirma || !aceptaContrato || !aceptaRenovacion
                     ? "default"
                     : "pointer"
               }}
