@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
@@ -20,6 +19,8 @@ export default function EditarContrato() {
   const [tecnicos, setTecnicos] = useState([]);
   const [mensaje, setMensaje] = useState("");
   const [procesando, setProcesando] = useState(false);
+  const [contratoFirmado, setContratoFirmado] = useState(false);
+  const [cargandoContrato, setCargandoContrato] = useState(true);
 
   const modalidades = [
     {
@@ -93,10 +94,12 @@ export default function EditarContrato() {
   }, [id]);
 
   async function cargarContrato() {
+    setCargandoContrato(true);
+
     const { data, error } = await supabase
       .from("contratos")
       .select(
-        "fecha_inicio, precio, notas, frecuencia, tecnico_id, modalidad"
+        "fecha_inicio, precio, notas, frecuencia, tecnico_id, modalidad, estado, firma_url, firma_cliente, firma, firmado_en, fecha_firma, aceptacion_contrato"
       )
       .eq("id", id)
       .single();
@@ -104,10 +107,27 @@ export default function EditarContrato() {
     if (error) {
       console.error("Error cargando contrato:", error);
       setMensaje("Error cargando contrato");
+      setCargandoContrato(false);
       return;
     }
 
     if (data) {
+      const estado = String(data.estado || "").toLowerCase().trim();
+      const firmado = Boolean(
+        data.aceptacion_contrato === true ||
+        data.firma_url ||
+        data.firma_cliente ||
+        data.firma ||
+        data.firmado_en ||
+        data.fecha_firma ||
+        ["firmado", "firmado_cliente", "enviado_al_admin", "activo", "completado"].includes(estado)
+      );
+      setContratoFirmado(firmado);
+
+      if (firmado) {
+        setMensaje("Este contrato ya está firmado. Sus condiciones y evidencias están protegidas. No edites este documento: cualquier cambio debe formalizarse mediante una adenda con aceptación separada.");
+      }
+
       setForm({
         fecha_inicio: data.fecha_inicio || "",
         precio: data.precio ?? "",
@@ -120,6 +140,8 @@ export default function EditarContrato() {
         modalidad: data.modalidad || "",
       });
     }
+
+    setCargandoContrato(false);
   }
 
   async function cargarTecnicos() {
@@ -156,6 +178,11 @@ export default function EditarContrato() {
 
   async function guardarCambios() {
     if (procesando) return;
+
+    if (contratoFirmado) {
+      setMensaje("No se pueden modificar directamente las condiciones de un contrato firmado. Debe formalizarse una adenda independiente y aceptada por el cliente.");
+      return;
+    }
 
     setMensaje("");
 
@@ -211,8 +238,8 @@ export default function EditarContrato() {
     setProcesando(true);
 
     try {
-      // Actualizar el contrato manteniendo su duración anual.
-      // El pago es mensual y no implica permanencia mínima anual.
+      // Actualizar únicamente contratos todavía no firmados.
+      // El contrato tiene un período inicial de 12 meses y pagos mensuales.
       const { error } = await supabase
         .from("contratos")
         .update({
@@ -348,6 +375,12 @@ export default function EditarContrato() {
           Editar Contrato #{id}
         </h1>
 
+        {cargandoContrato && (
+          <p style={{ color: "#9fb3c8", marginBottom: "14px" }}>
+            Comprobando el estado y la firma del contrato...
+          </p>
+        )}
+
         {mensaje && (
           <p
             role="status"
@@ -370,10 +403,31 @@ export default function EditarContrato() {
             boxShadow: "0 0 12px rgba(0,153,255,0.2)",
           }}
         >
+          {contratoFirmado && (
+            <div
+              role="alert"
+              style={{
+                padding: "14px",
+                marginBottom: "18px",
+                borderRadius: "10px",
+                background: "rgba(245,158,11,0.1)",
+                border: "1px solid rgba(245,158,11,0.45)",
+                color: "#fbbf24",
+                lineHeight: 1.6,
+              }}
+            >
+              <strong>Contrato firmado: edición bloqueada.</strong>
+              <p style={{ margin: "8px 0 0" }}>
+                El documento firmado y sus condiciones originales deben conservarse. Para cambiar precio, modalidad, fechas o servicios se necesita una adenda con aceptación separada. Esta pantalla no crea adendas.
+              </p>
+            </div>
+          )}
+
           <label>Modalidad:</label>
 
           <select
             value={form.modalidad || ""}
+            disabled={contratoFirmado || cargandoContrato || procesando}
             onChange={(e) => seleccionarModalidad(e.target.value)}
             style={inputStyle}
           >
@@ -390,6 +444,7 @@ export default function EditarContrato() {
 
           <input
             type="date"
+            disabled={contratoFirmado || cargandoContrato || procesando}
             value={form.fecha_inicio || ""}
             onChange={(e) =>
               setForm((prev) => ({
@@ -412,16 +467,18 @@ export default function EditarContrato() {
               fontSize: "14px",
             }}
           >
-            El contrato tiene duración y renovación anual, con facturación
-            mensual. No existe permanencia mínima anual: el cliente puede
-            solicitar la cancelación en cualquier momento con un mes de
-            preaviso, conforme al contrato marco.
+            El contrato tiene un período inicial de 12 meses, con pagos
+            mensuales y renovación automática por períodos sucesivos de
+            12 meses si no se solicita la cancelación. El cliente puede
+            cancelar en cualquier momento con un mes de preaviso y sin
+            penalización por permanencia anual.
           </div>
 
           <label>Precio base (€):</label>
 
           <input
             type="number"
+            disabled={contratoFirmado || cargandoContrato || procesando}
             min="0.01"
             step="0.01"
             value={form.precio ?? ""}
@@ -440,6 +497,7 @@ export default function EditarContrato() {
 
               <input
                 type="number"
+                disabled={contratoFirmado || cargandoContrato || procesando}
                 min="1"
                 step="1"
                 value={form.frecuencia ?? ""}
@@ -474,6 +532,7 @@ export default function EditarContrato() {
 
           <select
             value={form.tecnico_id || ""}
+            disabled={contratoFirmado || cargandoContrato || procesando}
             onChange={(e) =>
               setForm((prev) => ({
                 ...prev,
@@ -495,6 +554,7 @@ export default function EditarContrato() {
 
           <textarea
             value={form.notas || ""}
+            disabled={contratoFirmado || cargandoContrato || procesando}
             onChange={(e) =>
               setForm((prev) => ({
                 ...prev,
@@ -510,7 +570,7 @@ export default function EditarContrato() {
           <button
             type="button"
             onClick={guardarCambios}
-            disabled={procesando}
+            disabled={procesando || contratoFirmado || cargandoContrato}
             style={{
               marginTop: "20px",
               padding: "14px",
