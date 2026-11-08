@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
@@ -40,8 +39,12 @@ export default function CrearContrato() {
     },
   ];
 
-  // Calcula la fecha final del período contractual de 12 meses.
-  // No utiliza la frecuencia de visitas para calcularla.
+  const suplementosTamano = {
+    pequena: 0,
+    mediana: 30,
+    grande: 50,
+  };
+
   function calcularFechaFin(fechaInicio, meses = 12) {
     if (!fechaInicio) return null;
 
@@ -58,17 +61,18 @@ export default function CrearContrato() {
     const indiceMes = mes - 1 + meses;
     const anioFinal = anio + Math.floor(indiceMes / 12);
     const mesFinal = indiceMes % 12;
+
     const ultimoDia = new Date(
       anioFinal,
       mesFinal + 1,
       0
     ).getDate();
+
     const diaFinal = Math.min(dia, ultimoDia);
 
     return `${anioFinal}-${String(mesFinal + 1).padStart(2, "0")}-${String(diaFinal).padStart(2, "0")}`;
   }
 
-  // El precio introducido se considera la base imponible.
   function calcularImportes(baseIntroducida) {
     const base = Number(Number(baseIntroducida).toFixed(2));
     const iva = Number((base * 0.21).toFixed(2));
@@ -77,39 +81,17 @@ export default function CrearContrato() {
     return { base, iva, total };
   }
 
-  function calcularPuntos(v) {
-    let puntos = 0;
-
-    if (v.metros_cuadrados > 80 && v.metros_cuadrados <= 120) {
-      puntos += 5;
-    } else if (
-      v.metros_cuadrados > 120 &&
-      v.metros_cuadrados <= 180
-    ) {
-      puntos += 10;
-    } else if (v.metros_cuadrados > 180) {
-      puntos += 15;
-    }
-
-    if (v.habitaciones > 1) {
-      puntos += (v.habitaciones - 1) * 2;
-    }
-
-    if (v.banos > 1) {
-      puntos += (v.banos - 1) * 3;
-    }
-
-    if (v.tiene_piscina) puntos += 10;
-    if (v.tiene_jardin) puntos += 8;
-    if (v.tiene_garaje) puntos += 4;
-    if (v.tiene_sotano) puntos += 6;
-
-    return puntos;
-  }
-
   function calcularPrecioVivienda(v) {
-    const puntos = calcularPuntos(v);
-    return Number((puntos * 1.5).toFixed(2));
+    if (!v || !v.tamano) return null;
+
+    if (!Object.prototype.hasOwnProperty.call(
+      suplementosTamano,
+      v.tamano
+    )) {
+      return null;
+    }
+
+    return suplementosTamano[v.tamano];
   }
 
   useEffect(() => {
@@ -177,6 +159,8 @@ export default function CrearContrato() {
           ? Number(prev.precio_modalidad || 0)
           : 0,
     }));
+
+    setMensaje("");
   }
 
   function handleViviendaChange(e) {
@@ -195,12 +179,13 @@ export default function CrearContrato() {
           ? calcularPrecioVivienda(vivienda)
           : 0;
 
+      const suplemento = Number(precioVivienda || 0);
       const precioModalidad = Number(
         prev.precio_modalidad || 0
       );
 
       const precioBase = Number(
-        (precioVivienda + precioModalidad).toFixed(2)
+        (suplemento + precioModalidad).toFixed(2)
       );
 
       return {
@@ -210,6 +195,8 @@ export default function CrearContrato() {
         precio: precioBase,
       };
     });
+
+    setMensaje("");
   }
 
   function seleccionarModalidad(modalidadId) {
@@ -240,6 +227,8 @@ export default function CrearContrato() {
         precio: precioBase,
       };
     });
+
+    setMensaje("");
   }
 
   async function crearContrato() {
@@ -280,7 +269,46 @@ export default function CrearContrato() {
       return;
     }
 
-    const precioBase = Number(form.precio);
+    const viviendaSeleccionada = viviendas.find(
+      (v) => String(v.id) === String(form.vivienda_id)
+    );
+
+    if (!viviendaSeleccionada) {
+      setMensaje(
+        "No se ha podido comprobar la vivienda seleccionada."
+      );
+      return;
+    }
+
+    let suplementoVivienda = 0;
+
+    if (form.modalidad !== "custodia_llaves") {
+      suplementoVivienda = calcularPrecioVivienda(
+        viviendaSeleccionada
+      );
+
+      if (suplementoVivienda === null) {
+        setMensaje(
+          "Esta vivienda todavía no tiene un tamaño asignado. " +
+          "Clasifícala como pequeña, mediana o grande antes de crear el contrato."
+        );
+        return;
+      }
+    }
+
+    const precioModalidad = Number(form.precio_modalidad);
+
+    if (
+      !Number.isFinite(precioModalidad) ||
+      precioModalidad <= 0
+    ) {
+      setMensaje("El precio de la modalidad no es válido.");
+      return;
+    }
+
+    const precioBase = Number(
+      (precioModalidad + suplementoVivienda).toFixed(2)
+    );
 
     if (
       !Number.isFinite(precioBase) ||
@@ -293,7 +321,11 @@ export default function CrearContrato() {
     }
 
     const importes = calcularImportes(precioBase);
-    const fechaFinContrato = calcularFechaFin(form.fecha_inicio, 12);
+
+    const fechaFinContrato = calcularFechaFin(
+      form.fecha_inicio,
+      12
+    );
 
     if (!fechaFinContrato) {
       setMensaje(
@@ -303,6 +335,7 @@ export default function CrearContrato() {
     }
 
     setProcesando(true);
+
     setMensaje(
       "Creando contrato y generando documentación interna..."
     );
@@ -320,8 +353,6 @@ export default function CrearContrato() {
         if (dniError) throw dniError;
       }
 
-      // La duración contractual es de 12 meses.
-      // El pago es mensual y no existe permanencia mínima anual.
       const frecuenciaContrato =
         form.modalidad === "custodia_llaves"
           ? null
@@ -386,9 +417,9 @@ export default function CrearContrato() {
         .single();
 
       if (facturaError) throw facturaError;
+
       facturaCreada = true;
 
-      // La función genera el PDF con los datos guardados.
       const { error: pdfError } =
         await supabase.functions.invoke("contrato-pdf", {
           body: {
@@ -412,10 +443,10 @@ export default function CrearContrato() {
         setMensaje("¡Contrato y factura creados con éxito! ✔");
       }
 
-      // Si falla el PDF, el contrato y la factura ya están guardados.
       setTimeout(() => {
         navigate("/contratos");
       }, pdfError ? 3000 : 1500);
+
     } catch (e) {
       console.error("Error general creando contrato:", e);
 
@@ -464,6 +495,24 @@ export default function CrearContrato() {
   );
 
   const esCustodia = form.modalidad === "custodia_llaves";
+
+  const viviendaActual = viviendas.find(
+    (v) => String(v.id) === String(form.vivienda_id)
+  );
+
+  const nombreTamano = {
+    pequena: "Pequeña",
+    mediana: "Mediana",
+    grande: "Grande",
+  };
+
+  const tamanoActual = viviendaActual?.tamano
+    ? nombreTamano[viviendaActual.tamano] || "Sin clasificar"
+    : "Sin clasificar";
+
+  const suplementoActual = esCustodia
+    ? 0
+    : Number(form.precio_vivienda || 0);
 
   return (
     <Menu>
@@ -529,6 +578,7 @@ export default function CrearContrato() {
             style={inputStyle}
           >
             <option value="">Selecciona cliente</option>
+
             {clientes.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nombre}
@@ -559,12 +609,48 @@ export default function CrearContrato() {
             style={inputStyle}
           >
             <option value="">Selecciona vivienda</option>
+
             {viviendasFiltradas.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.direccion}
               </option>
             ))}
           </select>
+
+          {form.vivienda_id && (
+            <div
+              style={{
+                marginTop: "-8px",
+                marginBottom: "16px",
+                padding: "12px",
+                borderRadius: "8px",
+                background: "rgba(77,184,255,0.08)",
+                border: "1px solid rgba(77,184,255,0.2)",
+                color: "#b8dfff",
+                fontSize: "14px",
+                lineHeight: "1.6",
+              }}
+            >
+              <div>
+                Tamaño asignado: <strong>{tamanoActual}</strong>
+              </div>
+
+              {!esCustodia && (
+                <div>
+                  Suplemento mensual:{" "}
+                  <strong>
+                    {suplementoActual.toFixed(2)} €
+                  </strong>
+                </div>
+              )}
+
+              {esCustodia && (
+                <div>
+                  La custodia de llaves no lleva suplemento por tamaño.
+                </div>
+              )}
+            </div>
+          )}
 
           <label style={labelStyle}>Técnico responsable:</label>
 
@@ -579,6 +665,7 @@ export default function CrearContrato() {
             style={inputStyle}
           >
             <option value="">Selecciona técnico</option>
+
             {tecnicos.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.nombre}
@@ -596,6 +683,7 @@ export default function CrearContrato() {
             style={inputStyle}
           >
             <option value="">Selecciona modalidad</option>
+
             {modalidades.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.nombre} — {m.precio}€ + IVA
@@ -657,8 +745,21 @@ export default function CrearContrato() {
               marginBottom: "15px",
               color: "#9fb3c8",
               fontSize: "14px",
+              lineHeight: "1.7",
             }}
           >
+            <div>
+              Precio de modalidad:{" "}
+              {Number(form.precio_modalidad || 0).toFixed(2)} € / mes
+            </div>
+
+            {!esCustodia && (
+              <div>
+                Suplemento por tamaño:{" "}
+                {suplementoActual.toFixed(2)} € / mes
+              </div>
+            )}
+
             <div>
               IVA (21%): {importesActuales.iva.toFixed(2)} € / mes
             </div>
@@ -741,7 +842,7 @@ export default function CrearContrato() {
               border: "none",
               fontWeight: "700",
               fontSize: "17px",
-              cursor: "pointer",
+              cursor: procesando ? "not-allowed" : "pointer",
               boxShadow: "0 0 10px rgba(0,153,255,0.4)",
               opacity: procesando ? 0.6 : 1,
             }}
