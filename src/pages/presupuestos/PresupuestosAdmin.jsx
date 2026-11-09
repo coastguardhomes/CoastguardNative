@@ -1,15 +1,22 @@
-
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import Menu from "../../layouts/Menu.jsx";
 
+// Solo estos tres conceptos pertenecen al presupuesto económico de trabajos.
 const CATALOGO = [
   { codigo: "apertura_vivienda", concepto: "Apertura de vivienda", precio: 30 },
   { codigo: "supervision", concepto: "Supervisión (por hora o fracción)", precio: 35 },
   { codigo: "cierre_vivienda", concepto: "Cierre de vivienda", precio: 30 },
-  { codigo: "coste_tecnico", concepto: "Coste del técnico", precio: "" },
 ];
+
+// Se mantienen nombres para mostrar correctamente solicitudes históricas.
+const NOMBRES_SERVICIOS = {
+  apertura_vivienda: "Apertura de vivienda",
+  supervision: "Supervisión (por hora o fracción)",
+  cierre_vivienda: "Cierre de vivienda",
+  coste_tecnico: "Coste del técnico",
+};
 
 const ESTADOS = {
   pendiente_aceptacion_cliente: "Pendiente de aceptación del cliente",
@@ -653,12 +660,21 @@ export default function PresupuestosAdmin() {
                   {(solicitud.servicios_solicitados || [])
                     .map(
                       (codigo) =>
-                        CATALOGO.find(
-                          (c) => c.codigo === codigo
-                        )?.concepto || codigo
+                        NOMBRES_SERVICIOS[codigo] || codigo
                     )
                     .join(", ")}
                 </p>
+
+                {solicitud.estado === "cancelado" &&
+                  (solicitud.servicios_solicitados || []).includes("coste_tecnico") && (
+                    <p style={styles.warning}>
+                      Esta solicitud histórica de Coste del técnico se canceló
+                      porque ese concepto no pertenece al flujo de presupuestos
+                      económicos. Debe tramitarse desde Extras como importe
+                      variable independiente. El registro y su historial se
+                      conservan; no se ha creado factura ni orden de trabajo.
+                    </p>
+                  )}
 
                 {solicitud.descripcion_cliente && (
                   <p style={styles.body}>
@@ -758,9 +774,11 @@ export default function PresupuestosAdmin() {
 
                         <p style={styles.muted}>
                           Puedes incluir cualquier combinación de
-                          apertura, supervisión, cierre y coste del
-                          técnico. La gestión inicial de 25 € no se
-                          añade aquí.
+                          apertura de vivienda, supervisión y cierre
+                          de vivienda. El coste del técnico se tramita
+                          como extra variable independiente, no como
+                          línea de este presupuesto. La Gestión de
+                          presupuesto también es independiente.
                         </p>
 
                         {CATALOGO.map((item) => {
