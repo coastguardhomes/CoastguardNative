@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import Menu from "../../layouts/Menu.jsx";
+import { useLanguage } from "../../context/LanguageContext.jsx";
 
 const SERVICIOS = {
   apertura_vivienda: "Apertura de vivienda",
@@ -14,6 +15,17 @@ const SERVICIOS = {
   visita_rapida: "Visita rápida",
   inspeccion_tormenta: "Inspección posterior a tormenta",
   gestion_tecnico: "Gestión del técnico",
+};
+
+const SERVICIOS_EN = {
+  apertura_vivienda: "Property access",
+  supervision: "Supervision",
+  cierre_vivienda: "Property closing",
+  coste_tecnico: "Technician cost",
+  urgencia: "Urgency / Emergency",
+  visita_rapida: "Quick visit",
+  inspeccion_tormenta: "Post-storm inspection",
+  gestion_tecnico: "Technician Management",
 };
 
 const ESTADOS_SOLICITUD = {
@@ -31,6 +43,21 @@ const ESTADOS_SOLICITUD = {
   cancelado: "Cancelado",
 };
 
+const ESTADOS_SOLICITUD_EN = {
+  pendiente_aceptacion_cliente: "Awaiting your acceptance",
+  aceptada_pendiente_presupuesto: "Request accepted · quote being prepared",
+  presupuesto_enviado: "Quote awaiting your response",
+  aceptado_pendiente_pago: "Quote accepted · awaiting payment",
+  pendiente_aceptacion_gestion: "Previous status: awaiting acceptance",
+  pendiente_pago_gestion: "Previous status: awaiting payment",
+  gestion_pagada: "Previous status: management fee paid",
+  rechazado: "Rejected",
+  pagado: "Work paid",
+  pagado_sin_tecnico: "Payment confirmed · administrative review",
+  completado: "Completed",
+  cancelado: "Cancelled",
+};
+
 const ESTADOS_EXTRA = {
   pendiente_aceptacion_cliente: "Pendiente de tu aceptación",
   aceptado_pendiente_pago: "Aceptado · pendiente de pago",
@@ -39,8 +66,19 @@ const ESTADOS_EXTRA = {
   completado: "Completado",
 };
 
-const dinero = (valor) =>
-  `${Number(valor || 0).toFixed(2).replace(".", ",")} €`;
+const ESTADOS_EXTRA_EN = {
+  pendiente_aceptacion_cliente: "Awaiting your acceptance",
+  aceptado_pendiente_pago: "Accepted · awaiting payment",
+  rechazado_cliente: "Rejected",
+  pagado: "Paid",
+  completado: "Completed",
+};
+
+const dinero = (valor, language = "es") =>
+  new Intl.NumberFormat(language === "en" ? "en-GB" : "es-ES", {
+    style: "currency",
+    currency: "EUR",
+  }).format(Number(valor || 0));
 
 const estaPagada = (factura) =>
   [factura?.estado_pago, factura?.estado].some((estado) =>
@@ -49,17 +87,54 @@ const estaPagada = (factura) =>
     )
   );
 
-const fecha = (valor) => {
-  if (!valor) return "Fecha no disponible";
+const fecha = (valor, language = "es") => {
+  const unavailable =
+    language === "en" ? "Date unavailable" : "Fecha no disponible";
+
+  if (!valor) return unavailable;
+
   const parsed = new Date(valor);
+
   return Number.isNaN(parsed.getTime())
-    ? "Fecha no disponible"
-    : parsed.toLocaleString("es-ES");
+    ? unavailable
+    : parsed.toLocaleString(language === "en" ? "en-GB" : "es-ES");
 };
 
 export default function ClientePresupuestos() {
   const { user } = useAuth();
   const location = useLocation();
+  const { language } = useLanguage();
+
+  const en = language === "en";
+  const t = (es, english) => (en ? english : es);
+
+  const servicioLabel = (codigo) =>
+    en
+      ? SERVICIOS_EN[codigo] || SERVICIOS[codigo] || codigo
+      : SERVICIOS[codigo] || codigo;
+
+  const estadoSolicitudLabel = (estado) =>
+    en
+      ? ESTADOS_SOLICITUD_EN[estado] || estado
+      : ESTADOS_SOLICITUD[estado] || estado;
+
+  const estadoExtraLabel = (estado) =>
+    en
+      ? ESTADOS_EXTRA_EN[estado] || estado
+      : ESTADOS_EXTRA[estado] || estado;
+
+  const estadoPresupuestoLabel = (estado) => {
+    if (!en) return estado;
+
+    const traducciones = {
+      enviado: "Sent",
+      aceptado: "Accepted",
+      rechazado: "Rejected",
+      pendiente: "Pending",
+    };
+
+    return traducciones[estado] || estado;
+  };
 
   const [cliente, setCliente] = useState(null);
   const [viviendas, setViviendas] = useState([]);
@@ -96,7 +171,11 @@ export default function ClientePresupuestos() {
       if (errorCliente) throw errorCliente;
 
       if (!clienteActual?.id) {
-        throw new Error("No se encontró tu ficha de cliente.");
+        throw new Error(
+          en
+            ? "Your client record could not be found."
+            : "No se encontró tu ficha de cliente."
+        );
       }
 
       setCliente(clienteActual);
@@ -210,11 +289,17 @@ export default function ClientePresupuestos() {
       }
     } catch (e) {
       console.error("Error cargando solicitudes y presupuestos:", e);
-      setError(e.message || "No se pudieron cargar tus solicitudes.");
+      setError(
+        e.message ||
+          t(
+            "No se pudieron cargar tus solicitudes.",
+            "Your requests could not be loaded."
+          )
+      );
     } finally {
       setCargando(false);
     }
-  }, [user]);
+  }, [user, en]);
 
   useEffect(() => {
     cargarDatos();
@@ -225,14 +310,20 @@ export default function ClientePresupuestos() {
 
     if (params.get("pago") === "success") {
       setMensaje(
-        "Stripe ha devuelto el pago como completado. La confirmación definitiva depende de la actualización de la factura."
+        t(
+          "Stripe ha devuelto el pago como completado. La confirmación definitiva depende de la actualización de la factura.",
+          "Stripe has returned the payment as completed. Final confirmation depends on the invoice update."
+        )
       );
     } else if (params.get("pago") === "cancelled") {
       setMensaje(
-        "El proceso de pago se ha cancelado. Si administración te ha enviado un enlace de pago, podrás utilizarlo de nuevo."
+        t(
+          "El proceso de pago se ha cancelado. Si administración te ha enviado un enlace de pago, podrás utilizarlo de nuevo.",
+          "The payment process was cancelled. If the administration team sent you a payment link, you can use it again."
+        )
       );
     }
-  }, [location.search]);
+  }, [location.search, en]);
 
   const facturaPorId = useMemo(
     () =>
@@ -251,13 +342,16 @@ export default function ClientePresupuestos() {
   );
 
   const responderSolicitud = async (solicitud, decision) => {
-    const verbo = decision === "aceptado" ? "aceptar" : "rechazar";
+    const verbo =
+      decision === "aceptado"
+        ? t("aceptar", "accept")
+        : t("rechazar", "reject");
 
-    if (
-      !window.confirm(
-        `¿Confirmas que deseas ${verbo} esta solicitud? Esta respuesta quedará registrada.`
-      )
-    ) {
+    const confirmacion = en
+      ? `Do you confirm that you want to ${verbo} this request? Your response will be recorded.`
+      : `¿Confirmas que deseas ${verbo} esta solicitud? Esta respuesta quedará registrada.`;
+
+    if (!window.confirm(confirmacion)) {
       return;
     }
 
@@ -278,11 +372,17 @@ export default function ClientePresupuestos() {
 
       if (decision === "aceptado") {
         setMensaje(
-          "Has aceptado la solicitud. Administración ha recibido el aviso y podrá preparar el presupuesto económico. Esta aceptación no genera factura, cobro ni orden de trabajo."
+          t(
+            "Has aceptado la solicitud. Administración ha recibido el aviso y podrá preparar el presupuesto económico. Esta aceptación no genera factura, cobro ni orden de trabajo.",
+            "You have accepted the request. The administration team has been notified and can prepare the quote. This acceptance does not create an invoice, charge or work order."
+          )
         );
       } else {
         setMensaje(
-          "Has rechazado la solicitud. Administración ha recibido el aviso. No se ha generado factura ni orden de trabajo."
+          t(
+            "Has rechazado la solicitud. Administración ha recibido el aviso. No se ha generado factura ni orden de trabajo.",
+            "You have rejected the request. The administration team has been notified. No invoice or work order has been created."
+          )
         );
       }
 
@@ -290,20 +390,29 @@ export default function ClientePresupuestos() {
       return data;
     } catch (e) {
       console.error("Error respondiendo a la solicitud:", e);
-      setError(e.message || "No se pudo registrar tu respuesta.");
+      setError(
+        e.message ||
+          t(
+            "No se pudo registrar tu respuesta.",
+            "Your response could not be recorded."
+          )
+      );
     } finally {
       setAccion("");
     }
   };
 
   const responderPresupuesto = async (presupuesto, decision) => {
-    const verbo = decision === "aceptado" ? "aceptar" : "rechazar";
+    const verbo =
+      decision === "aceptado"
+        ? t("aceptar", "accept")
+        : t("rechazar", "reject");
 
-    if (
-      !window.confirm(
-        `¿Confirmas que deseas ${verbo} este presupuesto económico?`
-      )
-    ) {
+    const confirmacion = en
+      ? `Do you confirm that you want to ${verbo} this quote?`
+      : `¿Confirmas que deseas ${verbo} este presupuesto económico?`;
+
+    if (!window.confirm(confirmacion)) {
       return;
     }
 
@@ -325,11 +434,17 @@ export default function ClientePresupuestos() {
 
       if (decision === "aceptado") {
         setMensaje(
-          "Presupuesto aceptado. Se ha creado la factura del trabajo. Administración debe revisarla y enviarte el aviso o enlace de pago desde su gestión de facturas. El técnico no se asigna hasta que el pago quede confirmado."
+          t(
+            "Presupuesto aceptado. Se ha creado la factura del trabajo. Administración debe revisarla y enviarte el aviso o enlace de pago desde su gestión de facturas. El técnico no se asigna hasta que el pago quede confirmado.",
+            "Quote accepted. The work invoice has been created. The administration team must review it and send you the payment notice or link from invoice management. A technician will not be assigned until payment is confirmed."
+          )
         );
       } else {
         setMensaje(
-          "Has rechazado el presupuesto económico. La decisión ha quedado registrada y no se ha creado una factura de trabajo."
+          t(
+            "Has rechazado el presupuesto económico. La decisión ha quedado registrada y no se ha creado una factura de trabajo.",
+            "You have rejected the quote. Your decision has been recorded and no work invoice has been created."
+          )
         );
       }
 
@@ -337,20 +452,29 @@ export default function ClientePresupuestos() {
       return data;
     } catch (e) {
       console.error("Error respondiendo al presupuesto:", e);
-      setError(e.message || "No se pudo registrar tu respuesta.");
+      setError(
+        e.message ||
+          t(
+            "No se pudo registrar tu respuesta.",
+            "Your response could not be recorded."
+          )
+      );
     } finally {
       setAccion("");
     }
   };
 
   const responderExtra = async (extra, decision) => {
-    const verbo = decision === "aceptado" ? "aceptar" : "rechazar";
+    const verbo =
+      decision === "aceptado"
+        ? t("aceptar", "accept")
+        : t("rechazar", "reject");
 
-    if (
-      !window.confirm(
-        `¿Confirmas que deseas ${verbo} este servicio?`
-      )
-    ) {
+    const confirmacion = en
+      ? `Do you confirm that you want to ${verbo} this service?`
+      : `¿Confirmas que deseas ${verbo} este servicio?`;
+
+    if (!window.confirm(confirmacion)) {
       return;
     }
 
@@ -376,12 +500,21 @@ export default function ClientePresupuestos() {
       if (decision === "aceptado") {
         setMensaje(
           esGestion
-            ? "Has aceptado Gestión del técnico. Se ha creado su factura independiente. No genera asignación ni orden técnica. Administración gestionará el aviso de pago."
-            : "Has aceptado el servicio. Se ha creado la factura correspondiente. Administración gestionará el aviso de pago y el técnico solo se asignará cuando el pago quede confirmado."
+            ? t(
+                "Has aceptado Gestión del técnico. Se ha creado su factura independiente. No genera asignación ni orden técnica. Administración gestionará el aviso de pago.",
+                "You have accepted Technician Management. Its separate invoice has been created. This does not assign a technician or create a work order. The administration team will manage the payment notice."
+              )
+            : t(
+                "Has aceptado el servicio. Se ha creado la factura correspondiente. Administración gestionará el aviso de pago y el técnico solo se asignará cuando el pago quede confirmado.",
+                "You have accepted the service. The corresponding invoice has been created. The administration team will manage the payment notice, and a technician will only be assigned once payment is confirmed."
+              )
         );
       } else {
         setMensaje(
-          "Has rechazado el servicio. Administración ha recibido la respuesta."
+          t(
+            "Has rechazado el servicio. Administración ha recibido la respuesta.",
+            "You have rejected the service. The administration team has received your response."
+          )
         );
       }
 
@@ -389,7 +522,13 @@ export default function ClientePresupuestos() {
       return data;
     } catch (e) {
       console.error("Error respondiendo al servicio extra:", e);
-      setError(e.message || "No se pudo registrar tu respuesta.");
+      setError(
+        e.message ||
+          t(
+            "No se pudo registrar tu respuesta.",
+            "Your response could not be recorded."
+          )
+      );
     } finally {
       setAccion("");
     }
@@ -408,7 +547,10 @@ export default function ClientePresupuestos() {
     if (!factura) {
       return (
         <p style={styles.muted}>
-          La factura está pendiente de actualización.
+          {t(
+            "La factura está pendiente de actualización.",
+            "The invoice is awaiting an update."
+          )}
         </p>
       );
     }
@@ -416,7 +558,8 @@ export default function ClientePresupuestos() {
     if (estaPagada(factura)) {
       return (
         <p style={styles.paid}>
-          ✓ {etiqueta}: pago confirmado ({dinero(factura.total)})
+          ✓ {etiqueta}: {t("pago confirmado", "payment confirmed")} (
+          {dinero(factura.total, language)})
         </p>
       );
     }
@@ -424,11 +567,13 @@ export default function ClientePresupuestos() {
     return (
       <div style={styles.paymentNotice}>
         <strong>
-          {etiqueta}: {dinero(factura.total)}
+          {etiqueta}: {dinero(factura.total, language)}
         </strong>
         <span>
-          Pendiente de pago. Administración debe enviarte el aviso o enlace
-          correspondiente desde la gestión de facturas.
+          {t(
+            "Pendiente de pago. Administración debe enviarte el aviso o enlace correspondiente desde la gestión de facturas.",
+            "Awaiting payment. The administration team must send you the relevant notice or link from invoice management."
+          )}
         </span>
       </div>
     );
@@ -449,43 +594,58 @@ export default function ClientePresupuestos() {
         <div style={styles.cardTop}>
           <div>
             <h3 style={styles.cardTitle}>
-              Solicitud {String(solicitud.id).slice(0, 8).toUpperCase()}
+              {t("Solicitud", "Request")}{" "}
+              {String(solicitud.id).slice(0, 8).toUpperCase()}
             </h3>
-            <p style={styles.muted}>{fecha(solicitud.created_at)}</p>
+            <p style={styles.muted}>
+              {fecha(solicitud.created_at, language)}
+            </p>
           </div>
 
           <span style={styles.status}>
-            {ESTADOS_SOLICITUD[solicitud.estado] || solicitud.estado}
+            {estadoSolicitudLabel(solicitud.estado)}
           </span>
         </div>
 
         <p style={styles.bodyText}>
-          <strong>Vivienda:</strong>{" "}
+          <strong>{t("Vivienda:", "Property:")}</strong>{" "}
           {vivienda?.direccion || `Vivienda #${solicitud.vivienda_id}`}
         </p>
 
         <p style={styles.bodyText}>
-          <strong>Servicios solicitados:</strong>{" "}
+          <strong>
+            {t("Servicios solicitados:", "Requested services:")}
+          </strong>{" "}
           {(solicitud.servicios_solicitados || [])
-            .map((codigo) => SERVICIOS[codigo] || codigo)
+            .map((codigo) => servicioLabel(codigo))
             .join(", ")}
         </p>
 
         {solicitud.descripcion_cliente && (
           <div style={styles.descriptionBox}>
-            <strong>Descripción e indicaciones de administración</strong>
+            <strong>
+              {t(
+                "Descripción e indicaciones de administración",
+                "Description and instructions from the administration team"
+              )}
+            </strong>
             <p>{solicitud.descripcion_cliente}</p>
           </div>
         )}
 
         {pendienteAceptacion && (
           <div style={styles.responseBox}>
-            <strong>¿Aceptas que administración prepare este presupuesto?</strong>
+            <strong>
+              {t(
+                "¿Aceptas que administración prepare este presupuesto?",
+                "Do you agree to let the administration team prepare this quote?"
+              )}
+            </strong>
             <p>
-              Esta respuesta solo autoriza la preparación del presupuesto
-              económico. No supone aceptar un precio, no genera un cobro y no
-              crea una orden de trabajo. Recibirás el presupuesto final para
-              revisarlo antes de decidir.
+              {t(
+                "Esta respuesta solo autoriza la preparación del presupuesto económico. No supone aceptar un precio, no genera un cobro y no crea una orden de trabajo. Recibirás el presupuesto final para revisarlo antes de decidir.",
+                "This response only authorises preparation of the quote. It does not mean accepting a price, create a charge or create a work order. You will receive the final quote to review before deciding."
+              )}
             </p>
 
             <div style={styles.actions}>
@@ -496,8 +656,8 @@ export default function ClientePresupuestos() {
                 onClick={() => responderSolicitud(solicitud, "aceptado")}
               >
                 {accion === `solicitud-${solicitud.id}`
-                  ? "Registrando…"
-                  : "Aceptar solicitud"}
+                  ? t("Registrando…", "Recording…")
+                  : t("Aceptar solicitud", "Accept request")}
               </button>
 
               <button
@@ -506,7 +666,7 @@ export default function ClientePresupuestos() {
                 disabled={Boolean(accion)}
                 onClick={() => responderSolicitud(solicitud, "rechazado")}
               >
-                Rechazar solicitud
+                {t("Rechazar solicitud", "Reject request")}
               </button>
             </div>
           </div>
@@ -514,8 +674,10 @@ export default function ClientePresupuestos() {
 
         {solicitud.estado === "aceptada_pendiente_presupuesto" && (
           <p style={styles.info}>
-            Has aceptado la solicitud. Administración está preparando el
-            presupuesto económico. Todavía no hay factura ni pago pendiente.
+            {t(
+              "Has aceptado la solicitud. Administración está preparando el presupuesto económico. Todavía no hay factura ni pago pendiente.",
+              "You have accepted the request. The administration team is preparing the quote. There is no invoice or payment due yet."
+            )}
           </p>
         )}
 
@@ -523,49 +685,61 @@ export default function ClientePresupuestos() {
           <div style={styles.quoteBox}>
             <div style={styles.cardTop}>
               <h4 style={styles.quoteTitle}>
-                Presupuesto económico · versión {presupuesto.version}
+                {t("Presupuesto económico · versión", "Quote · version")}{" "}
+                {presupuesto.version}
               </h4>
-              <span style={styles.status}>{presupuesto.estado}</span>
+              <span style={styles.status}>
+                {estadoPresupuestoLabel(presupuesto.estado)}
+              </span>
             </div>
 
             {lineasPresupuesto.map((linea) => (
               <div key={linea.id} style={styles.lineRow}>
                 <span>
-                  {linea.concepto} · {Number(linea.cantidad).toLocaleString("es-ES")} ×{" "}
-                  {dinero(linea.precio_unitario)}
+                  {linea.concepto} ·{" "}
+                  {Number(linea.cantidad).toLocaleString(
+                    en ? "en-GB" : "es-ES"
+                  )}{" "}
+                  × {dinero(linea.precio_unitario, language)}
                 </span>
-                <strong>{dinero(linea.subtotal)}</strong>
+                <strong>{dinero(linea.subtotal, language)}</strong>
               </div>
             ))}
 
             {presupuesto.nota_cliente && (
               <p style={styles.bodyText}>
-                <strong>Nota de administración:</strong>{" "}
+                <strong>{t("Nota de administración:", "Administration note:")}</strong>{" "}
                 {presupuesto.nota_cliente}
               </p>
             )}
 
             <div style={styles.totalRow}>
-              <span>Base imponible</span>
-              <strong>{dinero(presupuesto.base)}</strong>
+              <span>{t("Base imponible", "Subtotal")}</span>
+              <strong>{dinero(presupuesto.base, language)}</strong>
             </div>
             <div style={styles.totalRow}>
-              <span>IVA (21%)</span>
-              <strong>{dinero(presupuesto.iva)}</strong>
+              <span>{t("IVA (21%)", "VAT (21%)")}</span>
+              <strong>{dinero(presupuesto.iva, language)}</strong>
             </div>
             <div style={styles.grandTotal}>
-              <span>Total del trabajo</span>
-              <strong>{dinero(presupuesto.total)}</strong>
+              <span>{t("Total del trabajo", "Work total")}</span>
+              <strong>{dinero(presupuesto.total, language)}</strong>
             </div>
 
             {presupuesto.estado === "enviado" &&
               solicitud.estado === "presupuesto_enviado" && (
                 <div style={styles.responseBox}>
-                  <strong>Revisa el presupuesto antes de responder.</strong>
+                  <strong>
+                    {t(
+                      "Revisa el presupuesto antes de responder.",
+                      "Review the quote before responding."
+                    )}
+                  </strong>
                   <p>
-                    Si lo aceptas, se generará la factura del trabajo. El pago
-                    se tramitará posteriormente mediante el aviso que envíe
-                    administración.
+                    {t(
+                      "Si lo aceptas, se generará la factura del trabajo. El pago se tramitará posteriormente mediante el aviso que envíe administración.",
+                      "If you accept, the work invoice will be created. Payment will be processed later through the notice sent by the administration team."
+                    )}
                   </p>
 
                   <div style={styles.actions}>
@@ -578,8 +752,8 @@ export default function ClientePresupuestos() {
                       }
                     >
                       {accion === `presupuesto-${presupuesto.id}`
-                        ? "Registrando…"
-                        : "Aceptar presupuesto"}
+                        ? t("Registrando…", "Recording…")
+                        : t("Aceptar presupuesto", "Accept quote")}
                     </button>
 
                     <button
@@ -590,7 +764,7 @@ export default function ClientePresupuestos() {
                         responderPresupuesto(presupuesto, "rechazado")
                       }
                     >
-                      Rechazar presupuesto
+                      {t("Rechazar presupuesto", "Reject quote")}
                     </button>
                   </div>
                 </div>
@@ -598,14 +772,16 @@ export default function ClientePresupuestos() {
 
             {presupuesto.estado === "aceptado" && (
               <p style={styles.paid}>
-                ✓ Has aceptado este presupuesto.
+                ✓ {t("Has aceptado este presupuesto.", "You have accepted this quote.")}
               </p>
             )}
 
             {presupuesto.estado === "rechazado" && (
               <p style={styles.muted}>
-                Has rechazado este presupuesto. No se ha generado el cobro
-                correspondiente a estos trabajos.
+                {t(
+                  "Has rechazado este presupuesto. No se ha generado el cobro correspondiente a estos trabajos.",
+                  "You have rejected this quote. No charge has been generated for this work."
+                )}
               </p>
             )}
           </div>
@@ -613,13 +789,15 @@ export default function ClientePresupuestos() {
 
         {renderEstadoFactura(
           solicitud.factura_trabajo_id,
-          "Factura de los trabajos"
+          t("Factura de los trabajos", "Work invoice")
         )}
 
         {solicitud.estado === "pagado" && (
           <p style={styles.paid}>
-            El pago del trabajo está confirmado. La asignación técnica depende
-            del proceso de la aplicación.
+            {t(
+              "El pago del trabajo está confirmado. La asignación técnica depende del proceso de la aplicación.",
+              "Payment for the work is confirmed. Technician assignment depends on the app's process."
+            )}
           </p>
         )}
       </article>
@@ -634,32 +812,35 @@ export default function ClientePresupuestos() {
       !extra.factura_id;
 
     const titulo = codigos.length
-      ? codigos.map((codigo) => SERVICIOS[codigo] || codigo).join(", ")
-      : extra.descripcion || "Servicio extra";
+      ? codigos.map((codigo) => servicioLabel(codigo)).join(", ")
+      : extra.descripcion || t("Servicio extra", "Extra service");
 
     return (
       <article key={extra.id} style={styles.card}>
         <div style={styles.cardTop}>
           <div>
             <h3 style={styles.cardTitle}>{titulo}</h3>
-            <p style={styles.muted}>{fecha(extra.creado_en)}</p>
+            <p style={styles.muted}>
+              {fecha(extra.creado_en, language)}
+            </p>
           </div>
 
           <span style={styles.status}>
-            {ESTADOS_EXTRA[extra.estado] || extra.estado}
+            {estadoExtraLabel(extra.estado)}
           </span>
         </div>
 
         <p style={styles.bodyText}>
-          <strong>Vivienda:</strong>{" "}
+          <strong>{t("Vivienda:", "Property:")}</strong>{" "}
           {extra.direccion ||
             viviendaPorId[String(extra.vivienda_id)]?.direccion ||
-            "Vivienda asociada"}
+            t("Vivienda asociada", "Associated property")}
         </p>
 
         {extra.descripcion && (
           <p style={styles.bodyText}>
-            <strong>Descripción:</strong> {extra.descripcion}
+            <strong>{t("Descripción:", "Description:")}</strong>{" "}
+            {extra.descripcion}
           </p>
         )}
 
@@ -667,24 +848,31 @@ export default function ClientePresupuestos() {
           <div style={styles.responseBox}>
             <strong>
               {esGestion
-                ? "Solicitud independiente de Gestión del técnico"
-                : "Solicitud de servicio extra"}
+                ? t(
+                    "Solicitud independiente de Gestión del técnico",
+                    "Separate Technician Management request"
+                  )
+                : t(
+                    "Solicitud de servicio extra",
+                    "Extra service request"
+                  )}
             </strong>
 
             {esGestion ? (
-              <>
-                <p>
-                  Base: 25,00 € · IVA: 5,25 € · Total: 30,25 €. Esta gestión
-                  es independiente de cualquier presupuesto y no genera
-                  asignación ni orden técnica.
-                </p>
-              </>
+              <p>
+                {t(
+                  "Base: 25,00 € · IVA: 5,25 € · Total: 30,25 €. Esta gestión es independiente de cualquier presupuesto y no genera asignación ni orden técnica.",
+                  "Subtotal: €25.00 · VAT: €5.25 · Total: €30.25. This management service is separate from any quote and does not assign a technician or create a work order."
+                )}
+              </p>
             ) : (
               <p>
-                Importe del servicio: {dinero(extra.precio)} antes de IVA,
-                salvo que la solicitud indique otra cosa. Si aceptas, se
-                generará la factura correspondiente. El técnico solo se
-                asignará después de confirmar el pago.
+                {t("Importe del servicio:", "Service amount:")}{" "}
+                {dinero(extra.precio, language)}{" "}
+                {t(
+                  "antes de IVA, salvo que la solicitud indique otra cosa. Si aceptas, se generará la factura correspondiente. El técnico solo se asignará después de confirmar el pago.",
+                  "before VAT, unless the request states otherwise. If you accept, the corresponding invoice will be created. A technician will only be assigned after payment is confirmed."
+                )}
               </p>
             )}
 
@@ -696,8 +884,8 @@ export default function ClientePresupuestos() {
                 onClick={() => responderExtra(extra, "aceptado")}
               >
                 {accion === `extra-${extra.id}`
-                  ? "Registrando…"
-                  : "Aceptar"}
+                  ? t("Registrando…", "Recording…")
+                  : t("Aceptar", "Accept")}
               </button>
 
               <button
@@ -706,7 +894,7 @@ export default function ClientePresupuestos() {
                 disabled={Boolean(accion)}
                 onClick={() => responderExtra(extra, "rechazado")}
               >
-                Rechazar
+                {t("Rechazar", "Reject")}
               </button>
             </div>
           </div>
@@ -715,16 +903,26 @@ export default function ClientePresupuestos() {
         {extra.factura_id &&
           renderEstadoFactura(
             extra.factura_id,
-            esGestion ? "Factura de Gestión" : "Factura del servicio"
+            esGestion
+              ? t("Factura de Gestión", "Management invoice")
+              : t("Factura del servicio", "Service invoice")
           )}
 
         {extra.estado === "aceptado_pendiente_pago" && (
           <p style={styles.info}>
-            Has aceptado este servicio. La factura está pendiente de pago y
-            administración gestionará el aviso correspondiente.
+            {t(
+              "Has aceptado este servicio. La factura está pendiente de pago y administración gestionará el aviso correspondiente.",
+              "You have accepted this service. The invoice is awaiting payment and the administration team will manage the relevant notice."
+            )}
             {esGestion
-              ? " El pago de Gestión no genera una orden ni asigna un técnico."
-              : " La asignación técnica solo se realizará después de confirmar el pago."}
+              ? t(
+                  " El pago de Gestión no genera una orden ni asigna un técnico.",
+                  " The Management payment does not create a work order or assign a technician."
+                )
+              : t(
+                  " La asignación técnica solo se realizará después de confirmar el pago.",
+                  " Technician assignment will only take place after payment is confirmed."
+                )}
           </p>
         )}
       </article>
@@ -734,25 +932,36 @@ export default function ClientePresupuestos() {
   return (
     <Menu>
       <div style={styles.page}>
-        <h1 style={styles.title}>Mis solicitudes y presupuestos</h1>
+        <h1 style={styles.title}>
+          {t("Mis solicitudes y presupuestos", "My requests and quotes")}
+        </h1>
 
         <p style={styles.subtitle}>
-          Aquí puedes consultar las solicitudes que te envía administración,
-          aceptar o rechazar servicios y revisar los presupuestos económicos.
+          {t(
+            "Aquí puedes consultar las solicitudes que te envía administración, aceptar o rechazar servicios y revisar los presupuestos económicos.",
+            "Here you can review requests sent by the administration team, accept or reject services, and review quotes."
+          )}
         </p>
 
         {error && <div style={styles.error}>{error}</div>}
         {mensaje && <div style={styles.success}>{mensaje}</div>}
 
         <section>
-          <h2 style={styles.heading}>Solicitudes de presupuesto</h2>
+          <h2 style={styles.heading}>
+            {t("Solicitudes de presupuesto", "Quote requests")}
+          </h2>
 
           {cargando ? (
-            <p style={styles.muted}>Cargando solicitudes…</p>
+            <p style={styles.muted}>
+              {t("Cargando solicitudes…", "Loading requests…")}
+            </p>
           ) : solicitudes.length === 0 ? (
             <div style={styles.card}>
               <p style={styles.muted}>
-                No tienes solicitudes de presupuesto en este momento.
+                {t(
+                  "No tienes solicitudes de presupuesto en este momento.",
+                  "You have no quote requests at the moment."
+                )}
               </p>
             </div>
           ) : (
@@ -761,14 +970,24 @@ export default function ClientePresupuestos() {
         </section>
 
         <section style={styles.section}>
-          <h2 style={styles.heading}>Servicios extra y Gestión del técnico</h2>
+          <h2 style={styles.heading}>
+            {t(
+              "Servicios extra y Gestión del técnico",
+              "Extra services and Technician Management"
+            )}
+          </h2>
 
           {cargando ? (
-            <p style={styles.muted}>Cargando servicios…</p>
+            <p style={styles.muted}>
+              {t("Cargando servicios…", "Loading services…")}
+            </p>
           ) : extras.length === 0 ? (
             <div style={styles.card}>
               <p style={styles.muted}>
-                No tienes servicios extra pendientes ni registrados.
+                {t(
+                  "No tienes servicios extra pendientes ni registrados.",
+                  "You have no pending or registered extra services."
+                )}
               </p>
             </div>
           ) : (
