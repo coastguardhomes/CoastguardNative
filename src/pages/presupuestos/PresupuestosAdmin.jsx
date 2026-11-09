@@ -1,4 +1,6 @@
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import Menu from "../../layouts/Menu.jsx";
 
@@ -49,7 +51,10 @@ function crearFormulario(solicitud) {
 }
 
 export default function PresupuestosAdmin() {
+  const navigate = useNavigate();
+
   const [solicitudes, setSolicitudes] = useState([]);
+  const [gestionExtras, setGestionExtras] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [viviendas, setViviendas] = useState([]);
   const [presupuestos, setPresupuestos] = useState([]);
@@ -84,7 +89,26 @@ export default function PresupuestosAdmin() {
       const lista = solicitudesData || [];
       setSolicitudes(lista);
 
-      if (!lista.length) {
+      // Gestión de presupuesto es un extra independiente.
+      // No pertenece a solicitudes_presupuesto y se carga por separado.
+      const {
+        data: extrasGestionData,
+        error: errorExtrasGestion,
+      } = await supabase
+        .from("extras")
+        .select(
+          "id,cliente_id,vivienda_id,descripcion,servicios_codigos,estado,estado_admin,factura_id,precio,creado_en,solicitud_presupuesto_id,tecnico_id"
+        )
+        .contains("servicios_codigos", ["gestion_tecnico"])
+        .is("solicitud_presupuesto_id", null)
+        .order("creado_en", { ascending: false });
+
+      if (errorExtrasGestion) throw errorExtrasGestion;
+
+      const extrasGestionLista = extrasGestionData || [];
+      setGestionExtras(extrasGestionLista);
+
+      if (!lista.length && !extrasGestionLista.length) {
         setClientes([]);
         setViviendas([]);
         setPresupuestos([]);
@@ -94,18 +118,35 @@ export default function PresupuestosAdmin() {
         return;
       }
 
-      const clienteIds = [...new Set(lista.map((s) => s.cliente_id))];
-      const viviendaIds = [...new Set(lista.map((s) => s.vivienda_id))];
+      const clienteIds = [
+        ...new Set(
+          [
+            ...lista.map((s) => s.cliente_id),
+            ...extrasGestionLista.map((e) => e.cliente_id),
+          ].filter(Boolean)
+        ),
+      ];
+
+      const viviendaIds = [
+        ...new Set(
+          [
+            ...lista.map((s) => s.vivienda_id),
+            ...extrasGestionLista.map((e) => e.vivienda_id),
+          ].filter(Boolean)
+        ),
+      ];
+
       const solicitudIds = lista.map((s) => s.id);
 
       const facturaIds = [
         ...new Set(
-          lista
-            .flatMap((s) => [
+          [
+            ...lista.flatMap((s) => [
               s.factura_gestion_id,
               s.factura_trabajo_id,
-            ])
-            .filter(Boolean)
+            ]),
+            ...extrasGestionLista.map((e) => e.factura_id),
+          ].filter(Boolean)
         ),
       ];
 
@@ -116,23 +157,29 @@ export default function PresupuestosAdmin() {
         facturasResult,
         eventosResult,
       ] = await Promise.all([
-        supabase
-          .from("clientes")
-          .select("id,nombre,email,telefono")
-          .in("id", clienteIds),
+        clienteIds.length
+          ? supabase
+              .from("clientes")
+              .select("id,nombre,email,telefono")
+              .in("id", clienteIds)
+          : Promise.resolve({ data: [], error: null }),
 
-        supabase
-          .from("viviendas")
-          .select("id,direccion")
-          .in("id", viviendaIds),
+        viviendaIds.length
+          ? supabase
+              .from("viviendas")
+              .select("id,direccion")
+              .in("id", viviendaIds)
+          : Promise.resolve({ data: [], error: null }),
 
-        supabase
-          .from("presupuestos")
-          .select(
-            "id,solicitud_id,version,estado,base,iva,total,nota_cliente,created_at,sent_at,responded_at,decision"
-          )
-          .in("solicitud_id", solicitudIds)
-          .order("version", { ascending: false }),
+        solicitudIds.length
+          ? supabase
+              .from("presupuestos")
+              .select(
+                "id,solicitud_id,version,estado,base,iva,total,nota_cliente,created_at,sent_at,responded_at,decision"
+              )
+              .in("solicitud_id", solicitudIds)
+              .order("version", { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
 
         facturaIds.length
           ? supabase
@@ -141,11 +188,13 @@ export default function PresupuestosAdmin() {
               .in("id", facturaIds)
           : Promise.resolve({ data: [], error: null }),
 
-        supabase
-          .from("presupuesto_eventos")
-          .select("id,solicitud_id,presupuesto_id,evento,created_at")
-          .in("solicitud_id", solicitudIds)
-          .order("created_at", { ascending: false }),
+        solicitudIds.length
+          ? supabase
+              .from("presupuesto_eventos")
+              .select("id,solicitud_id,presupuesto_id,evento,created_at")
+              .in("solicitud_id", solicitudIds)
+              .order("created_at", { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
       if (clientesResult.error) throw clientesResult.error;
@@ -340,17 +389,37 @@ export default function PresupuestosAdmin() {
 
     if (!f) {
       return (
-        <p style={styles.muted}>
-          {label}: factura #{id}.
-        </p>
+        <div style={styles.invoiceRow}>
+          <p style={styles.muted}>
+            {label}: factura #{id}.
+          </p>
+
+          <button
+            type="button"
+            style={styles.secondaryButton}
+            onClick={() => navigate(`/facturas/ver/${id}`)}
+          >
+            Abrir factura
+          </button>
+        </div>
       );
     }
 
     return (
-      <p style={facturaPagada(f) ? styles.paid : styles.muted}>
-        {label}: {f.numero || `#${f.id}`} · {dinero(f.total)} ·{" "}
-        {facturaPagada(f) ? "pagada" : "pendiente de pago"}
-      </p>
+      <div style={styles.invoiceRow}>
+        <p style={facturaPagada(f) ? styles.paid : styles.muted}>
+          {label}: {f.numero || `#${f.id}`} · {dinero(f.total)} ·{" "}
+          {facturaPagada(f) ? "pagada" : "pendiente de pago"}
+        </p>
+
+        <button
+          type="button"
+          style={styles.secondaryButton}
+          onClick={() => navigate(`/facturas/ver/${id}`)}
+        >
+          Abrir factura
+        </button>
+      </div>
     );
   };
 
@@ -368,6 +437,151 @@ export default function PresupuestosAdmin() {
         {error && <div style={styles.error}>{error}</div>}
         {mensaje && <div style={styles.success}>{mensaje}</div>}
 
+        {/* GESTIÓN DE PRESUPUESTO: FLUJO INDEPENDIENTE */}
+        <section style={styles.managementSection}>
+          <h2 style={styles.sectionTitle}>Gestión de presupuesto</h2>
+
+          <p style={styles.muted}>
+            Solicitudes independientes de gestión administrativa. No generan
+            orden de trabajo ni asignación de técnico. Su aceptación crea una
+            factura separada de 30,25 €.
+          </p>
+
+          {cargando ? (
+            <p style={styles.muted}>Cargando gestiones…</p>
+          ) : gestionExtras.length === 0 ? (
+            <p style={styles.muted}>
+              No hay solicitudes independientes de Gestión de presupuesto.
+            </p>
+          ) : (
+            gestionExtras.map((extra) => {
+              const cliente = clienteMap[extra.cliente_id] || {};
+              const vivienda = viviendaMap[extra.vivienda_id] || {};
+
+              const factura = extra.factura_id
+                ? facturaMap[String(extra.factura_id)]
+                : null;
+
+              const estadoGestion = {
+                pendiente_aceptacion_cliente:
+                  "Pendiente de aceptación del cliente",
+                aceptado_pendiente_pago:
+                  "Aceptada · pendiente de pago",
+                rechazado_cliente:
+                  "Rechazada por el cliente",
+                pagado:
+                  "Pagada",
+                completado:
+                  "Completada",
+              }[extra.estado] || extra.estado || "Estado no disponible";
+
+              const aceptada =
+                extra.estado === "aceptado_pendiente_pago";
+
+              const rechazada =
+                extra.estado === "rechazado_cliente";
+
+              const pagada = facturaPagada(factura);
+
+              return (
+                <article
+                  key={extra.id}
+                  style={styles.managementCard}
+                >
+                  <div style={styles.top}>
+                    <div>
+                      <h3 style={styles.cardTitle}>
+                        {cliente.nombre || "Cliente"} ·{" "}
+                        {vivienda.direccion ||
+                          `Vivienda #${extra.vivienda_id || "—"}`}
+                      </h3>
+
+                      <p style={styles.muted}>
+                        Solicitud #
+                        {String(extra.id).slice(0, 8).toUpperCase()}
+                        {extra.creado_en
+                          ? ` · ${new Date(extra.creado_en).toLocaleString("es-ES")}`
+                          : ""}
+                      </p>
+
+                      {cliente.email && (
+                        <p style={styles.muted}>{cliente.email}</p>
+                      )}
+                    </div>
+
+                    <span
+                      style={
+                        pagada
+                          ? styles.statusPaid
+                          : rechazada
+                          ? styles.statusRejected
+                          : styles.status
+                      }
+                    >
+                      {estadoGestion}
+                    </span>
+                  </div>
+
+                  <p style={styles.body}>
+                    <strong>Concepto:</strong> Gestión de presupuesto
+                  </p>
+
+                  <p style={styles.body}>
+                    <strong>Importe:</strong>{" "}
+                    {factura?.total != null
+                      ? dinero(factura.total)
+                      : dinero(Number(extra.precio || 25) * 1.21)}
+                    {factura
+                      ? ` · ${pagada ? "Factura pagada" : "Factura pendiente de pago"}`
+                      : aceptada
+                      ? " · Factura vinculada no encontrada en el listado"
+                      : ""}
+                  </p>
+
+                  {extra.factura_id ? (
+                    <div style={styles.invoiceRow}>
+                      <span style={styles.muted}>
+                        Factura: {factura?.numero || `#${extra.factura_id}`}
+                      </span>
+
+                      <button
+                        type="button"
+                        style={styles.primaryButton}
+                        onClick={() =>
+                          navigate(`/facturas/ver/${extra.factura_id}`)
+                        }
+                      >
+                        Abrir factura y gestionar pago
+                      </button>
+                    </div>
+                  ) : aceptada ? (
+                    <p style={styles.warning}>
+                      La solicitud figura como aceptada, pero no tiene una
+                      factura vinculada. Revisa este registro antes de cobrar.
+                    </p>
+                  ) : null}
+
+                  {aceptada && !pagada && (
+                    <p style={styles.warning}>
+                      El cliente ya aceptó la gestión. No vuelvas a enviarla
+                      ni a crear otro extra; abre la factura para continuar
+                      con el aviso de pago.
+                    </p>
+                  )}
+
+                  {extra.tecnico_id && (
+                    <p style={styles.error}>
+                      Atención: esta gestión independiente tiene un técnico
+                      asociado. No debería generar asignación técnica.
+                    </p>
+                  )}
+                </article>
+              );
+            })
+          )}
+        </section>
+
+        {/* PRESUPUESTOS ECONÓMICOS DE LOS TRABAJOS */}
         {cargando ? (
           <p style={styles.muted}>Cargando solicitudes…</p>
         ) : solicitudes.length === 0 ? (
@@ -396,10 +610,11 @@ export default function PresupuestosAdmin() {
               formularios[solicitud.id] ||
               crearFormulario(solicitud);
 
-            const puedePreparar = [
-              "aceptada_pendiente_presupuesto",
-              "presupuesto_enviado",
-            ].includes(solicitud.estado);
+            // Solo se prepara el presupuesto económico después de
+            // aceptar la solicitud y si todavía no hay factura de trabajo.
+            const puedePreparar =
+              solicitud.estado === "aceptada_pendiente_presupuesto" &&
+              !solicitud.factura_trabajo_id;
 
             return (
               <article key={solicitud.id} style={styles.card}>
@@ -533,10 +748,7 @@ export default function PresupuestosAdmin() {
                         style={styles.primaryButton}
                         onClick={() => abrirEditor(solicitud)}
                       >
-                        {solicitud.estado ===
-                        "presupuesto_enviado"
-                          ? "Preparar nueva versión"
-                          : "Preparar y enviar presupuesto"}
+                        Preparar y enviar presupuesto
                       </button>
                     ) : (
                       <div>
@@ -701,8 +913,8 @@ export default function PresupuestosAdmin() {
                 {solicitud.estado === "aceptada_pendiente_presupuesto" && (
                   <p style={styles.paid}>
                     ✓ El cliente ha aceptado la solicitud. Ya puedes
-                    preparar el presupuesto económico. La Gestión del
-                    técnico es independiente y no es un requisito.
+                    preparar el presupuesto económico. La Gestión de
+                    presupuesto es independiente y no es un requisito.
                   </p>
                 )}
 
@@ -714,8 +926,7 @@ export default function PresupuestosAdmin() {
                   </p>
                 )}
 
-                {solicitud.estado ===
-                  "aceptado_pendiente_pago" && (
+                {solicitud.estado === "aceptado_pendiente_pago" && (
                   <p style={styles.warning}>
                     El cliente ha aceptado. El técnico sigue sin
                     asignarse hasta que se confirme el pago de la
@@ -820,6 +1031,26 @@ const styles = {
     fontWeight: 800,
     textTransform: "uppercase",
   },
+  statusPaid: {
+    color: "#34d399",
+    background: "rgba(16,185,129,.1)",
+    border: "1px solid rgba(52,211,153,.3)",
+    borderRadius: 8,
+    padding: "5px 8px",
+    fontSize: 10,
+    fontWeight: 800,
+    textTransform: "uppercase",
+  },
+  statusRejected: {
+    color: "#fca5a5",
+    background: "rgba(239,68,68,.1)",
+    border: "1px solid rgba(248,113,113,.3)",
+    borderRadius: 8,
+    padding: "5px 8px",
+    fontSize: 10,
+    fontWeight: 800,
+    textTransform: "uppercase",
+  },
   muted: {
     color: "#94a3b8",
     fontSize: 12,
@@ -830,6 +1061,33 @@ const styles = {
     color: "#cbd5e1",
     fontSize: 13,
     lineHeight: 1.5,
+  },
+  managementSection: {
+    border: "1px solid rgba(234,179,8,.3)",
+    background: "rgba(234,179,8,.035)",
+    borderRadius: 15,
+    padding: 14,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    color: "#fbbf24",
+    fontSize: 17,
+    fontWeight: 900,
+    margin: "0 0 8px",
+  },
+  managementCard: {
+    border: "1px solid rgba(234,179,8,.2)",
+    background: "rgba(8,15,26,.7)",
+    borderRadius: 11,
+    padding: 12,
+    marginTop: 10,
+  },
+  invoiceRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    flexWrap: "wrap",
   },
   quote: {
     border: "1px solid rgba(77,184,255,.22)",
