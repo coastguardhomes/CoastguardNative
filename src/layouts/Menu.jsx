@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -25,32 +26,125 @@ export default function Menu({ children }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { role } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
-  // ---------------- ITEMS ADMIN (DINÁMICOS CON TRADUCCIÓN) ----------------
+  const en = language === "en";
+
+  // Traducciones del menú.
+  // Se definen localmente para no depender de claves
+  // que todavía no existan en LanguageContext.
+  const etiquetaMenu = (clave, fallbackEs, fallbackEn) => {
+    const traduccion = t(clave);
+
+    // Si la clave no existe en el diccionario,
+    // useLanguage devuelve la propia clave.
+    if (!traduccion || traduccion === clave) {
+      return en ? fallbackEn : fallbackEs;
+    }
+
+    return traduccion;
+  };
+
+  // ---------------- ITEMS ADMIN ----------------
   const ITEMS_ADMIN = [
-    { ruta: "/inicio", etiqueta: t("inicio") || "Inicio", icono: FaHome },
-    { ruta: "/clientes", etiqueta: t("clientes") || "Clientes", icono: FaUsers },
-    { ruta: "/viviendas", etiqueta: t("viviendas") || "Viviendas", icono: FaBuilding },
-    { ruta: "/inspecciones", etiqueta: t("inspecciones") || "Inspecciones", icono: FaSearch },
-    { ruta: "/servicios", etiqueta: t("servicios") || "Servicios", icono: FaTools },
-    { ruta: "/presupuestos", etiqueta: t("presupuestos") || "Presupuestos", icono: FaClipboardList },
-    { ruta: "/contratos", etiqueta: t("contratos") || "Contratos", icono: FaFileContract },
-    { ruta: "/facturas", etiqueta: t("facturas") || "Facturas", icono: FaMoneyBillWave },
-    { ruta: "/tecnicos", etiqueta: t("tecnicos") || "Técnicos", icono: FaKey },
-    { ruta: "/admin/dashboard", etiqueta: t("dashboard") || "Dashboard", icono: FaChartBar },
-    { ruta: "/ajustes", etiqueta: t("ajustes") || "Ajustes", icono: FaCog },
+    {
+      ruta: "/inicio",
+      etiqueta: etiquetaMenu("inicio", "Inicio", "Home"),
+      icono: FaHome,
+    },
+    {
+      ruta: "/clientes",
+      etiqueta: etiquetaMenu("clientes", "Clientes", "Clients"),
+      icono: FaUsers,
+    },
+    {
+      ruta: "/viviendas",
+      etiqueta: etiquetaMenu("viviendas", "Viviendas", "Properties"),
+      icono: FaBuilding,
+    },
+    {
+      ruta: "/inspecciones",
+      etiqueta: etiquetaMenu("inspecciones", "Inspecciones", "Inspections"),
+      icono: FaSearch,
+    },
+    {
+      ruta: "/servicios",
+      etiqueta: etiquetaMenu("servicios", "Servicios", "Services"),
+      icono: FaTools,
+    },
+    {
+      ruta: "/presupuestos",
+      etiqueta: etiquetaMenu("presupuestos", "Presupuestos", "Quotes"),
+      icono: FaClipboardList,
+    },
+    {
+      ruta: "/contratos",
+      etiqueta: etiquetaMenu("contratos", "Contratos", "Contracts"),
+      icono: FaFileContract,
+    },
+    {
+      ruta: "/facturas",
+      etiqueta: etiquetaMenu("facturas", "Facturas", "Invoices"),
+      icono: FaMoneyBillWave,
+    },
+    {
+      ruta: "/tecnicos",
+      etiqueta: etiquetaMenu("tecnicos", "Técnicos", "Technicians"),
+      icono: FaKey,
+    },
+    {
+      ruta: "/admin/dashboard",
+      etiqueta: etiquetaMenu("dashboard", "Dashboard", "Dashboard"),
+      icono: FaChartBar,
+    },
+    {
+      ruta: "/ajustes",
+      etiqueta: etiquetaMenu("ajustes", "Ajustes", "Settings"),
+      icono: FaCog,
+    },
   ];
 
-  // ---------------- ITEMS CLIENTE (DINÁMICOS CON TRADUCCIÓN) ----------------
+  // ---------------- ITEMS CLIENTE ----------------
   const ITEMS_CLIENTE = [
-    { ruta: "/cliente", etiqueta: t("inicio") || "Inicio", icono: FaHome },
-    { ruta: "/cliente/contratos", etiqueta: t("contratos") || "Contratos", icono: FaFileContract },
-    { ruta: "/cliente/inspecciones", etiqueta: t("inspecciones") || "Inspecciones", icono: FaClipboardCheck },
-    { ruta: "/cliente/presupuestos", etiqueta: t("presupuestos") || "Mis presupuestos", icono: FaClipboardList },
-    { ruta: "/cliente/facturas", etiqueta: t("facturas") || "Facturas", icono: FaMoneyBillWave },
-    { ruta: "/cliente/perfil", etiqueta: t("perfil") || "Perfil", icono: FaUsers },
-    { ruta: "/ajustes", etiqueta: t("ajustes") || "Ajustes", icono: FaCog },
+    {
+      ruta: "/cliente",
+      etiqueta: etiquetaMenu("inicio", "Inicio", "Home"),
+      icono: FaHome,
+    },
+    {
+      ruta: "/cliente/contratos",
+      etiqueta: etiquetaMenu("contratos", "Contratos", "Contracts"),
+      icono: FaFileContract,
+    },
+    {
+      ruta: "/cliente/inspecciones",
+      etiqueta: etiquetaMenu("inspecciones", "Inspecciones", "Inspections"),
+      icono: FaClipboardCheck,
+    },
+    {
+      ruta: "/cliente/presupuestos",
+      etiqueta: etiquetaMenu(
+        "presupuestos",
+        "Mis presupuestos",
+        "My quotes"
+      ),
+      icono: FaClipboardList,
+    },
+    {
+      ruta: "/cliente/facturas",
+      etiqueta: etiquetaMenu("facturas", "Facturas", "Invoices"),
+      icono: FaMoneyBillWave,
+    },
+    {
+      ruta: "/cliente/perfil",
+      etiqueta: etiquetaMenu("perfil", "Perfil", "Profile"),
+      icono: FaUsers,
+    },
+    {
+      ruta: "/ajustes",
+      etiqueta: etiquetaMenu("ajustes", "Ajustes", "Settings"),
+      icono: FaCog,
+    },
   ];
 
   // ---------------- MENÚ SEGÚN ROL ----------------
@@ -60,15 +154,12 @@ export default function Menu({ children }) {
     ITEMS = ITEMS_ADMIN;
   } else if (role === "cliente") {
     ITEMS = ITEMS_CLIENTE;
-  } else {
-    ITEMS = null; // técnico → sin menú inferior
   }
 
   return (
     <div style={estilos.contenedor}>
       <main style={estilos.contenido}>{children}</main>
 
-      {/* Renderizar menú solo si ITEMS existe */}
       {ITEMS && (
         <nav style={estilos.barra}>
           {ITEMS.map(({ ruta, etiqueta, icono: Icono }) => {
@@ -79,9 +170,16 @@ export default function Menu({ children }) {
               <div
                 key={ruta}
                 onClick={() => navigate(ruta)}
-                style={{ ...estilos.item, opacity: activo ? 1 : 0.82 }}
+                style={{
+                  ...estilos.item,
+                  opacity: activo ? 1 : 0.82,
+                }}
               >
-                <Icono color={AZUL_ICONO} />
+                <Icono
+                  color={AZUL_ICONO}
+                  size={19}
+                />
+
                 <span
                   style={{
                     ...estilos.etiqueta,
@@ -109,34 +207,54 @@ const estilos = {
     display: "flex",
     flexDirection: "column",
   },
+
   contenido: {
     flex: 1,
     paddingBottom: "calc(84px + env(safe-area-inset-bottom, 0px))",
   },
+
   barra: {
     position: "fixed",
     bottom: 0,
     left: 0,
     right: 0,
     display: "flex",
-    justifyContent: "space-around",
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    gap: "14px",
     overflowX: "auto",
+    overflowY: "hidden",
     backgroundColor: "#0b0c10",
     borderTop: "2px solid #1f2833",
-    padding: "10px 4px calc(10px + env(safe-area-inset-bottom, 0px))",
+    padding: "10px 12px calc(10px + env(safe-area-inset-bottom, 0px))",
     zIndex: 50,
+    boxSizing: "border-box",
+    WebkitOverflowScrolling: "touch",
+    scrollbarWidth: "none",
   },
+
   item: {
-    flex: "1 0 auto",
-    minWidth: 74,
+    flex: "0 0 auto",
+    minWidth: "68px",
+    maxWidth: "100px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
+    justifyContent: "center",
+    gap: "4px",
+    padding: "0 3px",
     cursor: "pointer",
+    boxSizing: "border-box",
+    textAlign: "center",
   },
+
   etiqueta: {
-    fontSize: "0.9rem",
-    marginTop: "4px",
-    whiteSpace: "nowrap",
+    fontSize: "11px",
+    lineHeight: "14px",
+    marginTop: "0",
+    whiteSpace: "normal",
+    textAlign: "center",
+    overflowWrap: "break-word",
   },
 };
