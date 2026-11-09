@@ -1,29 +1,46 @@
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import Menu from "../../layouts/Menu.jsx";
 
-const SERVICIOS = [
-  { codigo: "apertura_vivienda", nombre: "Apertura de vivienda" },
-  { codigo: "supervision", nombre: "Supervisión (por hora o fracción)" },
-  { codigo: "cierre_vivienda", nombre: "Cierre de vivienda" },
-  { codigo: "coste_tecnico", nombre: "Coste del técnico" },
-];
-
-const ESTADOS = {
-  pendiente_pago_gestion: "Pendiente de pago de la gestión",
-  gestion_pagada: "Gestión pagada · preparando presupuesto",
-  presupuesto_enviado: "Presupuesto pendiente de tu respuesta",
-  aceptado_pendiente_pago: "Presupuesto aceptado · pendiente de pago",
-  rechazado: "Presupuesto rechazado",
-  pagado: "Trabajo pagado · técnico asignado",
-  pagado_sin_tecnico: "Pago confirmado · requiere asignación administrativa",
-  completado: "Trabajo completado",
-  cancelado: "Solicitud cancelada",
+const SERVICIOS = {
+  apertura_vivienda: "Apertura de vivienda",
+  supervision: "Supervisión",
+  cierre_vivienda: "Cierre de vivienda",
+  coste_tecnico: "Coste del técnico",
+  urgencia: "Urgencia / Emergencia",
+  visita_rapida: "Visita rápida",
+  inspeccion_tormenta: "Inspección posterior a tormenta",
+  gestion_tecnico: "Gestión del técnico",
 };
 
-const dinero = (valor) => `${Number(valor || 0).toFixed(2)} €`;
+const ESTADOS_SOLICITUD = {
+  pendiente_aceptacion_cliente: "Pendiente de tu aceptación",
+  aceptada_pendiente_presupuesto: "Solicitud aceptada · preparando presupuesto",
+  presupuesto_enviado: "Presupuesto pendiente de tu respuesta",
+  aceptado_pendiente_pago: "Presupuesto aceptado · pendiente de pago",
+  pendiente_aceptacion_gestion: "Estado anterior: pendiente de aceptación",
+  pendiente_pago_gestion: "Estado anterior: pendiente de pago",
+  gestion_pagada: "Estado anterior: gestión pagada",
+  rechazado: "Rechazado",
+  pagado: "Trabajo pagado",
+  pagado_sin_tecnico: "Pago confirmado · revisión administrativa",
+  completado: "Completado",
+  cancelado: "Cancelado",
+};
+
+const ESTADOS_EXTRA = {
+  pendiente_aceptacion_cliente: "Pendiente de tu aceptación",
+  aceptado_pendiente_pago: "Aceptado · pendiente de pago",
+  rechazado_cliente: "Rechazado",
+  pagado: "Pagado",
+  completado: "Completado",
+};
+
+const dinero = (valor) =>
+  `${Number(valor || 0).toFixed(2).replace(".", ",")} €`;
 
 const estaPagada = (factura) =>
   [factura?.estado_pago, factura?.estado].some((estado) =>
@@ -32,6 +49,14 @@ const estaPagada = (factura) =>
     )
   );
 
+const fecha = (valor) => {
+  if (!valor) return "Fecha no disponible";
+  const parsed = new Date(valor);
+  return Number.isNaN(parsed.getTime())
+    ? "Fecha no disponible"
+    : parsed.toLocaleString("es-ES");
+};
+
 export default function ClientePresupuestos() {
   const { user } = useAuth();
   const location = useLocation();
@@ -39,16 +64,12 @@ export default function ClientePresupuestos() {
   const [cliente, setCliente] = useState(null);
   const [viviendas, setViviendas] = useState([]);
   const [solicitudes, setSolicitudes] = useState([]);
+  const [extras, setExtras] = useState([]);
   const [presupuestos, setPresupuestos] = useState([]);
   const [lineas, setLineas] = useState([]);
   const [facturas, setFacturas] = useState([]);
 
-  const [viviendaId, setViviendaId] = useState("");
-  const [servicios, setServicios] = useState([]);
-  const [descripcion, setDescripcion] = useState("");
-
   const [cargando, setCargando] = useState(true);
-  const [guardando, setGuardando] = useState(false);
   const [accion, setAccion] = useState("");
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -68,7 +89,7 @@ export default function ClientePresupuestos() {
         error: errorCliente,
       } = await supabase
         .from("clientes")
-        .select("id, nombre, usuario_id, user_id")
+        .select("id,nombre,usuario_id,user_id")
         .or(`usuario_id.eq.${user.id},user_id.eq.${user.id}`)
         .maybeSingle();
 
@@ -80,11 +101,11 @@ export default function ClientePresupuestos() {
 
       setCliente(clienteActual);
 
-      const [viviendasResult, solicitudesResult] =
+      const [viviendasResult, solicitudesResult, extrasResult] =
         await Promise.all([
           supabase
             .from("viviendas")
-            .select("id, direccion, activa, tecnico_id")
+            .select("id,direccion,activa,tecnico_id")
             .eq("cliente_id", clienteActual.id)
             .eq("activa", true)
             .order("direccion"),
@@ -92,43 +113,52 @@ export default function ClientePresupuestos() {
           supabase
             .from("solicitudes_presupuesto")
             .select(
-              "id,cliente_id,vivienda_id,servicios_solicitados,descripcion_cliente,estado,factura_gestion_id,extra_gestion_id,factura_trabajo_id,extra_trabajo_id,gestion_pagada_en,trabajo_pagado_en,created_at,updated_at"
+              "id,cliente_id,vivienda_id,servicios_solicitados,descripcion_cliente,estado,factura_gestion_id,extra_gestion_id,factura_trabajo_id,extra_trabajo_id,created_at,updated_at"
             )
             .eq("cliente_id", clienteActual.id)
             .order("created_at", { ascending: false }),
+
+          supabase
+            .from("extras")
+            .select(
+              "id,descripcion,precio,estado,cliente_id,direccion,factura_id,vivienda_id,tecnico_id,estado_admin,servicios_codigos,creado_en,solicitud_presupuesto_id,presupuesto_id,fase_presupuesto"
+            )
+            .eq("cliente_id", clienteActual.id)
+            .is("solicitud_presupuesto_id", null)
+            .order("creado_en", { ascending: false }),
         ]);
 
       if (viviendasResult.error) throw viviendasResult.error;
       if (solicitudesResult.error) throw solicitudesResult.error;
+      if (extrasResult.error) throw extrasResult.error;
 
       const listaSolicitudes = solicitudesResult.data || [];
+      const listaExtras = extrasResult.data || [];
 
       setViviendas(viviendasResult.data || []);
       setSolicitudes(listaSolicitudes);
+      setExtras(listaExtras);
 
       const solicitudIds = listaSolicitudes.map((s) => s.id);
 
-      if (!solicitudIds.length) {
-        setPresupuestos([]);
-        setLineas([]);
-        setFacturas([]);
-        return;
+      let listaPresupuestos = [];
+
+      if (solicitudIds.length) {
+        const {
+          data: presupuestosData,
+          error: errorPresupuestos,
+        } = await supabase
+          .from("presupuestos")
+          .select(
+            "id,solicitud_id,version,estado,base,iva,total,nota_cliente,created_at,sent_at,responded_at,decision"
+          )
+          .in("solicitud_id", solicitudIds)
+          .order("version", { ascending: false });
+
+        if (errorPresupuestos) throw errorPresupuestos;
+
+        listaPresupuestos = presupuestosData || [];
       }
-
-      const {
-        data: presupuestosData,
-        error: errorPresupuestos,
-      } = await supabase
-        .from("presupuestos")
-        .select(
-          "id,solicitud_id,version,estado,base,iva,total,nota_cliente,created_at,sent_at,responded_at,decision"
-        )
-        .in("solicitud_id", solicitudIds)
-        .order("version", { ascending: false });
-
-      if (errorPresupuestos) throw errorPresupuestos;
-
-      const listaPresupuestos = presupuestosData || [];
 
       setPresupuestos(listaPresupuestos);
 
@@ -153,12 +183,13 @@ export default function ClientePresupuestos() {
 
       const facturaIds = [
         ...new Set(
-          listaSolicitudes
-            .flatMap((s) => [
+          [
+            ...listaSolicitudes.flatMap((s) => [
               s.factura_gestion_id,
               s.factura_trabajo_id,
-            ])
-            .filter(Boolean)
+            ]),
+            ...listaExtras.map((e) => e.factura_id),
+          ].filter(Boolean)
         ),
       ];
 
@@ -168,9 +199,7 @@ export default function ClientePresupuestos() {
           error: errorFacturas,
         } = await supabase
           .from("facturas")
-          .select(
-            "id, numero, estado, estado_pago, total, descripcion"
-          )
+          .select("id,numero,estado,estado_pago,total,descripcion")
           .in("id", facturaIds);
 
         if (errorFacturas) throw errorFacturas;
@@ -180,14 +209,8 @@ export default function ClientePresupuestos() {
         setFacturas([]);
       }
     } catch (e) {
-      console.error(
-        "Error cargando presupuestos del cliente:",
-        e
-      );
-
-      setError(
-        e.message || "No se pudieron cargar tus presupuestos."
-      );
+      console.error("Error cargando solicitudes y presupuestos:", e);
+      setError(e.message || "No se pudieron cargar tus solicitudes.");
     } finally {
       setCargando(false);
     }
@@ -202,11 +225,11 @@ export default function ClientePresupuestos() {
 
     if (params.get("pago") === "success") {
       setMensaje(
-        "Stripe ha devuelto el pago como completado. Estamos actualizando la factura; si todavía aparece pendiente, espera unos segundos y vuelve a cargar esta pantalla."
+        "Stripe ha devuelto el pago como completado. La confirmación definitiva depende de la actualización de la factura."
       );
     } else if (params.get("pago") === "cancelled") {
       setMensaje(
-        "El proceso de pago se ha cancelado. Puedes volver a intentarlo cuando quieras."
+        "El proceso de pago se ha cancelado. Si administración te ha enviado un enlace de pago, podrás utilizarlo de nuevo."
       );
     }
   }, [location.search]);
@@ -219,104 +242,77 @@ export default function ClientePresupuestos() {
     [facturas]
   );
 
-  const alternarServicio = (codigo) => {
-    setServicios((actuales) =>
-      actuales.includes(codigo)
-        ? actuales.filter((x) => x !== codigo)
-        : [...actuales, codigo]
-    );
-  };
+  const viviendaPorId = useMemo(
+    () =>
+      Object.fromEntries(
+        viviendas.map((v) => [String(v.id), v])
+      ),
+    [viviendas]
+  );
 
-  const crearSolicitud = async (e) => {
-    e.preventDefault();
-
-    setError("");
-    setMensaje("");
-
-    if (!viviendaId) {
-      return setError("Selecciona la vivienda.");
-    }
-
-    if (!servicios.length) {
-      return setError("Selecciona al menos un servicio.");
-    }
-
-    const vivienda = viviendas.find(
-      (v) => String(v.id) === String(viviendaId)
-    );
-
-    if (!vivienda) {
-      return setError(
-        "No se encontró la vivienda seleccionada."
-      );
-    }
-
-    if (!vivienda.tecnico_id) {
-      return setError(
-        "Esta vivienda todavía no tiene un técnico activo asignado. Contacta con administración para que pueda tramitar la solicitud."
-      );
-    }
-
-    setGuardando(true);
-
-    try {
-      const {
-        data,
-        error: rpcError,
-      } = await supabase.rpc("solicitar_presupuesto", {
-        p_vivienda_id: Number(viviendaId),
-        p_servicios: servicios,
-        p_descripcion: descripcion.trim() || null,
-      });
-
-      if (rpcError) throw rpcError;
-
-      setMensaje(
-        `Solicitud creada. El primer cobro de gestión es de ${dinero(
-          data?.total || 30.25
-        )} (25,00 € + IVA). Este pago solo cubre la gestión del presupuesto; no incluye los trabajos ni se descuenta del presupuesto posterior.`
-      );
-
-      setViviendaId("");
-      setServicios([]);
-      setDescripcion("");
-
-      await cargarDatos();
-    } catch (e) {
-      console.error(
-        "Error creando solicitud de presupuesto:",
-        e
-      );
-
-      setError(
-        e.message || "No se pudo crear la solicitud."
-      );
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  const responder = async (presupuesto, decision) => {
-    const verbo =
-      decision === "aceptado" ? "aceptar" : "rechazar";
+  const responderSolicitud = async (solicitud, decision) => {
+    const verbo = decision === "aceptado" ? "aceptar" : "rechazar";
 
     if (
       !window.confirm(
-        `¿Confirmas que deseas ${verbo} este presupuesto? La decisión quedará registrada en la aplicación.`
+        `¿Confirmas que deseas ${verbo} esta solicitud? Esta respuesta quedará registrada.`
       )
     ) {
       return;
     }
 
-    setAccion(presupuesto.id);
+    setAccion(`solicitud-${solicitud.id}`);
     setError("");
     setMensaje("");
 
     try {
-      const {
-        data,
-        error: rpcError,
-      } = await supabase.rpc(
+      const { data, error: rpcError } = await supabase.rpc(
+        "cliente_responder_solicitud_presupuesto",
+        {
+          p_solicitud_id: solicitud.id,
+          p_decision: decision,
+        }
+      );
+
+      if (rpcError) throw rpcError;
+
+      if (decision === "aceptado") {
+        setMensaje(
+          "Has aceptado la solicitud. Administración ha recibido el aviso y podrá preparar el presupuesto económico. Esta aceptación no genera factura, cobro ni orden de trabajo."
+        );
+      } else {
+        setMensaje(
+          "Has rechazado la solicitud. Administración ha recibido el aviso. No se ha generado factura ni orden de trabajo."
+        );
+      }
+
+      await cargarDatos();
+      return data;
+    } catch (e) {
+      console.error("Error respondiendo a la solicitud:", e);
+      setError(e.message || "No se pudo registrar tu respuesta.");
+    } finally {
+      setAccion("");
+    }
+  };
+
+  const responderPresupuesto = async (presupuesto, decision) => {
+    const verbo = decision === "aceptado" ? "aceptar" : "rechazar";
+
+    if (
+      !window.confirm(
+        `¿Confirmas que deseas ${verbo} este presupuesto económico?`
+      )
+    ) {
+      return;
+    }
+
+    setAccion(`presupuesto-${presupuesto.id}`);
+    setError("");
+    setMensaje("");
+
+    try {
+      const { data, error: rpcError } = await supabase.rpc(
         "cliente_responder_presupuesto",
         {
           p_presupuesto_id: presupuesto.id,
@@ -329,73 +325,82 @@ export default function ClientePresupuestos() {
 
       if (decision === "aceptado") {
         setMensaje(
-          "Presupuesto aceptado. Se ha creado una segunda factura independiente para los trabajos aceptados. El técnico no se asignará hasta que el pago de esa factura quede confirmado."
+          "Presupuesto aceptado. Se ha creado la factura del trabajo. Administración debe revisarla y enviarte el aviso o enlace de pago desde su gestión de facturas. El técnico no se asigna hasta que el pago quede confirmado."
         );
       } else {
         setMensaje(
-          "Has rechazado el presupuesto. La decisión ha quedado registrada y no se ha creado una factura de trabajo."
+          "Has rechazado el presupuesto económico. La decisión ha quedado registrada y no se ha creado una factura de trabajo."
         );
       }
 
       await cargarDatos();
+      return data;
     } catch (e) {
-      console.error(
-        "Error respondiendo al presupuesto:",
-        e
-      );
-
-      setError(
-        e.message || "No se pudo registrar tu respuesta."
-      );
+      console.error("Error respondiendo al presupuesto:", e);
+      setError(e.message || "No se pudo registrar tu respuesta.");
     } finally {
       setAccion("");
     }
   };
 
-  const pagarFactura = async (facturaId) => {
-    setAccion(`pago-${facturaId}`);
+  const responderExtra = async (extra, decision) => {
+    const verbo = decision === "aceptado" ? "aceptar" : "rechazar";
+
+    if (
+      !window.confirm(
+        `¿Confirmas que deseas ${verbo} este servicio?`
+      )
+    ) {
+      return;
+    }
+
+    setAccion(`extra-${extra.id}`);
     setError("");
+    setMensaje("");
 
     try {
-      const {
-        data,
-        error: invokeError,
-      } = await supabase.functions.invoke(
-        "create-checkout-session",
+      const { data, error: rpcError } = await supabase.rpc(
+        "cliente_responder_extra",
         {
-          body: {
-            facturaId: Number(facturaId),
-          },
+          p_extra_id: extra.id,
+          p_decision: decision,
         }
       );
 
-      if (invokeError) throw invokeError;
+      if (rpcError) throw rpcError;
 
-      const url = String(data?.url || "").trim();
+      const esGestion = (extra.servicios_codigos || []).includes(
+        "gestion_tecnico"
+      );
 
-      if (!url) {
-        throw new Error(
-          data?.error ||
-            "Stripe no devolvió el enlace de pago."
+      if (decision === "aceptado") {
+        setMensaje(
+          esGestion
+            ? "Has aceptado Gestión del técnico. Se ha creado su factura independiente. No genera asignación ni orden técnica. Administración gestionará el aviso de pago."
+            : "Has aceptado el servicio. Se ha creado la factura correspondiente. Administración gestionará el aviso de pago y el técnico solo se asignará cuando el pago quede confirmado."
+        );
+      } else {
+        setMensaje(
+          "Has rechazado el servicio. Administración ha recibido la respuesta."
         );
       }
 
-      window.location.assign(url);
+      await cargarDatos();
+      return data;
     } catch (e) {
-      console.error(
-        "Error creando el pago de presupuesto:",
-        e
-      );
-
-      setError(
-        e.message || "No se pudo iniciar el pago."
-      );
-
+      console.error("Error respondiendo al servicio extra:", e);
+      setError(e.message || "No se pudo registrar tu respuesta.");
+    } finally {
       setAccion("");
     }
   };
 
-  const renderPago = (facturaId, etiqueta) => {
+  const ultimoPresupuesto = (solicitudId) =>
+    presupuestos
+      .filter((p) => p.solicitud_id === solicitudId)
+      .sort((a, b) => Number(b.version) - Number(a.version))[0] || null;
+
+  const renderEstadoFactura = (facturaId, etiqueta) => {
     if (!facturaId) return null;
 
     const factura = facturaPorId[String(facturaId)];
@@ -403,7 +408,7 @@ export default function ClientePresupuestos() {
     if (!factura) {
       return (
         <p style={styles.muted}>
-          Cargando estado del aviso de pago #{facturaId}…
+          La factura está pendiente de actualización.
         </p>
       );
     }
@@ -411,390 +416,363 @@ export default function ClientePresupuestos() {
     if (estaPagada(factura)) {
       return (
         <p style={styles.paid}>
-          ✓ {etiqueta}: pagada ({dinero(factura.total)})
+          ✓ {etiqueta}: pago confirmado ({dinero(factura.total)})
         </p>
       );
     }
 
     return (
-      <div style={styles.paymentRow}>
+      <div style={styles.paymentNotice}>
+        <strong>
+          {etiqueta}: {dinero(factura.total)}
+        </strong>
         <span>
-          {etiqueta}: {dinero(factura.total)} · pendiente
+          Pendiente de pago. Administración debe enviarte el aviso o enlace
+          correspondiente desde la gestión de facturas.
         </span>
-
-        <button
-          type="button"
-          style={styles.payButton}
-          disabled={accion === `pago-${facturaId}`}
-          onClick={() => pagarFactura(facturaId)}
-        >
-          {accion === `pago-${facturaId}`
-            ? "Abriendo Stripe…"
-            : "Pagar ahora"}
-        </button>
       </div>
     );
   };
 
-  const ultimoPresupuesto = (solicitudId) =>
-    presupuestos
-      .filter((p) => p.solicitud_id === solicitudId)
-      .sort(
-        (a, b) => Number(b.version) - Number(a.version)
-      )[0] || null;
+  const renderSolicitudPresupuesto = (solicitud) => {
+    const presupuesto = ultimoPresupuesto(solicitud.id);
+    const lineasPresupuesto = presupuesto
+      ? lineas.filter((l) => l.presupuesto_id === presupuesto.id)
+      : [];
+
+    const vivienda = viviendaPorId[String(solicitud.vivienda_id)];
+    const pendienteAceptacion =
+      solicitud.estado === "pendiente_aceptacion_cliente";
+
+    return (
+      <article key={solicitud.id} style={styles.card}>
+        <div style={styles.cardTop}>
+          <div>
+            <h3 style={styles.cardTitle}>
+              Solicitud {String(solicitud.id).slice(0, 8).toUpperCase()}
+            </h3>
+            <p style={styles.muted}>{fecha(solicitud.created_at)}</p>
+          </div>
+
+          <span style={styles.status}>
+            {ESTADOS_SOLICITUD[solicitud.estado] || solicitud.estado}
+          </span>
+        </div>
+
+        <p style={styles.bodyText}>
+          <strong>Vivienda:</strong>{" "}
+          {vivienda?.direccion || `Vivienda #${solicitud.vivienda_id}`}
+        </p>
+
+        <p style={styles.bodyText}>
+          <strong>Servicios solicitados:</strong>{" "}
+          {(solicitud.servicios_solicitados || [])
+            .map((codigo) => SERVICIOS[codigo] || codigo)
+            .join(", ")}
+        </p>
+
+        {solicitud.descripcion_cliente && (
+          <div style={styles.descriptionBox}>
+            <strong>Descripción e indicaciones de administración</strong>
+            <p>{solicitud.descripcion_cliente}</p>
+          </div>
+        )}
+
+        {pendienteAceptacion && (
+          <div style={styles.responseBox}>
+            <strong>¿Aceptas que administración prepare este presupuesto?</strong>
+            <p>
+              Esta respuesta solo autoriza la preparación del presupuesto
+              económico. No supone aceptar un precio, no genera un cobro y no
+              crea una orden de trabajo. Recibirás el presupuesto final para
+              revisarlo antes de decidir.
+            </p>
+
+            <div style={styles.actions}>
+              <button
+                type="button"
+                style={styles.acceptButton}
+                disabled={Boolean(accion)}
+                onClick={() => responderSolicitud(solicitud, "aceptado")}
+              >
+                {accion === `solicitud-${solicitud.id}`
+                  ? "Registrando…"
+                  : "Aceptar solicitud"}
+              </button>
+
+              <button
+                type="button"
+                style={styles.rejectButton}
+                disabled={Boolean(accion)}
+                onClick={() => responderSolicitud(solicitud, "rechazado")}
+              >
+                Rechazar solicitud
+              </button>
+            </div>
+          </div>
+        )}
+
+        {solicitud.estado === "aceptada_pendiente_presupuesto" && (
+          <p style={styles.info}>
+            Has aceptado la solicitud. Administración está preparando el
+            presupuesto económico. Todavía no hay factura ni pago pendiente.
+          </p>
+        )}
+
+        {presupuesto && (
+          <div style={styles.quoteBox}>
+            <div style={styles.cardTop}>
+              <h4 style={styles.quoteTitle}>
+                Presupuesto económico · versión {presupuesto.version}
+              </h4>
+              <span style={styles.status}>{presupuesto.estado}</span>
+            </div>
+
+            {lineasPresupuesto.map((linea) => (
+              <div key={linea.id} style={styles.lineRow}>
+                <span>
+                  {linea.concepto} · {Number(linea.cantidad).toLocaleString("es-ES")} ×{" "}
+                  {dinero(linea.precio_unitario)}
+                </span>
+                <strong>{dinero(linea.subtotal)}</strong>
+              </div>
+            ))}
+
+            {presupuesto.nota_cliente && (
+              <p style={styles.bodyText}>
+                <strong>Nota de administración:</strong>{" "}
+                {presupuesto.nota_cliente}
+              </p>
+            )}
+
+            <div style={styles.totalRow}>
+              <span>Base imponible</span>
+              <strong>{dinero(presupuesto.base)}</strong>
+            </div>
+            <div style={styles.totalRow}>
+              <span>IVA (21%)</span>
+              <strong>{dinero(presupuesto.iva)}</strong>
+            </div>
+            <div style={styles.grandTotal}>
+              <span>Total del trabajo</span>
+              <strong>{dinero(presupuesto.total)}</strong>
+            </div>
+
+            {presupuesto.estado === "enviado" &&
+              solicitud.estado === "presupuesto_enviado" && (
+                <div style={styles.responseBox}>
+                  <strong>Revisa el presupuesto antes de responder.</strong>
+                  <p>
+                    Si lo aceptas, se generará la factura del trabajo. El pago
+                    se tramitará posteriormente mediante el aviso que envíe
+                    administración.
+                  </p>
+
+                  <div style={styles.actions}>
+                    <button
+                      type="button"
+                      style={styles.acceptButton}
+                      disabled={Boolean(accion)}
+                      onClick={() =>
+                        responderPresupuesto(presupuesto, "aceptado")
+                      }
+                    >
+                      {accion === `presupuesto-${presupuesto.id}`
+                        ? "Registrando…"
+                        : "Aceptar presupuesto"}
+                    </button>
+
+                    <button
+                      type="button"
+                      style={styles.rejectButton}
+                      disabled={Boolean(accion)}
+                      onClick={() =>
+                        responderPresupuesto(presupuesto, "rechazado")
+                      }
+                    >
+                      Rechazar presupuesto
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            {presupuesto.estado === "aceptado" && (
+              <p style={styles.paid}>
+                ✓ Has aceptado este presupuesto.
+              </p>
+            )}
+
+            {presupuesto.estado === "rechazado" && (
+              <p style={styles.muted}>
+                Has rechazado este presupuesto. No se ha generado el cobro
+                correspondiente a estos trabajos.
+              </p>
+            )}
+          </div>
+        )}
+
+        {renderEstadoFactura(
+          solicitud.factura_trabajo_id,
+          "Factura de los trabajos"
+        )}
+
+        {solicitud.estado === "pagado" && (
+          <p style={styles.paid}>
+            El pago del trabajo está confirmado. La asignación técnica depende
+            del proceso de la aplicación.
+          </p>
+        )}
+      </article>
+    );
+  };
+
+  const renderExtra = (extra) => {
+    const codigos = extra.servicios_codigos || [];
+    const esGestion = codigos.includes("gestion_tecnico");
+    const pendiente =
+      extra.estado === "pendiente_aceptacion_cliente" &&
+      !extra.factura_id;
+
+    const titulo = codigos.length
+      ? codigos.map((codigo) => SERVICIOS[codigo] || codigo).join(", ")
+      : extra.descripcion || "Servicio extra";
+
+    return (
+      <article key={extra.id} style={styles.card}>
+        <div style={styles.cardTop}>
+          <div>
+            <h3 style={styles.cardTitle}>{titulo}</h3>
+            <p style={styles.muted}>{fecha(extra.creado_en)}</p>
+          </div>
+
+          <span style={styles.status}>
+            {ESTADOS_EXTRA[extra.estado] || extra.estado}
+          </span>
+        </div>
+
+        <p style={styles.bodyText}>
+          <strong>Vivienda:</strong>{" "}
+          {extra.direccion ||
+            viviendaPorId[String(extra.vivienda_id)]?.direccion ||
+            "Vivienda asociada"}
+        </p>
+
+        {extra.descripcion && (
+          <p style={styles.bodyText}>
+            <strong>Descripción:</strong> {extra.descripcion}
+          </p>
+        )}
+
+        {pendiente && (
+          <div style={styles.responseBox}>
+            <strong>
+              {esGestion
+                ? "Solicitud independiente de Gestión del técnico"
+                : "Solicitud de servicio extra"}
+            </strong>
+
+            {esGestion ? (
+              <>
+                <p>
+                  Base: 25,00 € · IVA: 5,25 € · Total: 30,25 €. Esta gestión
+                  es independiente de cualquier presupuesto y no genera
+                  asignación ni orden técnica.
+                </p>
+              </>
+            ) : (
+              <p>
+                Importe del servicio: {dinero(extra.precio)} antes de IVA,
+                salvo que la solicitud indique otra cosa. Si aceptas, se
+                generará la factura correspondiente. El técnico solo se
+                asignará después de confirmar el pago.
+              </p>
+            )}
+
+            <div style={styles.actions}>
+              <button
+                type="button"
+                style={styles.acceptButton}
+                disabled={Boolean(accion)}
+                onClick={() => responderExtra(extra, "aceptado")}
+              >
+                {accion === `extra-${extra.id}`
+                  ? "Registrando…"
+                  : "Aceptar"}
+              </button>
+
+              <button
+                type="button"
+                style={styles.rejectButton}
+                disabled={Boolean(accion)}
+                onClick={() => responderExtra(extra, "rechazado")}
+              >
+                Rechazar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {extra.factura_id &&
+          renderEstadoFactura(
+            extra.factura_id,
+            esGestion ? "Factura de Gestión" : "Factura del servicio"
+          )}
+
+        {extra.estado === "aceptado_pendiente_pago" && (
+          <p style={styles.info}>
+            Has aceptado este servicio. La factura está pendiente de pago y
+            administración gestionará el aviso correspondiente.
+            {esGestion
+              ? " El pago de Gestión no genera una orden ni asigna un técnico."
+              : " La asignación técnica solo se realizará después de confirmar el pago."}
+          </p>
+        )}
+      </article>
+    );
+  };
 
   return (
     <Menu>
       <div style={styles.page}>
-        <h1 style={styles.title}>
-          Mis solicitudes y presupuestos
-        </h1>
+        <h1 style={styles.title}>Mis solicitudes y presupuestos</h1>
 
         <p style={styles.subtitle}>
-          Solicita un trabajo, paga la gestión inicial, consulta
-          el presupuesto y acepta o rechaza desde esta aplicación.
+          Aquí puedes consultar las solicitudes que te envía administración,
+          aceptar o rechazar servicios y revisar los presupuestos económicos.
         </p>
 
-        {error && (
-          <div style={styles.error}>{error}</div>
-        )}
-
-        {mensaje && (
-          <div style={styles.success}>{mensaje}</div>
-        )}
-
-        <form
-          onSubmit={crearSolicitud}
-          style={styles.card}
-        >
-          <h2 style={styles.heading}>
-            Solicitar un presupuesto
-          </h2>
-
-          <label style={styles.label}>
-            Vivienda
-          </label>
-
-          <select
-            value={viviendaId}
-            onChange={(e) => setViviendaId(e.target.value)}
-            style={styles.input}
-            disabled={guardando || cargando}
-          >
-            <option value="">
-              Selecciona una vivienda
-            </option>
-
-            {viviendas.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.direccion || `Vivienda #${v.id}`}
-                {!v.tecnico_id
-                  ? " — sin técnico asignado"
-                  : ""}
-              </option>
-            ))}
-          </select>
-
-          <label style={styles.label}>
-            ¿Qué trabajo necesitas?
-          </label>
-
-          <div style={styles.checkList}>
-            {SERVICIOS.map((servicio) => (
-              <label
-                key={servicio.codigo}
-                style={styles.checkItem}
-              >
-                <input
-                  type="checkbox"
-                  checked={servicios.includes(
-                    servicio.codigo
-                  )}
-                  onChange={() =>
-                    alternarServicio(servicio.codigo)
-                  }
-                  disabled={guardando}
-                />
-
-                <span>{servicio.nombre}</span>
-              </label>
-            ))}
-          </div>
-
-          <label style={styles.label}>
-            Detalles adicionales (opcional)
-          </label>
-
-          <textarea
-            value={descripcion}
-            onChange={(e) =>
-              setDescripcion(e.target.value)
-            }
-            maxLength={2000}
-            rows={3}
-            style={styles.textarea}
-            placeholder="Describe brevemente qué necesitas…"
-            disabled={guardando}
-          />
-
-          <div style={styles.feeNotice}>
-            <strong>
-              Primer cobro: 30,25 € (IVA incluido).
-            </strong>
-
-            <span>
-              Corresponde únicamente a la gestión para
-              contactar con el técnico y obtener el presupuesto.
-              No incluye los trabajos, no se descuenta del
-              segundo presupuesto y no asigna todavía un técnico.
-            </span>
-          </div>
-
-          <button
-            type="submit"
-            disabled={guardando || cargando || !cliente}
-            style={styles.primaryButton}
-          >
-            {guardando
-              ? "Creando solicitud…"
-              : "Solicitar presupuesto y generar cobro de gestión"}
-          </button>
-        </form>
+        {error && <div style={styles.error}>{error}</div>}
+        {mensaje && <div style={styles.success}>{mensaje}</div>}
 
         <section>
-          <h2 style={styles.heading}>
-            Historial de solicitudes
-          </h2>
+          <h2 style={styles.heading}>Solicitudes de presupuesto</h2>
 
           {cargando ? (
-            <p style={styles.muted}>
-              Cargando solicitudes…
-            </p>
+            <p style={styles.muted}>Cargando solicitudes…</p>
           ) : solicitudes.length === 0 ? (
             <div style={styles.card}>
               <p style={styles.muted}>
-                Todavía no tienes solicitudes de presupuesto.
+                No tienes solicitudes de presupuesto en este momento.
               </p>
             </div>
           ) : (
-            solicitudes.map((solicitud) => {
-              const presupuesto = ultimoPresupuesto(
-                solicitud.id
-              );
+            solicitudes.map(renderSolicitudPresupuesto)
+          )}
+        </section>
 
-              const lineasPresupuesto = presupuesto
-                ? lineas.filter(
-                    (l) =>
-                      l.presupuesto_id === presupuesto.id
-                  )
-                : [];
+        <section style={styles.section}>
+          <h2 style={styles.heading}>Servicios extra y Gestión del técnico</h2>
 
-              const facturaGestion =
-                facturaPorId[
-                  String(solicitud.factura_gestion_id)
-                ];
-
-              const facturaTrabajo =
-                facturaPorId[
-                  String(solicitud.factura_trabajo_id)
-                ];
-
-              return (
-                <article
-                  key={solicitud.id}
-                  style={styles.card}
-                >
-                  <div style={styles.cardTop}>
-                    <div>
-                      <h3 style={styles.cardTitle}>
-                        Solicitud{" "}
-                        {String(solicitud.id)
-                          .slice(0, 8)
-                          .toUpperCase()}
-                      </h3>
-
-                      <p style={styles.muted}>
-                        {new Date(
-                          solicitud.created_at
-                        ).toLocaleString("es-ES")}
-                      </p>
-                    </div>
-
-                    <span style={styles.status}>
-                      {ESTADOS[solicitud.estado] ||
-                        solicitud.estado}
-                    </span>
-                  </div>
-
-                  <p style={styles.bodyText}>
-                    <strong>Servicios solicitados:</strong>{" "}
-                    {(solicitud.servicios_solicitados || [])
-                      .map(
-                        (codigo) =>
-                          SERVICIOS.find(
-                            (s) => s.codigo === codigo
-                          )?.nombre || codigo
-                      )
-                      .join(", ")}
-                  </p>
-
-                  {solicitud.descripcion_cliente && (
-                    <p style={styles.bodyText}>
-                      <strong>Detalles:</strong>{" "}
-                      {solicitud.descripcion_cliente}
-                    </p>
-                  )}
-
-                  {renderPago(
-                    solicitud.factura_gestion_id,
-                    "Gestión inicial"
-                  )}
-
-                  {presupuesto && (
-                    <div style={styles.quoteBox}>
-                      <div style={styles.cardTop}>
-                        <h4 style={styles.quoteTitle}>
-                          Presupuesto · versión{" "}
-                          {presupuesto.version}
-                        </h4>
-
-                        <span style={styles.status}>
-                          {presupuesto.estado}
-                        </span>
-                      </div>
-
-                      {lineasPresupuesto.map((linea) => (
-                        <div
-                          key={linea.id}
-                          style={styles.lineRow}
-                        >
-                          <span>
-                            {linea.concepto} ·{" "}
-                            {Number(
-                              linea.cantidad
-                            ).toFixed(2)}{" "}
-                            ×{" "}
-                            {dinero(
-                              linea.precio_unitario
-                            )}
-                          </span>
-
-                          <strong>
-                            {dinero(linea.subtotal)}
-                          </strong>
-                        </div>
-                      ))}
-
-                      {presupuesto.nota_cliente && (
-                        <p style={styles.bodyText}>
-                          <strong>Nota:</strong>{" "}
-                          {presupuesto.nota_cliente}
-                        </p>
-                      )}
-
-                      <div style={styles.totalRow}>
-                        <span>Base imponible</span>
-                        <strong>
-                          {dinero(presupuesto.base)}
-                        </strong>
-                      </div>
-
-                      <div style={styles.totalRow}>
-                        <span>IVA (21%)</span>
-                        <strong>
-                          {dinero(presupuesto.iva)}
-                        </strong>
-                      </div>
-
-                      <div style={styles.grandTotal}>
-                        <span>Total del trabajo</span>
-                        <strong>
-                          {dinero(presupuesto.total)}
-                        </strong>
-                      </div>
-
-                      {presupuesto.estado === "enviado" &&
-                        solicitud.estado ===
-                          "presupuesto_enviado" && (
-                          <div style={styles.actions}>
-                            <button
-                              type="button"
-                              style={styles.acceptButton}
-                              disabled={Boolean(accion)}
-                              onClick={() =>
-                                responder(
-                                  presupuesto,
-                                  "aceptado"
-                                )
-                              }
-                            >
-                              {accion === presupuesto.id
-                                ? "Registrando…"
-                                : "Aceptar presupuesto"}
-                            </button>
-
-                            <button
-                              type="button"
-                              style={styles.rejectButton}
-                              disabled={Boolean(accion)}
-                              onClick={() =>
-                                responder(
-                                  presupuesto,
-                                  "rechazado"
-                                )
-                              }
-                            >
-                              {accion === presupuesto.id
-                                ? "Registrando…"
-                                : "Rechazar presupuesto"}
-                            </button>
-                          </div>
-                        )}
-
-                      {presupuesto.estado === "aceptado" && (
-                        <p style={styles.paid}>
-                          ✓ Aceptación registrada el{" "}
-                          {presupuesto.responded_at
-                            ? new Date(
-                                presupuesto.responded_at
-                              ).toLocaleString("es-ES")
-                            : ""}
-                        </p>
-                      )}
-
-                      {presupuesto.estado === "rechazado" && (
-                        <p style={styles.muted}>
-                          Presupuesto rechazado. No se ha
-                          generado el cobro de los trabajos.
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {solicitud.factura_trabajo_id &&
-                    renderPago(
-                      solicitud.factura_trabajo_id,
-                      "Trabajos aceptados"
-                    )}
-
-                  {facturaTrabajo &&
-                    estaPagada(facturaTrabajo) && (
-                      <p style={styles.paid}>
-                        El pago del trabajo está confirmado.
-                        El técnico se asigna mediante el
-                        proceso automático de la aplicación.
-                      </p>
-                    )}
-
-                  {!facturaGestion &&
-                    solicitud.factura_gestion_id && (
-                      <p style={styles.muted}>
-                        El aviso de gestión está registrándose.
-                      </p>
-                    )}
-                </article>
-              );
-            })
+          {cargando ? (
+            <p style={styles.muted}>Cargando servicios…</p>
+          ) : extras.length === 0 ? (
+            <div style={styles.card}>
+              <p style={styles.muted}>
+                No tienes servicios extra pendientes ni registrados.
+              </p>
+            </div>
+          ) : (
+            extras.map(renderExtra)
           )}
         </section>
       </div>
@@ -834,101 +812,17 @@ const styles = {
     fontWeight: 800,
   },
 
+  section: {
+    marginTop: 26,
+  },
+
   card: {
-    background:
-      "linear-gradient(145deg,#0b1320 0%,#04070d 100%)",
+    background: "linear-gradient(145deg,#0b1320 0%,#04070d 100%)",
     border: "1px solid rgba(224,176,52,.35)",
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     boxShadow: "0 10px 25px rgba(0,0,0,.3)",
-  },
-
-  label: {
-    display: "block",
-    color: "#cbd5e1",
-    fontSize: 12,
-    fontWeight: 800,
-    margin: "12px 0 7px",
-    textTransform: "uppercase",
-  },
-
-  input: {
-    width: "100%",
-    boxSizing: "border-box",
-    background: "#111d2e",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,.16)",
-    borderRadius: 9,
-    padding: 12,
-    fontSize: 14,
-  },
-
-  textarea: {
-    width: "100%",
-    boxSizing: "border-box",
-    background: "#111d2e",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,.16)",
-    borderRadius: 9,
-    padding: 12,
-    fontSize: 14,
-    resize: "vertical",
-  },
-
-  checkList: {
-    display: "grid",
-    gap: 9,
-    margin: "10px 0",
-  },
-
-  checkItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    color: "#e2e8f0",
-    fontSize: 14,
-    padding: "8px 0",
-  },
-
-  feeNotice: {
-    display: "grid",
-    gap: 5,
-    padding: 12,
-    borderRadius: 10,
-    background: "rgba(245,158,11,.09)",
-    border: "1px solid rgba(245,158,11,.35)",
-    color: "#fbbf24",
-    fontSize: 12,
-    lineHeight: 1.5,
-    margin: "14px 0",
-  },
-
-  primaryButton: {
-    width: "100%",
-    border: 0,
-    borderRadius: 10,
-    padding: 14,
-    background:
-      "linear-gradient(135deg,#e0b034,#b88918)",
-    color: "#090b10",
-    fontWeight: 900,
-    fontSize: 14,
-    cursor: "pointer",
-  },
-
-  status: {
-    display: "inline-block",
-    color: "#fbbf24",
-    background: "rgba(245,158,11,.1)",
-    border: "1px solid rgba(245,158,11,.35)",
-    borderRadius: 8,
-    padding: "5px 8px",
-    fontSize: 10,
-    fontWeight: 800,
-    textTransform: "uppercase",
-    maxWidth: 180,
-    textAlign: "center",
   },
 
   cardTop: {
@@ -953,6 +847,20 @@ const styles = {
     fontWeight: 900,
   },
 
+  status: {
+    display: "inline-block",
+    color: "#fbbf24",
+    background: "rgba(245,158,11,.1)",
+    border: "1px solid rgba(245,158,11,.35)",
+    borderRadius: 8,
+    padding: "5px 8px",
+    fontSize: 10,
+    fontWeight: 800,
+    textTransform: "uppercase",
+    maxWidth: 190,
+    textAlign: "center",
+  },
+
   muted: {
     color: "#94a3b8",
     fontSize: 12,
@@ -963,6 +871,38 @@ const styles = {
   bodyText: {
     color: "#cbd5e1",
     fontSize: 13,
+    lineHeight: 1.5,
+  },
+
+  descriptionBox: {
+    padding: 12,
+    marginTop: 12,
+    borderRadius: 10,
+    background: "rgba(56,189,248,.07)",
+    border: "1px solid rgba(56,189,248,.25)",
+    color: "#bae6fd",
+    fontSize: 13,
+    lineHeight: 1.5,
+  },
+
+  responseBox: {
+    padding: 13,
+    marginTop: 14,
+    borderRadius: 10,
+    background: "rgba(245,158,11,.07)",
+    border: "1px solid rgba(245,158,11,.3)",
+    color: "#fcd34d",
+    fontSize: 13,
+    lineHeight: 1.5,
+  },
+
+  info: {
+    color: "#7dd3fc",
+    background: "rgba(14,116,144,.12)",
+    border: "1px solid rgba(56,189,248,.25)",
+    borderRadius: 9,
+    padding: 11,
+    fontSize: 12,
     lineHeight: 1.5,
   },
 
@@ -1034,28 +974,17 @@ const styles = {
     cursor: "pointer",
   },
 
-  paymentRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-    padding: 10,
+  paymentNotice: {
+    display: "grid",
+    gap: 5,
+    padding: 11,
     marginTop: 12,
     background: "rgba(245,158,11,.08)",
+    border: "1px solid rgba(245,158,11,.25)",
     borderRadius: 9,
     color: "#fbbf24",
     fontSize: 12,
-  },
-
-  payButton: {
-    border: 0,
-    borderRadius: 8,
-    padding: "10px 14px",
-    background: "#38bdf8",
-    color: "#06111d",
-    fontWeight: 900,
-    cursor: "pointer",
+    lineHeight: 1.5,
   },
 
   paid: {
