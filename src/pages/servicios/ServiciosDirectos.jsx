@@ -1,17 +1,16 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu.jsx";
 import { supabase } from "../../lib/supabase";
 
 const SERVICIOS_DISPONIBLES = [
-  { codigo: "urgencia", nombre: "Urgencia / Emergencia", tipo: "directo", precio: 50, etiqueta: "50 €" },
-  { codigo: "apertura_vivienda", nombre: "Apertura de vivienda", tipo: "presupuesto", etiqueta: "Presupuesto" },
-  { codigo: "supervision", nombre: "Supervisión", tipo: "presupuesto", etiqueta: "Desde 35 €/hora o fracción" },
-  { codigo: "cierre_vivienda", nombre: "Cierre de vivienda", tipo: "presupuesto", etiqueta: "Presupuesto" },
-  { codigo: "gestion_tecnico", nombre: "Gestión de presupuesto", tipo: "gestion", etiqueta: "25 € + IVA (30,25 €)" },
-  { codigo: "visita_rapida", nombre: "Visita rápida", tipo: "directo", precio: 25, etiqueta: "25 €" },
-  { codigo: "inspeccion_tormenta", nombre: "Inspección posterior a tormenta", tipo: "directo", precio: 35, etiqueta: "35 €" },
+  { codigo: "urgencia", nombre: "Urgencia / Emergencia", tipo: "fijo", precio: 50, etiqueta: "50 €" },
+  { codigo: "apertura_vivienda", nombre: "Apertura de vivienda", tipo: "fijo", precio: 30, etiqueta: "30 €" },
+  { codigo: "supervision", nombre: "Supervisión", tipo: "supervision", precio: 35, etiqueta: "35 €/hora o fracción" },
+  { codigo: "cierre_vivienda", nombre: "Cierre de vivienda", tipo: "fijo", precio: 30, etiqueta: "30 €" },
+  { codigo: "gestion_tecnico", nombre: "Gestión de presupuesto", tipo: "fijo", precio: 25, etiqueta: "25 € + IVA" },
+  { codigo: "visita_rapida", nombre: "Visita rápida", tipo: "fijo", precio: 25, etiqueta: "25 €" },
+  { codigo: "inspeccion_tormenta", nombre: "Inspección posterior a tormenta", tipo: "fijo", precio: 35, etiqueta: "35 €" },
   { codigo: "coste_tecnico", nombre: "Coste del técnico", tipo: "variable", etiqueta: "Precio variable" },
 ];
 
@@ -29,16 +28,14 @@ export default function ServiciosDirectos() {
   const [seleccionados, setSeleccionados] = useState([]);
   const [descripcionPresupuesto, setDescripcionPresupuesto] = useState("");
   const [precioCosteTecnico, setPrecioCosteTecnico] = useState("");
+  const [horasSupervision, setHorasSupervision] = useState("1");
 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
 
-  const [resultadoDirecto, setResultadoDirecto] = useState(null);
-  const [resultadoCosteTecnico, setResultadoCosteTecnico] = useState(null);
-  const [resultadoPresupuesto, setResultadoPresupuesto] = useState(null);
-  const [resultadoGestion, setResultadoGestion] = useState(null);
+  const [resultadoUnificado, setResultadoUnificado] = useState(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -95,16 +92,8 @@ export default function ServiciosDirectos() {
     (v) => String(v.id) === String(viviendaId)
   );
 
-  const serviciosDirectos = SERVICIOS_DISPONIBLES.filter(
-    (s) => s.tipo === "directo" && seleccionados.includes(s.codigo)
-  );
-
-  const serviciosPresupuesto = SERVICIOS_DISPONIBLES.filter(
-    (s) => s.tipo === "presupuesto" && seleccionados.includes(s.codigo)
-  ).map((s) => s.codigo);
-
-  const gestionSeleccionada = seleccionados.includes("gestion_tecnico");
   const costeTecnicoSeleccionado = seleccionados.includes("coste_tecnico");
+  const supervisionSeleccionada = seleccionados.includes("supervision");
 
   const precioCosteNumerico = redondear(precioCosteTecnico);
   const precioCosteValido =
@@ -113,19 +102,41 @@ export default function ServiciosDirectos() {
     precioCosteNumerico > 0 &&
     precioCosteNumerico <= 100000;
 
-  const ivaCosteTecnico = precioCosteValido
-    ? redondear(precioCosteNumerico * IVA)
+  const horasSupervisionNumericas = Number(horasSupervision);
+  const cantidadSupervisionValida =
+    horasSupervision.trim() !== "" &&
+    Number.isFinite(horasSupervisionNumericas) &&
+    horasSupervisionNumericas > 0 &&
+    horasSupervisionNumericas <= 1000;
+  const cantidadSupervision = cantidadSupervisionValida
+    ? Math.ceil(horasSupervisionNumericas)
     : 0;
 
-  const totalCosteTecnico = precioCosteValido
-    ? redondear(precioCosteNumerico + ivaCosteTecnico)
-    : 0;
+  const lineasSeleccionadas = SERVICIOS_DISPONIBLES
+    .filter((servicio) => seleccionados.includes(servicio.codigo))
+    .map((servicio) => ({
+      codigo: servicio.codigo,
+      concepto: servicio.nombre,
+      cantidad: servicio.codigo === "supervision" ? cantidadSupervision : 1,
+      precio_unitario:
+        servicio.codigo === "coste_tecnico"
+          ? precioCosteNumerico
+          : servicio.precio,
+    }));
 
-  const baseDirectos = redondear(
-    serviciosDirectos.reduce((total, servicio) => total + servicio.precio, 0)
+  const lineasCalculables = lineasSeleccionadas.filter(
+    (linea) =>
+      (linea.codigo !== "coste_tecnico" || precioCosteValido) &&
+      (linea.codigo !== "supervision" || cantidadSupervisionValida)
   );
-  const ivaDirectos = redondear(baseDirectos * IVA);
-  const totalDirectos = redondear(baseDirectos + ivaDirectos);
+  const baseConjunta = redondear(
+    lineasCalculables.reduce(
+      (total, linea) => total + linea.cantidad * linea.precio_unitario,
+      0
+    )
+  );
+  const ivaConjunto = redondear(baseConjunta * IVA);
+  const totalConjunto = redondear(baseConjunta + ivaConjunto);
 
   const alternarServicio = (codigo) => {
     setSeleccionados((actuales) =>
@@ -136,8 +147,11 @@ export default function ServiciosDirectos() {
 
     if (codigo === "coste_tecnico" && seleccionados.includes(codigo)) {
       setPrecioCosteTecnico("");
-      setResultadoCosteTecnico(null);
     }
+    if (codigo === "supervision" && seleccionados.includes(codigo)) {
+      setHorasSupervision("1");
+    }
+    setResultadoUnificado(null);
 
     setError("");
     setMensaje("");
@@ -146,192 +160,70 @@ export default function ServiciosDirectos() {
   const registrarServicios = async () => {
     setError("");
     setMensaje("");
-    setResultadoDirecto(null);
-    setResultadoCosteTecnico(null);
-    setResultadoPresupuesto(null);
-    setResultadoGestion(null);
+    setResultadoUnificado(null);
 
     if (!clienteId) return setError("Selecciona el cliente.");
-
     if (!viviendaId || !viviendaSeleccionada) {
       return setError("Selecciona una vivienda del cliente.");
     }
-
     if (!seleccionados.length) {
       return setError("Selecciona al menos un servicio extra.");
     }
-
     if (!clienteSeleccionado) {
       return setError("No se encontró el cliente seleccionado.");
     }
-
     if (costeTecnicoSeleccionado && !precioCosteValido) {
       return setError(
         "Introduce un precio válido para el coste del técnico, superior a 0 € y no superior a 100.000 €."
       );
     }
-
-    if (
-      (serviciosDirectos.length > 0 || costeTecnicoSeleccionado) &&
-      !viviendaSeleccionada.tecnico_id
-    ) {
+    if (supervisionSeleccionada && !cantidadSupervisionValida) {
       return setError(
-        "Los servicios directos y el coste del técnico requieren un técnico asignado a la vivienda."
+        "Introduce una duración válida para Supervisión, superior a 0 y no superior a 1.000 horas."
+      );
+    }
+
+    const requiereTecnico = lineasSeleccionadas.some((linea) =>
+      ["urgencia", "visita_rapida", "inspeccion_tormenta", "coste_tecnico"].includes(
+        linea.codigo
+      )
+    );
+    if (requiereTecnico && !viviendaSeleccionada.tecnico_id) {
+      return setError(
+        "Los servicios seleccionados requieren un técnico asignado a la vivienda."
       );
     }
 
     setGuardando(true);
-
-    const mensajesExito = [];
-    const errores = [];
-    const codigosProcesados = [];
-
     try {
-      // 1. Servicios directos de precio fijo.
-      if (serviciosDirectos.length > 0) {
-        try {
-          const lineas = serviciosDirectos.map((servicio) => ({
-            codigo: servicio.codigo,
-            precio_unitario: servicio.precio,
-          }));
-
-          const { data, error: rpcError } = await supabase.rpc(
-            "admin_crear_extra_directo",
-            {
-              p_cliente_id: clienteId,
-              p_vivienda_id: Number(viviendaId),
-              p_lineas: lineas,
-            }
-          );
-
-          if (rpcError) throw rpcError;
-
-          setResultadoDirecto(data);
-          mensajesExito.push(
-            "Los servicios directos se han enviado al cliente para su aceptación. Todavía no hay factura ni asignación técnica."
-          );
-
-          serviciosDirectos.forEach((s) => codigosProcesados.push(s.codigo));
-        } catch (e) {
-          errores.push(
-            "Servicios directos: " + (e.message || "no se pudieron registrar.")
-          );
+      const { data, error: rpcError } = await supabase.rpc(
+        "admin_solicitar_presupuesto_unificado",
+        {
+          p_cliente_id: clienteSeleccionado.id,
+          p_vivienda_id: viviendaSeleccionada.id,
+          p_lineas: lineasSeleccionadas,
+          p_descripcion: descripcionPresupuesto.trim() || null,
         }
+      );
+
+      if (rpcError) throw rpcError;
+      if (!data || data.error || !data.solicitud_id) {
+        throw new Error(data?.error || "La solicitud no devolvió confirmación.");
       }
 
-      // 2. Coste del técnico: extra independiente con precio variable.
-      // Se envía en una llamada separada porque Supabase exige que este
-      // concepto no se mezcle con otros servicios directos.
-      if (costeTecnicoSeleccionado) {
-        try {
-          const { data, error: rpcError } = await supabase.rpc(
-            "admin_crear_extra_directo",
-            {
-              p_cliente_id: clienteId,
-              p_vivienda_id: Number(viviendaId),
-              p_lineas: [
-                {
-                  codigo: "coste_tecnico",
-                  precio_unitario: precioCosteNumerico,
-                },
-              ],
-            }
-          );
-
-          if (rpcError) throw rpcError;
-
-          setResultadoCosteTecnico(data);
-          mensajesExito.push(
-            `El coste del técnico (${dinero(precioCosteNumerico)} + IVA) se ha enviado al cliente para su aceptación. La factura se generará cuando acepte.`
-          );
-
-          codigosProcesados.push("coste_tecnico");
-        } catch (e) {
-          errores.push(
-            "Coste del técnico: " +
-              (e.message || "no se pudo registrar.")
-          );
-        }
-      }
-
-      // 3. Solicitud presupuestable.
-      if (serviciosPresupuesto.length > 0) {
-        try {
-          const { data, error: rpcError } = await supabase.rpc(
-            "admin_solicitar_presupuesto",
-            {
-              p_cliente_id: clienteId,
-              p_vivienda_id: Number(viviendaId),
-              p_servicios: serviciosPresupuesto,
-              p_descripcion: descripcionPresupuesto.trim() || null,
-            }
-          );
-
-          if (rpcError) throw rpcError;
-
-          setResultadoPresupuesto(data);
-          mensajesExito.push(
-            "La solicitud de presupuesto se ha enviado al cliente. Cuando la acepte, podrás preparar el presupuesto económico. No se ha creado factura ni orden de trabajo."
-          );
-
-          serviciosPresupuesto.forEach((codigo) => codigosProcesados.push(codigo));
-        } catch (e) {
-          errores.push(
-            "Solicitud de presupuesto: " +
-              (e.message || "no se pudo registrar.")
-          );
-        }
-      }
-
-      // 4. Gestión de presupuesto: fija, independiente y sin técnico.
-      if (gestionSeleccionada) {
-        try {
-          const { data, error: rpcError } = await supabase.rpc(
-            "admin_solicitar_gestion_tecnico",
-            {
-              p_cliente_id: clienteId,
-              p_vivienda_id: Number(viviendaId),
-            }
-          );
-
-          if (rpcError) throw rpcError;
-
-          setResultadoGestion(data);
-          mensajesExito.push(
-            "La Gestión de presupuesto se ha solicitado por separado. El cliente deberá aceptarla; no genera orden ni asigna técnico."
-          );
-
-          codigosProcesados.push("gestion_tecnico");
-        } catch (e) {
-          errores.push(
-            "Gestión de presupuesto: " +
-              (e.message || "no se pudo registrar.")
-          );
-        }
-      }
-
-      if (codigosProcesados.length > 0) {
-        setSeleccionados((actuales) =>
-          actuales.filter((codigo) => !codigosProcesados.includes(codigo))
-        );
-
-        if (codigosProcesados.includes("coste_tecnico")) {
-          setPrecioCosteTecnico("");
-        }
-
-        if (serviciosPresupuesto.length > 0 &&
-            codigosProcesados.some((codigo) => serviciosPresupuesto.includes(codigo))) {
-          setDescripcionPresupuesto("");
-        }
-      }
-
-      if (mensajesExito.length > 0) {
-        setMensaje(mensajesExito.join(" "));
-      }
-
-      if (errores.length > 0) {
-        setError(errores.join(" "));
-      }
+      setResultadoUnificado(data);
+      setMensaje(
+        "Todos los extras se han registrado juntos en una única solicitud. El cliente recibirá un único presupuesto con todos los conceptos seleccionados."
+      );
+      setSeleccionados([]);
+      setPrecioCosteTecnico("");
+      setHorasSupervision("1");
+      setDescripcionPresupuesto("");
+    } catch (e) {
+      setError(
+        e.message ||
+          "No se pudo registrar la solicitud conjunta. Comprueba el estado antes de volver a enviarla."
+      );
     } finally {
       setGuardando(false);
     }
@@ -345,69 +237,24 @@ export default function ServiciosDirectos() {
         <h1 style={estilos.titulo}>Registrar Servicio Extra</h1>
 
         <p style={estilos.subtitulo}>
-          Selecciona un cliente, una vivienda y los extras que quieras
-          tramitar. Cada tipo seguirá su circuito independiente.
+          Selecciona un cliente, una vivienda y todos los extras que quieras incluir en una única solicitud y presupuesto conjunto.
         </p>
 
         {mensaje && <div style={estilos.ok}>{mensaje}</div>}
         {error && <div style={estilos.error}>{error}</div>}
 
-        {resultadoDirecto && (
+        {resultadoUnificado && (
           <div style={estilos.ok}>
-            <strong>Servicios directos registrados.</strong>
-            <p>
-              Extra: {resultadoDirecto.extra_id || "Registrado"} · Base:{" "}
-              {dinero(resultadoDirecto.base)} · Total con IVA:{" "}
-              {dinero(resultadoDirecto.total)}
-            </p>
-            <p>
-              El cliente debe aceptar la solicitud. Administración enviará el
-              aviso de pago desde VerFactura después de la aceptación.
-            </p>
-          </div>
-        )}
-
-        {resultadoCosteTecnico && (
-          <div style={estilos.ok}>
-            <strong>Coste del técnico registrado.</strong>
-            <p>
-              Extra: {resultadoCosteTecnico.extra_id || "Registrado"} · Base:{" "}
-              {dinero(resultadoCosteTecnico.base)} · IVA:{" "}
-              {dinero(resultadoCosteTecnico.iva)} · Total:{" "}
-              {dinero(resultadoCosteTecnico.total)}
-            </p>
-            <p>
-              El cliente debe aceptar el extra. Después se generará la factura
-              y el técnico se asignará únicamente cuando se confirme el pago.
-            </p>
-          </div>
-        )}
-
-        {resultadoPresupuesto && (
-          <div style={estilos.ok}>
-            <strong>Solicitud de presupuesto enviada.</strong>
+            <strong>Solicitud conjunta registrada correctamente.</strong>
             <p>
               Solicitud:{" "}
-              {String(resultadoPresupuesto.solicitud_id || "").slice(0, 8)}
+              {String(resultadoUnificado.solicitud_id || "").slice(0, 8) ||
+                "Registrada"}
             </p>
             <p>
-              El cliente debe aceptar la solicitud antes de que administración
-              prepare el presupuesto económico. Esta fase no crea factura,
-              Gestión de presupuesto ni orden de trabajo.
-            </p>
-          </div>
-        )}
-
-        {resultadoGestion && (
-          <div style={estilos.ok}>
-            <strong>Gestión de presupuesto enviada para aceptación.</strong>
-            <p>
-              Extra: {resultadoGestion.extra_id || "Registrado"} · Base: 25,00
-              € · IVA: 5,25 € · Total: 30,25 €.
-            </p>
-            <p>
-              Es una solicitud independiente. No se vincula al presupuesto ni
-              genera una orden o asignación técnica.
+              Todos los extras seleccionados están incluidos en una única
+              solicitud. El presupuesto económico se preparará para que el
+              cliente pueda aceptarlo.
             </p>
           </div>
         )}
@@ -424,10 +271,7 @@ export default function ServiciosDirectos() {
               setViviendaId("");
               setMensaje("");
               setError("");
-              setResultadoDirecto(null);
-              setResultadoCosteTecnico(null);
-              setResultadoPresupuesto(null);
-              setResultadoGestion(null);
+              setResultadoUnificado(null);
             }}
             disabled={bloqueado}
           >
@@ -496,15 +340,14 @@ export default function ServiciosDirectos() {
           <h2 style={estilos.seccionTitulo}>Servicios Disponibles</h2>
 
           <p style={estilos.aviso}>
-            Apertura, supervisión y cierre necesitan solicitud de presupuesto.
-            Coste del técnico es un extra independiente con precio variable.
-            Gestión de presupuesto también es independiente y no asigna técnico.
+            Todos los extras marcados se agruparán en una única solicitud y se
+            calcularán en esta pantalla. Supervisión se cobra a 35 € por hora o
+            fracción; Gestión de presupuesto tiene un precio base de 25 € + IVA.
           </p>
 
           {SERVICIOS_DISPONIBLES.map((servicio) => {
             const activo = seleccionados.includes(servicio.codigo);
-            const esGestion = servicio.tipo === "gestion";
-            const esPresupuesto = servicio.tipo === "presupuesto";
+            const esSupervision = servicio.tipo === "supervision";
             const esVariable = servicio.tipo === "variable";
 
             return (
@@ -525,19 +368,27 @@ export default function ServiciosDirectos() {
                   </strong>
                 </label>
 
-                {esGestion && activo && (
-                  <p style={estilos.detalleServicio}>
-                    Solicitud independiente de 25,00 € + IVA. El cliente debe
-                    aceptarla antes de que se genere su factura. No crea orden
-                    ni asigna técnico.
-                  </p>
-                )}
-
-                {esPresupuesto && activo && (
-                  <p style={estilos.detalleServicio}>
-                    Se enviará al cliente para que acepte la solicitud. Después
-                    administración preparará el presupuesto económico.
-                  </p>
+                {esSupervision && activo && (
+                  <div style={estilos.campoVariable}>
+                    <label style={estilos.etiqueta}>
+                      Duración estimada de Supervisión (horas)
+                    </label>
+                    <input
+                      type="number"
+                      min="0.01"
+                      max="1000"
+                      step="0.01"
+                      inputMode="decimal"
+                      style={estilos.inputPrecio}
+                      value={horasSupervision}
+                      onChange={(e) => setHorasSupervision(e.target.value)}
+                      disabled={bloqueado}
+                    />
+                    <p style={estilos.detalleServicio}>
+                      Se cobra a 35 € por hora o fracción. Cantidad facturable:
+                      {" "}{cantidadSupervisionValida ? cantidadSupervision : "—"} hora(s).
+                    </p>
+                  </div>
                 )}
 
                 {esVariable && activo && (
@@ -584,9 +435,8 @@ export default function ServiciosDirectos() {
                     )}
 
                     <p style={estilos.detalleServicio}>
-                      Se enviará como extra independiente. El cliente deberá
-                      aceptarlo; la factura se generará después y el técnico
-                      solo se asignará tras confirmarse el pago.
+                      Se incluirá junto con los demás extras en la misma
+                      solicitud y presupuesto conjunto.
                     </p>
                   </div>
                 )}
@@ -609,66 +459,60 @@ export default function ServiciosDirectos() {
           />
 
           <p style={estilos.aviso}>
-            La descripción se guarda en la solicitud y se muestra al cliente
-            antes de responder. Solo se envía junto con los conceptos
-            presupuestables seleccionados.
+            La descripción se guarda en la solicitud conjunta y se muestra al
+            cliente junto con todos los extras seleccionados.
           </p>
         </div>
 
-        {serviciosDirectos.length > 0 && (
+        {seleccionados.length > 0 && (
           <div style={estilos.tarjeta}>
             <h2 style={estilos.seccionTitulo}>
-              Resumen de servicios directos
+              Resumen conjunto de todos los extras
             </h2>
 
-            {serviciosDirectos.map((servicio) => (
-              <div key={servicio.codigo} style={estilos.fila}>
-                <span>{servicio.nombre}</span>
-                <span>{dinero(servicio.precio)}</span>
-              </div>
-            ))}
+            {lineasSeleccionadas.map((linea) => {
+              const servicio = SERVICIOS_DISPONIBLES.find(
+                (item) => item.codigo === linea.codigo
+              );
+              const importeValido =
+                (linea.codigo !== "coste_tecnico" || precioCosteValido) &&
+                (linea.codigo !== "supervision" || cantidadSupervisionValida);
+              return (
+                <div key={linea.codigo} style={estilos.fila}>
+                  <span>
+                    {servicio?.nombre || linea.codigo}
+                    {linea.codigo === "supervision"
+                      ? ` · ${linea.cantidad} hora(s)`
+                      : ""}
+                    {linea.codigo === "coste_tecnico" && !precioCosteValido
+                      ? " · introduce el precio"
+                      : ""}
+                  </span>
+                  <span>
+                    {importeValido
+                      ? dinero(linea.cantidad * linea.precio_unitario)
+                      : "—"}
+                  </span>
+                </div>
+              );
+            })}
 
             <div style={estilos.fila}>
-              <span>Base imponible</span>
-              <span>{dinero(baseDirectos)}</span>
+              <span>Base imponible conjunta</span>
+              <span>{dinero(baseConjunta)}</span>
             </div>
             <div style={estilos.fila}>
               <span>IVA (21%)</span>
-              <span>{dinero(ivaDirectos)}</span>
+              <span>{dinero(ivaConjunto)}</span>
             </div>
             <div style={estilos.total}>
-              <span>Total servicios directos</span>
-              <span>{dinero(totalDirectos)}</span>
-            </div>
-
-            <p style={estilos.aviso}>
-              Este importe solo se convierte en factura cuando el cliente
-              acepta. El técnico se asigna después de que Stripe confirme el
-              pago.
-            </p>
-          </div>
-        )}
-
-        {gestionSeleccionada && (
-          <div style={estilos.tarjetaGestion}>
-            <h2 style={estilos.seccionTitulo}>
-              Gestión de presupuesto · solicitud independiente
-            </h2>
-            <div style={estilos.fila}>
-              <span>Base</span>
-              <span>25,00 €</span>
-            </div>
-            <div style={estilos.fila}>
-              <span>IVA (21%)</span>
-              <span>5,25 €</span>
-            </div>
-            <div style={estilos.total}>
-              <span>Total gestión</span>
-              <span>30,25 €</span>
+              <span>Total conjunto con IVA</span>
+              <span>{dinero(totalConjunto)}</span>
             </div>
             <p style={estilos.aviso}>
-              No se descuenta del presupuesto ni se mezcla con el precio de los
-              trabajos. No genera una orden ni asigna técnico.
+              El cálculo se actualiza al marcar extras y modificar cantidades
+              o precios. Todos los conceptos se enviarán juntos en una única
+              solicitud.
             </p>
           </div>
         )}
@@ -681,7 +525,8 @@ export default function ServiciosDirectos() {
             !clienteId ||
             !viviendaId ||
             seleccionados.length === 0 ||
-            (costeTecnicoSeleccionado && !precioCosteValido)
+            (costeTecnicoSeleccionado && !precioCosteValido) ||
+            (supervisionSeleccionada && !cantidadSupervisionValida)
           }
           style={{
             ...estilos.boton,
@@ -690,12 +535,13 @@ export default function ServiciosDirectos() {
               !clienteId ||
               !viviendaId ||
               seleccionados.length === 0 ||
-              (costeTecnicoSeleccionado && !precioCosteValido)
+              (costeTecnicoSeleccionado && !precioCosteValido) ||
+              (supervisionSeleccionada && !cantidadSupervisionValida)
                 ? 0.6
                 : 1,
           }}
         >
-          {guardando ? "Procesando..." : "Registrar servicios seleccionados"}
+          {guardando ? "Procesando..." : "Enviar solicitud y presupuesto conjunto"}
         </button>
 
         <button
