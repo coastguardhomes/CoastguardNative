@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+Import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { useLanguage } from '../../context/LanguageContext.jsx';
@@ -445,7 +445,7 @@ export default function VerFactura() {
       /*
        * Recuperación de los datos del cliente:
        *
-       * 1. Si cliente_id existe, intentamos recuperar la ficha actual.
+       * 1. Si cliente_id exists, intentamos recuperar la ficha actual.
        * 2. Si no existe o ya fue eliminada, usamos cliente_snapshot.
        * 3. Si faltan campos en la ficha actual, los completamos
        *    con los valores históricos conservados.
@@ -603,6 +603,17 @@ export default function VerFactura() {
         throw new Error('Stripe no ha devuelto una URL de pago.');
       }
 
+      /*
+       * La sesión debe quedar identificada en Supabase antes de
+       * considerar válido el envío del aviso. Sin sessionId no
+       * podríamos comprobar ni expirar el enlace de forma segura.
+       */
+      if (!checkoutData?.sessionId) {
+        throw new Error(
+          'Stripe ha devuelto el enlace, pero no el identificador de sesión. No se enviará el aviso hasta poder verificarlo.'
+        );
+      }
+
       const { error: errEmail } =
         await supabase.functions.invoke('enviar-email', {
           body: {
@@ -623,8 +634,43 @@ export default function VerFactura() {
         throw errEmail;
       }
 
+      /*
+       * Registrar el aviso solo después de que enviar-email confirme
+       * el envío. La Edge Function comprueba que sessionId coincide
+       * con el que ya está vinculado a esta factura.
+       */
+      const {
+        data: registroAviso,
+        error: errorRegistroAviso
+      } = await supabase.functions.invoke(
+        'create-checkout-session',
+        {
+          body: {
+            action: 'mark_sent',
+            facturaId: Number(factura.id),
+            sessionId: checkoutData.sessionId
+          }
+        }
+      );
+
+      if (errorRegistroAviso || registroAviso?.ok !== true) {
+        console.error(
+          'El aviso se envió, pero no se pudo registrar su envío:',
+          errorRegistroAviso || registroAviso
+        );
+
+        alert(
+          'El correo se ha enviado, pero no se pudo confirmar el registro del envío en Supabase. No vuelvas a enviarlo todavía; comprueba primero el correo y el estado de la factura.'
+        );
+
+        await cargarDatosSeguros();
+        return;
+      }
+
+      await cargarDatosSeguros();
+
       alert(
-        '¡Aviso de pago enviado por email al cliente correctamente!'
+        '¡Aviso de pago enviado por email al cliente y registrado correctamente!'
       );
     } catch (err) {
       console.error('Error enviando aviso de pago:', err);
@@ -927,31 +973,77 @@ export default function VerFactura() {
     }
   };
 
+  /*
+   * No se borra físicamente una factura desde el navegador.
+   * La Edge Function comprueba en servidor el rol, los pagos,
+   * la documentación fiscal y el estado real de Checkout en Stripe.
+   */
   const handleDelete = async () => {
-    if (
-      !window.confirm(
-        '¿Estás seguro de que deseas eliminar este aviso de cobro?'
-      )
-    ) {
+    if (!factura?.id) {
+      alert('No se ha identificado la factura.');
       return;
     }
+
+    if (esPagada || esPagoParcial || facturaRetirada || tieneDocumentoFiscal) {
+      alert(
+        'Esta factura no se puede retirar desde esta pantalla. ' +
+        'Los pagos y la documentación fiscal deben conservarse.'
+      );
+      return;
+    }
+
+    const confirmar = window.confirm(
+      '¿Quieres retirar este aviso de cobro? No se borrará físicamente el registro. ' +
+      'Si existe un enlace Stripe abierto, se intentará cancelar antes de retirarlo.'
+    );
+
+    if (!confirmar) return;
 
     try {
       setProcesando(true);
 
-      const { error } = await supabase
-        .from('facturas')
-        .delete()
-        .eq('id', id);
+      const { data, error } = await supabase.functions.invoke(
+        'create-checkout-session',
+        {
+          body: {
+            action: 'cancel_invoice',
+            facturaId: Number(factura.id)
+          }
+        }
+      );
 
       if (error) {
-        throw error;
+        let mensaje = error.message || 'No se pudo retirar el aviso.';
+
+        try {
+          const body = await error.context?.json();
+          if (body?.error) mensaje = body.error;
+        } catch {}
+
+        throw new Error(mensaje);
       }
 
-      alert('Aviso de cobro eliminado correctamente.');
+      if (!data?.ok) {
+        throw new Error(
+          data?.error || 'El servidor no confirmó la retirada del aviso.'
+        );
+      }
+
+      await cargarDatosSeguros();
+
+      alert(
+        data.state === 'anulada'
+          ? 'Aviso anulado correctamente. El enlace de pago de Stripe ha quedado expirado.'
+          : 'Borrador retirado correctamente. El registro se conserva para mantener la trazabilidad.'
+      );
+
       navigate(-1);
     } catch (err) {
-      alert('Error: ' + err.message);
+      console.error('Error retirando aviso de cobro:', err);
+      alert(
+        'No se ha podido retirar el aviso: ' +
+        (err.message || 'Error desconocido.')
+      );
     } finally {
       setProcesando(false);
     }
@@ -1026,13 +1118,51 @@ export default function VerFactura() {
     );
   }
 
-  const esPagada =
-    factura.estado_pago?.toLowerCase() === 'pagada' ||
-    factura.estado?.toLowerCase() === 'pagada' ||
-    factura.estado?.toLowerCase() === 'finalizado';
+  const estadoPagoNormalizado = String(
+    factura.estado_pago || ''
+  ).toLowerCase().trim();
 
-  const colorEstado = esPagada ? '#34d399' : COLOR_DORADO;
-  const textoEstado = esPagada ? 'PAGADA' : 'PENDIENTE';
+  const estadoFacturaNormalizado = String(
+    factura.estado || ''
+  ).toLowerCase().trim();
+
+  const esPagada =
+    ['pagada', 'paid', 'succeeded', 'completed', 'completada'].includes(estadoPagoNormalizado) ||
+    ['pagada', 'paid', 'succeeded', 'completed', 'completada', 'finalizado'].includes(estadoFacturaNormalizado);
+
+  const esPagoParcial =
+    ['parcial', 'partial', 'partially_paid'].includes(estadoPagoNormalizado) ||
+    ['parcial', 'partial', 'partially_paid'].includes(estadoFacturaNormalizado);
+
+  const facturaRetirada =
+    ['anulada', 'eliminada', 'cancelada'].includes(estadoFacturaNormalizado) ||
+    ['anulada', 'eliminada', 'cancelada'].includes(estadoPagoNormalizado);
+
+  const tieneDocumentoFiscal = Boolean(
+    factura.stripe_invoice_id ||
+    String(factura.pdf_url || '').trim() ||
+    String(factura.pdf_storage_path || '').trim()
+  );
+
+  const puedeRetirarAviso =
+    !esPagada &&
+    !esPagoParcial &&
+    !facturaRetirada &&
+    !tieneDocumentoFiscal;
+
+  const colorEstado = esPagada
+    ? '#34d399'
+    : facturaRetirada
+      ? '#ef4444'
+      : COLOR_DORADO;
+
+  const textoEstado = esPagada
+    ? 'PAGADA'
+    : esPagoParcial
+      ? 'PAGO PARCIAL'
+      : facturaRetirada
+        ? 'RETIRADA / ANULADA'
+        : 'PENDIENTE';
 
   const itemsDetalle = Array.isArray(factura.items)
     ? factura.items
@@ -1188,7 +1318,7 @@ export default function VerFactura() {
             </p>
           </div>
 
-          {!esPagada && (
+          {!esPagada && !esPagoParcial && !facturaRetirada && (
             <div style={estilos.botonesPago}>
               <button
                 onClick={enviarAvisoPago}
@@ -1395,15 +1525,33 @@ export default function VerFactura() {
           </div>
         )}
 
-        <button
-          onClick={handleDelete}
-          disabled={procesando}
-          style={estilos.botonEliminar}
-        >
-          {procesando
-            ? 'Procesando...'
-            : '🗑️ Eliminar Aviso de Cobro'}
-        </button>
+        {puedeRetirarAviso && (
+          <button
+            onClick={handleDelete}
+            disabled={procesando}
+            style={{
+              ...estilos.botonEliminar,
+              opacity: procesando ? 0.65 : 1,
+              cursor: procesando ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {procesando
+              ? 'Procesando...'
+              : '🗑️ Retirar Aviso / Eliminar Borrador'}
+          </button>
+        )}
+
+        {(esPagada || esPagoParcial || tieneDocumentoFiscal) && (
+          <p style={estilos.textoSecundario}>
+            Este registro se conserva porque tiene un pago o documentación fiscal asociada.
+          </p>
+        )}
+
+        {facturaRetirada && (
+          <p style={estilos.textoSecundario}>
+            Este aviso ya está retirado. El registro se conserva para mantener la trazabilidad.
+          </p>
+        )}
       </div>
     </div>
   );
