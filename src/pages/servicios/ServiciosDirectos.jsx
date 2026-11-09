@@ -1,30 +1,50 @@
+
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import Menu from "../../layouts/Menu.jsx";
+
+const PRECIO_GESTION = 25;
+const IVA_PORCENTAJE = 21;
+const IVA_GESTION = 5.25;
+const TOTAL_GESTION = 30.25;
 
 const SERVICIOS_DIRECTOS = [
   { codigo: "urgencia", nombre: "Urgencia / Emergencia", precio: 50 },
   { codigo: "visita_rapida", nombre: "Visita rápida", precio: 25 },
-  { codigo: "inspeccion_tormenta", nombre: "Inspección posterior a tormenta", precio: 35 },
+  {
+    codigo: "inspeccion_tormenta",
+    nombre: "Inspección posterior a tormenta",
+    precio: 35,
+  },
 ];
 
 const SERVICIOS_PRESUPUESTO = [
-  { codigo: "apertura_vivienda", nombre: "Apertura de vivienda", precio: "Presupuesto" },
-  { codigo: "supervision", nombre: "Supervisión (por hora o fracción)", precio: "Desde 35 €" },
-  { codigo: "cierre_vivienda", nombre: "Cierre de vivienda", precio: "Presupuesto" },
-  { codigo: "coste_tecnico", nombre: "Coste del técnico", precio: "Variable" },
+  {
+    codigo: "apertura_vivienda",
+    nombre: "Apertura de vivienda",
+    precio: "Presupuesto",
+  },
+  {
+    codigo: "supervision",
+    nombre: "Supervisión",
+    precio: "Desde 35 €/hora o fracción",
+  },
+  {
+    codigo: "cierre_vivienda",
+    nombre: "Cierre de vivienda",
+    precio: "Presupuesto",
+  },
+  {
+    codigo: "coste_tecnico",
+    nombre: "Coste del técnico",
+    precio: "Variable",
+  },
 ];
 
-const PRECIO_GESTION = 25;
-const IVA_PORCENTAJE = 21;
-const TOTAL_GESTION = 30.25;
-
-const dinero = (n) => `${Number(n || 0).toFixed(2)} €`;
+const dinero = (valor) =>
+  `${Number(valor || 0).toFixed(2).replace(".", ",")} €`;
 
 export default function ServiciosDirectos() {
-  const navigate = useNavigate();
-
   const [clientes, setClientes] = useState([]);
   const [viviendas, setViviendas] = useState([]);
 
@@ -106,13 +126,13 @@ export default function ServiciosDirectos() {
 
   const baseDirectos = SERVICIOS_DIRECTOS
     .filter((s) => seleccionadosDirectos.includes(s.codigo))
-    .reduce((sum, s) => sum + s.precio, 0);
+    .reduce((total, s) => total + s.precio, 0);
 
-  const ivaDirectos = Math.round(baseDirectos * IVA_PORCENTAJE) / 100;
+  const ivaDirectos =
+    Math.round(baseDirectos * IVA_PORCENTAJE) / 100;
 
-  const totalDirectos = Math.round(
-    (baseDirectos + ivaDirectos) * 100
-  ) / 100;
+  const totalDirectos =
+    Math.round((baseDirectos + ivaDirectos) * 100) / 100;
 
   const alternarDirecto = (codigo) => {
     setSeleccionadosDirectos((actuales) =>
@@ -137,7 +157,7 @@ export default function ServiciosDirectos() {
     }
 
     if (!viviendaSeleccionada) {
-      setError("La vivienda seleccionada no pertenece al cliente elegido.");
+      setError("La vivienda no pertenece al cliente seleccionado.");
       return false;
     }
 
@@ -152,6 +172,7 @@ export default function ServiciosDirectos() {
   const crearServicioDirecto = async () => {
     setError("");
     setResultadoDirecto(null);
+    setResultadoPresupuesto(null);
 
     if (!validarClienteVivienda()) return;
 
@@ -196,11 +217,12 @@ export default function ServiciosDirectos() {
   const crearSolicitudPresupuesto = async () => {
     setError("");
     setResultadoPresupuesto(null);
+    setResultadoDirecto(null);
 
     if (!validarClienteVivienda()) return;
 
     if (!seleccionadosPresupuesto.length) {
-      setError("Selecciona al menos un servicio que requiera presupuesto.");
+      setError("Selecciona al menos un servicio presupuestable.");
       return;
     }
 
@@ -240,81 +262,59 @@ export default function ServiciosDirectos() {
         <h1 style={styles.title}>Servicios y extras</h1>
 
         <p style={styles.subtitle}>
-          Selecciona el cliente, su vivienda y los extras que quieras
-          registrar. Cada servicio seguirá su propio procedimiento:
-          factura directa o solicitud de presupuesto.
+          Registra servicios adicionales para un cliente y una vivienda.
+          Cada concepto seguirá su propio procedimiento de aceptación,
+          facturación y pago.
         </p>
 
-        {error && (
-          <div style={styles.error}>
-            {error}
-          </div>
-        )}
+        {error && <div style={styles.error}>{error}</div>}
 
         {resultadoDirecto && (
           <div style={styles.success}>
-            <strong>Servicios directos registrados correctamente.</strong>
+            <strong>Solicitud de servicios enviada correctamente.</strong>
 
             <p>
-              Factura #{resultadoDirecto.factura_id}
-              {" · "}Base {dinero(resultadoDirecto.base)}
-              {" · "}IVA {dinero(resultadoDirecto.iva)}
-              {" · "}Total {dinero(resultadoDirecto.total)}.
+              Identificador del extra:{" "}
+              {resultadoDirecto.extra_id || "Registrado"}
             </p>
 
             <p>
-              El técnico no se asigna todavía al extra. La asignación
-              se realizará cuando el pago quede confirmado.
+              Importe estimado:{" "}
+              {dinero(resultadoDirecto.total_estimado)}
             </p>
 
-            <button
-              type="button"
-              style={styles.linkButton}
-              onClick={() =>
-                navigate(`/facturas/ver/${resultadoDirecto.factura_id}`)
-              }
-            >
-              Abrir factura y continuar con el cobro
-            </button>
+            <p>
+              <strong>Pendiente de aceptación del cliente.</strong>
+              {" "}Todavía no se ha creado ninguna factura ni se ha
+              solicitado ningún pago. El técnico no se asigna en esta fase.
+            </p>
           </div>
         )}
 
         {resultadoPresupuesto && (
           <div style={styles.success}>
-            <strong>Solicitud de presupuesto creada correctamente.</strong>
+            <strong>Solicitud de presupuesto enviada correctamente.</strong>
 
             <p>
-              Solicitud: {String(resultadoPresupuesto.solicitud_id).slice(0, 8)}
+              Solicitud:{" "}
+              {String(resultadoPresupuesto.solicitud_id || "").slice(0, 8)}
             </p>
 
             <p>
-              Factura de gestión inicial:
-              {" "}#{resultadoPresupuesto.factura_gestion_id}
+              <strong>Gestión inicial pendiente de aceptación:</strong>
+              {" "}{dinero(TOTAL_GESTION)} IVA incluido.
             </p>
 
             <p>
-              Base {dinero(resultadoPresupuesto.base)}
-              {" · "}IVA {dinero(resultadoPresupuesto.iva)}
-              {" · "}Total {dinero(resultadoPresupuesto.total)}.
+              El cliente debe aceptar primero la gestión inicial. Solo
+              después se generará su factura. Una vez pagada, se podrá
+              preparar el presupuesto del trabajo.
             </p>
 
             <p>
-              El presupuesto del trabajo se preparará después de confirmar
-              el pago de la gestión inicial. La gestión no asigna todavía
-              el trabajo al técnico.
+              No se ha creado todavía una factura ni se ha solicitado
+              ningún pago.
             </p>
-
-            <button
-              type="button"
-              style={styles.linkButton}
-              onClick={() =>
-                navigate(
-                  `/facturas/ver/${resultadoPresupuesto.factura_gestion_id}`
-                )
-              }
-            >
-              Abrir factura de gestión
-            </button>
           </div>
         )}
 
@@ -328,6 +328,7 @@ export default function ServiciosDirectos() {
               setViviendaId("");
               setResultadoDirecto(null);
               setResultadoPresupuesto(null);
+              setError("");
             }}
             style={styles.input}
             disabled={bloqueado}
@@ -349,6 +350,7 @@ export default function ServiciosDirectos() {
               setViviendaId(e.target.value);
               setResultadoDirecto(null);
               setResultadoPresupuesto(null);
+              setError("");
             }}
             style={styles.input}
             disabled={!clienteId || bloqueado}
@@ -363,12 +365,52 @@ export default function ServiciosDirectos() {
             ))}
           </select>
 
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Servicios directos</h2>
+          {/* GESTIÓN INICIAL: SIEMPRE SEPARADA Y EN PRIMER LUGAR */}
+          <div style={styles.managementSection}>
+            <h2 style={styles.sectionTitle}>
+              1. Gestión inicial del técnico
+            </h2>
 
             <p style={styles.sectionDescription}>
-              Precio fijo. Se crea la factura del servicio y el técnico
-              solo se asigna cuando el pago queda confirmado.
+              Este cargo es independiente del precio de los trabajos.
+              Se solicita al cliente cuando se tramita cualquiera de los
+              servicios que requieren presupuesto.
+            </p>
+
+            <div style={styles.managementPrice}>
+              <div>
+                <span>Gestión inicial</span>
+                <strong>{dinero(PRECIO_GESTION)}</strong>
+              </div>
+
+              <div>
+                <span>IVA (21%)</span>
+                <strong>{dinero(IVA_GESTION)}</strong>
+              </div>
+
+              <div style={styles.total}>
+                <span>Total de gestión</span>
+                <strong>{dinero(TOTAL_GESTION)}</strong>
+              </div>
+            </div>
+
+            <p style={styles.note}>
+              No es el precio del servicio ni del trabajo del técnico.
+              La solicitud de esta gestión debe ser aceptada por el cliente
+              antes de generar su factura.
+            </p>
+          </div>
+
+          {/* SERVICIOS DIRECTOS */}
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>
+              2. Servicios directos
+            </h2>
+
+            <p style={styles.sectionDescription}>
+              Servicios con precio fijo. Primero se envía la solicitud
+              al cliente para que la acepte o la rechace. La factura solo
+              se genera después de su aceptación.
             </p>
 
             <div style={styles.options}>
@@ -390,7 +432,7 @@ export default function ServiciosDirectos() {
 
             <div style={styles.totalBox}>
               <div>
-                <span>Base imponible</span>
+                <span>Base imponible estimada</span>
                 <strong>{dinero(baseDirectos)}</strong>
               </div>
 
@@ -400,9 +442,14 @@ export default function ServiciosDirectos() {
               </div>
 
               <div style={styles.total}>
-                <span>Total servicios directos</span>
+                <span>Total estimado</span>
                 <strong>{dinero(totalDirectos)}</strong>
               </div>
+
+              <p style={styles.note}>
+                Este importe es informativo. No se genera factura ni se
+                inicia el cobro hasta que el cliente acepte la solicitud.
+              </p>
             </div>
 
             <button
@@ -417,20 +464,21 @@ export default function ServiciosDirectos() {
               }
             >
               {guardando === "directo"
-                ? "Registrando servicios…"
-                : "Crear factura de servicios directos"}
+                ? "Enviando solicitud…"
+                : "Enviar servicios directos al cliente"}
             </button>
           </div>
 
+          {/* SERVICIOS PRESUPUESTABLES */}
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>
-              Servicios que requieren presupuesto
+              3. Servicios que requieren presupuesto
             </h2>
 
             <p style={styles.sectionDescription}>
-              Estos servicios no generan una factura directa del trabajo.
-              Primero se crea la solicitud y se cobra la gestión inicial.
-              Después se prepara el presupuesto para el cliente.
+              Selecciona los trabajos que debe valorar administración.
+              La gestión inicial se tramita por separado y no forma parte
+              del precio del presupuesto.
             </p>
 
             <div style={styles.options}>
@@ -448,16 +496,6 @@ export default function ServiciosDirectos() {
                   <strong>{item.precio}</strong>
                 </label>
               ))}
-
-              <div style={styles.optionInfo}>
-                <span>Gestión de técnico</span>
-                <strong>{dinero(PRECIO_GESTION)} + IVA</strong>
-                <p>
-                  Cargo obligatorio que se genera automáticamente al
-                  solicitar cualquiera de los servicios presupuestables.
-                  No es el precio del trabajo del técnico.
-                </p>
-              </div>
             </div>
 
             <label style={styles.label}>
@@ -476,24 +514,24 @@ export default function ServiciosDirectos() {
 
             <div style={styles.totalBox}>
               <div>
-                <span>Gestión inicial</span>
+                <span>Gestión inicial (base)</span>
                 <strong>{dinero(PRECIO_GESTION)}</strong>
               </div>
 
               <div>
                 <span>IVA (21%)</span>
-                <strong>{dinero(TOTAL_GESTION - PRECIO_GESTION)}</strong>
+                <strong>{dinero(IVA_GESTION)}</strong>
               </div>
 
               <div style={styles.total}>
-                <span>Total inicial a facturar</span>
+                <span>Total de gestión inicial</span>
                 <strong>{dinero(TOTAL_GESTION)}</strong>
               </div>
 
               <p style={styles.note}>
-                El precio definitivo de los trabajos se calculará y enviará
-                posteriormente en el presupuesto. Esta factura inicial
-                corresponde únicamente a la gestión.
+                Este importe corresponde exclusivamente a la gestión.
+                El precio de los trabajos se calculará posteriormente
+                y se presentará al cliente en un presupuesto independiente.
               </p>
             </div>
 
@@ -509,8 +547,8 @@ export default function ServiciosDirectos() {
               }
             >
               {guardando === "presupuesto"
-                ? "Creando solicitud…"
-                : "Crear solicitud y factura de gestión"}
+                ? "Enviando solicitud…"
+                : "Enviar solicitud de gestión al cliente"}
             </button>
           </div>
         </div>
@@ -571,6 +609,14 @@ const styles = {
     fontSize: 14,
   },
 
+  managementSection: {
+    marginTop: 24,
+    padding: 15,
+    border: "1px solid rgba(224,176,52,.45)",
+    borderRadius: 12,
+    background: "rgba(224,176,52,.07)",
+  },
+
   section: {
     marginTop: 25,
     paddingTop: 20,
@@ -609,14 +655,15 @@ const styles = {
     fontSize: 13,
   },
 
-  optionInfo: {
-    display: "block",
+  managementPrice: {
+    display: "grid",
+    gap: 9,
+    marginTop: 14,
     padding: 12,
-    border: "1px solid rgba(224,176,52,.3)",
-    borderRadius: 9,
-    color: "#e2e8f0",
+    borderRadius: 10,
+    background: "rgba(0,0,0,.2)",
+    color: "#cbd5e1",
     fontSize: 13,
-    background: "rgba(224,176,52,.06)",
   },
 
   totalBox: {
@@ -671,16 +718,6 @@ const styles = {
     color: "#080b10",
     fontWeight: 900,
     fontSize: 14,
-    cursor: "pointer",
-  },
-
-  linkButton: {
-    border: 0,
-    borderRadius: 8,
-    padding: "10px 12px",
-    background: "#38bdf8",
-    color: "#07111d",
-    fontWeight: 900,
     cursor: "pointer",
   },
 
