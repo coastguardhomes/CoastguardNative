@@ -96,6 +96,8 @@ export default function ServiciosDirectos() {
   const supervisionSeleccionada = seleccionados.includes("supervision");
 
   const precioCosteNumerico = redondear(precioCosteTecnico);
+  const ivaCosteTecnico = redondear(precioCosteNumerico * IVA);
+  const totalCosteTecnico = redondear(precioCosteNumerico + ivaCosteTecnico);
   const precioCosteValido =
     precioCosteTecnico.trim() !== "" &&
     Number.isFinite(Number(precioCosteTecnico)) &&
