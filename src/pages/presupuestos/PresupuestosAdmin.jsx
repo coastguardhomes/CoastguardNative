@@ -10,8 +10,10 @@ const CATALOGO = [
 ];
 
 const ESTADOS = {
-  pendiente_pago_gestion: "Pendiente de pago de gestión",
-  gestion_pagada: "Gestión pagada · preparar presupuesto",
+  pendiente_aceptacion_cliente: "Pendiente de aceptación del cliente",
+  aceptada_pendiente_presupuesto: "Aceptada · preparar presupuesto",
+  pendiente_pago_gestion: "Gestión pendiente (flujo anterior)",
+  gestion_pagada: "Gestión pagada (flujo anterior)",
   presupuesto_enviado: "Presupuesto enviado al cliente",
   aceptado_pendiente_pago: "Aceptado · pendiente de pago del trabajo",
   rechazado: "Rechazado por el cliente",
@@ -22,6 +24,7 @@ const ESTADOS = {
 };
 
 const dinero = (valor) => `${Number(valor || 0).toFixed(2)} €`;
+
 const facturaPagada = (f) =>
   [f?.estado_pago, f?.estado].some((x) =>
     ["pagada", "paid", "finalizado"].includes(
@@ -31,6 +34,7 @@ const facturaPagada = (f) =>
 
 function crearFormulario(solicitud) {
   const seleccion = solicitud.servicios_solicitados || [];
+
   return Object.fromEntries(
     CATALOGO.map((item) => [
       item.codigo,
@@ -119,7 +123,7 @@ export default function PresupuestosAdmin() {
 
         supabase
           .from("viviendas")
-          .select("id,direccion,tecnico_id")
+          .select("id,direccion")
           .in("id", viviendaIds),
 
         supabase
@@ -393,7 +397,7 @@ export default function PresupuestosAdmin() {
               crearFormulario(solicitud);
 
             const puedePreparar = [
-              "gestion_pagada",
+              "aceptada_pendiente_presupuesto",
               "presupuesto_enviado",
             ].includes(solicitud.estado);
 
@@ -687,11 +691,26 @@ export default function PresupuestosAdmin() {
                   </div>
                 )}
 
-                {solicitud.estado ===
-                  "pendiente_pago_gestion" && (
+                {solicitud.estado === "pendiente_aceptacion_cliente" && (
                   <p style={styles.warning}>
-                    No prepares el presupuesto hasta que el primer
-                    cobro de gestión esté confirmado.
+                    La solicitud está pendiente de respuesta del cliente.
+                    No se crea factura ni se asigna técnico en esta fase.
+                  </p>
+                )}
+
+                {solicitud.estado === "aceptada_pendiente_presupuesto" && (
+                  <p style={styles.paid}>
+                    ✓ El cliente ha aceptado la solicitud. Ya puedes
+                    preparar el presupuesto económico. La Gestión del
+                    técnico es independiente y no es un requisito.
+                  </p>
+                )}
+
+                {solicitud.estado === "pendiente_pago_gestion" && (
+                  <p style={styles.warning}>
+                    Esta solicitud pertenece al flujo anterior vinculado
+                    a Gestión. No se puede preparar desde el nuevo
+                    circuito; revisa el registro antes de tramitarlo.
                   </p>
                 )}
 
