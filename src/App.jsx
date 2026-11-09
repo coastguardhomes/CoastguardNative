@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import {
   Routes,
@@ -82,11 +81,12 @@ import VerFactura from "./pages/facturas/VerFactura.jsx";
 import FiltrosFacturas from "./pages/facturas/FiltrosFacturas.jsx";
 import EstadisticasFacturas from "./pages/facturas/EstadisticasFacturas.jsx";
 
-// EXTRAS
-import Extras from "./pages/extras/Extras.jsx";
+// SERVICIOS DIRECTOS
+import ServiciosDirectos from "./pages/servicios/ServiciosDirectos.jsx";
 
-// SERVICIOS
-import Servicios from "./pages/servicios/Servicios.jsx";
+// PRESUPUESTOS
+import PresupuestosAdmin from "./pages/presupuestos/PresupuestosAdmin.jsx";
+import ClientePresupuestos from "./pages/cliente/ClientePresupuestos.jsx";
 
 // ÁREA DEL CLIENTE
 import ClienteContratosLista from "./pages/cliente/ClienteContratosLista.jsx";
@@ -110,7 +110,7 @@ export default function App() {
 
   // Apertura de enlaces de la aplicación nativa.
   useEffect(() => {
-    const listener = CapacitorApp.addListener("appUrlOpen", (event) => {
+    const listener = CapacitorApp.addListener("appUrlOpen", async (event) => {
       try {
         const rawUrl = event.url || "";
         const hashIndex = rawUrl.indexOf("#");
@@ -124,6 +124,67 @@ export default function App() {
           navigate(`/update-password${hash}`);
         } else if (rawUrl.includes("auth/callback")) {
           navigate(`/auth/callback${hash}`);
+        } else if (rawUrl.includes("stripe/return")) {
+          // Stripe vuelve a la aplicación después del pago.
+          // Recuperamos sesión y rol antes de mostrar la factura correspondiente.
+          const deepLink = new URL(rawUrl);
+          const facturaId = deepLink.searchParams.get("facturaId");
+          const contractId = deepLink.searchParams.get("contractId");
+          const resultado = deepLink.searchParams.get("result") || "success";
+
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (!session?.user?.id) {
+            navigate("/login");
+            return;
+          }
+
+          const { data: perfil, error: errorPerfil } = await supabase
+            .from("profiles")
+            .select("rol")
+            .eq("id", session.user.id)
+            .maybeSingle();
+
+          if (errorPerfil) {
+            console.error("Error al recuperar el rol tras el pago:", errorPerfil.message);
+            navigate("/login");
+            return;
+          }
+
+          if (perfil?.rol === "admin" && facturaId) {
+            navigate(`/facturas/ver/${facturaId}?pago=${resultado}`);
+            return;
+          }
+
+          if (perfil?.rol === "cliente" && facturaId) {
+            const { data: factura, error: errorFactura } = await supabase
+              .from("facturas")
+              .select("fase_presupuesto")
+              .eq("id", facturaId)
+              .maybeSingle();
+
+            if (errorFactura) {
+              console.error("Error al recuperar la factura tras el pago:", errorFactura.message);
+              navigate("/cliente/facturas");
+              return;
+            }
+
+            if (factura?.fase_presupuesto) {
+              navigate(`/cliente/presupuestos?pago=${resultado}&facturaId=${facturaId}`);
+            } else {
+              navigate(`/cliente/facturas?pago=${resultado}&facturaId=${facturaId}`);
+            }
+            return;
+          }
+
+          if (perfil?.rol === "cliente" && contractId) {
+            navigate(`/cliente/contratos?pago=${resultado}&contractId=${contractId}`);
+            return;
+          }
+
+          navigate(perfil?.rol === "admin" ? "/admin/dashboard" : "/login");
         } else {
           navigate("/login");
         }
@@ -335,6 +396,10 @@ export default function App() {
             element={<ClienteFacturaVer />}
           />
           <Route
+            path="presupuestos"
+            element={<ClientePresupuestos />}
+          />
+          <Route
             path="configuracion"
             element={<ClienteConfiguracion />}
           />
@@ -478,20 +543,28 @@ export default function App() {
           />
         </Route>
 
-        {/* EXTRAS: SOLO ADMIN */}
+        {/* PRESUPUESTOS: SOLO ADMIN */}
+        <Route
+          path="/presupuestos"
+          element={<PrivateRoute allowedRole="admin" />}
+        >
+          <Route index element={<PresupuestosAdmin />} />
+        </Route>
+
+        {/* RUTA ANTIGUA DE EXTRAS: REDIRIGE AL CATÁLOGO ACTUAL */}
         <Route
           path="/extras"
           element={<PrivateRoute allowedRole="admin" />}
         >
-          <Route index element={<Extras />} />
+          <Route index element={<Navigate to="/servicios" replace />} />
         </Route>
 
-        {/* SERVICIOS: SOLO ADMIN */}
+        {/* SERVICIOS DIRECTOS: SOLO ADMIN */}
         <Route
           path="/servicios"
           element={<PrivateRoute allowedRole="admin" />}
         >
-          <Route index element={<Servicios />} />
+          <Route index element={<ServiciosDirectos />} />
         </Route>
 
         {/* AJUSTES: ADMIN Y CLIENTE */}
