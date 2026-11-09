@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { useLanguage } from "../context/LanguageContext.jsx"; // ⭐ IMPORTAMOS EL HOOK DE IDIOMA
+import { useLanguage } from "../context/LanguageContext.jsx";
 import {
   FaHome,
   FaUsers,
@@ -13,6 +13,7 @@ import {
   FaChartBar,
   FaCog,
   FaClipboardCheck,
+  FaClipboardList,
   FaTools,
 } from "react-icons/fa";
 
@@ -24,7 +25,7 @@ export default function Menu({ children }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { role } = useAuth();
-  const { t } = useLanguage(); // ⭐ OBTENEMOS LA FUNCIÓN DE TRADUCCIÓN
+  const { t } = useLanguage();
 
   // ---------------- ITEMS ADMIN (DINÁMICOS CON TRADUCCIÓN) ----------------
   const ITEMS_ADMIN = [
@@ -33,6 +34,7 @@ export default function Menu({ children }) {
     { ruta: "/viviendas", etiqueta: t("viviendas") || "Viviendas", icono: FaBuilding },
     { ruta: "/inspecciones", etiqueta: t("inspecciones") || "Inspecciones", icono: FaSearch },
     { ruta: "/servicios", etiqueta: t("servicios") || "Servicios", icono: FaTools },
+    { ruta: "/presupuestos", etiqueta: t("presupuestos") || "Presupuestos", icono: FaClipboardList },
     { ruta: "/contratos", etiqueta: t("contratos") || "Contratos", icono: FaFileContract },
     { ruta: "/facturas", etiqueta: t("facturas") || "Facturas", icono: FaMoneyBillWave },
     { ruta: "/tecnicos", etiqueta: t("tecnicos") || "Técnicos", icono: FaKey },
@@ -45,6 +47,7 @@ export default function Menu({ children }) {
     { ruta: "/cliente", etiqueta: t("inicio") || "Inicio", icono: FaHome },
     { ruta: "/cliente/contratos", etiqueta: t("contratos") || "Contratos", icono: FaFileContract },
     { ruta: "/cliente/inspecciones", etiqueta: t("inspecciones") || "Inspecciones", icono: FaClipboardCheck },
+    { ruta: "/cliente/presupuestos", etiqueta: t("presupuestos") || "Mis presupuestos", icono: FaClipboardList },
     { ruta: "/cliente/facturas", etiqueta: t("facturas") || "Facturas", icono: FaMoneyBillWave },
     { ruta: "/cliente/perfil", etiqueta: t("perfil") || "Perfil", icono: FaUsers },
     { ruta: "/ajustes", etiqueta: t("ajustes") || "Ajustes", icono: FaCog },
