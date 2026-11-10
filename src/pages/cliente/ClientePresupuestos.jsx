@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useLocation } from "react-router-dom";
@@ -30,7 +29,7 @@ const SERVICIOS_EN = {
 
 const ESTADOS_SOLICITUD = {
   pendiente_aceptacion_cliente: "Pendiente de tu aceptación",
-  aceptada_pendiente_presupuesto: "Solicitud aceptada · preparando presupuesto",
+  aceptada_pendiente_presupuesto: "Solicitud aceptada · factura pendiente de generar",
   presupuesto_enviado: "Presupuesto pendiente de tu respuesta",
   aceptado_pendiente_pago: "Presupuesto aceptado · pendiente de pago",
   pendiente_aceptacion_gestion: "Estado anterior: pendiente de aceptación",
@@ -45,7 +44,7 @@ const ESTADOS_SOLICITUD = {
 
 const ESTADOS_SOLICITUD_EN = {
   pendiente_aceptacion_cliente: "Awaiting your acceptance",
-  aceptada_pendiente_presupuesto: "Request accepted · quote being prepared",
+  aceptada_pendiente_presupuesto: "Request accepted · invoice awaiting generation",
   presupuesto_enviado: "Quote awaiting your response",
   aceptado_pendiente_pago: "Quote accepted · awaiting payment",
   pendiente_aceptacion_gestion: "Previous status: awaiting acceptance",
@@ -192,7 +191,7 @@ export default function ClientePresupuestos() {
           supabase
             .from("solicitudes_presupuesto")
             .select(
-              "id,cliente_id,vivienda_id,servicios_solicitados,descripcion_cliente,estado,factura_gestion_id,extra_gestion_id,factura_trabajo_id,extra_trabajo_id,created_at,updated_at"
+              "id,cliente_id,vivienda_id,servicios_solicitados,lineas_solicitadas,descripcion_cliente,estado,factura_gestion_id,extra_gestion_id,factura_trabajo_id,extra_trabajo_id,created_at,updated_at"
             )
             .eq("cliente_id", clienteActual.id)
             .order("created_at", { ascending: false }),
@@ -341,15 +340,67 @@ export default function ClientePresupuestos() {
     [viviendas]
   );
 
+  const desgloseLineasAceptadas = (solicitud) => {
+    const origen = Array.isArray(solicitud.lineas_solicitadas)
+      ? solicitud.lineas_solicitadas
+      : [];
+
+    return origen.map((linea) => {
+      const cantidad = Number(linea.cantidad ?? 1);
+      const precioUnitario = Number(linea.precio_unitario);
+      const subtotal = Number((cantidad * precioUnitario).toFixed(2));
+
+      return {
+        ...linea,
+        cantidad,
+        precio_unitario: precioUnitario,
+        subtotal,
+        valida:
+          Boolean(String(linea.concepto || "").trim()) &&
+          Number.isFinite(cantidad) &&
+          cantidad > 0 &&
+          Number.isFinite(precioUnitario) &&
+          precioUnitario > 0 &&
+          Number.isFinite(subtotal),
+      };
+    });
+  };
+
   const responderSolicitud = async (solicitud, decision) => {
     const verbo =
       decision === "aceptado"
         ? t("aceptar", "accept")
         : t("rechazar", "reject");
 
-    const confirmacion = en
-      ? `Do you confirm that you want to ${verbo} this request? Your response will be recorded.`
-      : `¿Confirmas que deseas ${verbo} esta solicitud? Esta respuesta quedará registrada.`;
+    const lineasAceptadas = desgloseLineasAceptadas(solicitud);
+    const importesValidos =
+      lineasAceptadas.length > 0 &&
+      lineasAceptadas.every((linea) => linea.valida);
+
+    if (decision === "aceptado" && !importesValidos) {
+      setError(
+        t(
+          "No se puede aceptar esta solicitud porque falta un desglose económico válido. Contacta con administración.",
+          "This request cannot be accepted because a valid itemised breakdown is missing. Please contact the administration team."
+        )
+      );
+      return;
+    }
+
+    const baseAceptada = Number(
+      lineasAceptadas.reduce((sum, linea) => sum + linea.subtotal, 0).toFixed(2)
+    );
+    const ivaAceptado = Number((baseAceptada * 0.21).toFixed(2));
+    const totalAceptado = Number((baseAceptada + ivaAceptado).toFixed(2));
+
+    const confirmacion =
+      decision === "aceptado"
+        ? en
+          ? `Do you accept these items and amounts? Subtotal: ${dinero(baseAceptada, language)}; VAT (21%): ${dinero(ivaAceptado, language)}; total: ${dinero(totalAceptado, language)}. An invoice will be generated after acceptance. No technician will be assigned and no work will begin until payment is confirmed.`
+          : `¿Aceptas estos conceptos e importes? Base imponible: ${dinero(baseAceptada, language)}; IVA (21%): ${dinero(ivaAceptado, language)}; total: ${dinero(totalAceptado, language)}. Administración generará la factura tras la aceptación. No se asignará técnico ni comenzará el trabajo hasta confirmar el pago.`
+        : en
+          ? `Do you confirm that you want to ${verbo} this request? Your response will be recorded.`
+          : `¿Confirmas que deseas ${verbo} esta solicitud? Esta respuesta quedará registrada.`;
 
     if (!window.confirm(confirmacion)) {
       return;
@@ -373,8 +424,8 @@ export default function ClientePresupuestos() {
       if (decision === "aceptado") {
         setMensaje(
           t(
-            "Has aceptado la solicitud. Administración ha recibido el aviso y podrá preparar el presupuesto económico. Esta aceptación no genera factura, cobro ni orden de trabajo.",
-            "You have accepted the request. The administration team has been notified and can prepare the quote. This acceptance does not create an invoice, charge or work order."
+            "Has aceptado los conceptos y los importes mostrados. Administración generará directamente la factura, sin necesidad de un segundo presupuesto. No se asignará técnico ni comenzará ningún trabajo hasta que el pago quede confirmado.",
+            "You have accepted the items and amounts shown. The administration team will generate the invoice directly; no second quote is needed. No technician will be assigned and no work will begin until payment is confirmed."
           )
         );
       } else {
@@ -588,6 +639,15 @@ export default function ClientePresupuestos() {
     const vivienda = viviendaPorId[String(solicitud.vivienda_id)];
     const pendienteAceptacion =
       solicitud.estado === "pendiente_aceptacion_cliente";
+    const lineasAceptadas = desgloseLineasAceptadas(solicitud);
+    const importesValidos =
+      lineasAceptadas.length > 0 &&
+      lineasAceptadas.every((linea) => linea.valida);
+    const baseAceptada = Number(
+      lineasAceptadas.reduce((sum, linea) => sum + linea.subtotal, 0).toFixed(2)
+    );
+    const ivaAceptado = Number((baseAceptada * 0.21).toFixed(2));
+    const totalAceptado = Number((baseAceptada + ivaAceptado).toFixed(2));
 
     return (
       <article key={solicitud.id} style={styles.card}>
@@ -637,27 +697,65 @@ export default function ClientePresupuestos() {
           <div style={styles.responseBox}>
             <strong>
               {t(
-                "¿Aceptas que administración prepare este presupuesto?",
-                "Do you agree to let the administration team prepare this quote?"
+                "Revisa los conceptos y los importes antes de aceptar.",
+                "Review the items and amounts before accepting."
               )}
             </strong>
-            <p>
-              {t(
-                "Esta respuesta solo autoriza la preparación del presupuesto económico. No supone aceptar un precio, no genera un cobro y no crea una orden de trabajo. Recibirás el presupuesto final para revisarlo antes de decidir.",
-                "This response only authorises preparation of the quote. It does not mean accepting a price, create a charge or create a work order. You will receive the final quote to review before deciding."
-              )}
-            </p>
+
+            {importesValidos ? (
+              <>
+                {lineasAceptadas.map((linea, index) => (
+                  <div key={linea.codigo || index} style={styles.lineRow}>
+                    <span>
+                      {linea.concepto} ·{" "}
+                      {Number(linea.cantidad).toLocaleString(
+                        en ? "en-GB" : "es-ES"
+                      )}{" "}
+                      × {dinero(linea.precio_unitario, language)}
+                    </span>
+                    <strong>{dinero(linea.subtotal, language)}</strong>
+                  </div>
+                ))}
+
+                <div style={styles.totalRow}>
+                  <span>{t("Base imponible", "Subtotal")}</span>
+                  <strong>{dinero(baseAceptada, language)}</strong>
+                </div>
+                <div style={styles.totalRow}>
+                  <span>{t("IVA (21%)", "VAT (21%)")}</span>
+                  <strong>{dinero(ivaAceptado, language)}</strong>
+                </div>
+                <div style={styles.grandTotal}>
+                  <span>{t("Total que aceptas", "Total you are accepting")}</span>
+                  <strong>{dinero(totalAceptado, language)}</strong>
+                </div>
+
+                <p>
+                  {t(
+                    "Al aceptar, confirmas estos conceptos y estos importes. Administración generará directamente la factura, sin enviarte un segundo presupuesto. La factura quedará pendiente de pago. No se asignará técnico ni comenzará ningún trabajo hasta que el pago esté confirmado.",
+                    "By accepting, you agree to these items and amounts. The administration team will generate the invoice directly without sending a second quote. The invoice will be due for payment. No technician will be assigned and no work will begin until payment is confirmed."
+                  )}
+                </p>
+              </>
+            ) : (
+              <p>
+                {t(
+                  "No se puede aceptar todavía: falta un desglose económico válido. Contacta con administración para que revise la solicitud.",
+                  "You cannot accept this request yet because its itemised amounts are incomplete or invalid. Please contact the administration team."
+                )}
+              </p>
+            )}
 
             <div style={styles.actions}>
               <button
                 type="button"
                 style={styles.acceptButton}
-                disabled={Boolean(accion)}
+                disabled={Boolean(accion) || !importesValidos}
                 onClick={() => responderSolicitud(solicitud, "aceptado")}
               >
                 {accion === `solicitud-${solicitud.id}`
                   ? t("Registrando…", "Recording…")
-                  : t("Aceptar solicitud", "Accept request")}
+                  : t("Aceptar conceptos e importes", "Accept items and amounts")}
               </button>
 
               <button
@@ -675,8 +773,8 @@ export default function ClientePresupuestos() {
         {solicitud.estado === "aceptada_pendiente_presupuesto" && (
           <p style={styles.info}>
             {t(
-              "Has aceptado la solicitud. Administración está preparando el presupuesto económico. Todavía no hay factura ni pago pendiente.",
-              "You have accepted the request. The administration team is preparing the quote. There is no invoice or payment due yet."
+              "Has aceptado los conceptos y sus importes. Administración generará directamente la factura y te enviará el aviso de pago. No se asignará técnico ni comenzará el trabajo hasta confirmar el pago.",
+              "You have accepted the items and amounts. The administration team will generate the invoice directly and send you the payment notice. No technician will be assigned and no work will begin until payment is confirmed."
             )}
           </p>
         )}
