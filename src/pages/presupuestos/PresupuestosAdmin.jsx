@@ -1,3 +1,4 @@
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
@@ -280,6 +281,44 @@ export default function PresupuestosAdmin() {
     () => Object.fromEntries(facturas.map((f) => [String(f.id), f])),
     [facturas]
   );
+
+  // Ordena cada solicitud por la fecha de su presupuesto más reciente.
+  // Si no tiene presupuesto, utiliza la fecha original de la solicitud.
+  const solicitudesOrdenadas = useMemo(() => {
+    const ultimaFechaPorSolicitud = new Map();
+
+    presupuestos.forEach((presupuesto) => {
+      const fecha = presupuesto.sent_at || presupuesto.created_at;
+      const timestamp = fecha ? new Date(fecha).getTime() : 0;
+
+      if (!Number.isFinite(timestamp)) return;
+
+      const anterior =
+        ultimaFechaPorSolicitud.get(presupuesto.solicitud_id) || 0;
+
+      if (timestamp > anterior) {
+        ultimaFechaPorSolicitud.set(
+          presupuesto.solicitud_id,
+          timestamp
+        );
+      }
+    });
+
+    return [...solicitudes].sort((a, b) => {
+      const fechaCreacionA = new Date(a.created_at || 0).getTime();
+      const fechaCreacionB = new Date(b.created_at || 0).getTime();
+
+      const fechaA =
+        ultimaFechaPorSolicitud.get(a.id) ||
+        (Number.isFinite(fechaCreacionA) ? fechaCreacionA : 0);
+
+      const fechaB =
+        ultimaFechaPorSolicitud.get(b.id) ||
+        (Number.isFinite(fechaCreacionB) ? fechaCreacionB : 0);
+
+      return fechaB - fechaA;
+    });
+  }, [solicitudes, presupuestos]);
 
   const presupuestosSolicitud = (solicitudId) =>
     presupuestos
@@ -694,7 +733,7 @@ export default function PresupuestosAdmin() {
             </p>
           </div>
         ) : (
-          solicitudes.map((solicitud) => {
+          solicitudesOrdenadas.map((solicitud) => {
             const cliente =
               clienteMap[solicitud.cliente_id] || {};
 
