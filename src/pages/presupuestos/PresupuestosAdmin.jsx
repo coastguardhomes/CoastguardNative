@@ -320,6 +320,23 @@ export default function PresupuestosAdmin() {
     });
   }, [solicitudes, presupuestos]);
 
+  // En Presupuestos solo se muestran extras independientes sin factura.
+  // Los extras que ya tienen factura se conservan y se consultan desde Facturas.
+  const gestionExtrasPendientes = useMemo(
+    () => gestionExtras.filter((extra) => !extra.factura_id),
+    [gestionExtras]
+  );
+
+  // Una solicitud deja de mostrarse aquí cuando ya tiene factura de trabajo.
+  // Tener factura de gestión NO la oculta: puede quedar pendiente la factura del trabajo.
+  const solicitudesPendientes = useMemo(
+    () =>
+      solicitudesOrdenadas.filter(
+        (solicitud) => !solicitud.factura_trabajo_id
+      ),
+    [solicitudesOrdenadas]
+  );
+
   const presupuestosSolicitud = (solicitudId) =>
     presupuestos
       .filter((p) => p.solicitud_id === solicitudId)
@@ -578,12 +595,12 @@ export default function PresupuestosAdmin() {
 
           {cargando ? (
             <p style={styles.muted}>Cargando gestiones…</p>
-          ) : gestionExtras.length === 0 ? (
+          ) : gestionExtrasPendientes.length === 0 ? (
             <p style={styles.muted}>
-              No hay solicitudes independientes de Gestión de presupuesto ni de Coste del técnico.
+              No hay solicitudes independientes pendientes de facturación.
             </p>
           ) : (
-            gestionExtras.map((extra) => {
+            gestionExtrasPendientes.map((extra) => {
               const cliente = clienteMap[extra.cliente_id] || {};
               const vivienda = viviendaMap[extra.vivienda_id] || {};
               const codigosExtra = extra.servicios_codigos || [];
@@ -726,14 +743,14 @@ export default function PresupuestosAdmin() {
         {/* PRESUPUESTOS ECONÓMICOS DE LOS TRABAJOS */}
         {cargando ? (
           <p style={styles.muted}>Cargando solicitudes…</p>
-        ) : solicitudes.length === 0 ? (
+        ) : solicitudesPendientes.length === 0 ? (
           <div style={styles.card}>
             <p style={styles.muted}>
-              No hay solicitudes de presupuesto registradas.
+              No hay solicitudes de presupuesto pendientes de facturación.
             </p>
           </div>
         ) : (
-          solicitudesOrdenadas.map((solicitud) => {
+          solicitudesPendientes.map((solicitud) => {
             const cliente =
               clienteMap[solicitud.cliente_id] || {};
 
