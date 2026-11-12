@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -6,6 +7,11 @@ import { useLanguage } from "../../context/LanguageContext.jsx";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
+
+const VERSIONES_CONTRATO_ADMITIDAS = new Set([
+  "CONTRATO_SERVICIOS_V2_2026-11-06",
+  "CONTRATO_SERVICIOS_V3_2026-11-12"
+]);
 
 const COLOR_DORADO = "#e0b034";
 const FONDO_PRINCIPAL = "#0a0f1a";
@@ -204,16 +210,18 @@ export default function ClienteContratoVer() {
       return;
     }
 
-    // Se utiliza el total fiscal guardado en el contrato.
-    const totalGuardado = Number(contrato?.precio_total);
+    // Se utiliza el total fiscal del periodo de facturación guardado.
+    const totalFacturacionGuardado = Number(
+      contrato?.precio_total_facturacion
+    );
 
     if (
-      contrato?.precio_total == null ||
-      !Number.isFinite(totalGuardado) ||
-      totalGuardado <= 0
+      contrato?.precio_total_facturacion == null ||
+      !Number.isFinite(totalFacturacionGuardado) ||
+      totalFacturacionGuardado <= 0
     ) {
       alert(
-        "Este contrato no tiene un total mensual con IVA válido guardado. Contacta con el administrador antes de pagar."
+        "Este contrato no tiene un total del periodo de facturación con IVA válido guardado. Contacta con el administrador antes de pagar."
       );
       return;
     }
@@ -226,9 +234,13 @@ export default function ClienteContratoVer() {
     if (
       contrato?.renovacion_automatica !== true ||
       !contrato?.renovacion_aceptada_en ||
-      contrato?.version_condiciones !== "CONTRATO_SERVICIOS_V2_2026-11-06"
+      !VERSIONES_CONTRATO_ADMITIDAS.has(
+        String(contrato?.version_condiciones || "")
+      )
     ) {
-      alert("Este contrato no tiene registrada la aceptación expresa de las nuevas condiciones de renovación anual. Debe aceptarse la versión actualizada antes de iniciar una suscripción mensual.");
+      alert(
+        "Este contrato no tiene registrada la aceptación expresa de las nuevas condiciones de renovación anual. Debe aceptarse la versión actualizada antes de iniciar una suscripción."
+      );
       return;
     }
 
@@ -237,9 +249,15 @@ export default function ClienteContratoVer() {
     try {
       localStorage.setItem("contrato_pago_id", id);
 
-      const amountInCents = Math.round(totalGuardado * 100);
-      const customerEmail = cliente?.email || contrato?.cliente_email || "";
-      const clientId = contrato?.cliente_id || cliente?.id || null;
+      const amountInCents = Math.round(
+        totalFacturacionGuardado * 100
+      );
+
+      const customerEmail =
+        cliente?.email || contrato?.cliente_email || "";
+
+      const clientId =
+        contrato?.cliente_id || cliente?.id || null;
 
       const { data, error } = await supabase.functions.invoke(
         "create-checkout-session",
@@ -256,10 +274,12 @@ export default function ClienteContratoVer() {
 
       if (error) {
         let errorMsg = error.message;
+
         try {
           const body = await error.context?.json();
           if (body?.error) errorMsg = body.error;
         } catch (e) {}
+
         throw new Error(errorMsg);
       }
 
@@ -270,7 +290,9 @@ export default function ClienteContratoVer() {
           window.location.href = data.url;
         }
       } else {
-        throw new Error("No se ha recibido la URL de redirección de Stripe.");
+        throw new Error(
+          "No se ha recibido la URL de redirección de Stripe."
+        );
       }
     } catch (err) {
       console.error("Error al iniciar pago con Stripe:", err);
@@ -413,7 +435,10 @@ export default function ClienteContratoVer() {
             fontFamily: "Inter, sans-serif"
           }}
         >
-          <h2 style={TEXTO_DORADO}>No se ha podido cargar el contrato.</h2>
+          <h2 style={TEXTO_DORADO}>
+            No se ha podido cargar el contrato.
+          </h2>
+
           <button onClick={() => navigate(-1)} style={botonEstilo}>
             Volver
           </button>
@@ -425,6 +450,20 @@ export default function ClienteContratoVer() {
   const precioBase = Number(contrato.precio);
   const ivaGuardado = Number(contrato.iva);
   const totalGuardado = Number(contrato.precio_total);
+
+  const baseFacturacion = Number(contrato.precio_facturacion);
+  const ivaFacturacion = Number(contrato.iva_facturacion);
+  const totalFacturacion = Number(contrato.precio_total_facturacion);
+
+  const periodicidadPago = String(
+    contrato.periodicidad_pago || "mensual"
+  ).toLowerCase();
+
+  const esFacturacionAnual = periodicidadPago === "anual";
+
+  const versionContratoAdmitida = VERSIONES_CONTRATO_ADMITIDAS.has(
+    String(contrato.version_condiciones || "")
+  );
 
   const formatoEuro = (valor) =>
     Number.isFinite(valor) ? `${valor.toFixed(2)} €` : "—";
@@ -481,11 +520,13 @@ export default function ClienteContratoVer() {
           </p>
 
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("direccion")}:</strong> {cliente?.direccion || "—"}
+            <strong>{t("direccion")}:</strong>{" "}
+            {cliente?.direccion || "—"}
           </p>
 
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("telefono")}:</strong> {cliente?.telefono || "—"}
+            <strong>{t("telefono")}:</strong>{" "}
+            {cliente?.telefono || "—"}
           </p>
         </div>
 
@@ -517,7 +558,7 @@ export default function ClienteContratoVer() {
               : `${contrato.frecuencia || 30} ${t("dias")}`}
           </p>
 
-          {/* Se muestran los importes fiscales guardados. */}
+          {/* Importes mensuales de referencia guardados. */}
           <div
             style={{
               marginTop: "16px",
@@ -529,12 +570,15 @@ export default function ClienteContratoVer() {
             }}
           >
             <p style={{ margin: "6px 0" }}>
-              <strong>Precio base mensual:</strong> {formatoEuro(precioBase)}
+              <strong>Precio base mensual:</strong>{" "}
+              {formatoEuro(precioBase)}
             </p>
 
             <p style={{ margin: "6px 0" }}>
               <strong>IVA (21%):</strong>{" "}
-              {contrato.iva != null ? formatoEuro(ivaGuardado) : "No registrado"}
+              {contrato.iva != null
+                ? formatoEuro(ivaGuardado)
+                : "No registrado"}
             </p>
 
             <div
@@ -560,44 +604,108 @@ export default function ClienteContratoVer() {
             </div>
           </div>
 
+          {esFacturacionAnual && (
+            <div
+              style={{
+                marginTop: "16px",
+                marginBottom: "18px",
+                padding: "14px",
+                borderRadius: "10px",
+                border: "1px solid rgba(56,189,248,0.35)",
+                background: "rgba(56,189,248,0.08)"
+              }}
+            >
+              <h4 style={{ margin: "0 0 10px", color: "#7dd3fc" }}>
+                Importe de la anualidad anticipada
+              </h4>
+
+              <p style={{ margin: "6px 0" }}>
+                <strong>Base anual con descuento:</strong>{" "}
+                {formatoEuro(baseFacturacion)}
+              </p>
+
+              <p style={{ margin: "6px 0" }}>
+                <strong>IVA de la anualidad:</strong>{" "}
+                {formatoEuro(ivaFacturacion)}
+              </p>
+
+              <p
+                style={{
+                  margin: "10px 0 0",
+                  paddingTop: "10px",
+                  borderTop: "1px solid rgba(56,189,248,0.3)",
+                  color: "#7dd3fc",
+                  fontSize: "18px",
+                  fontWeight: "700"
+                }}
+              >
+                Total a pagar ahora: {formatoEuro(totalFacturacion)}
+              </p>
+
+              <p
+                style={{
+                  margin: "8px 0 0",
+                  fontSize: "13px",
+                  color: "#cbd5e1"
+                }}
+              >
+                Pago anual anticipado. Descuento aplicado:{" "}
+                {Number(contrato.descuento_anual_pct ?? 10)} % antes de IVA.
+              </p>
+            </div>
+          )}
+
           <p style={{ margin: "6px 0" }}>
-            <strong>{t("fechaInicio")}:</strong> {contrato.fecha_inicio || "—"}
+            <strong>{t("fechaInicio")}:</strong>{" "}
+            {contrato.fecha_inicio || "—"}
           </p>
 
           <p style={{ margin: "6px 0" }}>
-            <strong>Fin del período inicial / renovación:</strong> {contrato.fecha_fin || "—"}
+            <strong>Fin del período inicial / renovación:</strong>{" "}
+            {contrato.fecha_fin || "—"}
           </p>
 
           <p style={{ margin: "6px 0" }}>
             <strong>Renovación automática anual:</strong>{" "}
-            {contrato.renovacion_automatica === true && contrato.renovacion_aceptada_en
+            {contrato.renovacion_automatica === true &&
+            contrato.renovacion_aceptada_en
               ? "Aceptada y registrada"
               : "No consta aceptación expresa"}
           </p>
 
-          {contrato.cancelacion_solicitada_en && contrato.cancelacion_efectiva_en && (
-            <div
-              style={{
-                marginTop: "12px",
-                marginBottom: "12px",
-                padding: "12px",
-                borderRadius: "10px",
-                border: "1px solid rgba(245,158,11,0.45)",
-                background: "rgba(245,158,11,0.08)",
-                color: "#fbbf24",
-                lineHeight: 1.5
-              }}
-            >
-              <strong>Cancelación programada</strong>
-              <p style={{ margin: "6px 0 0" }}>
-                Solicitud: {new Date(contrato.cancelacion_solicitada_en).toLocaleString("es-ES")}
-              </p>
-              <p style={{ margin: "4px 0 0" }}>
-                Fecha efectiva: {new Date(contrato.cancelacion_efectiva_en).toLocaleString("es-ES")}
-              </p>
-              El servicio permanece activo hasta la fecha efectiva.
-            </div>
-          )}
+          {contrato.cancelacion_solicitada_en &&
+            contrato.cancelacion_efectiva_en && (
+              <div
+                style={{
+                  marginTop: "12px",
+                  marginBottom: "12px",
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(245,158,11,0.45)",
+                  background: "rgba(245,158,11,0.08)",
+                  color: "#fbbf24",
+                  lineHeight: 1.5
+                }}
+              >
+                <strong>Cancelación programada</strong>
+
+                <p style={{ margin: "6px 0 0" }}>
+                  Solicitud:{" "}
+                  {new Date(
+                    contrato.cancelacion_solicitada_en
+                  ).toLocaleString("es-ES")}
+                </p>
+
+                <p style={{ margin: "4px 0 0" }}>
+                  Fecha efectiva:{" "}
+                  {new Date(
+                    contrato.cancelacion_efectiva_en
+                  ).toLocaleString("es-ES")}
+                </p>
+
+                El servicio permanece activo hasta la fecha efectiva.
+              </div>
+            )}
 
           <p style={{ margin: "6px 0 16px 0" }}>
             <strong>{t("estado")}:</strong>{" "}
@@ -644,10 +752,10 @@ export default function ClienteContratoVer() {
             esFirmado &&
             contrato.renovacion_automatica === true &&
             contrato.renovacion_aceptada_en &&
-            contrato.version_condiciones === "CONTRATO_SERVICIOS_V2_2026-11-06" &&
-            contrato.precio_total != null &&
-            Number.isFinite(totalGuardado) &&
-            totalGuardado > 0 && (
+            versionContratoAdmitida &&
+            contrato.precio_total_facturacion != null &&
+            Number.isFinite(totalFacturacion) &&
+            totalFacturacion > 0 && (
               <button
                 onClick={manejarPagoStripe}
                 disabled={pagandoStripe}
@@ -660,25 +768,36 @@ export default function ClienteContratoVer() {
               >
                 {pagandoStripe
                   ? "Conectando con Stripe..."
+                  : esFacturacionAnual
+                  ? `💳 Pagar anualidad (${formatoEuro(
+                      totalFacturacion
+                    )}, IVA incluido)`
                   : `💳 Suscribirse y Pagar (${formatoEuro(
-                      totalGuardado
+                      totalFacturacion
                     )}/mes, IVA incluido)`}
               </button>
             )}
 
-          {!yaPagado && esFirmado && contrato.renovacion_automatica !== true && (
-            <p style={{
-              marginTop: "12px",
-              padding: "12px",
-              borderRadius: "8px",
-              background: "rgba(245,158,11,0.08)",
-              border: "1px solid rgba(245,158,11,0.35)",
-              color: "#fbbf24",
-              lineHeight: 1.5
-            }}>
-              Este contrato todavía no contiene una aceptación expresa de la renovación automática anual. Para iniciar una nueva suscripción será necesario aceptar las condiciones actualizadas mediante un documento o adenda independiente.
-            </p>
-          )}
+          {!yaPagado &&
+            esFirmado &&
+            contrato.renovacion_automatica !== true && (
+              <p
+                style={{
+                  marginTop: "12px",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  background: "rgba(245,158,11,0.08)",
+                  border: "1px solid rgba(245,158,11,0.35)",
+                  color: "#fbbf24",
+                  lineHeight: 1.5
+                }}
+              >
+                Este contrato todavía no contiene una aceptación expresa de
+                la renovación automática anual. Para iniciar una nueva
+                suscripción será necesario aceptar las condiciones
+                actualizadas mediante un documento o adenda independiente.
+              </p>
+            )}
 
           <button
             onClick={enviarAlAdmin}
