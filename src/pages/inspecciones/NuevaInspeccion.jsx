@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
@@ -14,6 +15,32 @@ function contratoFirmado(contrato) {
       contrato.fecha_firma != null
     )
   );
+}
+
+// Devuelve la fecha local de Madrid en formato YYYY-MM-DD.
+function fechaMadrid(fecha) {
+  if (!fecha) return "";
+
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date(fecha));
+}
+
+// El plazo general de desistimiento a distancia es de 14 días naturales.
+// Sin solicitud expresa de inicio anticipado, no se permite programar
+// una inspección dentro de ese plazo. El día 15 es la primera fecha
+// que queda fuera del período de 14 días.
+function primerDiaTrasDesistimiento(fechaFirma) {
+  const diaFirma = fechaMadrid(fechaFirma);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(diaFirma)) return null;
+
+  const [year, month, day] = diaFirma.split("-").map(Number);
+  const fecha = new Date(Date.UTC(year, month - 1, day + 15));
+
+  return fecha.toISOString().slice(0, 10);
 }
 
 export default function NuevaInspeccion() {
@@ -69,7 +96,7 @@ export default function NuevaInspeccion() {
       const { data, error } = await supabase
         .from("contratos")
         .select(
-          "id, cliente_id, vivienda_id, modalidad, precio, fecha_inicio, estado, pagado, firma_url, firma_cliente, firma, firmado_en, fecha_firma, tecnico_id"
+          "id, cliente_id, vivienda_id, modalidad, precio, fecha_inicio, estado, pagado, firma_url, firma_cliente, firma, firmado_en, fecha_firma, tecnico_id, consentimiento_inicio_anticipado, consentimiento_inicio_anticipado_en"
         )
         .eq("vivienda_id", form.vivienda_id)
         .eq("estado", "activo")
@@ -123,7 +150,7 @@ export default function NuevaInspeccion() {
       const { data: contratoData, error: contratoError } = await supabase
         .from("contratos")
         .select(
-          "id, cliente_id, vivienda_id, estado, pagado, firma_url, firma_cliente, firma, firmado_en, fecha_firma, tecnico_id"
+          "id, cliente_id, vivienda_id, estado, pagado, firma_url, firma_cliente, firma, firmado_en, fecha_firma, tecnico_id, consentimiento_inicio_anticipado, consentimiento_inicio_anticipado_en"
         )
         .eq("id", Number(form.contrato_id))
         .maybeSingle();
@@ -162,16 +189,44 @@ export default function NuevaInspeccion() {
         return;
       }
 
+      if (!form.fecha) {
+        setMensaje("Selecciona una fecha.");
+        return;
+      }
+
+      // Si el cliente no solicitó expresamente el inicio anticipado,
+      // la primera inspección debe quedar fuera de los 14 días naturales
+      // de desistimiento contados desde la firma del contrato a distancia.
+      if (contratoData.consentimiento_inicio_anticipado !== true) {
+        const fechaFirma = contratoData.consentimiento_inicio_anticipado_en ||
+          contratoData.fecha_firma ||
+          contratoData.firmado_en;
+
+        const primeraFechaPermitida =
+          primerDiaTrasDesistimiento(fechaFirma);
+
+        if (!primeraFechaPermitida) {
+          setMensaje(
+            "No se puede comprobar la fecha de firma y el consentimiento de inicio anticipado. No se ha creado la inspección."
+          );
+          return;
+        }
+
+        if (form.fecha < primeraFechaPermitida) {
+          setMensaje(
+            "El cliente no solicitó el inicio anticipado. La inspección debe programarse a partir del " +
+            primeraFechaPermitida +
+            ", una vez finalizado el plazo legal de desistimiento."
+          );
+          return;
+        }
+      }
+
       const tecnicoFinal =
         form.tecnico_id || contratoData.tecnico_id || null;
 
       if (!tecnicoFinal) {
         setMensaje("Selecciona un técnico.");
-        return;
-      }
-
-      if (!form.fecha) {
-        setMensaje("Selecciona una fecha.");
         return;
       }
 
