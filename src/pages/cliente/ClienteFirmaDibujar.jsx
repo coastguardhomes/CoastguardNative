@@ -1,12 +1,17 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
 import { useLanguage } from "../../context/LanguageContext.jsx";
 
-const VERSION_CONTRATO = "CONTRATO_SERVICIOS_V2_2026-11-06";
+const VERSIONES_CONTRATO_ADMITIDAS = new Set([
+  "CONTRATO_SERVICIOS_V2_2026-11-06",
+  "CONTRATO_SERVICIOS_V3_2026-11-12"
+]);
+
 const VERSION_CONSENTIMIENTO_INICIO =
-  "CONSENTIMIENTO_INICIO_ANTICIPADO_V1_2026-10-18";
+  "CONSENTIMIENTO_INICIO_ANTICIPADO_V2_2026-11-09";
 
 const ESTADOS_CONTRATO_FIRMADO = [
   "firmado",
@@ -32,6 +37,7 @@ export default function ClienteFirmaDibujar({
   const [aceptaRenovacion, setAceptaRenovacion] = useState(false);
   const [solicitaInicioAnticipado, setSolicitaInicioAnticipado] =
     useState(false);
+  const [contratoInfo, setContratoInfo] = useState(null);
 
   const [estadoComprobacion, setEstadoComprobacion] =
     useState("comprobando");
@@ -54,6 +60,7 @@ export default function ClienteFirmaDibujar({
       setEstadoComprobacion("comprobando");
       setMensajeComprobacion("");
       setHayFirma(false);
+      setContratoInfo(null);
 
       if (!idValido) {
         setEstadoComprobacion("error");
@@ -64,7 +71,9 @@ export default function ClienteFirmaDibujar({
       try {
         const { data: contrato, error } = await supabase
           .from("contratos")
-          .select("id, estado, firma_url, firma_cliente")
+          .select(
+            "id, estado, firma_url, firma_cliente, periodicidad_pago, descuento_anual_pct, version_condiciones"
+          )
           .eq("id", numericId)
           .maybeSingle();
 
@@ -75,6 +84,7 @@ export default function ClienteFirmaDibujar({
             "Error al comprobar el estado del contrato:",
             error
           );
+
           setEstadoComprobacion("error");
           setMensajeComprobacion(
             "No se ha podido comprobar el estado del contrato. " +
@@ -90,6 +100,55 @@ export default function ClienteFirmaDibujar({
           );
           return;
         }
+
+        const versionRegistrada = String(
+          contrato.version_condiciones || ""
+        );
+
+        if (!VERSIONES_CONTRATO_ADMITIDAS.has(versionRegistrada)) {
+          setEstadoComprobacion("error");
+          setMensajeComprobacion(
+            "La versión de condiciones de este contrato no es compatible con la firma. Contacta con administración."
+          );
+          return;
+        }
+
+        const periodicidad = String(
+          contrato.periodicidad_pago || "mensual"
+        );
+
+        if (
+          periodicidad !== "mensual" &&
+          periodicidad !== "anual"
+        ) {
+          setEstadoComprobacion("error");
+          setMensajeComprobacion(
+            "La periodicidad de pago del contrato no es válida. Contacta con administración."
+          );
+          return;
+        }
+
+        const descuentoAnual = Number(
+          contrato.descuento_anual_pct ?? 10
+        );
+
+        if (
+          !Number.isFinite(descuentoAnual) ||
+          descuentoAnual < 0 ||
+          descuentoAnual > 100
+        ) {
+          setEstadoComprobacion("error");
+          setMensajeComprobacion(
+            "El descuento anual registrado en el contrato no es válido. Contacta con administración."
+          );
+          return;
+        }
+
+        setContratoInfo({
+          periodicidad_pago: periodicidad,
+          descuento_anual_pct: descuentoAnual,
+          version_condiciones: versionRegistrada
+        });
 
         const estado = String(contrato.estado || "")
           .trim()
@@ -249,6 +308,13 @@ export default function ClienteFirmaDibujar({
       return;
     }
 
+    if (!contratoInfo?.version_condiciones) {
+      alert(
+        "No se ha podido verificar la versión y modalidad de este contrato. No se enviará la firma."
+      );
+      return;
+    }
+
     if (!aceptaContrato) {
       alert(
         "Debes marcar la casilla de aceptación expresa del contrato antes de firmar."
@@ -270,12 +336,16 @@ export default function ClienteFirmaDibujar({
     try {
       // Volver a comprobar el estado inmediatamente antes del envío.
       // La función de Supabase también debe impedir una segunda firma.
-      const { data: contratoActual, error: errorComprobacion } =
-        await supabase
-          .from("contratos")
-          .select("id, estado, firma_url, firma_cliente")
-          .eq("id", numericId)
-          .maybeSingle();
+      const {
+        data: contratoActual,
+        error: errorComprobacion
+      } = await supabase
+        .from("contratos")
+        .select(
+          "id, estado, firma_url, firma_cliente, periodicidad_pago, version_condiciones"
+        )
+        .eq("id", numericId)
+        .maybeSingle();
 
       if (errorComprobacion || !contratoActual) {
         throw new Error(
@@ -300,8 +370,20 @@ export default function ClienteFirmaDibujar({
           "Este contrato ya está firmado. No puedes volver a firmarlo."
         );
         setHayFirma(false);
+
         throw new Error(
           "El contrato ya está firmado y no admite una nueva firma."
+        );
+      }
+
+      if (
+        contratoActual.version_condiciones !==
+          contratoInfo.version_condiciones ||
+        contratoActual.periodicidad_pago !==
+          contratoInfo.periodicidad_pago
+      ) {
+        throw new Error(
+          "Las condiciones o la periodicidad del contrato han cambiado. Actualiza la pantalla antes de firmar."
         );
       }
 
@@ -322,7 +404,7 @@ export default function ClienteFirmaDibujar({
           firmaBase64,
           aceptaContrato: true,
           aceptaRenovacion: true,
-          versionContrato: VERSION_CONTRATO,
+          versionContrato: contratoInfo.version_condiciones,
           solicitaInicioAnticipado,
           versionConsentimientoInicio:
             VERSION_CONSENTIMIENTO_INICIO
@@ -443,9 +525,11 @@ export default function ClienteFirmaDibujar({
               ? "Contrato ya firmado"
               : "No se puede abrir la firma"}
           </strong>
+
           <p style={{ margin: "10px 0 0" }}>
             {mensajeComprobacion}
           </p>
+
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -562,22 +646,50 @@ export default function ClienteFirmaDibujar({
                 cursor: guardando ? "default" : "pointer"
               }}
             >
-              Acepto expresamente que el contrato tenga una duración inicial de
-              12 meses, con pagos mensuales, y que se renueve automáticamente
-              por períodos sucesivos de 12 meses, salvo que solicite la
-              cancelación con al menos un mes de preaviso. Puedo solicitar la
-              cancelación en cualquier momento, sin penalización por
-              permanencia anual; durante el preaviso se mantiene el servicio y
-              la facturación que corresponda. No se modificarán unilateralmente
-              el precio ni el alcance del servicio.
-              <br /><br />
-              I expressly agree that the agreement has an initial term of 12
-              months, paid monthly, and automatically renews for successive
-              12-month terms unless I request cancellation with at least one
-              month's notice. I may request cancellation at any time without
-              an annual-commitment penalty; service and applicable billing
-              continue during the notice period. The price and scope of the
-              service will not be changed unilaterally.
+              {contratoInfo?.periodicidad_pago === "anual" ? (
+                <>
+                  Acepto expresamente que el contrato tenga una duración inicial
+                  de 12 meses, con pago anual anticipado y un descuento del{" "}
+                  {contratoInfo.descuento_anual_pct}
+                  % sobre las doce mensualidades, antes de IVA. Acepto que se
+                  renueve automáticamente por períodos sucesivos de 12 meses,
+                  con el correspondiente pago anual anticipado y el descuento
+                  aplicable indicado en el contrato, salvo que solicite la
+                  cancelación con al menos un mes de preaviso antes de la
+                  renovación. El servicio se mantiene durante el período ya
+                  pagado. No se modificarán unilateralmente el precio ni el
+                  alcance del servicio.
+                  <br /><br />
+                  I expressly agree that the agreement has an initial term of
+                  12 months, paid annually in advance with the stated discount
+                  on the twelve monthly fees before VAT. It automatically
+                  renews for successive 12-month terms with the applicable
+                  annual advance payment and discount, unless I request
+                  cancellation at least one month before renewal. Service
+                  continues throughout the period already paid. The price and
+                  scope of the service will not be changed unilaterally.
+                </>
+              ) : (
+                <>
+                  Acepto expresamente que el contrato tenga una duración inicial
+                  de 12 meses, con pagos mensuales, y que se renueve
+                  automáticamente por períodos sucesivos de 12 meses, salvo que
+                  solicite la cancelación con al menos un mes de preaviso. Puedo
+                  solicitar la cancelación en cualquier momento, sin penalización
+                  por permanencia anual; durante el preaviso se mantiene el
+                  servicio y la facturación que corresponda. No se modificarán
+                  unilateralmente el precio ni el alcance del servicio.
+                  <br /><br />
+                  I expressly agree that the agreement has an initial term of
+                  12 months, paid monthly, and automatically renews for
+                  successive 12-month terms unless I request cancellation at
+                  least one month before renewal. I may request cancellation at
+                  any time without an annual-commitment penalty; service and
+                  applicable billing continue during the notice period. The
+                  price and scope of the service will not be changed
+                  unilaterally.
+                </>
+              )}
             </label>
           </div>
 
