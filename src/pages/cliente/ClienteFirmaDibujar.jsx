@@ -11,7 +11,9 @@ const VERSIONES_CONTRATO_ADMITIDAS = new Set([
 ]);
 
 const VERSION_CONSENTIMIENTO_INICIO =
-  "CONSENTIMIENTO_INICIO_ANTICIPADO_V2_2026-11-09";
+  "CONSENTIMIENTO_INICIO_ANTICIPADO_V3_2026-11-12";
+const VERSION_RECONOCIMIENTO_PERDIDA =
+  "RECONOCIMIENTO_PERDIDA_DESISTIMIENTO_V2_2026-11-12";
 
 const ESTADOS_CONTRATO_FIRMADO = [
   "firmado",
@@ -407,7 +409,11 @@ export default function ClienteFirmaDibujar({
           versionContrato: contratoInfo.version_condiciones,
           solicitaInicioAnticipado,
           versionConsentimientoInicio:
-            VERSION_CONSENTIMIENTO_INICIO
+            VERSION_CONSENTIMIENTO_INICIO,
+          reconocePerdidaDesistimiento: solicitaInicioAnticipado,
+          versionReconocimientoPerdida: solicitaInicioAnticipado
+            ? VERSION_RECONOCIMIENTO_PERDIDA
+            : null
         }
       });
 
@@ -731,17 +737,26 @@ export default function ClienteFirmaDibujar({
                 cursor: guardando ? "default" : "pointer"
               }}
             >
-              Solicito expresamente que el servicio comience antes de que
-              finalice el plazo de desistimiento de 14 días y entiendo que,
-              si desisto, podré tener que abonar la parte proporcional del
-              servicio prestado cuando legalmente corresponda. Esta solicitud
-              es opcional y no condiciona la firma del contrato.
+              Solicito expresamente que CoastGuard Homes Services comience
+              a prestar el servicio antes de que finalice el plazo legal de
+              desistimiento que resulte aplicable. He sido informado/a de que,
+              si desisto después de que el servicio haya comenzado y antes de
+              su ejecución íntegra, podré tener que abonar el importe
+              proporcional correspondiente a la parte efectivamente prestada,
+              siempre que se cumplan los requisitos legales. Reconozco que, si
+              el servicio contratado llega a ejecutarse íntegramente durante
+              el plazo de desistimiento, perderé ese derecho una vez completada
+              la prestación. Esta solicitud es expresa y opcional.
               <br /><br />
-              I expressly request that the service begin before the 14-day
-              withdrawal period ends. I understand that, if I withdraw, I may
-              have to pay the proportionate amount for the service already
-              provided where legally applicable. This request is optional and
-              is not a condition for signing the agreement.
+              I expressly request CoastGuard Homes Services to begin providing
+              the service before the applicable statutory withdrawal period
+              ends. I have been informed that, if I withdraw after the service
+              has started but before it has been fully performed, I may have to
+              pay the proportionate amount for the part actually provided,
+              where the legal requirements are met. I acknowledge that, if the
+              contracted service is fully performed during the withdrawal
+              period, I will lose that right once performance is complete.
+              This request is express and optional.
             </label>
           </div>
 
