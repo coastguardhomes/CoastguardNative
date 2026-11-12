@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import Menu from "../../layouts/Menu";
 import { supabase } from "../../lib/supabase";
@@ -21,6 +22,7 @@ export default function CrearContrato() {
     notas: "",
     frecuencia: "",
     modalidad: "",
+    periodicidad_pago: "mensual",
     dni: "",
   });
 
@@ -258,6 +260,14 @@ export default function CrearContrato() {
     }
 
     if (
+      form.periodicidad_pago !== "mensual" &&
+      form.periodicidad_pago !== "anual"
+    ) {
+      setMensaje("Selecciona una periodicidad de pago válida.");
+      return;
+    }
+
+    if (
       form.modalidad !== "custodia_llaves" &&
       (!form.frecuencia ||
         !Number.isFinite(Number(form.frecuencia)) ||
@@ -375,6 +385,10 @@ export default function CrearContrato() {
             modalidad: form.modalidad,
             estado: "pendiente",
             duracion_meses: 12,
+            periodicidad_pago: form.periodicidad_pago,
+            descuento_anual_pct:
+              form.periodicidad_pago === "anual" ? 10 : 0,
+            version_condiciones: "CONTRATO_SERVICIOS_V3_2026-11-12",
           },
         ])
         .select("*")
@@ -385,11 +399,30 @@ export default function CrearContrato() {
       const contratoId = data.id;
       contratoCreadoId = contratoId;
 
-      const {
-        base: baseFactura,
-        iva: ivaFactura,
-        total: totalFactura,
-      } = importes;
+      // Las columnas *_facturacion son calculadas por PostgreSQL.
+      // En modalidad anual contienen las 12 mensualidades con el 10% aplicado.
+      const baseFactura = Number(data.precio_facturacion);
+      const ivaFactura = Number(data.iva_facturacion);
+      const totalFactura = Number(data.precio_total_facturacion);
+
+      if (
+        !Number.isFinite(baseFactura) ||
+        baseFactura <= 0 ||
+        !Number.isFinite(ivaFactura) ||
+        ivaFactura < 0 ||
+        !Number.isFinite(totalFactura) ||
+        totalFactura <= 0 ||
+        Math.abs(
+          Number((baseFactura + ivaFactura).toFixed(2)) -
+          totalFactura
+        ) > 0.01
+      ) {
+        throw new Error(
+          "Supabase no ha devuelto los importes del periodo de facturación correctamente. El contrato se ha guardado con el número #" +
+          contratoId +
+          ". No lo vuelvas a crear; revisa su ficha antes de continuar."
+        );
+      }
 
       const { error: facturaError } = await supabase
         .from("facturas")
@@ -400,9 +433,12 @@ export default function CrearContrato() {
             contrato_id: Number(contratoId),
             tipo: "contrato",
             descripcion:
-              form.modalidad === "custodia_llaves"
+              (form.modalidad === "custodia_llaves"
                 ? "Custodia de llaves"
-                : "Suscripción mensual",
+                : "Servicio de mantenimiento") +
+              (form.periodicidad_pago === "anual"
+                ? " - anualidad anticipada (10% de descuento)"
+                : " - mensual"),
             base: baseFactura,
             iva: ivaFactura,
             total: totalFactura,
@@ -513,6 +549,26 @@ export default function CrearContrato() {
   const suplementoActual = esCustodia
     ? 0
     : Number(form.precio_vivienda || 0);
+
+  const baseAnualAntesDescuento = Number(
+    (importesActuales.base * 12).toFixed(2)
+  );
+
+  const descuentoAnual = Number(
+    (baseAnualAntesDescuento * 0.10).toFixed(2)
+  );
+
+  const baseAnual = Number(
+    (baseAnualAntesDescuento - descuentoAnual).toFixed(2)
+  );
+
+  const ivaAnual = Number(
+    (importesActuales.iva * 12 * 0.90).toFixed(2)
+  );
+
+  const totalAnual = Number(
+    (baseAnual + ivaAnual).toFixed(2)
+  );
 
   return (
     <Menu>
@@ -691,6 +747,25 @@ export default function CrearContrato() {
             ))}
           </select>
 
+          <label style={labelStyle}>Periodicidad de pago:</label>
+
+          <select
+            value={form.periodicidad_pago}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                periodicidad_pago:
+                  e.target.value === "anual" ? "anual" : "mensual",
+              }))
+            }
+            style={inputStyle}
+          >
+            <option value="mensual">Mensual — sin descuento</option>
+            <option value="anual">
+              Anual — 12 meses por adelantado, 10% de descuento
+            </option>
+          </select>
+
           <label style={labelStyle}>Fecha de inicio:</label>
 
           <input
@@ -717,14 +792,15 @@ export default function CrearContrato() {
               fontSize: "14px",
             }}
           >
-            El contrato tiene duración y renovación anual, con facturación
-            mensual. No existe permanencia mínima anual: el cliente puede
-            solicitar la cancelación en cualquier momento con un mes de
-            preaviso, conforme al contrato marco.
+            El contrato tiene una duración inicial de 12 meses y se renueva
+            conforme a las condiciones firmadas. La periodicidad elegida
+            determina el cobro: mensual sin descuento o anual por adelantado
+            con un 10% de descuento. La cancelación se rige por el preaviso y
+            las condiciones recogidas en el contrato firmado.
           </div>
 
           <label style={labelStyle}>
-            Precio base sin IVA (€/mes):
+            Precio base mensual sin IVA:
           </label>
 
           <input
@@ -761,18 +837,63 @@ export default function CrearContrato() {
             )}
 
             <div>
-              IVA (21%): {importesActuales.iva.toFixed(2)} € / mes
+              IVA mensual (21%): {importesActuales.iva.toFixed(2)} €
             </div>
 
-            <div
-              style={{
-                marginTop: "6px",
-                color: "#4db8ff",
-                fontWeight: "700",
-              }}
-            >
-              Total con IVA: {importesActuales.total.toFixed(2)} € / mes
+            <div>
+              Total mensual con IVA: {importesActuales.total.toFixed(2)} €
             </div>
+
+            {form.periodicidad_pago === "anual" && (
+              <div
+                style={{
+                  marginTop: "10px",
+                  paddingTop: "10px",
+                  borderTop: "1px solid rgba(77,184,255,0.25)",
+                }}
+              >
+                <div>
+                  Base anual antes del descuento:{" "}
+                  {baseAnualAntesDescuento.toFixed(2)} €
+                </div>
+
+                <div>
+                  Descuento anual (10%): {descuentoAnual.toFixed(2)} €
+                </div>
+
+                <div>
+                  Base anual tras descuento: {baseAnual.toFixed(2)} €
+                </div>
+
+                <div>
+                  IVA anual tras descuento: {ivaAnual.toFixed(2)} €
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "6px",
+                    color: "#4db8ff",
+                    fontWeight: "700",
+                    fontSize: "16px",
+                  }}
+                >
+                  Total anual anticipado con IVA:{" "}
+                  {totalAnual.toFixed(2)} €
+                </div>
+              </div>
+            )}
+
+            {form.periodicidad_pago === "mensual" && (
+              <div
+                style={{
+                  marginTop: "6px",
+                  color: "#4db8ff",
+                  fontWeight: "700",
+                }}
+              >
+                Total con IVA: {importesActuales.total.toFixed(2)} € / mes
+              </div>
+            )}
           </div>
 
           {!esCustodia && (
