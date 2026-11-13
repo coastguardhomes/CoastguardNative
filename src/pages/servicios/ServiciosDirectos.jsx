@@ -29,6 +29,8 @@ export default function ServiciosDirectos() {
   const [descripcionPresupuesto, setDescripcionPresupuesto] = useState("");
   const [precioCosteTecnico, setPrecioCosteTecnico] = useState("");
   const [horasSupervision, setHorasSupervision] = useState("1");
+  const [adicionalVisitaRapida, setAdicionalVisitaRapida] = useState("");
+  const [descripcionVisitaRapida, setDescripcionVisitaRapida] = useState("");
 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -94,6 +96,7 @@ export default function ServiciosDirectos() {
 
   const costeTecnicoSeleccionado = seleccionados.includes("coste_tecnico");
   const supervisionSeleccionada = seleccionados.includes("supervision");
+  const visitaRapidaSeleccionada = seleccionados.includes("visita_rapida");
 
   const precioCosteNumerico = redondear(precioCosteTecnico);
   const ivaCosteTecnico = redondear(precioCosteNumerico * IVA);
@@ -114,22 +117,40 @@ export default function ServiciosDirectos() {
     ? Math.ceil(horasSupervisionNumericas)
     : 0;
 
+  const adicionalVisitaNumerico = redondear(adicionalVisitaRapida);
+  const adicionalVisitaValido =
+    adicionalVisitaRapida.trim() === "" ||
+    (Number.isFinite(Number(adicionalVisitaRapida)) &&
+      adicionalVisitaNumerico >= 0 &&
+      adicionalVisitaNumerico <= 99975);
+  const precioVisitaRapida = redondear(25 + adicionalVisitaNumerico);
+  const conceptoVisitaRapida =
+    adicionalVisitaNumerico > 0
+      ? `Visita rápida (base 25,00 € + adicional ${dinero(adicionalVisitaNumerico)})`
+      : "Visita rápida";
+
   const lineasSeleccionadas = SERVICIOS_DISPONIBLES
     .filter((servicio) => seleccionados.includes(servicio.codigo))
     .map((servicio) => ({
       codigo: servicio.codigo,
-      concepto: servicio.nombre,
+      concepto:
+        servicio.codigo === "visita_rapida"
+          ? conceptoVisitaRapida
+          : servicio.nombre,
       cantidad: servicio.codigo === "supervision" ? cantidadSupervision : 1,
       precio_unitario:
         servicio.codigo === "coste_tecnico"
           ? precioCosteNumerico
-          : servicio.precio,
+          : servicio.codigo === "visita_rapida"
+            ? precioVisitaRapida
+            : servicio.precio,
     }));
 
   const lineasCalculables = lineasSeleccionadas.filter(
     (linea) =>
       (linea.codigo !== "coste_tecnico" || precioCosteValido) &&
-      (linea.codigo !== "supervision" || cantidadSupervisionValida)
+      (linea.codigo !== "supervision" || cantidadSupervisionValida) &&
+      (linea.codigo !== "visita_rapida" || adicionalVisitaValido)
   );
   const baseConjunta = redondear(
     lineasCalculables.reduce(
@@ -152,6 +173,10 @@ export default function ServiciosDirectos() {
     }
     if (codigo === "supervision" && seleccionados.includes(codigo)) {
       setHorasSupervision("1");
+    }
+    if (codigo === "visita_rapida" && seleccionados.includes(codigo)) {
+      setAdicionalVisitaRapida("");
+      setDescripcionVisitaRapida("");
     }
     setResultadoUnificado(null);
 
@@ -184,6 +209,25 @@ export default function ServiciosDirectos() {
         "Introduce una duración válida para Supervisión, superior a 0 y no superior a 1.000 horas."
       );
     }
+    if (visitaRapidaSeleccionada && !adicionalVisitaValido) {
+      return setError(
+        "Introduce un importe adicional válido para Visita rápida, entre 0 € y 99.975 €."
+      );
+    }
+
+    const descripcionCompleta = [
+      descripcionPresupuesto.trim(),
+      descripcionVisitaRapida.trim()
+        ? `Detalle de Visita rápida: ${descripcionVisitaRapida.trim()}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    if (descripcionCompleta.length > 2000) {
+      return setError(
+        "La descripción conjunta no puede superar los 2.000 caracteres. Reduce el texto general o el detalle de Visita rápida."
+      );
+    }
 
     const requiereTecnico = lineasSeleccionadas.some((linea) =>
       ["urgencia", "visita_rapida", "inspeccion_tormenta", "coste_tecnico"].includes(
@@ -204,7 +248,7 @@ export default function ServiciosDirectos() {
           p_cliente_id: clienteSeleccionado.id,
           p_vivienda_id: viviendaSeleccionada.id,
           p_lineas: lineasSeleccionadas,
-          p_descripcion: descripcionPresupuesto.trim() || null,
+          p_descripcion: descripcionCompleta || null,
         }
       );
 
@@ -220,6 +264,8 @@ export default function ServiciosDirectos() {
       setSeleccionados([]);
       setPrecioCosteTecnico("");
       setHorasSupervision("1");
+      setAdicionalVisitaRapida("");
+      setDescripcionVisitaRapida("");
       setDescripcionPresupuesto("");
     } catch (e) {
       setError(
@@ -370,6 +416,74 @@ export default function ServiciosDirectos() {
                   </strong>
                 </label>
 
+                {servicio.codigo === "visita_rapida" && activo && (
+                  <div style={estilos.campoVariable}>
+                    <label style={estilos.etiqueta}>
+                      Importe adicional opcional (además de los 25 € de base)
+                    </label>
+                    <div style={estilos.contenedorPrecio}>
+                      <input
+                        type="number"
+                        min="0"
+                        max="99975"
+                        step="0.01"
+                        inputMode="decimal"
+                        style={estilos.inputPrecio}
+                        value={adicionalVisitaRapida}
+                        onChange={(e) => setAdicionalVisitaRapida(e.target.value)}
+                        placeholder="0,00 si no hay adicional"
+                        disabled={bloqueado}
+                      />
+                      <span style={estilos.sufijoPrecio}>€</span>
+                    </div>
+                    <p style={estilos.detalleServicio}>
+                      Si lo dejas vacío o introduces 0 €, se cobrarán únicamente
+                      los 25 € de Visita rápida. Si añades un importe, se sumará
+                      al precio base dentro de la misma línea del presupuesto.
+                    </p>
+                    <label style={estilos.etiqueta}>
+                      Descripción del encargo para el cliente
+                    </label>
+                    <textarea
+                      style={estilos.textarea}
+                      value={descripcionVisitaRapida}
+                      onChange={(e) => setDescripcionVisitaRapida(e.target.value)}
+                      placeholder="Explica qué compra, gestión, desplazamiento o tarea se realizará. El cliente verá esta descripción en el presupuesto."
+                      maxLength={1500}
+                      rows={3}
+                      disabled={bloqueado}
+                    />
+                    <p style={estilos.detalleServicio}>
+                      El sistema aplica actualmente IVA del 21 % al importe total.
+                      No incluyas productos sujetos a un tipo de IVA distinto
+                      hasta que exista un desglose fiscal por producto.
+                    </p>
+                    {!adicionalVisitaValido && (
+                      <p style={{ ...estilos.detalleServicio, color: "#fca5a5" }}>
+                        El adicional debe estar entre 0 € y 99.975 €.
+                      </p>
+                    )}
+                    {adicionalVisitaValido && (
+                      <div style={estilos.resumenVariable}>
+                        <div style={estilos.fila}>
+                          <span>Visita rápida (base)</span>
+                          <span>{dinero(25)}</span>
+                        </div>
+                        {adicionalVisitaNumerico > 0 && (
+                          <div style={estilos.fila}>
+                            <span>Importe adicional</span>
+                            <span>{dinero(adicionalVisitaNumerico)}</span>
+                          </div>
+                        )}
+                        <div style={estilos.total}>
+                          <span>Base de Visita rápida</span>
+                          <span>{dinero(precioVisitaRapida)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {esSupervision && activo && (
                   <div style={estilos.campoVariable}>
                     <label style={estilos.etiqueta}>
@@ -478,11 +592,12 @@ export default function ServiciosDirectos() {
               );
               const importeValido =
                 (linea.codigo !== "coste_tecnico" || precioCosteValido) &&
-                (linea.codigo !== "supervision" || cantidadSupervisionValida);
+                (linea.codigo !== "supervision" || cantidadSupervisionValida) &&
+                (linea.codigo !== "visita_rapida" || adicionalVisitaValido);
               return (
                 <div key={linea.codigo} style={estilos.fila}>
                   <span>
-                    {servicio?.nombre || linea.codigo}
+                    {linea.concepto || servicio?.nombre || linea.codigo}
                     {linea.codigo === "supervision"
                       ? ` · ${linea.cantidad} hora(s)`
                       : ""}
@@ -528,7 +643,8 @@ export default function ServiciosDirectos() {
             !viviendaId ||
             seleccionados.length === 0 ||
             (costeTecnicoSeleccionado && !precioCosteValido) ||
-            (supervisionSeleccionada && !cantidadSupervisionValida)
+            (supervisionSeleccionada && !cantidadSupervisionValida) ||
+            (visitaRapidaSeleccionada && !adicionalVisitaValido)
           }
           style={{
             ...estilos.boton,
@@ -538,7 +654,8 @@ export default function ServiciosDirectos() {
               !viviendaId ||
               seleccionados.length === 0 ||
               (costeTecnicoSeleccionado && !precioCosteValido) ||
-              (supervisionSeleccionada && !cantidadSupervisionValida)
+              (supervisionSeleccionada && !cantidadSupervisionValida) ||
+              (visitaRapidaSeleccionada && !adicionalVisitaValido)
                 ? 0.6
                 : 1,
           }}
