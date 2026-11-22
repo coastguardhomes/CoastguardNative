@@ -22,7 +22,7 @@ export default function CrearContrato() {
     notas: "",
     frecuencia: "",
     modalidad: "",
-    periodicidad_pago: "mensual",
+    tipo_compromiso: "flexible",
     dni: "",
   });
 
@@ -260,10 +260,10 @@ export default function CrearContrato() {
     }
 
     if (
-      form.periodicidad_pago !== "mensual" &&
-      form.periodicidad_pago !== "anual"
+      form.tipo_compromiso !== "flexible" &&
+      form.tipo_compromiso !== "anual"
     ) {
-      setMensaje("Selecciona una periodicidad de pago válida.");
+      setMensaje("Selecciona una modalidad de compromiso válida.");
       return;
     }
 
@@ -316,8 +316,15 @@ export default function CrearContrato() {
       return;
     }
 
-    const precioBase = Number(
+    const precioOrdinario = Number(
       (precioModalidad + suplementoVivienda).toFixed(2)
+    );
+
+    const descuentoCompromisoPct =
+      form.tipo_compromiso === "anual" ? 10 : 0;
+
+    const precioBase = Number(
+      (precioOrdinario * (1 - descuentoCompromisoPct / 100)).toFixed(2)
     );
 
     if (
@@ -385,10 +392,22 @@ export default function CrearContrato() {
             modalidad: form.modalidad,
             estado: "pendiente",
             duracion_meses: 12,
-            periodicidad_pago: form.periodicidad_pago,
-            descuento_anual_pct:
-              form.periodicidad_pago === "anual" ? 10 : 0,
-            version_condiciones: "CONTRATO_SERVICIOS_V3_2026-11-12",
+
+            // Las dos modalidades nuevas se cobran mensualmente.
+            periodicidad_pago: "mensual",
+            descuento_anual_pct: 0,
+
+            // Datos separados del compromiso y del precio ordinario.
+            permanencia_anual: form.tipo_compromiso === "anual",
+            precio_sin_descuento: precioOrdinario,
+            descuento_compromiso_pct: descuentoCompromisoPct,
+
+            // No se fija una penalización arbitraria.
+            // Se documentará cuando exista una base jurídica y económica válida.
+            compensacion_baja_eur: null,
+            compensacion_baja_motivo: null,
+
+            version_condiciones: "CONTRATO_SERVICIOS_V4_2026-11-22",
           },
         ])
         .select("*")
@@ -400,7 +419,7 @@ export default function CrearContrato() {
       contratoCreadoId = contratoId;
 
       // Las columnas *_facturacion son calculadas por PostgreSQL.
-      // En modalidad anual contienen las 12 mensualidades con el 10% aplicado.
+      // Como periodicidad_pago siempre es mensual, devuelven el importe mensual.
       const baseFactura = Number(data.precio_facturacion);
       const ivaFactura = Number(data.iva_facturacion);
       const totalFactura = Number(data.precio_total_facturacion);
@@ -436,9 +455,9 @@ export default function CrearContrato() {
               (form.modalidad === "custodia_llaves"
                 ? "Custodia de llaves"
                 : "Servicio de mantenimiento") +
-              (form.periodicidad_pago === "anual"
-                ? " - anualidad anticipada (10% de descuento)"
-                : " - mensual"),
+              (form.tipo_compromiso === "anual"
+                ? " - mensual con compromiso de 12 meses y 10% de descuento"
+                : " - mensual flexible sin permanencia"),
             base: baseFactura,
             iva: ivaFactura,
             total: totalFactura,
@@ -526,10 +545,6 @@ export default function CrearContrato() {
     boxSizing: "border-box",
   };
 
-  const importesActuales = calcularImportes(
-    Number(form.precio || 0)
-  );
-
   const esCustodia = form.modalidad === "custodia_llaves";
 
   const viviendaActual = viviendas.find(
@@ -550,25 +565,16 @@ export default function CrearContrato() {
     ? 0
     : Number(form.precio_vivienda || 0);
 
-  const baseAnualAntesDescuento = Number(
-    (importesActuales.base * 12).toFixed(2)
+  const precioOrdinarioActual = Number(form.precio || 0);
+
+  const descuentoCompromisoActual =
+    form.tipo_compromiso === "anual" ? 10 : 0;
+
+  const precioConDescuentoActual = Number(
+    (precioOrdinarioActual * (1 - descuentoCompromisoActual / 100)).toFixed(2)
   );
 
-  const descuentoAnual = Number(
-    (baseAnualAntesDescuento * 0.10).toFixed(2)
-  );
-
-  const baseAnual = Number(
-    (baseAnualAntesDescuento - descuentoAnual).toFixed(2)
-  );
-
-  const ivaAnual = Number(
-    (importesActuales.iva * 12 * 0.90).toFixed(2)
-  );
-
-  const totalAnual = Number(
-    (baseAnual + ivaAnual).toFixed(2)
-  );
+  const importesConDescuento = calcularImportes(precioConDescuentoActual);
 
   return (
     <Menu>
@@ -747,22 +753,23 @@ export default function CrearContrato() {
             ))}
           </select>
 
-          <label style={labelStyle}>Periodicidad de pago:</label>
+          <label style={labelStyle}>Modalidad de pago y compromiso:</label>
 
           <select
-            value={form.periodicidad_pago}
+            value={form.tipo_compromiso}
             onChange={(e) =>
               setForm((prev) => ({
                 ...prev,
-                periodicidad_pago:
-                  e.target.value === "anual" ? "anual" : "mensual",
+                tipo_compromiso: e.target.value === "anual" ? "anual" : "flexible",
               }))
             }
             style={inputStyle}
           >
-            <option value="mensual">Mensual — sin descuento</option>
+            <option value="flexible">
+              Mensual flexible — sin permanencia y sin descuento
+            </option>
             <option value="anual">
-              Anual — 12 meses por adelantado, 10% de descuento
+              Mensual con compromiso de 12 meses — 10% de descuento
             </option>
           </select>
 
@@ -792,15 +799,16 @@ export default function CrearContrato() {
               fontSize: "14px",
             }}
           >
-            El contrato tiene una duración inicial de 12 meses y se renueva
-            conforme a las condiciones firmadas. La periodicidad elegida
-            determina el cobro: mensual sin descuento o anual por adelantado
-            con un 10% de descuento. La cancelación se rige por el preaviso y
-            las condiciones recogidas en el contrato firmado.
+            Ambas modalidades se cobran mensualmente. La modalidad flexible
+            no tiene permanencia y permite solicitar la baja con un mes de
+            preaviso. La modalidad con compromiso ofrece un 10% de descuento
+            a cambio de una permanencia inicial de 12 meses. Las condiciones
+            de cancelación y cualquier compensación legalmente procedente
+            deben constar expresamente en el contrato firmado.
           </div>
 
           <label style={labelStyle}>
-            Precio base mensual sin IVA:
+            Precio ordinario mensual sin IVA (antes de descuento):
           </label>
 
           <input
@@ -837,63 +845,26 @@ export default function CrearContrato() {
             )}
 
             <div>
-              IVA mensual (21%): {importesActuales.iva.toFixed(2)} €
+              Descuento mensual por compromiso: {descuentoCompromisoActual.toFixed(0)}%
             </div>
 
             <div>
-              Total mensual con IVA: {importesActuales.total.toFixed(2)} €
+              Base mensual después del descuento: {importesConDescuento.base.toFixed(2)} €
             </div>
 
-            {form.periodicidad_pago === "anual" && (
-              <div
-                style={{
-                  marginTop: "10px",
-                  paddingTop: "10px",
-                  borderTop: "1px solid rgba(77,184,255,0.25)",
-                }}
-              >
-                <div>
-                  Base anual antes del descuento:{" "}
-                  {baseAnualAntesDescuento.toFixed(2)} €
-                </div>
+            <div>
+              IVA mensual después del descuento (21%): {importesConDescuento.iva.toFixed(2)} €
+            </div>
 
-                <div>
-                  Descuento anual (10%): {descuentoAnual.toFixed(2)} €
-                </div>
-
-                <div>
-                  Base anual tras descuento: {baseAnual.toFixed(2)} €
-                </div>
-
-                <div>
-                  IVA anual tras descuento: {ivaAnual.toFixed(2)} €
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "6px",
-                    color: "#4db8ff",
-                    fontWeight: "700",
-                    fontSize: "16px",
-                  }}
-                >
-                  Total anual anticipado con IVA:{" "}
-                  {totalAnual.toFixed(2)} €
-                </div>
-              </div>
-            )}
-
-            {form.periodicidad_pago === "mensual" && (
-              <div
-                style={{
-                  marginTop: "6px",
-                  color: "#4db8ff",
-                  fontWeight: "700",
-                }}
-              >
-                Total con IVA: {importesActuales.total.toFixed(2)} € / mes
-              </div>
-            )}
+            <div
+              style={{
+                marginTop: "6px",
+                color: "#4db8ff",
+                fontWeight: "700",
+              }}
+            >
+              Total mensual con IVA: {importesConDescuento.total.toFixed(2)} €
+            </div>
           </div>
 
           {!esCustodia && (
