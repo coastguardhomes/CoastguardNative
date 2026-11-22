@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Menu from "../../layouts/Menu";
@@ -16,6 +17,8 @@ const TEXTO_DORADO_BRILLO = {
   color: COLOR_DORADO,
   textShadow: "0 0 12px rgba(224, 176, 52, 0.6)",
 };
+
+const VERSION_CONTRATO_V4 = "CONTRATO_SERVICIOS_V4_2026-11-22";
 
 export default function Contratos() {
   const navigate = useNavigate();
@@ -36,13 +39,10 @@ export default function Contratos() {
 
     const referencia = valor.trim();
 
-    // Mantener compatibilidad con PDF devueltos como Data URI.
     if (/^data:/i.test(referencia)) {
       return referencia;
     }
 
-    // Resolver rutas de Storage y URL antiguas o firmadas.
-    // El helper detecta el bucket y renueva los enlaces de Storage.
     try {
       return await resolverUrlPdfSegura(
         referencia,
@@ -83,12 +83,10 @@ export default function Contratos() {
     }
   };
 
-  // Ver o generar el PDF actualizado del contrato en tiempo real
   const verOPaginarPdf = async (contrato) => {
     try {
       setActionLoading(contrato.id);
 
-      // Si ya existe una ruta/URL, resolverla de forma segura.
       if (contrato.pdf_url) {
         const pdfUrl = await obtenerUrlPdf(
           contrato.pdf_url
@@ -104,7 +102,6 @@ export default function Contratos() {
         );
       }
 
-      // Si no existe una URL válida, invocamos la Edge Function.
       const { data, error: errPdf } =
         await supabase.functions.invoke("contrato-pdf", {
           body: {
@@ -116,7 +113,6 @@ export default function Contratos() {
 
       if (errPdf) throw errPdf;
 
-      // Consultamos de nuevo para obtener el valor guardado.
       const { data: updatedContrato } =
         await supabase
           .from("contratos")
@@ -161,14 +157,12 @@ export default function Contratos() {
     }
   };
 
-  // Procesa y envía únicamente el contrato al cliente
   const generarYEnviarContrato = async (contrato) => {
     try {
       setActionLoading(contrato.id);
 
       const numericContratoId = Number(contrato.id);
 
-      // 1. Generar PDF del contrato.
       let contratoPdfValue =
         contrato.pdf_url || null;
 
@@ -209,8 +203,6 @@ export default function Contratos() {
         );
       }
 
-      // 1b. Consultamos la DB porque la Edge Function
-      // puede haber actualizado pdf_url.
       const { data: contratoDb } =
         await supabase
           .from("contratos")
@@ -223,8 +215,6 @@ export default function Contratos() {
           contratoDb.pdf_url;
       }
 
-      // Para el correo necesitamos una URL utilizable,
-      // no solamente la ruta interna de Storage.
       let contratoPdfUrl = null;
 
       if (contratoPdfValue) {
@@ -234,7 +224,6 @@ export default function Contratos() {
           );
       }
 
-      // 2. Actualizar estado del contrato en DB.
       const estadoActual = String(
         contrato.estado || ""
       )
@@ -248,7 +237,13 @@ export default function Contratos() {
         contrato.firma ||
         contrato.firmado_en ||
         contrato.fecha_firma ||
-        ["firmado", "firmado_cliente", "enviado_al_admin", "activo", "completado"].includes(estadoActual)
+        [
+          "firmado",
+          "firmado_cliente",
+          "enviado_al_admin",
+          "activo",
+          "completado",
+        ].includes(estadoActual)
       );
 
       if (!tieneFirmaRegistrada) {
@@ -265,7 +260,6 @@ export default function Contratos() {
         }
       }
 
-      // 3. Enviar Email.
       const { error: errEmail } =
         await supabase.functions.invoke(
           "enviar-email",
@@ -307,13 +301,26 @@ export default function Contratos() {
     }
   };
 
-  // Solicita la cancelación de Stripe con un mes de preaviso.
-  // NO elimina el contrato ni las facturas históricas.
+  // La cancelación conserva el flujo actual de un mes de preaviso.
+  // No calcula ni cobra compensaciones por permanencia.
+  // El contrato y sus evidencias no se eliminan.
   const cancelarSuscripcion = async (contrato) => {
+    const esContratoV4 =
+      contrato.version_condiciones === VERSION_CONTRATO_V4;
+
+    const tieneCompromisoAnual =
+      esContratoV4 &&
+      contrato.permanencia_anual === true;
+
+    const mensajeCompromiso = tieneCompromisoAnual
+      ? "\n\nEste contrato tiene un compromiso inicial de 12 meses. La solicitud se tramitará mediante el procedimiento de cancelación vigente. Esta pantalla no calcula ni aplica automáticamente ninguna compensación por baja anticipada."
+      : "";
+
     const confirmado = window.confirm(
       "¿Solicitar la cancelación de este contrato?\n\n" +
-        "La baja se programará con un mes de preaviso. El servicio y la facturación continuarán hasta la fecha efectiva indicada por Stripe.\n\n" +
-        "No se aplicará penalización por permanencia anual. El contrato y sus evidencias NO se borrarán."
+        "La baja se programará con un mes de preaviso. El servicio y la facturación continuarán hasta la fecha efectiva indicada por Stripe." +
+        mensajeCompromiso +
+        "\n\nEl contrato y sus evidencias NO se borrarán."
     );
 
     if (!confirmado) return;
@@ -516,7 +523,13 @@ export default function Contratos() {
               c.firma ||
               c.firmado_en ||
               c.fecha_firma ||
-              ["firmado", "firmado_cliente", "enviado_al_admin", "activo", "completado"].includes(
+              [
+                "firmado",
+                "firmado_cliente",
+                "enviado_al_admin",
+                "activo",
+                "completado",
+              ].includes(
                 String(c.estado || "").toLowerCase().trim()
               )
             );
@@ -527,8 +540,33 @@ export default function Contratos() {
                 .trim() === "cancelado";
 
             const cancelacionProgramada = Boolean(
-              c.cancelacion_solicitada_en && c.cancelacion_efectiva_en
+              c.cancelacion_solicitada_en &&
+              c.cancelacion_efectiva_en
             );
+
+            const esContratoV4 =
+              c.version_condiciones === VERSION_CONTRATO_V4;
+
+            const tieneCompromisoAnual =
+              esContratoV4 &&
+              c.permanencia_anual === true;
+
+            const precioOrdinario = Number(
+              c.precio_sin_descuento ?? c.precio ?? 0
+            );
+
+            const descuentoCompromiso = Number(
+              c.descuento_compromiso_pct ?? 0
+            );
+
+            const precioMensualContratado = Number(
+              c.precio ?? 0
+            );
+
+            const fechaFinCompromiso =
+              tieneCompromisoAnual && c.fecha_fin
+                ? String(c.fecha_fin).slice(0, 10)
+                : null;
 
             return (
               <div
@@ -537,43 +575,29 @@ export default function Contratos() {
               >
                 <div style={estilos.infoBloque}>
                   <p style={estilos.lineaInfo}>
-                    <span
-                      style={estilos.etiqueta}
-                    >
+                    <span style={estilos.etiqueta}>
                       Cliente:
                     </span>{" "}
                     {nombreCliente}
                   </p>
 
                   <p style={estilos.lineaInfo}>
-                    <span
-                      style={estilos.etiqueta}
-                    >
+                    <span style={estilos.etiqueta}>
                       Dirección cliente:
                     </span>{" "}
                     {direccionCliente}
                   </p>
 
                   <p style={estilos.lineaInfo}>
-                    <span
-                      style={estilos.etiqueta}
-                    >
+                    <span style={estilos.etiqueta}>
                       Vivienda:
                     </span>{" "}
                     {direccionVivienda}
                   </p>
                 </div>
 
-                <div
-                  style={
-                    estilos.cabeceraContrato
-                  }
-                >
-                  <span
-                    style={
-                      estilos.numeroContrato
-                    }
-                  >
+                <div style={estilos.cabeceraContrato}>
+                  <span style={estilos.numeroContrato}>
                     Contrato #{c.id}
                   </span>
 
@@ -581,10 +605,8 @@ export default function Contratos() {
                     style={{
                       ...estilos.badge,
                       color: badge.color,
-                      backgroundColor:
-                        badge.bg,
-                      borderColor:
-                        badge.border,
+                      backgroundColor: badge.bg,
+                      borderColor: badge.border,
                     }}
                   >
                     {badge.texto}
@@ -592,14 +614,10 @@ export default function Contratos() {
                 </div>
 
                 <p style={estilos.fechaInfo}>
-                  <span
-                    style={estilos.etiqueta}
-                  >
+                  <span style={estilos.etiqueta}>
                     Inicio:
                   </span>{" "}
-                  {String(
-                    c.fecha_inicio || ""
-                  ).slice(0, 10)}
+                  {String(c.fecha_inicio || "").slice(0, 10)}
 
                   {tieneFirma && (
                     <span
@@ -615,17 +633,82 @@ export default function Contratos() {
                   )}
                 </p>
 
-                <p style={estilos.fechaInfo}>
-                  <span style={estilos.etiqueta}>Fin del período:</span>{" "}
-                  {String(c.fecha_fin || "—").slice(0, 10)}
-                </p>
+                {esContratoV4 ? (
+                  <>
+                    <div style={estilos.bloqueV4}>
+                      <strong style={{ color: "#38bdf8" }}>
+                        Modalidad contractual V4
+                      </strong>
 
-                <p style={estilos.fechaInfo}>
-                  <span style={estilos.etiqueta}>Renovación anual:</span>{" "}
-                  {c.renovacion_automatica === true && c.renovacion_aceptada_en
-                    ? "Aceptada y registrada"
-                    : "No consta aceptación expresa"}
-                </p>
+                      <div style={{ marginTop: "7px" }}>
+                        {tieneCompromisoAnual
+                          ? "Mensual con compromiso inicial de 12 meses"
+                          : "Mensual flexible, sin permanencia"}
+                      </div>
+
+                      <div>
+                        Cobro: mensual
+                      </div>
+
+                      {tieneCompromisoAnual && (
+                        <>
+                          <div>
+                            Fin del compromiso inicial:{" "}
+                            {fechaFinCompromiso || "No consta fecha"}
+                          </div>
+
+                          <div>
+                            Descuento mensual:{" "}
+                            {descuentoCompromiso.toFixed(2)}%
+                          </div>
+
+                          <div>
+                            Precio ordinario mensual (sin IVA):{" "}
+                            {precioOrdinario.toFixed(2)} €
+                          </div>
+
+                          <div>
+                            Precio mensual contratado (sin IVA):{" "}
+                            {precioMensualContratado.toFixed(2)} €
+                          </div>
+
+                          <div style={{ marginTop: "6px" }}>
+                            Al terminar los 12 meses iniciales, el contrato
+                            continúa mes a mes, sin iniciar otra permanencia
+                            anual automática.
+                          </div>
+                        </>
+                      )}
+
+                      {!tieneCompromisoAnual && (
+                        <div>
+                          No tiene fecha de vencimiento por permanencia.
+                          Continúa mes a mes hasta que se solicite la baja
+                          conforme al preaviso aplicable.
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p style={estilos.fechaInfo}>
+                      <span style={estilos.etiqueta}>
+                        Fin del período:
+                      </span>{" "}
+                      {String(c.fecha_fin || "—").slice(0, 10)}
+                    </p>
+
+                    <p style={estilos.fechaInfo}>
+                      <span style={estilos.etiqueta}>
+                        Renovación anual:
+                      </span>{" "}
+                      {c.renovacion_automatica === true &&
+                      c.renovacion_aceptada_en
+                        ? "Aceptada y registrada"
+                        : "No consta aceptación expresa"}
+                    </p>
+                  </>
+                )}
 
                 {cancelacionProgramada && (
                   <div style={{
@@ -638,25 +721,25 @@ export default function Contratos() {
                     lineHeight: 1.5
                   }}>
                     <strong>Cancelación programada</strong>
-                    <div>Solicitada: {new Date(c.cancelacion_solicitada_en).toLocaleString("es-ES")}</div>
-                    <div>Fecha efectiva: {new Date(c.cancelacion_efectiva_en).toLocaleString("es-ES")}</div>
+                    <div>
+                      Solicitada:{" "}
+                      {new Date(c.cancelacion_solicitada_en).toLocaleString("es-ES")}
+                    </div>
+                    <div>
+                      Fecha efectiva:{" "}
+                      {new Date(c.cancelacion_efectiva_en).toLocaleString("es-ES")}
+                    </div>
                     El contrato permanece activo durante el preaviso.
                   </div>
                 )}
 
-                <div
-                  style={estilos.gridBotones}
-                >
+                <div style={estilos.gridBotones}>
                   <button
                     type="button"
                     onClick={() =>
-                      navigate(
-                        `/contratos/ver/${c.id}`
-                      )
+                      navigate(`/contratos/ver/${c.id}`)
                     }
-                    style={
-                      estilos.botonGris
-                    }
+                    style={estilos.botonGris}
                   >
                     🔍 Ver Ficha
                   </button>
@@ -666,15 +749,12 @@ export default function Contratos() {
                     onClick={() =>
                       verOPaginarPdf(c)
                     }
-                    disabled={
-                      estaProcesando
-                    }
+                    disabled={estaProcesando}
                     style={{
                       ...estilos.botonGris,
-                      borderColor:
-                        tieneFirma
-                          ? "#34d399"
-                          : "#3f4459",
+                      borderColor: tieneFirma
+                        ? "#34d399"
+                        : "#3f4459",
                       color: tieneFirma
                         ? "#34d399"
                         : "#fff",
@@ -690,19 +770,13 @@ export default function Contratos() {
                     onClick={() =>
                       cancelarSuscripcion(c)
                     }
-                    disabled={
-                      estaProcesando
-                    }
+                    disabled={estaProcesando}
                     style={{
                       ...estilos.botonCancelar,
-                      opacity:
-                        estaProcesando
-                          ? 0.6
-                          : 1,
-                      cursor:
-                        estaProcesando
-                          ? "not-allowed"
-                          : "pointer",
+                      opacity: estaProcesando ? 0.6 : 1,
+                      cursor: estaProcesando
+                        ? "not-allowed"
+                        : "pointer",
                     }}
                   >
                     {estaProcesando
@@ -729,19 +803,13 @@ export default function Contratos() {
                   onClick={() =>
                     generarYEnviarContrato(c)
                   }
-                  disabled={
-                    estaProcesando
-                  }
+                  disabled={estaProcesando}
                   style={{
                     ...estilos.botonVerde,
-                    opacity:
-                      estaProcesando
-                        ? 0.6
-                        : 1,
-                    cursor:
-                      estaProcesando
-                        ? "not-allowed"
-                        : "pointer",
+                    opacity: estaProcesando ? 0.6 : 1,
+                    cursor: estaProcesando
+                      ? "not-allowed"
+                      : "pointer",
                   }}
                 >
                   {estaProcesando
@@ -848,6 +916,16 @@ const estilos = {
     margin: 0,
     fontSize: "13px",
     color: "#e2e8f0",
+  },
+
+  bloqueV4: {
+    padding: "12px",
+    borderRadius: "8px",
+    background: "rgba(56,189,248,0.08)",
+    border: "1px solid rgba(56,189,248,0.3)",
+    color: "#dbeafe",
+    fontSize: "13px",
+    lineHeight: 1.65,
   },
 
   gridBotones: {
