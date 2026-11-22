@@ -10,7 +10,8 @@ import { App } from "@capacitor/app";
 
 const VERSIONES_CONTRATO_ADMITIDAS = new Set([
   "CONTRATO_SERVICIOS_V2_2026-11-06",
-  "CONTRATO_SERVICIOS_V3_2026-11-12"
+  "CONTRATO_SERVICIOS_V3_2026-11-12",
+  "CONTRATO_SERVICIOS_V4_2026-11-22"
 ]);
 
 const COLOR_DORADO = "#e0b034";
@@ -231,15 +232,40 @@ export default function ClienteContratoVer() {
       return;
     }
 
-    if (
-      contrato?.renovacion_automatica !== true ||
-      !contrato?.renovacion_aceptada_en ||
-      !VERSIONES_CONTRATO_ADMITIDAS.has(
-        String(contrato?.version_condiciones || "")
-      )
-    ) {
+    const esV4 = contrato?.version_condiciones === "CONTRATO_SERVICIOS_V4_2026-11-22";
+
+    const esV4Coherente = esV4 &&
+      String(contrato?.periodicidad_pago || "").toLowerCase() === "mensual" &&
+      Number(contrato?.descuento_anual_pct || 0) === 0 &&
+      contrato?.precio_sin_descuento != null &&
+      (
+        (
+          contrato?.permanencia_anual === true &&
+          Number(contrato?.duracion_meses) === 12 &&
+          Boolean(contrato?.fecha_fin) &&
+          Number(contrato?.descuento_compromiso_pct) === 10
+        ) ||
+        (
+          contrato?.permanencia_anual === false &&
+          contrato?.duracion_meses == null &&
+          contrato?.fecha_fin == null &&
+          Number(contrato?.descuento_compromiso_pct) === 0
+        )
+      );
+
+    const aceptacionPagoValida = esV4
+      ? esV4Coherente
+      : contrato?.renovacion_automatica === true &&
+        Boolean(contrato?.renovacion_aceptada_en) &&
+        VERSIONES_CONTRATO_ADMITIDAS.has(
+          String(contrato?.version_condiciones || "")
+        );
+
+    if (!aceptacionPagoValida) {
       alert(
-        "Este contrato no tiene registrada la aceptación expresa de las nuevas condiciones de renovación anual. Debe aceptarse la versión actualizada antes de iniciar una suscripción."
+        esV4
+          ? "Los datos de la modalidad mensual de este contrato no son coherentes. Contacta con el administrador antes de pagar."
+          : "Este contrato no tiene registrada la aceptación expresa de las condiciones de renovación aplicables. Debe aceptarse la versión actualizada antes de iniciar una suscripción."
       );
       return;
     }
@@ -465,6 +491,45 @@ export default function ClienteContratoVer() {
     String(contrato.version_condiciones || "")
   );
 
+  const esContratoV4 =
+    contrato.version_condiciones === "CONTRATO_SERVICIOS_V4_2026-11-22";
+
+  const esCompromisoAnualV4 =
+    esContratoV4 && contrato.permanencia_anual === true;
+
+  const descuentoCompromisoV4 = Number(
+    contrato.descuento_compromiso_pct || 0
+  );
+
+  const precioOrdinarioV4 = Number(contrato.precio_sin_descuento);
+
+  const modalidadV4Coherente = esContratoV4 &&
+    periodicidadPago === "mensual" &&
+    Number(contrato.descuento_anual_pct || 0) === 0 &&
+    Number.isFinite(precioOrdinarioV4) &&
+    precioOrdinarioV4 > 0 &&
+    (
+      (
+        esCompromisoAnualV4 &&
+        Number(contrato.duracion_meses) === 12 &&
+        Boolean(contrato.fecha_fin) &&
+        descuentoCompromisoV4 === 10
+      ) ||
+      (
+        !esCompromisoAnualV4 &&
+        contrato.permanencia_anual === false &&
+        contrato.duracion_meses == null &&
+        contrato.fecha_fin == null &&
+        descuentoCompromisoV4 === 0
+      )
+    );
+
+  const puedePagarContrato = esContratoV4
+    ? modalidadV4Coherente
+    : contrato.renovacion_automatica === true &&
+      Boolean(contrato.renovacion_aceptada_en) &&
+      versionContratoAdmitida;
+
   const formatoEuro = (valor) =>
     Number.isFinite(valor) ? `${valor.toFixed(2)} €` : "—";
 
@@ -604,7 +669,7 @@ export default function ClienteContratoVer() {
             </div>
           </div>
 
-          {esFacturacionAnual && (
+          {!esContratoV4 && esFacturacionAnual && (
             <div
               style={{
                 marginTop: "16px",
@@ -660,18 +725,86 @@ export default function ClienteContratoVer() {
             {contrato.fecha_inicio || "—"}
           </p>
 
-          <p style={{ margin: "6px 0" }}>
-            <strong>Fin del período inicial / renovación:</strong>{" "}
-            {contrato.fecha_fin || "—"}
-          </p>
+          {esContratoV4 ? (
+            <div
+              style={{
+                marginTop: "14px",
+                marginBottom: "16px",
+                padding: "14px",
+                borderRadius: "10px",
+                border: "1px solid rgba(56,189,248,0.35)",
+                background: "rgba(56,189,248,0.08)",
+                lineHeight: 1.6
+              }}
+            >
+              <h4 style={{ margin: "0 0 10px", color: "#7dd3fc" }}>
+                Condiciones de tu modalidad mensual
+              </h4>
 
-          <p style={{ margin: "6px 0" }}>
-            <strong>Renovación automática anual:</strong>{" "}
-            {contrato.renovacion_automatica === true &&
-            contrato.renovacion_aceptada_en
-              ? "Aceptada y registrada"
-              : "No consta aceptación expresa"}
-          </p>
+              <p style={{ margin: "6px 0" }}>
+                <strong>Modalidad:</strong>{" "}
+                {esCompromisoAnualV4
+                  ? "Mensual con compromiso inicial de 12 meses"
+                  : "Mensual flexible sin permanencia"}
+              </p>
+
+              <p style={{ margin: "6px 0" }}>
+                <strong>Precio ordinario mensual sin IVA:</strong>{" "}
+                {formatoEuro(precioOrdinarioV4)}
+              </p>
+
+              <p style={{ margin: "6px 0" }}>
+                <strong>Descuento mensual:</strong>{" "}
+                {descuentoCompromisoV4.toFixed(0)} %
+              </p>
+
+              <p style={{ margin: "6px 0" }}>
+                <strong>Precio mensual tras descuento, sin IVA:</strong>{" "}
+                {formatoEuro(precioBase)}
+              </p>
+
+              <p style={{ margin: "6px 0" }}>
+                <strong>Fin del compromiso inicial:</strong>{" "}
+                {esCompromisoAnualV4
+                  ? contrato.fecha_fin
+                  : "No hay fecha de vencimiento"}
+              </p>
+
+              <p style={{ margin: "6px 0" }}>
+                {esCompromisoAnualV4
+                  ? "Al terminar los primeros 12 meses, el servicio continúa mes a mes, sin iniciar otra permanencia anual automática. La baja se solicita con un mes de preaviso."
+                  : "El servicio es mensual y flexible, sin permanencia. La baja se solicita con un mes de preaviso."}
+              </p>
+
+              <p
+                style={{
+                  margin: "6px 0 0",
+                  fontSize: "13px",
+                  color: "#cbd5e1"
+                }}
+              >
+                Cualquier compensación por baja anticipada solo podrá aplicarse
+                si tiene fundamento legal, es proporcionada y ha sido
+                expresamente informada y aceptada; no se calcula ni cobra
+                automáticamente desde esta pantalla.
+              </p>
+            </div>
+          ) : (
+            <p style={{ margin: "6px 0" }}>
+              <strong>Fin del período inicial / renovación:</strong>{" "}
+              {contrato.fecha_fin || "—"}
+            </p>
+          )}
+
+          {!esContratoV4 && (
+            <p style={{ margin: "6px 0" }}>
+              <strong>Renovación automática anual:</strong>{" "}
+              {contrato.renovacion_automatica === true &&
+              contrato.renovacion_aceptada_en
+                ? "Aceptada y registrada"
+                : "No consta aceptación expresa"}
+            </p>
+          )}
 
           {contrato.cancelacion_solicitada_en &&
             contrato.cancelacion_efectiva_en && (
@@ -750,9 +883,7 @@ export default function ClienteContratoVer() {
 
           {!yaPagado &&
             esFirmado &&
-            contrato.renovacion_automatica === true &&
-            contrato.renovacion_aceptada_en &&
-            versionContratoAdmitida &&
+            puedePagarContrato &&
             contrato.precio_total_facturacion != null &&
             Number.isFinite(totalFacturacion) &&
             totalFacturacion > 0 && (
@@ -768,19 +899,20 @@ export default function ClienteContratoVer() {
               >
                 {pagandoStripe
                   ? "Conectando con Stripe..."
-                  : esFacturacionAnual
-                  ? `💳 Pagar anualidad (${formatoEuro(
+                  : esContratoV4 || !esFacturacionAnual
+                  ? `💳 Suscribirse y Pagar (${formatoEuro(
                       totalFacturacion
-                    )}, IVA incluido)`
-                  : `💳 Suscribirse y Pagar (${formatoEuro(
+                    )}/mes, IVA incluido)`
+                  : `💳 Pagar anualidad (${formatoEuro(
                       totalFacturacion
-                    )}/mes, IVA incluido)`}
+                    )}, IVA incluido)`}
               </button>
             )}
 
           {!yaPagado &&
             esFirmado &&
-            contrato.renovacion_automatica !== true && (
+            !puedePagarContrato &&
+            !esContratoV4 && (
               <p
                 style={{
                   marginTop: "12px",
