@@ -7,7 +7,8 @@ import { useLanguage } from "../../context/LanguageContext.jsx";
 
 const VERSIONES_CONTRATO_ADMITIDAS = new Set([
   "CONTRATO_SERVICIOS_V2_2026-11-06",
-  "CONTRATO_SERVICIOS_V3_2026-11-12"
+  "CONTRATO_SERVICIOS_V3_2026-11-12",
+  "CONTRATO_SERVICIOS_V4_2026-11-22"
 ]);
 
 const VERSION_CONSENTIMIENTO_INICIO =
@@ -74,7 +75,7 @@ export default function ClienteFirmaDibujar({
         const { data: contrato, error } = await supabase
           .from("contratos")
           .select(
-            "id, estado, firma_url, firma_cliente, periodicidad_pago, descuento_anual_pct, version_condiciones"
+            "id, estado, firma_url, firma_cliente, periodicidad_pago, descuento_anual_pct, permanencia_anual, precio_sin_descuento, descuento_compromiso_pct, version_condiciones"
           )
           .eq("id", numericId)
           .maybeSingle();
@@ -130,25 +131,52 @@ export default function ClienteFirmaDibujar({
           return;
         }
 
-        const descuentoAnual = Number(
-          contrato.descuento_anual_pct ?? 10
-        );
+        const esV4 =
+          versionRegistrada === "CONTRATO_SERVICIOS_V4_2026-11-22";
 
-        if (
-          !Number.isFinite(descuentoAnual) ||
-          descuentoAnual < 0 ||
-          descuentoAnual > 100
+        const permanenciaAnual = esV4
+          ? contrato.permanencia_anual === true
+          : periodicidad === "anual";
+
+        const descuentoCompromiso = esV4
+          ? Number(contrato.descuento_compromiso_pct ?? 0)
+          : Number(contrato.descuento_anual_pct ?? 0);
+
+        if (esV4) {
+          if (
+            !Number.isFinite(descuentoCompromiso) ||
+            descuentoCompromiso < 0 ||
+            descuentoCompromiso > 10 ||
+            (permanenciaAnual && descuentoCompromiso !== 10) ||
+            (!permanenciaAnual && descuentoCompromiso !== 0) ||
+            periodicidad !== "mensual"
+          ) {
+            setEstadoComprobacion("error");
+            setMensajeComprobacion(
+              "Los datos de cobro mensual, compromiso y descuento del contrato no son válidos. Contacta con administración."
+            );
+            return;
+          }
+        } else if (
+          !Number.isFinite(descuentoCompromiso) ||
+          descuentoCompromiso < 0 ||
+          descuentoCompromiso > 100
         ) {
           setEstadoComprobacion("error");
           setMensajeComprobacion(
-            "El descuento anual registrado en el contrato no es válido. Contacta con administración."
+            "El descuento registrado en el contrato no es válido. Contacta con administración."
           );
           return;
         }
 
         setContratoInfo({
           periodicidad_pago: periodicidad,
-          descuento_anual_pct: descuentoAnual,
+          descuento_anual_pct: descuentoCompromiso,
+          permanencia_anual: permanenciaAnual,
+          descuento_compromiso_pct: descuentoCompromiso,
+          precio_sin_descuento: Number(
+            contrato.precio_sin_descuento ?? 0
+          ),
           version_condiciones: versionRegistrada
         });
 
@@ -326,7 +354,7 @@ export default function ClienteFirmaDibujar({
 
     if (!aceptaRenovacion) {
       alert(
-        "Debes aceptar expresamente la duración inicial de 12 meses y la renovación automática por períodos sucesivos de 12 meses antes de firmar."
+        "Debes aceptar expresamente las condiciones de duración y cancelación de la modalidad seleccionada antes de firmar."
       );
       return;
     }
@@ -344,7 +372,7 @@ export default function ClienteFirmaDibujar({
       } = await supabase
         .from("contratos")
         .select(
-          "id, estado, firma_url, firma_cliente, periodicidad_pago, version_condiciones"
+          "id, estado, firma_url, firma_cliente, periodicidad_pago, permanencia_anual, descuento_compromiso_pct, version_condiciones"
         )
         .eq("id", numericId)
         .maybeSingle();
@@ -382,7 +410,14 @@ export default function ClienteFirmaDibujar({
         contratoActual.version_condiciones !==
           contratoInfo.version_condiciones ||
         contratoActual.periodicidad_pago !==
-          contratoInfo.periodicidad_pago
+          contratoInfo.periodicidad_pago ||
+        (contratoInfo.version_condiciones ===
+          "CONTRATO_SERVICIOS_V4_2026-11-22" &&
+          (contratoActual.permanencia_anual !==
+            contratoInfo.permanencia_anual ||
+            Number(
+              contratoActual.descuento_compromiso_pct ?? 0
+            ) !== contratoInfo.descuento_compromiso_pct))
       ) {
         throw new Error(
           "Las condiciones o la periodicidad del contrato han cambiado. Actualiza la pantalla antes de firmar."
@@ -652,47 +687,101 @@ export default function ClienteFirmaDibujar({
                 cursor: guardando ? "default" : "pointer"
               }}
             >
-              {contratoInfo?.periodicidad_pago === "anual" ? (
+              {contratoInfo?.version_condiciones ===
+              "CONTRATO_SERVICIOS_V4_2026-11-22" ? (
+                contratoInfo.permanencia_anual ? (
+                  <>
+                    Acepto expresamente que esta modalidad se cobra
+                    mensualmente y tiene un compromiso inicial de
+                    permanencia de 12 meses. A cambio, se aplica un
+                    descuento del {contratoInfo.descuento_compromiso_pct}%
+                    sobre la cuota mensual ordinaria, antes de IVA.
+                    Una vez cumplidos los 12 meses iniciales, el contrato
+                    continúa con cobro mensual, sin iniciar automáticamente
+                    otro período de permanencia. Puedo solicitar la baja
+                    con un mes de preaviso. Cualquier compensación por una
+                    baja anticipada solo podrá exigirse si está expresamente
+                    justificada, resulta legalmente procedente y se calcula
+                    de forma proporcionada; no se acepta aquí una
+                    penalización fija automática.
+                    <br /><br />
+                    I expressly agree that this plan is billed monthly
+                    and has an initial 12-month commitment. In return,
+                    a {contratoInfo.descuento_compromiso_pct}% discount is
+                    applied to the ordinary monthly fee before VAT. Once
+                    the initial 12 months have elapsed, the agreement
+                    continues with monthly billing without automatically
+                    starting another commitment period. I may request
+                    cancellation with one month's notice. Any compensation
+                    for early termination may only be charged if expressly
+                    justified, legally permitted and proportionate; no
+                    automatic fixed penalty is accepted here.
+                  </>
+                ) : (
+                  <>
+                    Acepto expresamente que esta modalidad se cobra
+                    mensualmente y no tiene permanencia. Puedo solicitar
+                    la baja en cualquier momento con un mes de preaviso.
+                    Durante ese preaviso se mantiene el servicio y se
+                    factura la cuota que corresponda. No se aplica
+                    descuento por compromiso ni penalización por
+                    permanencia.
+                    <br /><br />
+                    I expressly agree that this plan is billed monthly
+                    and has no minimum commitment. I may request
+                    cancellation at any time with one month's notice.
+                    The service continues during the notice period and
+                    the applicable monthly fee remains payable. No
+                    commitment discount or early-termination penalty
+                    applies.
+                  </>
+                )
+              ) : contratoInfo?.periodicidad_pago === "anual" ? (
                 <>
-                  Acepto expresamente que el contrato tenga una duración inicial
-                  de 12 meses, con pago anual anticipado y un descuento del{" "}
-                  {contratoInfo.descuento_anual_pct}
-                  % sobre las doce mensualidades, antes de IVA. Acepto que se
-                  renueve automáticamente por períodos sucesivos de 12 meses,
-                  con el correspondiente pago anual anticipado y el descuento
-                  aplicable indicado en el contrato, salvo que solicite la
-                  cancelación con al menos un mes de preaviso antes de la
-                  renovación. El servicio se mantiene durante el período ya
-                  pagado. No se modificarán unilateralmente el precio ni el
-                  alcance del servicio.
+                  Acepto expresamente que el contrato tenga una duración
+                  inicial de 12 meses, con pago anual anticipado y un
+                  descuento del {contratoInfo.descuento_anual_pct}% sobre
+                  las doce mensualidades, antes de IVA. Acepto que se
+                  renueve automáticamente por períodos sucesivos de
+                  12 meses, con el correspondiente pago anual anticipado
+                  y el descuento aplicable indicado en el contrato,
+                  salvo que solicite la cancelación con al menos un mes
+                  de preaviso antes de la renovación. El servicio se
+                  mantiene durante el período ya pagado. No se
+                  modificarán unilateralmente el precio ni el alcance
+                  del servicio.
                   <br /><br />
-                  I expressly agree that the agreement has an initial term of
-                  12 months, paid annually in advance with the stated discount
-                  on the twelve monthly fees before VAT. It automatically
-                  renews for successive 12-month terms with the applicable
-                  annual advance payment and discount, unless I request
-                  cancellation at least one month before renewal. Service
-                  continues throughout the period already paid. The price and
-                  scope of the service will not be changed unilaterally.
+                  I expressly agree that the agreement has an initial
+                  term of 12 months, paid annually in advance with the
+                  stated discount on the twelve monthly fees before VAT.
+                  It automatically renews for successive 12-month terms
+                  with the applicable annual advance payment and
+                  discount, unless I request cancellation at least one
+                  month before renewal. Service continues throughout
+                  the period already paid. The price and scope of the
+                  service will not be changed unilaterally.
                 </>
               ) : (
                 <>
-                  Acepto expresamente que el contrato tenga una duración inicial
-                  de 12 meses, con pagos mensuales, y que se renueve
-                  automáticamente por períodos sucesivos de 12 meses, salvo que
-                  solicite la cancelación con al menos un mes de preaviso. Puedo
-                  solicitar la cancelación en cualquier momento, sin penalización
-                  por permanencia anual; durante el preaviso se mantiene el
-                  servicio y la facturación que corresponda. No se modificarán
-                  unilateralmente el precio ni el alcance del servicio.
+                  Acepto expresamente que el contrato tenga una duración
+                  inicial de 12 meses, con pagos mensuales, y que se
+                  renueve automáticamente por períodos sucesivos de
+                  12 meses, salvo que solicite la cancelación con al
+                  menos un mes de preaviso. Puedo solicitar la
+                  cancelación en cualquier momento, sin penalización
+                  por permanencia anual; durante el preaviso se mantiene
+                  el servicio y la facturación que corresponda. No se
+                  modificarán unilateralmente el precio ni el alcance
+                  del servicio.
                   <br /><br />
-                  I expressly agree that the agreement has an initial term of
-                  12 months, paid monthly, and automatically renews for
-                  successive 12-month terms unless I request cancellation at
-                  least one month before renewal. I may request cancellation at
-                  any time without an annual-commitment penalty; service and
-                  applicable billing continue during the notice period. The
-                  price and scope of the service will not be changed
+                  I expressly agree that the agreement has an initial
+                  term of 12 months, paid monthly, and automatically
+                  renews for successive 12-month terms unless I request
+                  cancellation at least one month before renewal. I may
+                  request cancellation at any time without an
+                  annual-commitment penalty; service and applicable
+                  billing continue during the notice period. The price
+                  and scope of the service will not be changed
                   unilaterally.
                 </>
               )}
@@ -737,26 +826,30 @@ export default function ClienteFirmaDibujar({
                 cursor: guardando ? "default" : "pointer"
               }}
             >
-              Solicito expresamente que CoastGuard Homes Services comience
-              a prestar el servicio antes de que finalice el plazo legal de
-              desistimiento que resulte aplicable. He sido informado/a de que,
-              si desisto después de que el servicio haya comenzado y antes de
-              su ejecución íntegra, podré tener que abonar el importe
-              proporcional correspondiente a la parte efectivamente prestada,
-              siempre que se cumplan los requisitos legales. Reconozco que, si
-              el servicio contratado llega a ejecutarse íntegramente durante
-              el plazo de desistimiento, perderé ese derecho una vez completada
+              Solicito expresamente que CoastGuard Homes Services
+              comience a prestar el servicio antes de que finalice
+              el plazo legal de desistimiento que resulte aplicable.
+              He sido informado/a de que, si desisto después de que
+              el servicio haya comenzado y antes de su ejecución
+              íntegra, podré tener que abonar el importe proporcional
+              correspondiente a la parte efectivamente prestada,
+              siempre que se cumplan los requisitos legales.
+              Reconozco que, si el servicio contratado llega a
+              ejecutarse íntegramente durante el plazo de
+              desistimiento, perderé ese derecho una vez completada
               la prestación. Esta solicitud es expresa y opcional.
               <br /><br />
-              I expressly request CoastGuard Homes Services to begin providing
-              the service before the applicable statutory withdrawal period
-              ends. I have been informed that, if I withdraw after the service
-              has started but before it has been fully performed, I may have to
-              pay the proportionate amount for the part actually provided,
-              where the legal requirements are met. I acknowledge that, if the
-              contracted service is fully performed during the withdrawal
-              period, I will lose that right once performance is complete.
-              This request is express and optional.
+              I expressly request CoastGuard Homes Services to begin
+              providing the service before the applicable statutory
+              withdrawal period ends. I have been informed that, if
+              I withdraw after the service has started but before it
+              has been fully performed, I may have to pay the
+              proportionate amount for the part actually provided,
+              where the legal requirements are met. I acknowledge
+              that, if the contracted service is fully performed
+              during the withdrawal period, I will lose that right
+              once performance is complete. This request is express
+              and optional.
             </label>
           </div>
 
@@ -824,12 +917,18 @@ export default function ClienteFirmaDibujar({
                 ...estiloBoton,
                 flex: 2,
                 background:
-                  guardando || !hayFirma || !aceptaContrato || !aceptaRenovacion
+                  guardando ||
+                  !hayFirma ||
+                  !aceptaContrato ||
+                  !aceptaRenovacion
                     ? "rgba(77, 184, 255, 0.4)"
                     : "#4db8ff",
                 color: "#0a0f1a",
                 cursor:
-                  guardando || !hayFirma || !aceptaContrato || !aceptaRenovacion
+                  guardando ||
+                  !hayFirma ||
+                  !aceptaContrato ||
+                  !aceptaRenovacion
                     ? "default"
                     : "pointer"
               }}
