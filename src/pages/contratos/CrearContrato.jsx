@@ -339,14 +339,16 @@ export default function CrearContrato() {
 
     const importes = calcularImportes(precioBase);
 
-    const fechaFinContrato = calcularFechaFin(
-      form.fecha_inicio,
-      12
-    );
+    // La modalidad flexible no tiene fecha de vencimiento ni duración
+    // contractual cerrada. Solo el compromiso anual termina a los 12 meses.
+    const esCompromisoAnual = form.tipo_compromiso === "anual";
+    const fechaFinContrato = esCompromisoAnual
+      ? calcularFechaFin(form.fecha_inicio, 12)
+      : null;
 
-    if (!fechaFinContrato) {
+    if (esCompromisoAnual && !fechaFinContrato) {
       setMensaje(
-        "No se pudo calcular la fecha de finalización del contrato."
+        "No se pudo calcular la fecha de finalización del compromiso anual."
       );
       return;
     }
@@ -391,7 +393,7 @@ export default function CrearContrato() {
             frecuencia: frecuenciaContrato,
             modalidad: form.modalidad,
             estado: "pendiente",
-            duracion_meses: 12,
+            duracion_meses: esCompromisoAnual ? 12 : null,
 
             // Las dos modalidades nuevas se cobran mensualmente.
             periodicidad_pago: "mensual",
