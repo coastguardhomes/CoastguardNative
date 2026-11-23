@@ -118,7 +118,7 @@ export default function VerCliente() {
         }
       }
     } catch {
-      // Si la respuesta no contiene JSON, se conserva el mensaje original.
+      // Se conserva el mensaje original si la respuesta no contiene JSON.
     }
 
     return mensajeError;
@@ -128,9 +128,11 @@ export default function VerCliente() {
     if (eliminando) return;
 
     const confirmar = window.confirm(
-      "¿Quieres solicitar el borrado de este cliente y sus datos operativos? " +
-        "El sistema protegerá las facturas y los contratos firmados que deban conservarse. " +
-        "Si detecta documentos protegidos, detendrá el proceso."
+      "¿Quieres eliminar este cliente y sus datos operativos?\n\n" +
+        "Solo se permitirá si no existen pagos confirmados ni servicios realizados que deban conservarse.\n\n" +
+        "Los contratos impagados podrán eliminarse junto con sus firmas y eventos. " +
+        "Las facturas emitidas o anuladas se conservarán desvinculadas del cliente.\n\n" +
+        "Si existen servicios realizados, documentación protegida o solicitudes de presupuesto pendientes, el sistema detendrá el proceso."
     );
 
     if (!confirmar) return;
